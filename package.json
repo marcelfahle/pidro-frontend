@@ -1,0 +1,14 @@
+{
+  "name": "pidro",
+  "private": true,
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "mobile:start": "bun --cwd packages/mobile start",
+    "mobile:ios": "bun --cwd packages/mobile ios",
+    "mobile:android": "bun --cwd packages/mobile android",
+    "web:dev": "bun --cwd packages/web dev",
+    "web:build": "bun --cwd packages/web build",
+    "shared:build": "bun --cwd packages/shared build",
+    "shared:watch": "bun --cwd packages/shared watch"
+  }
+}

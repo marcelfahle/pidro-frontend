@@ -1,0 +1,1 @@
+/Users/mf/code/pidro/_PIDRO2/code-ralph/pidro_frontend/packages/web/docs/plans/2026-02-09-feat-pidro-game-client-plan.md

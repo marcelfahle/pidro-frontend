@@ -1,0 +1,218 @@
+{
+  "description": "Test manifest for 'game'. Tracks all tests, their status, and what they cover.",
+  "rules": [
+    "Never remove or weaken existing tests — only add or fix them.",
+    "Update status after running: not_started -> failing -> passing.",
+    "Add new entries when writing new test files or test cases."
+  ],
+  "tests": [
+    {
+      "file": "src/App.test.tsx",
+      "status": "passing",
+      "covers": "App component renders, unauthenticated redirect to /login",
+      "tests": [
+        "renders without crashing",
+        "redirects unauthenticated users to login"
+      ]
+    },
+    {
+      "file": "src/pages/LoginPage.test.tsx",
+      "status": "passing",
+      "covers": "LoginPage form rendering, register link, auth redirect",
+      "tests": [
+        "renders login form with username and password fields",
+        "shows link to register page",
+        "redirects authenticated users away from login"
+      ]
+    },
+    {
+      "file": "src/pages/RegisterPage.test.tsx",
+      "status": "passing",
+      "covers": "RegisterPage form rendering, login link, auth redirect, client-side validation (password length, password match, username length)",
+      "tests": [
+        "renders registration form with all required fields",
+        "shows link to login page",
+        "redirects authenticated users away from register",
+        "validates password length on submit",
+        "validates password match on submit",
+        "validates username length on submit"
+      ]
+    },
+    {
+      "file": "src/pages/LobbyPage.test.tsx",
+      "status": "passing",
+      "covers": "LobbyPage rendering, lobby channel integration, room table display, create game modal flow, join game flow, sign out, online player count",
+      "tests": [
+        "renders header with username and sign out button",
+        "connects lobby channel for real-time updates",
+        "shows empty state when no waiting rooms exist",
+        "shows room table when waiting rooms exist",
+        "shows Create Game button that opens modal",
+        "creates game and navigates to game page on submit",
+        "joins a room and navigates to game page",
+        "shows online player count when available",
+        "navigates to login on sign out"
+      ]
+    },
+    {
+      "file": "src/pages/GamePage.test.tsx",
+      "status": "passing",
+      "covers": "GamePage orchestrator: loading state, error handling, room fetch + game store init, channel connection, waiting room rendering, leave room flow, channel error display, cleanup on unmount, play again room creation with same seat config, play again error handling",
+      "tests": [
+        "shows loading spinner while fetching room data",
+        "shows error and back button when room fetch fails",
+        "initializes game store and connects channel after fetching room",
+        "renders waiting room when no game state exists",
+        "navigates back to lobby when Leave Room is clicked",
+        "shows channel error with back button when channel fails",
+        "resets game store on unmount",
+        "creates a new room with same seat config when Play Again is clicked",
+        "shows toast when Play Again room creation fails"
+      ]
+    },
+    {
+      "file": "src/components/game/BiddingPanel.test.tsx",
+      "status": "passing",
+      "covers": "BiddingPanel: bid buttons rendering, bid/pass dispatch, waiting message for non-active player, current bid display with bidder name, bid history",
+      "tests": [
+        "shows bid buttons and pass when it is your turn",
+        "calls onBid with correct amount when bid button is clicked",
+        "calls onPass when pass button is clicked",
+        "shows waiting message when it is not your turn",
+        "shows current bid and bidder name when bids exist"
+      ]
+    },
+    {
+      "file": "src/components/game/TrumpSelector.test.tsx",
+      "status": "passing",
+      "covers": "TrumpSelector: suit button rendering, suit selection dispatch, waiting message for non-active player",
+      "tests": [
+        "shows 4 suit buttons when it is your turn",
+        "calls onDeclareTrump with selected suit",
+        "shows waiting message when it is not your turn"
+      ]
+    },
+    {
+      "file": "src/components/game/TrickArea.test.tsx",
+      "status": "passing",
+      "covers": "TrickArea: trick number display, empty slot rendering with position initials, played card rendering with leader indicator, trick count incrementing, your-turn indicator",
+      "tests": [
+        "shows trick number and empty slots when no cards played",
+        "shows played cards in their relative positions",
+        "increments trick number based on completed tricks",
+        "shows Your turn indicator when it is your turn"
+      ]
+    },
+    {
+      "file": "src/components/game/HandSelector.test.tsx",
+      "status": "passing",
+      "covers": "HandSelector: selection instruction and counter, card rendering as buttons, confirm button disabled state, selection counter updates, card selection + confirm dispatch, waiting message for non-active player",
+      "tests": [
+        "shows selection instruction and counter",
+        "renders all cards as clickable buttons",
+        "disables confirm button until 6 cards are selected",
+        "updates selection counter when cards are clicked",
+        "calls onSelectHand with selected cards when confirm is clicked",
+        "shows waiting message when it is not your turn"
+      ]
+    },
+    {
+      "file": "src/components/game/GameOverOverlay.test.tsx",
+      "status": "passing",
+      "covers": "GameOverOverlay: winner/loser announcement, score display, navigation buttons (Back to Lobby, Play Again), button click dispatch",
+      "tests": [
+        "shows winner announcement when North/South wins and you are on that team",
+        "shows loss message when your team loses",
+        "shows navigation buttons",
+        "calls onBackToLobby when Back to Lobby is clicked",
+        "calls onPlayAgain when Play Again is clicked"
+      ]
+    },
+    {
+      "file": "src/components/game/WaitingRoom.test.tsx",
+      "status": "passing",
+      "covers": "WaitingRoom: room code display, waiting status, player name + You badge, disconnect indicators (DC badge + opacity dim), leave button, game starting message when full",
+      "tests": [
+        "shows room code and waiting status",
+        "shows player name and You badge for occupied seats",
+        "shows DC badge and dims disconnected players",
+        "calls onLeave when Leave Room button is clicked",
+        "shows Game starting message when all 4 seats are filled"
+      ]
+    },
+    {
+      "file": "src/components/ui/Toast.test.tsx",
+      "status": "passing",
+      "covers": "useToast hook: add/dismiss messages; ToastContainer: rendering, role=alert, auto-dismiss after timeout",
+      "tests": [
+        "adds a toast message and returns it in messages array",
+        "dismisses a toast by id",
+        "renders nothing when messages array is empty",
+        "renders toast messages with correct text and role",
+        "auto-dismisses toast after duration"
+      ]
+    },
+    {
+      "file": "src/components/ui/ConnectionBanner.test.tsx",
+      "status": "passing",
+      "covers": "ConnectionBanner: hidden when connected, shows Reconnecting when disconnected, shows Reconnected after recovery, auto-hides Reconnected after 2 seconds",
+      "tests": [
+        "renders nothing when connected and never disconnected",
+        "shows Reconnecting banner when disconnected",
+        "shows Reconnected banner after disconnection followed by reconnection",
+        "auto-hides Reconnected banner after 2 seconds"
+      ]
+    },
+    {
+      "file": "src/components/lobby/RoomTable.test.tsx",
+      "status": "passing",
+      "covers": "RoomTable: skeleton loading rows, empty state after load, room display after load",
+      "tests": [
+        "shows skeleton rows when loading",
+        "shows empty state after loading completes with no rooms",
+        "shows rooms after loading completes"
+      ]
+    },
+    {
+      "file": "src/components/game/Card.test.tsx",
+      "status": "passing",
+      "covers": "Card component: getPidroPoints scoring logic (trump five, off-five, ace, two, jack, ten, non-scoring cards, non-trump cards), face-down rendering, face-up rendering with rank/suit, playable button vs static div, onClick dispatch, point value badge display",
+      "tests": [
+        "returns null when no trump suit is provided",
+        "returns 5 for the five of trump (pidro)",
+        "returns 5 for the off-five (same color, different suit)",
+        "returns null for the five of a different color",
+        "returns 1 for ace of trump (rank 1 or 14)",
+        "returns 1 for the two of trump (low)",
+        "returns 1 for the jack of trump",
+        "returns 10 for the ten of trump (game)",
+        "returns null for non-scoring trump cards (e.g. 3, 4, 6-9, Q, K)",
+        "returns null for non-trump cards that are not the off-five",
+        "renders face-down card when faceDown is true",
+        "renders face-down card when no card data is provided",
+        "renders face-up card with rank and suit",
+        "renders as a button when playable",
+        "calls onClick when playable card is clicked",
+        "renders as a div (not button) when not playable",
+        "shows point value badge when pointValue is provided",
+        "does not show point badge when pointValue is 0 or null"
+      ]
+    },
+    {
+      "file": "src/components/game/PlayerHand.test.tsx",
+      "status": "passing",
+      "covers": "PlayerHand: username display, dealer badge, DC badge with opacity dim, face-down cards for opponents, face-up cards for current player, playable card buttons vs static cards, onPlayCard dispatch, empty hand 'No cards' message, turn indicator (pulsing dot)",
+      "tests": [
+        "shows username and You badge for the current player",
+        "shows dealer badge when player is dealer",
+        "shows DC badge and dims when player is disconnected",
+        "renders face-down cards for opponents",
+        "renders face-up cards for the current player",
+        "marks playable cards as buttons and non-playable as divs",
+        "calls onPlayCard when a playable card is clicked",
+        "shows 'No cards' when count is 0",
+        "shows turn indicator when it is the player turn"
+      ]
+    }
+  ]
+}

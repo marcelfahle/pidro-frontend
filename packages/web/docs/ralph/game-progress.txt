@@ -1,0 +1,160 @@
+# Progress Log
+# Each iteration appends its progress here.
+# ---
+
+## 2026-02-10 — Phase 1 Infrastructure + Phase 2 Auth Pages
+
+Completed:
+- 1.1 Tailwind CSS v4: installed tailwindcss + @tailwindcss/vite, configured vite plugin, created src/index.css, imported in main.tsx
+- 1.2 Routes: added /register, /lobby, /game/:code routes, / redirects to /lobby, auth redirect on login/register pages, ProtectedRoute now has Tailwind spinner
+- 1.3 Channel hooks: ported useGameChannel.ts and useLobbyChannel.ts from mobile, removed unstable_batchedUpdates, imports from @pidro/shared and local socket
+- 1.4 Shared types: added discarding, second_deal, complete to GamePhase; added SelectHandAction to LegalAction union
+- 2.1 LoginPage: restyled with Tailwind, added auth redirect, added register link
+- 2.2 RegisterPage: created with full form (username, email, password, confirm), client-side validation, Tailwind styling, login link
+
+Tests added:
+- LoginPage.test.tsx (3 tests): form rendering, register link, auth redirect
+- RegisterPage.test.tsx (6 tests): form rendering, login link, auth redirect, password length/match/username validation
+
+All checks pass: typecheck, lint, 11 tests.
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Phase 3 Lobby + Shared UI Primitives + Realtime Init Fix
+
+Completed:
+- 6.5 Shared UI primitives: Button (variants, sizes, loading), Modal (backdrop, escape, footer), Badge (5 color variants), Spinner (3 sizes) — all in src/components/ui/
+- 3.1 LobbyPage: full rewrite with Tailwind, useLobbyChannel for real-time updates (replaces fragile REST-only fetch), header with online player count, Create Game button, sign out with navigation
+- 3.2 RoomTable + RoomRow: table-list layout with Name, Status (badge), Players, Open Seats, Join button columns; only shows waiting rooms sorted newest first; empty state
+- 3.3 CreateGameModal: game name input, 4 seat slots (seat 1 locked as "You", seats 2-4 toggle Open/Bot), bot difficulty dropdown, create + cancel buttons with loading/error states
+- 3.4 Join game flow: Join button on waiting rooms calls lobbyApi.joinRoom → navigate to /game/:code, with error handling
+- 6.4 (partial) Realtime init: moved initRealtime() from fragile LobbyPage module-level flag to main.tsx app startup — socket initializes before any channel hooks run
+
+Tests added:
+- LobbyPage.test.tsx (9 tests): header rendering, lobby channel connection, empty state, room table display, create game modal flow, game creation + navigation, join + navigation, online player count, sign out
+
+All checks pass: typecheck, lint, 20 tests (11 existing + 9 new).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Phase 4 Game Page Shell
+
+Completed:
+- 4.1 GamePage orchestrator: full rewrite from placeholder stub — fetches room via lobbyApi.getRoom, initializes game store via initFromRoom, connects game channel via useGameChannel, renders WaitingRoom or GameTable based on game phase, handles loading/error/channel-error states, leave room flow with lobbyApi.leaveRoom, resets game store on unmount
+- 4.2 WaitingRoom: cross-layout with 4 seat positions, avatar placeholders with initials, player name + You/Ally badges, waiting/full status indicator, room code display, Leave Room button
+- 4.3 GameTable + GameInfoBar: green felt table with CSS grid cross layout (N/W/Center/E/S), PlayerHand at each position, center area with phase-specific text placeholders, GameInfoBar showing scores, phase label, trump suit, round number, room code
+- 4.4 Card component: face-up with rank/suit (top-left, center, bottom-right rotated), face-down with blue back pattern, 3 sizes (sm/md/lg), playable state (button element for a11y), selected/trump ring states, point value badge, hover lift effect. Includes getPidroPoints() utility.
+- 4.5 PlayerHand: horizontal layout for N/S, vertical for W/E, face-up cards for you with playable highlighting, face-down cards for opponents, player label with dealer badge (D), turn indicator (pulsing dot), disconnect indicator (dimmed + DC badge)
+
+Tests added:
+- GamePage.test.tsx (7 tests): loading spinner, room fetch error, store init + channel connection, waiting room rendering, leave room navigation, channel error display, cleanup on unmount
+
+All checks pass: typecheck, lint, 27 tests (20 existing + 7 new).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Phase 5 Gameplay Components
+
+Completed:
+- 5.1 BiddingPanel: bid buttons (legal amounts only), pass button, current bid display with bidder name, bid history, waiting message for non-active player
+- 5.2 TrumpSelector: 2x2 suit button grid with color coding (hearts red, diamonds amber, clubs/spades dark), waiting message
+- 5.3 HandSelector: card selection UI for dealer rob — select 6 cards to keep, counter (0/6), confirm button disabled until 6 selected, waiting message
+- 5.4 TrickArea: 3x3 CSS grid with cards at N/W/E/S positions, empty slots show position initials, leader indicator ("Led" badge), trick number from completed tricks, point total, "Your turn" indicator
+- 5.5 Card play interaction: already wired (PlayerHand + GamePage), error shake animation deferred to Phase 6
+- 5.6 GameOverOverlay: determines winner by comparing scores, shows win/lose message based on player's team, score display, Back to Lobby + Play Again buttons (both navigate to /lobby — no backend rematch support yet)
+- 5.7 GameTable center area wiring: CenterContent component routes by phase — bidding→BiddingPanel, declaring/declaring_trump/trump_declaration→TrumpSelector, second_deal (>6 cards)→HandSelector, playing→TrickArea
+- GamePage action handlers: handleBid, handlePass, handleDeclareTrump, handleSelectHand all dispatch via pushGameAction; GameOverOverlay rendered as absolute overlay on top of GameTable
+
+Tests added:
+- BiddingPanel.test.tsx (5 tests): bid buttons + pass rendering, onBid dispatch, onPass dispatch, waiting message, current bid + bidder display
+- TrumpSelector.test.tsx (3 tests): 4 suit buttons, onDeclareTrump dispatch, waiting message
+- TrickArea.test.tsx (4 tests): trick number + empty slots, played cards with leader, trick count increment, your-turn indicator
+- HandSelector.test.tsx (6 tests): instruction + counter, card buttons, disabled confirm, counter update on click, onSelectHand dispatch, waiting message
+- GameOverOverlay.test.tsx (5 tests): winner announcement, loss message, nav buttons, onBackToLobby, onPlayAgain
+
+All checks pass: typecheck, lint, 50 tests (27 existing + 23 new).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Phase 6 Polish & Edge Cases
+
+Completed:
+- 6.1 Game action error toasts: Toast component (useToast hook, ToastContainer, ToastItem) with slide-in/slide-out CSS animations, auto-dismiss after 3s. GamePage wraps all pushGameAction calls in pushAction helper that catches errors and shows toasts.
+- 6.1 WebSocket connection banner: ConnectionBanner component shows yellow "Reconnecting..." with spinner when disconnected, green "Reconnected!" auto-hides after 2s. Uses useRef (not useState) for wasDisconnected to avoid circular effect dependencies.
+- 6.2 Lobby skeleton loading: RoomTable accepts loading prop, renders 3 animate-pulse skeleton rows while lobby channel is joining. useLobbyChannel sets loading state around join callbacks.
+- 6.3 WaitingRoom disconnect indicators: occupied seats with isConnected=false show red "DC" badge and opacity-50 dim.
+- 6.4 Sign-out → sign-in realtime fix: useLobbyChannel now has channel.onClose() handler that clears globalChannel singleton when socket disconnects, allowing fresh channel creation on re-login.
+- 6.5 Error shake animation: PlayerHand accepts shaking prop, applies animate-shake CSS class. GamePage sets handShaking state when play_card action is rejected, auto-clears after 400ms.
+
+Bug found & fixed:
+- ConnectionBanner: useState for wasDisconnected caused circular effect dependency — setting state triggered re-render, which re-ran the effect, whose cleanup canceled the auto-dismiss timer. Fixed by switching to useRef.
+
+Tests added:
+- Toast.test.tsx (5 tests): useToast add/dismiss, container render/empty/auto-dismiss
+- ConnectionBanner.test.tsx (4 tests): hidden when connected, reconnecting banner, reconnected banner, auto-hide after 2s
+- WaitingRoom.test.tsx (5 tests): room code display, player names/badges, DC badge + dim, leave button, game starting
+- RoomTable.test.tsx (3 tests): skeleton rows, empty state, rooms display
+
+All checks pass: typecheck, lint, 67 tests (50 existing + 17 new).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Backend Items 1.5 + 1.6
+
+Completed:
+- 1.5 Backend select_hand handler: added `handle_in("select_hand", %{"cards" => cards}, socket)` to game_channel.ex. Converts JSON card objects to engine tuples {rank, :suit_atom}, dispatches via apply_game_action. Updated moduledoc with new event.
+- 1.6 Backend bot support in room creation: extended room_controller.ex create/2 to accept seats and bot_difficulty params. After room creation, calls BotManager.start_bot for each AI seat. Added require Logger and BotManager alias. Position mapping: host→north, seat_2→east, seat_3→south, seat_4→west. Fixed param nesting (params["room"] || params) since frontend sends payload at top level.
+- Shared types: added BotDifficulty type ('random' | 'basic' | 'smart') and bot_difficulty? field to CreateRoomRequest
+- LobbyPage: wired bot_difficulty into createRoom API call, only sent when at least one seat is AI
+
+All checks pass: typecheck, lint, 67 tests (unchanged — backend changes have no frontend test impact).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Code Quality Cleanup
+
+Completed:
+- Removed console.log/warn statements from useLobbyChannel.ts and useGameChannel.ts (kept console.error in realtime.ts for critical init failures)
+- pushGameAction now returns rejected promise instead of undefined when no channel is active — callers already catch errors
+- Fixed redundant ternary in HandSelector.tsx (was `viewModel.players.length > 0 ? 6 : 6`, now just `6`)
+- Added cleanup() method to WebPhoenixSocket to remove visibilitychange event listener and disconnect socket (prevents memory leak)
+
+All checks pass: typecheck, lint, 67 tests (unchanged).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Play Again Room Recreation
+
+Completed:
+- Implemented "Play Again" button per spec: creates a new room with the same seat configuration instead of just navigating to lobby
+- Added `deriveSeatConfig()` helper that inspects room seats on load (checking `is_bot` on each player) to reconstruct seat types (open/ai)
+- Room config (name + seats) stored in a ref during initial room fetch, used when Play Again is clicked
+- Defaults to `bot_difficulty: 'basic'` when bots are present (server doesn't return original difficulty)
+- Falls back to lobby navigation if config unavailable; shows error toast on creation failure
+
+Tests added:
+- GamePage.test.tsx (2 new tests): room creation with same seat config on Play Again, error toast on creation failure
+
+All checks pass: typecheck, lint, 69 tests (67 existing + 2 new).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Test Quality: Fix React act() Warnings
+
+Completed:
+- Fixed React "act()" warnings in GamePage.test.tsx by switching from vitest's `vi.waitFor` to React Testing Library's `waitFor` (which properly wraps state updates in act())
+- Verified all 69 tests still pass with zero console warnings
+
+All checks pass: typecheck, lint, 69 tests (unchanged).
+
+Not in git repo — could not commit.
+
+## 2026-02-10 — Test Coverage: Card + PlayerHand
+
+Completed:
+- Added Card.test.tsx (18 tests): getPidroPoints scoring logic (trump five=5, off-five=5, ace=1, two=1, jack=1, ten=10, non-scoring trump=null, non-trump=null, no-trump-suit=null), face-down rendering (faceDown prop and missing card data), face-up rendering with rank/suit, playable cards render as `<button>`, non-playable as `<div>`, onClick dispatch, point value badge display via bg-yellow-400 selector
+- Added PlayerHand.test.tsx (9 tests): username display, dealer badge, DC badge with opacity-50 dim, face-down cards for opponents (counts by title), face-up cards for current player (by title), playable card buttons vs static divs per legalActions, onPlayCard dispatch, empty hand "No cards" message, turn indicator (animate-pulse dot)
+
+All checks pass: typecheck, lint, 96 tests (69 existing + 27 new).
+
+Not in git repo — could not commit.
