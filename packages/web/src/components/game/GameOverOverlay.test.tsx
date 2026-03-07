@@ -60,7 +60,7 @@ function makeServerState(scores: { north_south: number; east_west: number }): Se
 }
 
 describe('GameOverOverlay', () => {
-  it('shows winner announcement when North/South wins and you are on that team', () => {
+  it('shows winner announcement when your team wins', () => {
     render(
       <GameOverOverlay
         viewModel={makeViewModel()}
@@ -71,7 +71,7 @@ describe('GameOverOverlay', () => {
     );
 
     expect(screen.getByText('You win!')).toBeTruthy();
-    expect(screen.getByText('North / South wins!')).toBeTruthy();
+    expect(screen.getByText('Your team wins!')).toBeTruthy();
     expect(screen.getByText('62')).toBeTruthy();
     expect(screen.getByText('38')).toBeTruthy();
   });
@@ -87,7 +87,7 @@ describe('GameOverOverlay', () => {
     );
 
     expect(screen.getByText('You lose')).toBeTruthy();
-    expect(screen.getByText('East / West wins!')).toBeTruthy();
+    expect(screen.getByText('Opponents win!')).toBeTruthy();
   });
 
   it('shows navigation buttons', () => {

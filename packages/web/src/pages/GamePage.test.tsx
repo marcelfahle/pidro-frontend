@@ -15,11 +15,15 @@ vi.mock('../stores/auth', () => ({
 const mockGameStoreState: Record<string, unknown> = {};
 const mockInitFromRoom = vi.fn();
 const mockReset = vi.fn();
-vi.mock('@pidro/shared', () => ({
-  useGameStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector(mockGameStoreState),
-  useGameViewModel: () => mockGameStoreState._viewModel ?? null,
-}));
+vi.mock('@pidro/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pidro/shared')>();
+  return {
+    ...actual,
+    useGameStore: (selector: (state: Record<string, unknown>) => unknown) =>
+      selector(mockGameStoreState),
+    useGameViewModel: () => mockGameStoreState._viewModel ?? null,
+  };
+});
 
 // Mock zustand useShallow - pass through selector
 vi.mock('zustand/react/shallow', () => ({
@@ -116,6 +120,8 @@ function setupDefaults(overrides: Record<string, unknown> = {}) {
         isConnected: false,
       },
     },
+    readyPlayers: [],
+    youPositionAbs: null,
     isChannelJoined: false,
     lastError: null,
     initFromRoom: mockInitFromRoom,

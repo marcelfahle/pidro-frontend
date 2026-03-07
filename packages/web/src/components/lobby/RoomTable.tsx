@@ -12,20 +12,20 @@ interface RoomTableProps {
 function SkeletonRow() {
   return (
     <tr className="animate-pulse">
-      <td className="py-3 pr-4 pl-4">
-        <div className="h-4 w-28 rounded bg-gray-200" />
+      <td className="px-4 py-3">
+        <div className="h-4 w-28 rounded bg-cyan-200/15" />
       </td>
-      <td className="py-3 pr-4">
-        <div className="h-5 w-16 rounded-full bg-gray-200" />
+      <td className="px-4 py-3">
+        <div className="h-5 w-16 rounded-full bg-cyan-200/15" />
       </td>
-      <td className="py-3 pr-4">
-        <div className="h-4 w-8 rounded bg-gray-200" />
+      <td className="px-4 py-3">
+        <div className="h-4 w-8 rounded bg-cyan-200/15" />
       </td>
-      <td className="py-3 pr-4">
-        <div className="h-4 w-6 rounded bg-gray-200" />
+      <td className="px-4 py-3">
+        <div className="h-4 w-6 rounded bg-cyan-200/15" />
       </td>
-      <td className="py-3 pr-4">
-        <div className="h-7 w-14 rounded bg-gray-200" />
+      <td className="px-4 py-3">
+        <div className="h-7 w-14 rounded bg-cyan-200/15" />
       </td>
     </tr>
   );
@@ -51,18 +51,9 @@ export function RoomTable({
   // Show skeleton rows while lobby data is loading
   if (loading) {
     return (
-      <div className="overflow-hidden rounded-lg border border-gray-200">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b border-gray-200 bg-gray-50">
-            <tr>
-              <th className="py-3 pr-4 pl-4 font-medium text-gray-600">Name</th>
-              <th className="py-3 pr-4 font-medium text-gray-600">Status</th>
-              <th className="py-3 pr-4 font-medium text-gray-600">Players</th>
-              <th className="py-3 pr-4 font-medium text-gray-600">Open Seats</th>
-              <th className="py-3 pr-4 font-medium text-gray-600" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
+      <div className="overflow-hidden rounded-lg border border-cyan-300/20">
+        <table className="w-full">
+          <tbody>
             <SkeletonRow />
             <SkeletonRow />
             <SkeletonRow />
@@ -74,36 +65,26 @@ export function RoomTable({
 
   if (waitingRooms.length === 0) {
     return (
-      <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center">
-        <p className="text-gray-500">No games available. Create one!</p>
+      <div className="flex h-full min-h-[280px] items-center justify-center rounded-[20px] border border-dashed border-cyan-300/25 bg-cyan-950/20 p-8 text-center">
+        <p className="text-base font-black uppercase tracking-[0.12em] text-cyan-50/80">
+          No games available. Create one!
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-lg border border-gray-200">
-      <table className="w-full text-left text-sm">
-        <thead className="border-b border-gray-200 bg-gray-50">
-          <tr>
-            <th className="py-3 pr-4 pl-4 font-medium text-gray-600">Name</th>
-            <th className="py-3 pr-4 font-medium text-gray-600">Status</th>
-            <th className="py-3 pr-4 font-medium text-gray-600">Players</th>
-            <th className="py-3 pr-4 font-medium text-gray-600">Open Seats</th>
-            <th className="py-3 pr-4 font-medium text-gray-600" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {waitingRooms.map((room) => (
-            <RoomRow
-              key={room.code}
-              room={room}
-              onJoin={onJoin}
-              joinLoading={joinLoading}
-              joinError={joinError}
-            />
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-3">
+      {waitingRooms.map((room, index) => (
+        <RoomRow
+          key={room.code}
+          room={room}
+          onJoin={onJoin}
+          joinLoading={joinLoading}
+          joinError={joinError}
+          rowNumber={index + 1}
+        />
+      ))}
     </div>
   );
 }

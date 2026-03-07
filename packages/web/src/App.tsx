@@ -1,5 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { GamePage } from './pages/GamePage';
+import { DesignSystemPage } from './pages/DesignSystemPage';
+import { HomePage } from './pages/HomePage';
 import { LobbyPage } from './pages/LobbyPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
@@ -27,8 +29,17 @@ export function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/design-system" element={<DesignSystemPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <HomePage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/lobby"
           element={
@@ -45,7 +56,7 @@ export function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/lobby" replace />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
       </Routes>
     </BrowserRouter>
   );

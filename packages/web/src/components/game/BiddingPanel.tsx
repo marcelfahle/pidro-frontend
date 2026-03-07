@@ -19,15 +19,11 @@ export function BiddingPanel({
   const youPosition = viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
   const isYourTurn = viewModel.currentTurnAbsolute === youPosition;
 
-  // Extract legal bid amounts from legal actions
   const legalBidAmounts = legalActions
     .filter((a): a is Extract<LegalAction, { type: 'bid' }> => a.type === 'bid')
-    .map((a) => a.amount)
-    .sort((a, b) => a - b);
+    .map((a) => a.amount);
 
   const canPass = legalActions.some((a) => a.type === 'pass');
-
-  // Build bid history from serverState.bids
   const bids = serverState.bids ?? {};
   const bidHistory = Object.entries(bids).map(([position, bid]) => {
     const relPos = youPosition
@@ -38,75 +34,81 @@ export function BiddingPanel({
     return { name, bid: bid as number | 'pass' };
   });
 
-  // Current highest bid
   const currentBid = serverState.current_bid ?? 0;
   const bidWinner = serverState.bid_winner ?? serverState.highest_bid?.position ?? null;
   const bidWinnerPlayer = bidWinner
     ? viewModel.players.find((p) => p.absolutePosition === bidWinner)
     : null;
   const bidWinnerName = bidWinnerPlayer?.isYou ? 'You' : (bidWinnerPlayer?.username ?? null);
-
-  // Who has the current turn
   const currentTurnPlayer = viewModel.players.find((p) => p.isCurrentTurn);
-  const waitingForName = currentTurnPlayer?.isYou
-    ? null
-    : (currentTurnPlayer?.username ?? 'opponent');
+  const waitingForName = currentTurnPlayer?.isYou ? null : (currentTurnPlayer?.username ?? 'opponent');
+  const visibleBidHistory = bidHistory.filter(
+    ({ bid, name }) => bid === 'pass' || name !== bidWinnerName,
+  );
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-2">
-      {/* Current bid display */}
-      <div className="text-center">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 text-center">
+      <div className="pidro-panel w-full max-w-[180px] px-5 py-4">
         {currentBid > 0 ? (
-          <div>
-            <span className="text-xs text-emerald-400/70">Current bid</span>
-            <div className="text-2xl font-bold text-white">{currentBid}</div>
-            {bidWinnerName && <span className="text-xs text-emerald-300">{bidWinnerName}</span>}
-          </div>
+          <>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-50/65">
+              Current bid
+            </div>
+            <div className="mt-1 text-5xl font-black text-white">{currentBid}</div>
+            {bidWinnerName && (
+              <div className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-cyan-50/75">
+                {bidWinnerName}
+              </div>
+            )}
+          </>
         ) : (
-          <span className="text-sm text-emerald-400/60">No bids yet</span>
+          <div className="text-sm font-black uppercase tracking-[0.18em] text-cyan-50/75">
+            No bids yet
+          </div>
         )}
       </div>
 
-      {/* Action area */}
       {isYourTurn ? (
-        <div className="flex flex-col items-center gap-2">
-          <span className="text-xs font-medium text-yellow-400">Your turn to bid</span>
-
-          {/* Bid buttons */}
-          <div className="flex flex-wrap justify-center gap-1">
-            {legalBidAmounts.map((amount) => (
-              <button
-                key={amount}
-                type="button"
-                onClick={() => onBid(amount)}
-                className="h-8 w-8 rounded-md bg-emerald-600 text-sm font-bold text-white transition-colors hover:bg-emerald-500"
-              >
-                {amount}
-              </button>
-            ))}
+        <div className="pidro-panel w-full max-w-[310px] p-4">
+          <div className="mb-3 text-sm font-black uppercase tracking-[0.16em] text-[#fff0b2]">
+            Your turn to bid
           </div>
-
-          {/* Pass button */}
+          <div className="grid grid-cols-3 gap-3">
+            {legalBidAmounts.map((amount) => {
+              return (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => onBid(amount)}
+                  className="rounded-[8px] border border-cyan-200/65 bg-cyan-400/12 px-0 py-3 text-2xl font-black text-white shadow-[0_8px_14px_rgba(0,0,0,0.14)] transition-all hover:-translate-y-0.5 hover:border-cyan-100 hover:bg-cyan-400/18"
+                >
+                  {amount}
+                </button>
+              );
+            })}
+          </div>
           {canPass && (
             <button
               type="button"
               onClick={onPass}
-              className="rounded-md bg-gray-600 px-4 py-1.5 text-sm text-gray-200 transition-colors hover:bg-gray-500"
+              className="mt-4 w-full rounded-[7px] border-2 border-[#d99d1b] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] px-4 py-3 text-base font-black uppercase tracking-[0.12em] text-[#ffd84a]"
             >
               Pass
             </button>
           )}
         </div>
       ) : (
-        <span className="text-sm text-emerald-400/60">Waiting for {waitingForName} to bid...</span>
+        <div className="pidro-panel rounded-full px-5 py-3 text-sm font-black text-cyan-50/80">{`Waiting for ${waitingForName} to bid...`}</div>
       )}
 
-      {/* Bid history */}
-      {bidHistory.length > 0 && (
-        <div className="mt-1 flex flex-wrap justify-center gap-x-3 gap-y-0.5">
-          {bidHistory.map(({ name, bid }) => (
-            <span key={name} className="text-xs text-emerald-400/50">
-              {name}: {bid === 'pass' ? 'Pass' : bid}
+      {visibleBidHistory.length > 0 && (
+        <div className="flex max-w-[360px] flex-wrap justify-center gap-2 text-xs font-black uppercase tracking-[0.08em] text-cyan-50/78">
+          {visibleBidHistory.map(({ name, bid }) => (
+            <span
+              key={name}
+              className="rounded-full border border-cyan-300/15 bg-black/10 px-3 py-1.5"
+            >
+              <span>{`${name}: ${bid === 'pass' ? 'Pass' : bid}`}</span>
             </span>
           ))}
         </div>

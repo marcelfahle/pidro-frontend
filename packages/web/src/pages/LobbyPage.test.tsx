@@ -89,7 +89,8 @@ describe('LobbyPage', () => {
     renderLobby();
 
     expect(screen.getByText('testuser')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Sign Out' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Log Out' })).toBeTruthy();
   });
 
   it('connects lobby channel for real-time updates', () => {
@@ -194,7 +195,7 @@ describe('LobbyPage', () => {
     setupMocks({}, { stats: { online_players: 5, active_games: 2 } });
     renderLobby();
 
-    expect(screen.getByText('5 online')).toBeTruthy();
+    expect(screen.getByText('Players Online - 5')).toBeTruthy();
   });
 
   it('navigates to login on sign out', async () => {
@@ -202,7 +203,7 @@ describe('LobbyPage', () => {
     setupMocks({ clearSession });
     renderLobby();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sign Out' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Log Out' }));
 
     expect(clearSession).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/login');

@@ -28,8 +28,8 @@ function seatLabel(value: SeatToggle): string {
 
 function seatColor(value: SeatToggle): string {
   return value === 'open'
-    ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-    : 'bg-amber-100 text-amber-800 hover:bg-amber-200';
+    ? 'border-cyan-300/30 bg-cyan-400/10 text-cyan-50 hover:border-cyan-200/60 hover:bg-cyan-400/16'
+    : 'border-[#ffcc54]/40 bg-[#ffcc54]/12 text-[#fff0b2] hover:border-[#ffcc54]/70 hover:bg-[#ffcc54]/18';
 }
 
 export function CreateGameModal({
@@ -74,9 +74,8 @@ export function CreateGameModal({
       }
     >
       <form id="create-game-form" onSubmit={handleSubmit} className="space-y-5">
-        {/* Game name */}
         <div>
-          <label htmlFor="game-name" className="mb-1 block text-sm font-medium text-gray-700">
+          <label htmlFor="game-name" className="mb-2 block text-sm font-black uppercase tracking-[0.18em] text-cyan-50/80">
             Game Name
           </label>
           <input
@@ -85,45 +84,64 @@ export function CreateGameModal({
             placeholder={`${username}'s game`}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+            className="pidro-input"
           />
         </div>
 
-        {/* Seats */}
         <div>
-          <p className="mb-2 text-sm font-medium text-gray-700">Seats</p>
-          <div className="grid grid-cols-4 gap-2">
-            {/* Seat 1: locked as you */}
-            <div className="flex flex-col items-center rounded-md border border-emerald-200 bg-emerald-50 p-3">
-              <span className="text-xs text-gray-500">Seat 1</span>
-              <span className="mt-1 truncate text-sm font-medium text-emerald-800">You</span>
+          <p className="mb-3 text-sm font-black uppercase tracking-[0.18em] text-cyan-50/80">
+            Seats
+          </p>
+          <div className="space-y-3">
+            <div className="rounded-[16px] border border-cyan-300/20 bg-cyan-950/20 p-4">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-50/60">
+                Seat 1
+              </div>
+              <div className="mt-2 flex items-center gap-3">
+                <div className="pidro-avatar">{(username[0] ?? 'Y').toUpperCase()}</div>
+                <div>
+                  <div className="text-base font-black text-white">You</div>
+                  <div className="text-xs font-black uppercase tracking-[0.16em] text-cyan-50/65">
+                    Host
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Seats 2-4: toggleable */}
             {[
               { seat: seat2, set: setSeat2, label: 'Seat 2' },
               { seat: seat3, set: setSeat3, label: 'Seat 3' },
               { seat: seat4, set: setSeat4, label: 'Seat 4' },
             ].map(({ seat, set, label }) => (
-              <button
+              <div
                 key={label}
-                type="button"
-                onClick={() => set(nextSeatValue(seat))}
-                className={`flex flex-col items-center rounded-md border border-gray-200 p-3 transition-colors ${seatColor(seat)}`}
+                className="flex flex-wrap items-center justify-between gap-3 rounded-[16px] border border-cyan-300/20 bg-cyan-950/20 p-4"
               >
-                <span className="text-xs text-gray-500">{label}</span>
-                <span className="mt-1 text-sm font-medium">{seatLabel(seat)}</span>
-              </button>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-50/60">
+                    {label}
+                  </div>
+                  <div className="mt-1 text-base font-black text-white">
+                    {seat === 'ai' ? 'Bot Player' : 'Open Public'}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => set(nextSeatValue(seat))}
+                  className={`rounded-[8px] border px-4 py-2 text-sm font-black uppercase tracking-[0.12em] transition-colors ${seatColor(seat)}`}
+                >
+                  {seatLabel(seat)}
+                </button>
+              </div>
             ))}
           </div>
         </div>
 
-        {/* Bot difficulty (shown when any seat is Bot) */}
         {hasBot && (
           <div>
             <label
               htmlFor="bot-difficulty"
-              className="mb-1 block text-sm font-medium text-gray-700"
+              className="mb-2 block text-sm font-black uppercase tracking-[0.18em] text-cyan-50/80"
             >
               Bot Difficulty
             </label>
@@ -131,7 +149,7 @@ export function CreateGameModal({
               id="bot-difficulty"
               value={botDifficulty}
               onChange={(e) => setBotDifficulty(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              className="pidro-select"
             >
               <option value="random">Random</option>
               <option value="basic">Basic</option>
@@ -140,7 +158,7 @@ export function CreateGameModal({
           </div>
         )}
 
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm font-bold text-red-200">{error}</p>}
       </form>
     </Modal>
   );

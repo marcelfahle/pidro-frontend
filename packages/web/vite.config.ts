@@ -8,6 +8,17 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:4000',
+        changeOrigin: true,
+      },
+      '/socket': {
+        target: 'ws://localhost:4000',
+        changeOrigin: true,
+        ws: true,
+      },
+    },
   },
   resolve: {
     alias: {

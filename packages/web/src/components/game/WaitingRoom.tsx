@@ -1,116 +1,137 @@
 import type { PlayerMeta, Position } from '@pidro/shared';
 import { Badge } from '../ui/Badge';
+import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
 
 interface WaitingRoomProps {
   roomCode: string;
   playerMeta: Record<Position, PlayerMeta>;
+  readyPlayers?: Position[];
+  youPosition?: Position | null;
+  onReady?: () => void;
   onLeave: () => void;
 }
 
-const SEAT_POSITIONS: { position: Position; label: string; gridArea: string }[] = [
-  { position: 'north', label: 'North', gridArea: 'north' },
-  { position: 'west', label: 'West', gridArea: 'west' },
-  { position: 'east', label: 'East', gridArea: 'east' },
-  { position: 'south', label: 'South', gridArea: 'south' },
+const SEAT_POSITIONS: { position: Position; label: string; className: string }[] = [
+  {
+    position: 'north',
+    label: 'North',
+    className: 'left-1/2 top-[16%] w-[46%] -translate-x-1/2 max-md:top-[18%] max-md:w-[62%]',
+  },
+  {
+    position: 'west',
+    label: 'West',
+    className: 'left-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:left-[2%] max-md:top-[38%] max-md:w-[30%]',
+  },
+  {
+    position: 'east',
+    label: 'East',
+    className: 'right-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:right-[2%] max-md:top-[38%] max-md:w-[30%]',
+  },
+  {
+    position: 'south',
+    label: 'South',
+    className: 'bottom-[8%] left-1/2 w-[60%] -translate-x-1/2 max-md:bottom-[10%] max-md:w-[78%]',
+  },
 ];
 
-function SeatSlot({ meta, label }: { meta: PlayerMeta; label: string }) {
+function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; isReady: boolean }) {
   const occupied = meta.playerId !== null;
   const disconnected = occupied && !meta.isConnected;
+  const cardClasses = [
+    'pidro-seat-card',
+    isReady ? 'pidro-seat-card--ready' : '',
+    meta.isYou ? 'pidro-seat-card--active' : '',
+    disconnected ? 'opacity-50' : '',
+    'w-full',
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   return (
-    <div
-      className={`flex flex-col items-center gap-2 rounded-xl px-6 py-4 ${
-        occupied
-          ? 'border border-emerald-500/40 bg-emerald-700/30'
-          : 'border border-dashed border-emerald-500/30 bg-emerald-900/20'
-      } ${disconnected ? 'opacity-50' : ''}`}
-    >
-      {/* Avatar placeholder */}
-      <div
-        className={`flex h-12 w-12 items-center justify-center rounded-full ${
-          occupied ? 'bg-emerald-600' : 'bg-emerald-800/60'
-        }`}
-      >
-        <span className="text-lg text-white">
-          {occupied ? (meta.username?.[0]?.toUpperCase() ?? '?') : '?'}
-        </span>
-      </div>
-
-      {/* Name */}
-      <span className={`text-sm font-medium ${occupied ? 'text-white' : 'text-emerald-500/60'}`}>
-        {occupied ? meta.username : 'Waiting...'}
-      </span>
-
-      {/* Position label */}
-      <span className="text-xs text-emerald-400/50">{label}</span>
-
-      {/* Badges */}
-      <div className="flex gap-1">
-        {meta.isYou && <Badge variant="blue">You</Badge>}
-        {meta.isTeammate && <Badge variant="green">Ally</Badge>}
-        {disconnected && <Badge variant="red">DC</Badge>}
+    <div className={cardClasses}>
+      <div className="pidro-avatar">{occupied ? (meta.username?.[0]?.toUpperCase() ?? '?') : '?'}</div>
+      <div className="min-w-0">
+        <div className="truncate text-sm font-black text-white">{occupied ? meta.username : 'Waiting...'}</div>
+        <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-50/60">
+          {label}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
+          {meta.isYou && <Badge variant="blue">You</Badge>}
+          {meta.isTeammate && <Badge variant="green">Ally</Badge>}
+          {isReady && !meta.isYou && <Badge variant="yellow">Ready</Badge>}
+          {disconnected && <Badge variant="red">DC</Badge>}
+        </div>
       </div>
     </div>
   );
 }
 
-export function WaitingRoom({ roomCode, playerMeta, onLeave }: WaitingRoomProps) {
+export function WaitingRoom({
+  roomCode,
+  playerMeta,
+  readyPlayers = [],
+  youPosition,
+  onReady,
+  onLeave,
+}: WaitingRoomProps) {
   const filledCount = Object.values(playerMeta).filter((m) => m.playerId !== null).length;
   const isFull = filledCount >= 4;
+  const isYouReady = youPosition ? readyPlayers.includes(youPosition) : false;
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-8 p-8">
-      {/* Room code */}
-      <div className="text-center">
-        <p className="text-sm text-emerald-400">Room Code</p>
-        <p className="text-3xl font-bold tracking-wider text-white">{roomCode}</p>
-      </div>
+    <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1">
+      <div className="relative aspect-[4/3] w-full max-w-[1120px] max-h-[calc(100dvh-2rem)] max-md:aspect-[10/16]">
+        <div className="absolute left-1/2 top-[6%] z-20 -translate-x-1/2 text-center">
+          <div className="pidro-panel rounded-[18px] px-6 py-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-50/70">
+              Room Code
+            </p>
+            <p className="mt-1 text-4xl font-black tracking-[0.28em] text-white">{roomCode}</p>
+          </div>
+        </div>
 
-      {/* Seats in cross layout */}
-      <div
-        className="grid gap-4"
-        style={{
-          gridTemplateAreas: `
-            ".     north ."
-            "west  .     east"
-            ".     south ."
-          `,
-          gridTemplateColumns: '1fr 1fr 1fr',
-          gridTemplateRows: 'auto auto auto',
-        }}
-      >
-        {SEAT_POSITIONS.map(({ position, label, gridArea }) => (
-          <div key={position} style={{ gridArea }} className="flex justify-center">
-            <SeatSlot meta={playerMeta[position]} label={label} />
+        {SEAT_POSITIONS.map(({ position, label, className }) => (
+          <div key={position} className={`absolute z-10 ${className}`}>
+            <SeatSlot
+              meta={playerMeta[position]}
+              label={label}
+              isReady={readyPlayers.includes(position)}
+            />
           </div>
         ))}
-      </div>
 
-      {/* Status */}
-      <div className="flex items-center gap-2">
-        {isFull ? (
-          <>
-            <Spinner size="sm" />
-            <span className="text-emerald-300">Game starting...</span>
-          </>
-        ) : (
-          <>
-            <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-400" />
-            <span className="text-emerald-400">Waiting for players... ({filledCount}/4)</span>
-          </>
-        )}
-      </div>
+        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[44%]">
+          {isFull ? (
+            <>
+              <div className="text-base font-black uppercase tracking-[0.16em] text-cyan-50/80">
+                Tap to start the game
+              </div>
+              {onReady && (
+                <Button type="button" onClick={onReady} disabled={isYouReady} size="lg">
+                  {isYouReady ? 'Ready!' : 'Ready'}
+                </Button>
+              )}
+              <div className="flex items-center gap-2 rounded-full border border-cyan-300/20 bg-black/15 px-4 py-2 text-sm font-black text-cyan-50/75">
+                <Spinner size="sm" />
+                <span>Game starting...</span>
+              </div>
+            </>
+          ) : (
+            <div className="pidro-panel px-6 py-4">
+              <div className="text-sm font-black uppercase tracking-[0.18em] text-cyan-50/80">
+                Waiting for players... ({filledCount}/4)
+              </div>
+            </div>
+          )}
+        </div>
 
-      {/* Leave button */}
-      <button
-        type="button"
-        onClick={onLeave}
-        className="rounded-md bg-emerald-700/50 px-4 py-2 text-sm text-emerald-200 transition-colors hover:bg-emerald-700"
-      >
-        Leave Room
-      </button>
+        <div className="absolute bottom-[3%] right-[3%] z-20 max-md:left-1/2 max-md:right-auto max-md:-translate-x-1/2">
+          <Button type="button" variant="secondary" size="sm" onClick={onLeave}>
+            Leave Room
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

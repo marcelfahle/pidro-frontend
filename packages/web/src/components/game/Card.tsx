@@ -25,25 +25,25 @@ interface SizeStyles {
 
 const SIZE_CLASSES: Record<CardSize, SizeStyles> = {
   sm: {
-    wrapper: 'w-8 h-12',
+    wrapper: 'h-[54px] w-[38px]',
     rank: 'text-[9px]',
-    suitLarge: 'text-sm',
+    suitLarge: 'text-base',
     suitSmall: 'text-[8px]',
     point: 'text-[7px] w-3 h-3',
   },
   md: {
-    wrapper: 'w-12 h-16',
-    rank: 'text-xs',
-    suitLarge: 'text-lg',
-    suitSmall: 'text-[9px]',
-    point: 'text-[8px] w-3.5 h-3.5',
+    wrapper: 'h-[74px] w-[52px] max-sm:h-[68px] max-sm:w-[48px]',
+    rank: 'text-[11px]',
+    suitLarge: 'text-2xl',
+    suitSmall: 'text-[10px]',
+    point: 'text-[8px] h-4 w-4',
   },
   lg: {
-    wrapper: 'w-16 h-24',
-    rank: 'text-sm',
-    suitLarge: 'text-2xl',
-    suitSmall: 'text-xs',
-    point: 'text-[9px] w-4 h-4',
+    wrapper: 'h-[104px] w-[72px] max-md:h-[92px] max-md:w-[62px] max-sm:h-[82px] max-sm:w-[56px]',
+    rank: 'text-[15px]',
+    suitLarge: 'text-[2rem] max-sm:text-[1.7rem]',
+    suitSmall: 'text-[11px]',
+    point: 'text-[10px] h-5 w-5',
   },
 };
 
@@ -109,7 +109,7 @@ function CardFace({
       {/* Point badge */}
       {pointValue != null && pointValue > 0 && (
         <div
-          className={`absolute -right-1 -top-1 flex items-center justify-center rounded-full bg-yellow-400 font-bold text-yellow-900 ${styles.point}`}
+          className={`absolute -right-1 -top-1 flex items-center justify-center rounded-full border border-yellow-200 bg-yellow-400 font-black text-yellow-950 shadow-sm ${styles.point}`}
         >
           {pointValue}
         </div>
@@ -134,10 +134,10 @@ export function Card({
   if (faceDown || !card) {
     return (
       <div
-        className={`${sizeStyles.wrapper} relative shrink-0 rounded-md bg-blue-900 shadow-md ${className}`}
+        className={`${sizeStyles.wrapper} pidro-card-back relative shrink-0 rounded-[7px] ${className}`}
         title="Face-down card"
       >
-        <div className="absolute inset-1 rounded-sm border border-blue-700 bg-blue-800" />
+        <div className="absolute inset-[3px] rounded-[5px] border border-cyan-100/35 bg-transparent" />
       </div>
     );
   }
@@ -149,11 +149,11 @@ export function Card({
   const ringClass = selected ? 'ring-2 ring-blue-400' : isTrump ? 'ring-1 ring-yellow-400' : '';
   const hoverClass =
     playable && !selected
-      ? 'cursor-pointer hover:-translate-y-1 hover:ring-2 hover:ring-blue-300 hover:shadow-lg'
+      ? 'cursor-pointer hover:-translate-y-2 hover:ring-2 hover:ring-cyan-200 hover:shadow-[0_10px_20px_rgba(0,0,0,0.24)]'
       : '';
   const liftClass = selected ? '-translate-y-1' : '';
 
-  const baseClass = `${sizeStyles.wrapper} relative shrink-0 rounded-md bg-white shadow-md transition-all duration-150 select-none ${ringClass} ${hoverClass} ${liftClass} ${className}`;
+  const baseClass = `${sizeStyles.wrapper} relative shrink-0 rounded-[7px] border border-slate-400/55 bg-[linear-gradient(180deg,#fafafa_0%,#f0f0f0_100%)] shadow-[0_8px_14px_rgba(0,0,0,0.18)] transition-all duration-150 select-none ${ringClass} ${hoverClass} ${liftClass} ${className}`;
 
   if (playable) {
     return (

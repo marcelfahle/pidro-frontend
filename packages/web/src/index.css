@@ -1,6 +1,414 @@
 @import "tailwindcss";
 
-/* Shake animation for invalid card play attempts */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  color-scheme: dark;
+  font-family: "Trebuchet MS", "Avenir Next Condensed", "Segoe UI", sans-serif;
+  --pidro-cyan: #46dcff;
+  --pidro-cyan-soft: rgba(70, 220, 255, 0.4);
+  --pidro-felt-top: #176ea7;
+  --pidro-felt-mid: #0d5087;
+  --pidro-felt-bottom: #07264c;
+  --pidro-radius-tight: 6px;
+  --pidro-radius-surface: 8px;
+  --pidro-radius-panel: 10px;
+  --pidro-control-size: 64px;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top, rgba(40, 162, 255, 0.22), transparent 32%),
+    radial-gradient(circle at bottom, rgba(0, 204, 255, 0.12), transparent 28%),
+    linear-gradient(180deg, #01050b 0%, #020812 100%);
+  color: white;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 16px 16px;
+  opacity: 0.05;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+.pidro-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(12px, 2vw, 24px);
+}
+
+.pidro-window {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 1180px);
+  border-radius: 20px;
+  border: 1px solid rgba(131, 215, 255, 0.18);
+  background:
+    linear-gradient(180deg, rgba(15, 31, 55, 0.96) 0px, rgba(15, 31, 55, 0.96) 20px, transparent 20px),
+    radial-gradient(circle at center, rgba(53, 151, 213, 0.35) 0%, transparent 45%),
+    linear-gradient(180deg, var(--pidro-felt-top) 0%, var(--pidro-felt-mid) 52%, var(--pidro-felt-bottom) 100%);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.68),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -24px 80px rgba(0, 0, 0, 0.3);
+}
+
+.pidro-window::after {
+  content: "";
+  position: absolute;
+  inset: 20px 0 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='48' height='48' viewBox='0 0 48 48' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='%23d9f7ff' stroke-opacity='.11' stroke-width='.7'%3E%3Cpath d='M24 6l6 6-6 6-6-6z'/%3E%3Cpath d='M24 18l6 6-6 6-6-6z'/%3E%3Cpath d='M12 18l6 6-6 6-6-6z'/%3E%3Cpath d='M36 18l6 6-6 6-6-6z'/%3E%3C/g%3E%3C/svg%3E");
+  opacity: 0.28;
+}
+
+.pidro-window--home::after {
+  display: none;
+}
+
+.pidro-home-hero {
+  top: 12.5%;
+}
+
+@media (max-width: 768px) {
+  .pidro-home-hero {
+    top: 13%;
+  }
+}
+
+.pidro-titlebar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.pidro-banner {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 230px;
+  padding: 12px 34px;
+  border-radius: 18px;
+  border: 2px solid rgba(255, 204, 72, 0.8);
+  background:
+    linear-gradient(180deg, rgba(255, 211, 106, 0.16) 0%, transparent 34%),
+    linear-gradient(180deg, #6d3000 0%, #4b1b00 38%, #2f1100 100%);
+  color: #ffd83e;
+  font-size: clamp(1rem, 1.8vw, 1.6rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-shadow: 0 2px 0 rgba(62, 22, 0, 0.95);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 240, 196, 0.35),
+    inset 0 -10px 20px rgba(0, 0, 0, 0.28),
+    0 8px 26px rgba(26, 8, 0, 0.34);
+}
+
+.pidro-banner::before,
+.pidro-banner::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  width: 26px;
+  height: 20px;
+  background: linear-gradient(180deg, #7f3800 0%, #481900 100%);
+  border-bottom: 2px solid rgba(255, 204, 72, 0.75);
+}
+
+.pidro-banner::before {
+  left: 10px;
+  transform: skewX(18deg);
+  border-left: 2px solid rgba(255, 204, 72, 0.75);
+}
+
+.pidro-banner::after {
+  right: 10px;
+  transform: skewX(-18deg);
+  border-right: 2px solid rgba(255, 204, 72, 0.75);
+}
+
+.pidro-header-track {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 8px;
+}
+
+.pidro-plaque {
+  --pidro-plaque-width: 300px;
+  --pidro-plaque-pad-x: 42px;
+  --pidro-plaque-pad-y: 14px;
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: min(var(--pidro-plaque-width), calc(100% - 18px));
+  min-height: calc(var(--pidro-plaque-pad-y) * 2 + 1.5em);
+  filter: drop-shadow(0 12px 24px rgba(24, 6, 0, 0.28));
+}
+
+.pidro-plaque__svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.pidro-plaque > span {
+  padding: var(--pidro-plaque-pad-y) var(--pidro-plaque-pad-x) calc(var(--pidro-plaque-pad-y) - 1px);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.pidro-plaque--sm {
+  --pidro-plaque-width: 240px;
+  --pidro-plaque-pad-x: 24px;
+  --pidro-plaque-pad-y: 10px;
+}
+
+.pidro-plaque--md {
+  --pidro-plaque-width: 420px;
+  --pidro-plaque-pad-x: 36px;
+  --pidro-plaque-pad-y: 14px;
+}
+
+.pidro-plaque--lg {
+  --pidro-plaque-width: 760px;
+  --pidro-plaque-pad-x: 52px;
+  --pidro-plaque-pad-y: 18px;
+}
+
+@media (max-width: 768px) {
+  .pidro-plaque--lg {
+    --pidro-plaque-width: 560px;
+    --pidro-plaque-pad-x: 26px;
+    --pidro-plaque-pad-y: 16px;
+  }
+
+  .pidro-plaque--md {
+    --pidro-plaque-width: 380px;
+    --pidro-plaque-pad-x: 24px;
+  }
+}
+
+.pidro-panel {
+  position: relative;
+  border-radius: var(--pidro-radius-panel);
+  border: 1px solid rgba(91, 221, 255, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 32%),
+    rgba(9, 55, 96, 0.54);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 0 40px rgba(0, 175, 255, 0.08),
+    0 0 24px rgba(18, 178, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.pidro-panel--tight {
+  border-radius: var(--pidro-radius-tight);
+}
+
+.pidro-panel--glow {
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 0 40px rgba(0, 175, 255, 0.12),
+    0 0 0 2px rgba(68, 221, 255, 0.2),
+    0 0 24px rgba(68, 221, 255, 0.3);
+}
+
+.pidro-glass-box {
+  border-radius: var(--pidro-radius-surface);
+  border: 1px solid rgba(91, 221, 255, 0.18);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.pidro-input,
+.pidro-select {
+  width: 100%;
+  border-radius: var(--pidro-radius-surface);
+  border: 1px solid rgba(79, 204, 255, 0.45);
+  background: rgba(4, 35, 64, 0.72);
+  color: #ebfbff;
+  padding: 12px 14px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  outline: none;
+}
+
+.pidro-input::placeholder {
+  color: rgba(148, 211, 255, 0.7);
+}
+
+.pidro-input:focus,
+.pidro-select:focus {
+  border-color: rgba(123, 235, 255, 0.9);
+  box-shadow:
+    0 0 0 2px rgba(70, 220, 255, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.pidro-score-plaque {
+  position: relative;
+  border-radius: 0 0 18px 18px;
+  border: 3px solid rgba(215, 124, 0, 0.95);
+  border-top: none;
+  background:
+    linear-gradient(180deg, rgba(255, 212, 95, 0.14) 0%, transparent 32%),
+    linear-gradient(180deg, #774000 0%, #6b3100 20%, #562500 100%);
+  color: #fff6d1;
+  box-shadow:
+    0 10px 30px rgba(28, 9, 0, 0.45),
+    inset 0 1px 0 rgba(255, 230, 165, 0.3),
+    inset 0 -10px 16px rgba(0, 0, 0, 0.3);
+}
+
+.pidro-seat-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  align-items: center;
+  min-width: 132px;
+  padding: 8px 10px;
+  border-radius: var(--pidro-radius-tight);
+  border: 1px solid rgba(65, 183, 242, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 36%),
+    rgba(3, 47, 82, 0.86);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 0 14px rgba(0, 0, 0, 0.14);
+}
+
+.pidro-seat-card--active {
+  border-color: rgba(67, 245, 255, 0.95);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 0 2px rgba(67, 245, 255, 0.3),
+    0 0 22px rgba(67, 245, 255, 0.34);
+}
+
+.pidro-seat-card--ready {
+  border-color: rgba(255, 208, 92, 0.9);
+}
+
+.pidro-avatar {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--pidro-radius-tight);
+  border: 1px solid rgba(125, 221, 255, 0.55);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.38), transparent 26%),
+    linear-gradient(180deg, #4ea6d4 0%, #1f6f9a 100%);
+  color: white;
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 5px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pidro-card-back {
+  background:
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 32%),
+    linear-gradient(180deg, #287ec0 0%, #0a5b9a 52%, #083d70 100%);
+  border: 1px solid rgba(170, 225, 255, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 5px 10px rgba(0, 0, 0, 0.18);
+}
+
+.pidro-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--pidro-control-size);
+  height: var(--pidro-control-size);
+  border-radius: var(--pidro-radius-tight);
+  border: 1px solid rgba(92, 214, 255, 0.55);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 35%),
+    rgba(6, 69, 114, 0.8);
+  color: white;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 5px 12px rgba(0, 0, 0, 0.14);
+  transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
+}
+
+.pidro-icon-button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(133, 235, 255, 0.95);
+}
+
+.pidro-icon-button:disabled {
+  opacity: 0.55;
+}
+
+.pidro-auth-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 440px);
+}
+
+.pidro-table-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
+@media (max-width: 900px) {
+  .pidro-auth-grid,
+  .pidro-table-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @keyframes shake {
   0%,
   100% {
@@ -24,7 +432,6 @@
   animation: shake 0.4s ease-in-out;
 }
 
-/* Slide-in for toast notifications */
 @keyframes slide-in-top {
   from {
     transform: translateY(-100%);

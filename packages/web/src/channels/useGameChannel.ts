@@ -41,6 +41,7 @@ export const useGameChannel = ({ roomCode, enabled = true }: UseGameChannelOptio
   const setRole = useGameStore((s) => s.setRole);
   const updateCurrentTurn = useGameStore((s) => s.updateCurrentTurn);
   const setPlayerConnected = useGameStore((s) => s.setPlayerConnected);
+  const addReadyPlayer = useGameStore((s) => s.addReadyPlayer);
   const setChannelStatus = useGameStore((s) => s.setChannelStatus);
   const setError = useGameStore((s) => s.setError);
 
@@ -161,6 +162,14 @@ export const useGameChannel = ({ roomCode, enabled = true }: UseGameChannelOptio
         setPlayerConnected(playerId, position, true);
       });
 
+      channel.on('player_ready', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = data?.position as Position | undefined;
+        if (position) {
+          addReadyPlayer(position);
+        }
+      });
+
       channel.onError(() => {
         setChannelStatus(false, true);
       });
@@ -192,6 +201,7 @@ export const useGameChannel = ({ roomCode, enabled = true }: UseGameChannelOptio
     setRole,
     updateCurrentTurn,
     setPlayerConnected,
+    addReadyPlayer,
     setChannelStatus,
     setError,
   ]);

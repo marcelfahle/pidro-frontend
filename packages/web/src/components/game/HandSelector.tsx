@@ -9,26 +9,19 @@ interface HandSelectorProps {
   onSelectHand: (cards: CardType[]) => void;
 }
 
-/**
- * Shown during the second_deal phase when the dealer has more than 6 cards.
- * The dealer must select exactly 6 cards to keep; the rest are discarded.
- */
 export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: HandSelectorProps) {
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
-  const targetCount = 6; // Pidro rules: dealer keeps exactly 6 cards
+  const targetCount = 6;
 
   const youPlayer = viewModel.players.find((p) => p.isYou);
   const isYourTurn = youPlayer?.isCurrentTurn ?? false;
 
-  // If it's not our turn during second_deal, show waiting message
   if (!isYourTurn) {
     const currentTurnPlayer = viewModel.players.find((p) => p.isCurrentTurn);
     const waitingForName = currentTurnPlayer?.username ?? 'dealer';
     return (
-      <div className="flex h-full w-full items-center justify-center">
-        <span className="text-sm text-emerald-400/60">
-          Waiting for {waitingForName} to select cards...
-        </span>
+      <div className="pidro-panel px-5 py-3 text-sm font-black text-cyan-50/80">
+        Waiting for {waitingForName} to select cards...
       </div>
     );
   }
@@ -46,24 +39,19 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
   }
 
   function handleConfirm() {
-    const selectedCards = cards.filter((_, i) => selected.has(i));
-    onSelectHand(selectedCards);
+    onSelectHand(cards.filter((_, i) => selected.has(i)));
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-2 p-2">
-      <span className="text-sm font-medium text-yellow-400">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+      <div className="text-sm font-black uppercase tracking-[0.16em] text-[#fff0b2]">
         Select {targetCount} cards to keep
-      </span>
-
-      <div className="text-xs text-emerald-300">
+      </div>
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-cyan-50/70">
         {selected.size}/{targetCount} selected
       </div>
-
-      {/* Card display */}
-      <div className="flex flex-wrap justify-center gap-1">
+      <div className="flex flex-wrap justify-center gap-2">
         {cards.map((card, i) => {
-          const isSelected = selected.has(i);
           const pointValue = trumpSuit
             ? (getPidroPoints(card.rank, card.suit, trumpSuit) ?? undefined)
             : undefined;
@@ -73,7 +61,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
               key={`${card.rank}-${card.suit}`}
               card={card}
               size="md"
-              selected={isSelected}
+              selected={selected.has(i)}
               isTrump={card.suit === trumpSuit}
               playable={true}
               pointValue={pointValue}
@@ -82,13 +70,11 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
           );
         })}
       </div>
-
-      {/* Confirm button */}
       <button
         type="button"
         onClick={handleConfirm}
         disabled={selected.size !== targetCount}
-        className="rounded-md bg-emerald-600 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-[7px] border-2 border-[#d99d1b] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#ffd84a] disabled:cursor-not-allowed disabled:opacity-50"
       >
         Confirm Selection
       </button>
