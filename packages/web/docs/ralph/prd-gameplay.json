@@ -328,7 +328,7 @@
             "Only one banner at a time. If multiple disconnect events, queue them",
             "Verify: Banner appears only for owner, dismisses correctly, open seat action works"
           ],
-          "passes": false
+          "passes": true
         }
       ]
     },

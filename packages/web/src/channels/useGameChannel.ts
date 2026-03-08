@@ -10,6 +10,11 @@ export interface SeatEvent {
   variant: 'warning' | 'success' | 'error';
 }
 
+export interface OwnerDecisionEvent {
+  position: Position;
+  playerName: string;
+}
+
 let globalGameChannel: Channel | null = null;
 let gameRefCount = 0;
 let currentTopic: string | null = null;
@@ -18,6 +23,7 @@ interface UseGameChannelOptions {
   roomCode: string;
   enabled?: boolean;
   onSeatEvent?: (event: SeatEvent) => void;
+  onOwnerDecision?: (event: OwnerDecisionEvent) => void;
 }
 
 function extractGameState(data: Record<string, unknown> | undefined): ServerGameState | null {
@@ -44,6 +50,7 @@ export const useGameChannel = ({
   roomCode,
   enabled = true,
   onSeatEvent,
+  onOwnerDecision,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
@@ -58,6 +65,9 @@ export const useGameChannel = ({
 
   const onSeatEventRef = useRef(onSeatEvent);
   onSeatEventRef.current = onSeatEvent;
+
+  const onOwnerDecisionRef = useRef(onOwnerDecision);
+  onOwnerDecisionRef.current = onOwnerDecision;
 
   useEffect(() => {
     if (!enabled || !roomCode) {
@@ -243,6 +253,16 @@ export const useGameChannel = ({
             message: `${username ?? 'A new player'} joined as substitute`,
             variant: 'success',
           });
+        }
+      });
+
+      channel.on('owner_decision_available', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        const playerName =
+          (data?.player_name as string) || (data?.username as string) || 'A player';
+        if (position) {
+          onOwnerDecisionRef.current?.({ position, playerName });
         }
       });
 

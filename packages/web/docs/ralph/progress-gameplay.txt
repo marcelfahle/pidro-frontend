@@ -74,3 +74,38 @@ scenarios in the game table.
 **Remaining features:** 6.3 (owner decision banner), 7.1-7.3 (polish)
 
 All checks pass: typecheck, lint, 111 tests.
+
+## 2026-03-08 — Phase 6.3: Owner decision banner for substitute seats
+
+Implemented the owner decision banner that appears when a player disconnects and
+the room owner needs to decide whether to open the seat for substitutes or keep
+the bot.
+
+**Channel event added** (useGameChannel.ts):
+- `owner_decision_available` — Fires when a player disconnects and the server
+  offers the room owner a choice. Calls new `onOwnerDecision` callback with
+  `{ position, playerName }`.
+- Added `OwnerDecisionEvent` type and `onOwnerDecision` option to hook interface.
+
+**GamePage changes** (GamePage.tsx):
+- Stores `hostId` in `roomConfigRef` from the Room API response.
+- Maintains `ownerDecisionQueue` state (array of pending decisions) and
+  `dismissedSeatsRef` (Set of positions already dismissed).
+- `handleOwnerDecision`: only enqueues if current user is the room owner AND
+  position hasn't been dismissed AND isn't already in the queue.
+- `handleOpenSeat`: dismisses the position, removes from queue, pushes
+  `open_seat` action to the game channel.
+- `handleKeepBot`: dismisses the position and removes from queue (no server call).
+- Banner is hidden during the owner's active turn (`isMyTurn` check) — queued
+  events surface when the turn passes.
+- Only one banner shown at a time (always `queue[0]`).
+
+**New component** (OwnerDecisionBanner.tsx):
+- Non-blocking amber banner positioned at the top of the game area (z-40).
+- Shows "[PlayerName] left. Open their seat for another player?"
+- Two buttons: "Open Seat" (amber solid) and "Keep Bot" (amber outline).
+- Uses existing `animate-slide-in-top` CSS animation.
+
+**Remaining features:** 7.1-7.3 (polish)
+
+All checks pass: typecheck, lint, 111 tests.

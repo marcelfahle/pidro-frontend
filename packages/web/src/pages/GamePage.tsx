@@ -1,12 +1,18 @@
-import type { Card, Room, SeatType, Suit } from '@pidro/shared';
+import type { Card, Position, Room, SeatType, Suit } from '@pidro/shared';
 import { useGameStore, useGameViewModel } from '@pidro/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { lobbyApi } from '../api/lobby';
-import { pushGameAction, type SeatEvent, useGameChannel } from '../channels/useGameChannel';
+import {
+  type OwnerDecisionEvent,
+  pushGameAction,
+  type SeatEvent,
+  useGameChannel,
+} from '../channels/useGameChannel';
 import { GameOverOverlay } from '../components/game/GameOverOverlay';
 import { GameTable } from '../components/game/GameTable';
+import { OwnerDecisionBanner } from '../components/game/OwnerDecisionBanner';
 import { WaitingRoom } from '../components/game/WaitingRoom';
 import { ConnectionBanner } from '../components/ui/ConnectionBanner';
 import { Spinner } from '../components/ui/Spinner';
@@ -87,10 +93,14 @@ export function GamePage() {
 
   const roomConfigRef = useRef<{
     name: string;
+    hostId: string | null;
     seats: { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType };
   } | null>(null);
 
   const { messages: toastMessages, addToast, dismissToast } = useToast();
+
+  const [ownerDecisionQueue, setOwnerDecisionQueue] = useState<OwnerDecisionEvent[]>([]);
+  const dismissedSeatsRef = useRef<Set<Position>>(new Set());
 
   const handleSeatEvent = useCallback(
     (event: SeatEvent) => {
@@ -98,6 +108,40 @@ export function GamePage() {
     },
     [addToast],
   );
+
+  const handleOwnerDecision = useCallback(
+    (event: OwnerDecisionEvent) => {
+      const isOwner = roomConfigRef.current?.hostId === userId;
+      if (!isOwner) return;
+      if (dismissedSeatsRef.current.has(event.position)) return;
+
+      setOwnerDecisionQueue((prev) => {
+        if (prev.some((e) => e.position === event.position)) return prev;
+        return [...prev, event];
+      });
+    },
+    [userId],
+  );
+
+  const handleOpenSeat = useCallback(
+    (position: Position) => {
+      dismissedSeatsRef.current.add(position);
+      setOwnerDecisionQueue((prev) => prev.filter((e) => e.position !== position));
+      pushGameAction('open_seat', { position }).catch((err: unknown) => {
+        const message =
+          typeof err === 'object' && err !== null && 'reason' in err
+            ? String((err as { reason: string }).reason)
+            : 'Failed to open seat';
+        addToast(message, 'error');
+      });
+    },
+    [addToast],
+  );
+
+  const handleKeepBot = useCallback((position: Position) => {
+    dismissedSeatsRef.current.add(position);
+    setOwnerDecisionQueue((prev) => prev.filter((e) => e.position !== position));
+  }, []);
 
   useEffect(() => {
     if (!code || !userId) return;
@@ -115,6 +159,7 @@ export function GamePage() {
 
         roomConfigRef.current = {
           name: room.name ?? 'Game Room',
+          hostId: room.host_id ?? null,
           seats: deriveSeatConfig(room),
         };
 
@@ -136,7 +181,12 @@ export function GamePage() {
     };
   }, [code, userId, initFromRoom]);
 
-  useGameChannel({ roomCode: code ?? '', enabled: channelEnabled, onSeatEvent: handleSeatEvent });
+  useGameChannel({
+    roomCode: code ?? '',
+    enabled: channelEnabled,
+    onSeatEvent: handleSeatEvent,
+    onOwnerDecision: handleOwnerDecision,
+  });
 
   useEffect(() => {
     if (!code || !userId || !channelEnabled) return;
@@ -313,6 +363,9 @@ export function GamePage() {
   const isGameOver =
     serverState !== null && (serverState.phase === 'complete' || serverState.phase === 'game_over');
 
+  const isMyTurn = viewModel?.currentTurnAbsolute === youPositionAbs;
+  const visibleDecision = ownerDecisionQueue.length > 0 && !isMyTurn ? ownerDecisionQueue[0] : null;
+
   if (hasGameStarted && viewModel) {
     return (
       <div className="pidro-page">
@@ -321,6 +374,15 @@ export function GamePage() {
         <div className="pidro-window min-h-[760px]">
           <div className="pidro-titlebar">Pidro</div>
           <div className="relative">
+            {visibleDecision && (
+              <OwnerDecisionBanner
+                playerName={visibleDecision.playerName}
+                position={visibleDecision.position}
+                onOpenSeat={handleOpenSeat}
+                onKeepBot={handleKeepBot}
+              />
+            )}
+
             <GameTable
               viewModel={viewModel}
               onPlayCard={handlePlayCard}
