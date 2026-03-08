@@ -85,6 +85,8 @@ export function GameTable({
             youPosition={youPlayer?.absolutePosition ?? null}
             roundNumber={serverState?.round_number ?? null}
             roomCode={roomCode}
+            currentBid={serverState?.current_bid ?? null}
+            bidWinner={serverState?.bid_winner ?? null}
           />
         </div>
 

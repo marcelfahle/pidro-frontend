@@ -378,7 +378,7 @@
             "Show the current bid prominently during the playing phase so players remember what was bid",
             "Verify: Turn indicators are clear, animations are smooth and not distracting"
           ],
-          "passes": false
+          "passes": true
         }
       ]
     }

@@ -340,6 +340,10 @@ button:disabled {
     0 0 22px rgba(67, 245, 255, 0.34);
 }
 
+.pidro-seat-card--your-turn {
+  animation: pulse-glow 1.8s ease-in-out infinite;
+}
+
 .pidro-seat-card--ready {
   border-color: rgba(255, 208, 92, 0.9);
 }
@@ -470,4 +474,117 @@ button:disabled {
 
 .animate-slide-out-top {
   animation: slide-out-top 0.2s ease-in forwards;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    border-color: rgba(67, 245, 255, 0.95);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+      0 0 0 2px rgba(67, 245, 255, 0.3),
+      0 0 22px rgba(67, 245, 255, 0.34);
+  }
+  50% {
+    border-color: rgba(67, 245, 255, 1);
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+      0 0 0 3px rgba(67, 245, 255, 0.5),
+      0 0 36px rgba(67, 245, 255, 0.5);
+  }
+}
+
+@keyframes card-enter-north {
+  from {
+    opacity: 0;
+    transform: translateY(-24px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes card-enter-south {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes card-enter-east {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes card-enter-west {
+  from {
+    opacity: 0;
+    transform: translateX(-24px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.animate-card-enter-north {
+  animation: card-enter-north 0.25s ease-out;
+}
+
+.animate-card-enter-south {
+  animation: card-enter-south 0.25s ease-out;
+}
+
+.animate-card-enter-east {
+  animation: card-enter-east 0.25s ease-out;
+}
+
+.animate-card-enter-west {
+  animation: card-enter-west 0.25s ease-out;
+}
+
+@keyframes trick-win-flash {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 208, 92, 0);
+  }
+  40% {
+    box-shadow:
+      0 0 0 6px rgba(255, 208, 92, 0.6),
+      0 0 20px rgba(255, 208, 92, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 208, 92, 0);
+  }
+}
+
+.animate-trick-win {
+  animation: trick-win-flash 1s ease-out;
+  border-radius: 8px;
+}
+
+@keyframes score-bump {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-score-bump {
+  animation: score-bump 0.4s ease-out;
 }

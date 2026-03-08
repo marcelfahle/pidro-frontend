@@ -114,6 +114,8 @@ export function DesignSystemPage() {
                       youPosition="south"
                       roundNumber={6}
                       roomCode="DSGN"
+                      currentBid={9}
+                      bidWinner="north"
                     />
                   </div>
                 </div>

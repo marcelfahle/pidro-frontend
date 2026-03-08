@@ -163,6 +163,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       const highestBidAmount =
         raw.current_bid ?? raw.highest_bid?.amount ?? (raw.highest_bid as number | undefined);
 
+      const bidWinner: Position | null | undefined =
+        raw.bid_winner ?? raw.highest_bid?.position ?? null;
+
       return {
         serverState: {
           ...(raw as ServerGameState),
@@ -171,6 +174,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           dealer: dealer ?? null,
           bids: bids ?? undefined,
           current_bid: highestBidAmount ?? null,
+          bid_winner: bidWinner,
           highest_bid: raw.highest_bid,
         },
       };

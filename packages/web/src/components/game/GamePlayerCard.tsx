@@ -33,6 +33,7 @@ export function GamePlayerCard({
   const seatCardClass = [
     'pidro-seat-card',
     isCurrentTurn ? 'pidro-seat-card--active' : '',
+    isCurrentTurn && isYou ? 'pidro-seat-card--your-turn' : '',
     statusText === 'Ready' ? 'pidro-seat-card--ready' : '',
     dimmed ? 'opacity-60' : '',
     className,

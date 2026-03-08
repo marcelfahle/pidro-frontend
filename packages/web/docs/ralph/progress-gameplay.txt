@@ -148,3 +148,51 @@ Improved loading states, error handling, and added optimistic UI across the app.
 **Remaining features:** 7.1 (responsive layout), 7.3 (turn indicators/game feel)
 
 All checks pass: typecheck, lint, 111 tests.
+
+## 2026-03-08 — Phase 7.3: Turn indicators, timing, and game feel
+
+Added visual polish for turn indicators, card animations, trick win highlights,
+prominent trump/bid display, and score transitions.
+
+**Turn indicators** (GamePlayerCard.tsx, index.css):
+- Added `pidro-seat-card--your-turn` CSS class with `pulse-glow` keyframe animation.
+  When it's YOUR turn, the seat card border pulses between normal cyan glow and a
+  brighter, wider glow (1.8s cycle). Applied only when `isYou && isCurrentTurn`.
+- Existing turn indicators (cyan glow + yellow pulse dot) remain for all players.
+
+**Card play animations** (TrickArea.tsx, index.css):
+- Added directional `card-enter-{north,south,east,west}` keyframe animations.
+  Cards slide in from the player's direction (24px translate + scale from 0.85).
+- TrickArea tracks which trick slots are new each render via `prevSlotKeysRef`
+  and applies the `animate-card-enter-{position}` class to newly appeared cards.
+
+**Trick win animation** (TrickArea.tsx, index.css):
+- Added `trick-win-flash` keyframe: golden box-shadow pulse (0->6px->0 over 1s).
+- TrickArea detects when `tricks.length` increases (new trick completed), resolves
+  the winner's relative position, and applies `animate-trick-win` to that slot
+  for 1 second before clearing.
+
+**Prominent trump display** (GameInfoBar.tsx):
+- When trump is declared, a prominent colored banner row shows the suit symbol
+  (2xl size) and suit name in the score plaque, replacing the old small key-value row.
+- Trump row uses `SUIT_COLORS_RAW` for the suit's actual color (red/black).
+- The small "Trump: Undeclared" row only shows when trump is not yet declared.
+
+**Bid display during playing phase** (GameInfoBar.tsx, GameTable.tsx, game.ts):
+- GameInfoBar now accepts `currentBid` and `bidWinner` props.
+- During playing phase (and declaring/discarding/second_deal), shows
+  "Bid N (Us/Them)" alongside the trump banner.
+- Store normalization updated to extract `bid_winner` from `highest_bid.position`
+  when not explicitly provided by the server.
+
+**Score transitions** (GameInfoBar.tsx, index.css):
+- Added `score-bump` keyframe (scale 1->1.15->1 over 0.4s).
+- GameInfoBar tracks previous scores via ref and applies `animate-score-bump`
+  class to the "Us" or "Them" score number when it changes.
+
+**Other changes:**
+- Updated DesignSystemPage to include new `currentBid`/`bidWinner` props.
+
+**Remaining features:** 7.1 (responsive layout)
+
+All checks pass: typecheck, lint, 111 tests.

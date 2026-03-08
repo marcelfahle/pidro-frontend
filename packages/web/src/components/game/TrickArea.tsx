@@ -1,5 +1,6 @@
 import type { GameViewModel, Position, ServerGameState, ServerTrick, Suit } from '@pidro/shared';
 import { mapAbsoluteToRelative, SUIT_SYMBOLS } from '@pidro/shared';
+import { useEffect, useRef, useState } from 'react';
 import { Card, getPidroPoints } from './Card';
 
 function trickWinnerLabel(winner: Position, youPosition: Position | null): string {
@@ -21,6 +22,13 @@ function isNorthSouth(position: Position): boolean {
   return position === 'north' || position === 'south';
 }
 
+const CARD_ENTER_CLASSES: Record<string, string> = {
+  north: 'animate-card-enter-north',
+  south: 'animate-card-enter-south',
+  east: 'animate-card-enter-east',
+  west: 'animate-card-enter-west',
+};
+
 interface TrickAreaProps {
   viewModel: GameViewModel;
   serverState: ServerGameState;
@@ -33,6 +41,9 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
   const tricks = serverState.tricks ?? [];
   const trickNumber = tricks.length + 1;
   const trumpSuit: Suit | null = viewModel.trumpSuit;
+
+  // Track which slots had cards on the previous render to detect newly played cards
+  const prevSlotKeysRef = useRef<Set<string>>(new Set());
 
   const trickByRelative: Record<string, { card: { rank: number; suit: Suit }; isLeader: boolean }> =
     {};
@@ -50,6 +61,35 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
       isLeader: currentTrick.length === 0,
     };
   }
+
+  // Determine which slots are new (just played this render)
+  const currentSlotKeys = new Set(Object.keys(trickByRelative));
+  const newSlots = new Set<string>();
+  for (const key of currentSlotKeys) {
+    if (!prevSlotKeysRef.current.has(key)) {
+      newSlots.add(key);
+    }
+  }
+  useEffect(() => {
+    prevSlotKeysRef.current = currentSlotKeys;
+  });
+
+  // Track trick win: detect when the last completed trick just appeared
+  const prevTrickCountRef = useRef(tricks.length);
+  const [winningSlot, setWinningSlot] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tricks.length > prevTrickCountRef.current && tricks.length > 0) {
+      const lastTrick = tricks[tricks.length - 1];
+      if (youPosition) {
+        const winRelPos = mapAbsoluteToRelative(lastTrick.winner, youPosition);
+        setWinningSlot(winRelPos);
+        const timer = setTimeout(() => setWinningSlot(null), 1000);
+        return () => clearTimeout(timer);
+      }
+    }
+    prevTrickCountRef.current = tricks.length;
+  }, [tricks.length, youPosition, tricks]);
 
   let trickPoints = 0;
   for (const play of currentTrick) {
@@ -81,10 +121,22 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
       <div className="relative flex h-full w-full items-center justify-center">
         <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 place-items-center gap-2">
           <div />
-          <TrickSlot position="north" data={trickByRelative.north} trumpSuit={trumpSuit} />
+          <TrickSlot
+            position="north"
+            data={trickByRelative.north}
+            trumpSuit={trumpSuit}
+            animate={newSlots.has('north')}
+            isWinner={winningSlot === 'north'}
+          />
           <div />
 
-          <TrickSlot position="west" data={trickByRelative.west} trumpSuit={trumpSuit} />
+          <TrickSlot
+            position="west"
+            data={trickByRelative.west}
+            trumpSuit={trumpSuit}
+            animate={newSlots.has('west')}
+            isWinner={winningSlot === 'west'}
+          />
           <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-20 max-sm:w-20">
             {isYourTurn && currentTrick.length < 4 ? (
               <span className="text-center text-sm font-black uppercase tracking-[0.12em] text-[#fff0b2]">
@@ -96,10 +148,22 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
               </span>
             )}
           </div>
-          <TrickSlot position="east" data={trickByRelative.east} trumpSuit={trumpSuit} />
+          <TrickSlot
+            position="east"
+            data={trickByRelative.east}
+            trumpSuit={trumpSuit}
+            animate={newSlots.has('east')}
+            isWinner={winningSlot === 'east'}
+          />
 
           <div />
-          <TrickSlot position="south" data={trickByRelative.south} trumpSuit={trumpSuit} />
+          <TrickSlot
+            position="south"
+            data={trickByRelative.south}
+            trumpSuit={trumpSuit}
+            animate={newSlots.has('south')}
+            isWinner={winningSlot === 'south'}
+          />
           <div />
         </div>
       </div>
@@ -148,10 +212,14 @@ function TrickSlot({
   position,
   data,
   trumpSuit,
+  animate = false,
+  isWinner = false,
 }: {
   position: string;
   data?: { card: { rank: number; suit: Suit }; isLeader: boolean };
   trumpSuit: Suit | null;
+  animate?: boolean;
+  isWinner?: boolean;
 }) {
   if (!data) {
     return (
@@ -167,8 +235,11 @@ function TrickSlot({
     ? (getPidroPoints(data.card.rank, data.card.suit, trumpSuit) ?? undefined)
     : undefined;
 
+  const animClass = animate ? (CARD_ENTER_CLASSES[position] ?? '') : '';
+  const winClass = isWinner ? 'animate-trick-win' : '';
+
   return (
-    <div className="relative flex flex-col items-center gap-1">
+    <div className={`relative flex flex-col items-center gap-1 ${animClass} ${winClass}`.trim()}>
       {data.isLeader && (
         <span className="rounded-full border border-cyan-300/25 bg-black/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-50/75">
           Led
