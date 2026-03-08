@@ -35,7 +35,9 @@ export function GameOverOverlay({
   }
 
   const winnersAreNorthSouth =
-    teamScores.us === teamScores.them ? null : isNorthSouthTeam(youPosition ?? 'north') === (teamScores.us > teamScores.them);
+    teamScores.us === teamScores.them
+      ? null
+      : isNorthSouthTeam(youPosition ?? 'north') === teamScores.us > teamScores.them;
 
   const winners = viewModel.players.filter((player) => {
     if (winnersAreNorthSouth == null) return true;
@@ -46,8 +48,16 @@ export function GameOverOverlay({
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
       <div className="pidro-panel pidro-panel--glow w-full max-w-3xl p-6 text-center">
-        {youWon === true && <div className="text-sm font-black uppercase tracking-[0.18em] text-[#fff0b2]">You win!</div>}
-        {youWon === false && <div className="text-sm font-black uppercase tracking-[0.18em] text-red-100">You lose</div>}
+        {youWon === true && (
+          <div className="text-sm font-black uppercase tracking-[0.18em] text-[#fff0b2]">
+            You win!
+          </div>
+        )}
+        {youWon === false && (
+          <div className="text-sm font-black uppercase tracking-[0.18em] text-red-100">
+            You lose
+          </div>
+        )}
 
         <div className="mt-2 flex justify-center">
           <div className="pidro-banner">Game Over</div>
@@ -62,9 +72,16 @@ export function GameOverOverlay({
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
               {winners.map((player) => (
-                <div key={player.absolutePosition} className="rounded-2xl border border-white/12 bg-black/10 p-3">
-                  <div className="pidro-avatar mx-auto">{(player.username?.[0] ?? '?').toUpperCase()}</div>
-                  <div className="mt-2 text-sm font-black text-white">{player.username ?? player.absolutePosition}</div>
+                <div
+                  key={player.absolutePosition}
+                  className="rounded-2xl border border-white/12 bg-black/10 p-3"
+                >
+                  <div className="pidro-avatar mx-auto">
+                    {(player.username?.[0] ?? '?').toUpperCase()}
+                  </div>
+                  <div className="mt-2 text-sm font-black text-white">
+                    {player.username ?? player.absolutePosition}
+                  </div>
                 </div>
               ))}
             </div>
@@ -75,8 +92,16 @@ export function GameOverOverlay({
               Final Score
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 text-left">
-              <ScoreTile label="Us" value={teamScores.us} highlighted={teamScores.us >= teamScores.them} />
-              <ScoreTile label="Them" value={teamScores.them} highlighted={teamScores.them >= teamScores.us} />
+              <ScoreTile
+                label="Us"
+                value={teamScores.us}
+                highlighted={teamScores.us >= teamScores.them}
+              />
+              <ScoreTile
+                label="Them"
+                value={teamScores.them}
+                highlighted={teamScores.them >= teamScores.us}
+              />
             </div>
             {runnersUp.length > 0 && (
               <div className="mt-4 text-left">
@@ -119,7 +144,9 @@ function ScoreTile({
   highlighted: boolean;
 }) {
   return (
-    <div className={`rounded-2xl border p-4 ${highlighted ? 'border-[#ffcc54]/35 bg-[#ffcc54]/10' : 'border-cyan-300/15 bg-cyan-400/8'}`}>
+    <div
+      className={`rounded-2xl border p-4 ${highlighted ? 'border-[#ffcc54]/35 bg-[#ffcc54]/10' : 'border-cyan-300/15 bg-cyan-400/8'}`}
+    >
       <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-50/60">{label}</div>
       <div className={`mt-1 text-4xl font-black ${highlighted ? 'text-[#fff0b2]' : 'text-white'}`}>
         {value}

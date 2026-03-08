@@ -20,7 +20,9 @@ export function PlayerMiniCard({
     >
       <div className="pidro-avatar h-10 w-10 text-sm max-md:h-9 max-md:w-9">{initial}</div>
       <div className="min-w-0">
-        <div className="truncate text-sm font-black text-white max-md:text-[13px]">{displayName}</div>
+        <div className="truncate text-sm font-black text-white max-md:text-[13px]">
+          {displayName}
+        </div>
         <div className="mt-1 flex items-center gap-2 max-md:mt-0.5">
           <span className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-cyan-50/62">
             {subtitle}

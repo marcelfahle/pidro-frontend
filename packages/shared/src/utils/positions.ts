@@ -38,3 +38,32 @@ export function getTeammatePositions(youAbs: Position): Position[] {
 export function isTeammate(youAbs: Position, otherAbs: Position): boolean {
   return getTeammatePositions(youAbs).includes(otherAbs);
 }
+
+export function isNorthSouthTeam(position: Position): boolean {
+  return position === 'north' || position === 'south';
+}
+
+export function getTeamScores(
+  scores: { north_south: number; east_west: number },
+  youPosition: Position | null,
+): { us: number; them: number } {
+  if (!youPosition) return { us: scores.north_south, them: scores.east_west };
+  const isNS = isNorthSouthTeam(youPosition);
+  return {
+    us: isNS ? scores.north_south : scores.east_west,
+    them: isNS ? scores.east_west : scores.north_south,
+  };
+}
+
+export function getTeamWinnerLabel(
+  winnerTeam: 'north_south' | 'east_west',
+  youPosition: Position | null,
+): { label: string; youWon: boolean | null } {
+  if (!youPosition) {
+    const label = winnerTeam === 'north_south' ? 'North / South wins!' : 'East / West wins!';
+    return { label, youWon: null };
+  }
+  const isNS = isNorthSouthTeam(youPosition);
+  const youWon = winnerTeam === 'north_south' ? isNS : !isNS;
+  return { label: youWon ? 'Your team wins!' : 'Opponents win!', youWon };
+}

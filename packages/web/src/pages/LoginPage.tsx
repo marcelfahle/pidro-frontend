@@ -71,7 +71,10 @@ export function LoginPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="username" className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80">
+                  <label
+                    htmlFor="username"
+                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
+                  >
                     Username
                   </label>
                   <input
@@ -85,7 +88,10 @@ export function LoginPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="password" className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80">
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
+                  >
                     Password
                   </label>
                   <input
@@ -106,7 +112,10 @@ export function LoginPage() {
 
               <p className="mt-5 text-center text-sm text-cyan-50/75">
                 Don&apos;t have an account?{' '}
-                <Link to="/register" className="font-black uppercase tracking-[0.08em] text-[#ffd84a]">
+                <Link
+                  to="/register"
+                  className="font-black uppercase tracking-[0.08em] text-[#ffd84a]"
+                >
                   Create one
                 </Link>
               </p>

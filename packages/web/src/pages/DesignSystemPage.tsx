@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Card } from '../components/game/Card';
+import { GameInfoBar } from '../components/game/GameInfoBar';
 import { GamePlayerCard } from '../components/game/GamePlayerCard';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
-import { GameInfoBar } from '../components/game/GameInfoBar';
 import { PageHeader } from '../components/ui/PageHeader';
 import { PidroWordmark } from '../components/ui/PidroWordmark';
 import { PlayerMiniCard } from '../components/ui/PlayerMiniCard';
@@ -82,13 +82,16 @@ export function DesignSystemPage() {
               <ShowcasePanel eyebrow="Principles" title="Working Rules">
                 <div className="grid gap-3 text-sm leading-6 text-cyan-50/80">
                   <div className="pidro-glass-box p-4">
-                    Headers use the brown-gold ribbon treatment from legacy Pidro and should anchor the top of major screens.
+                    Headers use the brown-gold ribbon treatment from legacy Pidro and should anchor
+                    the top of major screens.
                   </div>
                   <div className="pidro-glass-box p-4">
-                    Glass buttons are for utility and secondary actions. Gold buttons are for primary table actions.
+                    Glass buttons are for utility and secondary actions. Gold buttons are for
+                    primary table actions.
                   </div>
                   <div className="pidro-glass-box p-4">
-                    Playing cards stay literal and readable first. Decorative flourish belongs around them, not on them.
+                    Playing cards stay literal and readable first. Decorative flourish belongs
+                    around them, not on them.
                   </div>
                 </div>
 
@@ -208,7 +211,8 @@ export function DesignSystemPage() {
                   </div>
 
                   <div className="pidro-glass-box p-4 text-sm leading-6 text-cyan-50/78">
-                    The menu card is for account identity on non-game screens. The in-game card is for seat/state information around the table.
+                    The menu card is for account identity on non-game screens. The in-game card is
+                    for seat/state information around the table.
                   </div>
                 </div>
               </ShowcasePanel>

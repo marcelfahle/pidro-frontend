@@ -1,0 +1,399 @@
+{
+  "project": "Pidro 2 — Web Client (play.pidro.online)",
+  "description": "Build the play.pidro.online web client for the Pidro multiplayer card game. This is a Next.js React app in a monorepo alongside the future React Native mobile client. It connects to the existing Phoenix server via REST API and WebSocket channels. The server API is fully documented — see API_DOCUMENTATION.md and WEBSOCKET_API.md in the pidro-backend repo (apps/pidro_server/thoughts/). The monorepo has /web (Next.js) and /mobile (React Native Expo). Shared TypeScript types, stores, and channel hooks should live in a shared location importable by both apps. IMPORTANT: Before implementing, check the existing monorepo structure. Marcel may have already set up some of this. Build on what's there, don't overwrite it.",
+  "repository": "pidro-monorepo",
+
+  "human_inputs_required": [
+    "SERVER_URL: The Phoenix server URL (e.g., http://localhost:4000 for dev, https://api.pidro.online for prod)",
+    "DOMAIN: The production domain (play.pidro.online)"
+  ],
+
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Shared Infrastructure — Types, API client, socket setup",
+      "linear_ticket": "PID-38",
+      "features": [
+        {
+          "id": "1.1",
+          "category": "setup",
+          "description": "Define shared TypeScript types matching the server API exactly",
+          "steps": [
+            "Explore the existing monorepo structure to understand where shared code should live (might be /packages/shared, /shared, or similar)",
+            "Create TypeScript type definitions that match the server's API responses exactly. Use the WEBSOCKET_API.md schemas as the source of truth. Key types needed:",
+            "Room: {code, host_id, positions: Record<string, string|null>, available_positions, player_count, player_ids, spectator_ids, status: 'waiting'|'playing'|'finished', max_players, max_spectators, created_at, seats: Record<string, Seat>}",
+            "Seat: {position, occupant_type: 'human'|'bot'|'vacant', user_id, status: 'connected'|'reconnecting'|'grace'|'bot_substitute'|null, is_owner, substitute, disconnected_at, grace_expires_at, has_reservation, joined_at}",
+            "GameState: {phase, hand_number, variant, current_turn, current_dealer, players: Record<string, Player>, bids, highest_bid, bidding_team, trump_suit, current_trick, current_trick_details, tricks, trick_number, hand_points, scores, cumulative_scores, winner}",
+            "Player: {position, team: 'north_south'|'east_west', hand: Card[]|null, card_count?, tricks_won, eliminated}",
+            "Card: {rank: number (2-14), suit: 'hearts'|'diamonds'|'clubs'|'spades'}",
+            "Bid: {position, amount: number|'pass'}",
+            "Play: {player, position, card: Card}",
+            "Trick: {number, leader, plays: Play[], cards: Play[], winner, points}",
+            "LobbyData: {my_rejoinable: Room[], open_tables: Room[], substitute_needed: Room[], spectatable: Room[]}",
+            "LobbyUpdate: {category, action: 'added'|'removed'|'updated', room: Room} and for room_closed: {room_code, action: 'removed'}",
+            "Auth types: User {id, username, email, guest}, AuthResponse {user, token}",
+            "Verify: TypeScript compiles with no errors"
+          ],
+          "passes": false
+        },
+        {
+          "id": "1.2",
+          "category": "setup",
+          "description": "Create a REST API client with auth token management",
+          "steps": [
+            "Create an API client module using fetch (or whatever HTTP library the project uses)",
+            "Base URL should come from environment variable (NEXT_PUBLIC_API_URL or similar)",
+            "Implement token storage: store JWT in memory (for SSR safety) with optional persistence to localStorage. Create getToken/setToken/clearToken helpers",
+            "Implement authenticated request helper that automatically attaches Authorization: Bearer <token> header",
+            "Implement these API functions matching the server exactly: register(username, email, password), login(username, password), getMe(), getRooms(), getLobby(), createRoom(name?), joinRoom(code, position?), leaveRoom(code), watchRoom(code), unwatchRoom(code), openSeat(code, position), closeSeat(code, position), getGameState(code), getUserStats()",
+            "Implement error handling: parse the server's {errors: [{code, title, detail}]} format into a usable error type",
+            "Verify: TypeScript compiles with no errors"
+          ],
+          "passes": false
+        },
+        {
+          "id": "1.3",
+          "category": "setup",
+          "description": "Create Phoenix socket connection manager with aggressive auto-reconnect",
+          "steps": [
+            "Install the phoenix npm package if not already present",
+            "Create a socket manager module that creates and manages a single Phoenix Socket instance",
+            "Socket URL from environment variable: NEXT_PUBLIC_WS_URL (e.g., ws://localhost:4000/socket)",
+            "Pass the JWT token in socket params: {token: getToken()}",
+            "Configure aggressive reconnection: reconnectAfterMs should use [1000, 2000, 3000, 5000, 8000, 10000] schedule (fast retries early, then backoff)",
+            "Add connection status tracking: expose an isConnected state/observable that components can subscribe to",
+            "Handle socket onOpen, onClose, onError — log events, update connection status",
+            "Add a reconnect() function that disconnects and reconnects with a fresh token (for token refresh scenarios)",
+            "Export a getSocket() function that returns the singleton socket instance",
+            "Verify: TypeScript compiles with no errors"
+          ],
+          "passes": false
+        },
+        {
+          "id": "1.4",
+          "category": "setup",
+          "description": "Create Zustand stores for auth, lobby, and game state",
+          "steps": [
+            "Install zustand if not already present",
+            "Create an auth store: {user, token, isAuthenticated, isLoading, login(), register(), logout(), loadUser()}. On login/register success: store token, set user, connect socket. On logout: clear token, disconnect socket",
+            "Create a lobby store: {myRejoinable, openTables, substituteNeeded, spectatable, onlineCount, isConnected}. Actions: setLobbyData(data), handleLobbyUpdate(update), setOnlineCount(n)",
+            "Create a game store: {gameState, myPosition, role, legalActions, isConnected, roomCode}. Actions: setGameState(state), setLegalActions(actions), setPosition(pos), reset(). Derived getters: isMyTurn (gameState.current_turn === myPosition), myHand (gameState?.players[myPosition]?.hand), currentPhase (gameState?.phase)",
+            "Verify: TypeScript compiles with no errors"
+          ],
+          "passes": false
+        },
+        {
+          "id": "1.5",
+          "category": "setup",
+          "description": "Create React hooks for lobby and game channels",
+          "steps": [
+            "Create useLobbyChannel hook: joins the 'lobby' channel on mount, receives categorized lobby data from join response, listens for room_created/room_updated/room_closed/online_count_updated events and routes them to the lobby store, leaves channel on unmount. Returns {isConnected}",
+            "Create useGameChannel hook: takes roomCode as parameter, joins 'game:{roomCode}' channel on mount, receives role/position/state/legal_actions from join response and pushes to game store, listens for game_state/game_over/player_reconnecting/bot_substitute_active/seat_permanently_botted/owner_decision_available/substitute_joined/player_reclaimed_seat events and updates game store, exposes action functions: bid(amount), pass(), declareTrump(suit), playCard(card), ready(), openSeat(position), closeSeat(position) — each pushes to the channel and returns a promise, leaves channel on unmount. Returns {isConnected, bid, pass, declareTrump, playCard, ready, openSeat, closeSeat}",
+            "Both hooks should handle reconnection: when the socket reconnects, automatically rejoin the channel",
+            "Verify: TypeScript compiles with no errors"
+          ],
+          "passes": false
+        }
+      ]
+    },
+
+    {
+      "phase": 2,
+      "name": "Auth Screens — Login, Register, Protected Routes",
+      "features": [
+        {
+          "id": "2.1",
+          "category": "ui",
+          "description": "Create login and registration pages",
+          "steps": [
+            "Check what routing/layout setup already exists in the Next.js app",
+            "Create a login page: username + password form, submit calls auth store login(), on success redirect to lobby, show server validation errors inline (wrong password, user not found, etc.)",
+            "Create a registration page: username + email + password form, submit calls auth store register(), on success redirect to lobby, show validation errors (username taken, invalid email, etc.)",
+            "Both pages should have links to each other ('Don't have an account?' / 'Already have an account?')",
+            "Style with Tailwind CSS. Clean, minimal design. The game's visual identity can come later — focus on functional and not ugly",
+            "Verify: Pages render, forms submit, errors display"
+          ],
+          "passes": false
+        },
+        {
+          "id": "2.2",
+          "category": "functional",
+          "description": "Implement auth persistence and protected routes",
+          "steps": [
+            "On app load: check localStorage for stored token. If exists, call getMe() to validate. If valid, populate auth store. If invalid (401), clear token and redirect to login",
+            "Create a route guard / middleware / layout wrapper that redirects unauthenticated users to /login for protected pages (lobby, game)",
+            "Ensure the socket connects automatically when the user is authenticated and disconnects on logout",
+            "Add a loading state while checking auth on app boot (don't flash login page for authenticated users)",
+            "Verify: Refresh browser while logged in → stays logged in. Logout → redirected to login. Visit /lobby without auth → redirected to login"
+          ],
+          "passes": false
+        }
+      ]
+    },
+
+    {
+      "phase": 3,
+      "name": "Lobby — Browse, Create, Join Tables",
+      "linear_ticket": "PID-36",
+      "features": [
+        {
+          "id": "3.1",
+          "category": "ui",
+          "description": "Build the lobby page with four categorized sections and real-time updates",
+          "steps": [
+            "Create the lobby page. Use the useLobbyChannel hook to connect and receive categorized room data",
+            "Section 1 — Your Tables (top, only visible when my_rejoinable is non-empty): prominent amber/orange banner. Show room code, current scores, a countdown timer counting down to grace_expires_at. Big 'Rejoin' button. Tapping rejoins the game (navigate to game page)",
+            "Section 2 — Open Tables (main list): each row shows host name or 'Anonymous', seats filled (e.g., '2/4'), how long ago it was created. Tapping joins the room and navigates to the game page. Empty state: 'No tables yet. Create one!' with a create button",
+            "Section 3 — Need a Player (only visible when substitute_needed is non-empty): different visual treatment (e.g., dashed border). Shows current score, which team/position needs help. 'Join as substitute' action",
+            "Section 4 — Watch (lowest priority): horizontal scroll or smaller cards. Shows score, player count, spectator count. 'Watch' action",
+            "All sections update in real-time via the lobby channel events — no polling",
+            "Verify: Lobby renders, real-time updates work, sections show/hide based on data"
+          ],
+          "passes": true
+        },
+        {
+          "id": "3.2",
+          "category": "ui",
+          "description": "Build the create table flow and online player count",
+          "steps": [
+            "Add a prominent 'Create Table' button to the lobby (floating action button or top bar)",
+            "Create table flow: for now just call createRoom() with default settings. Future: add variant selection, name input. On success, navigate to the game page for that room",
+            "Display online player count from the lobby channel's online_count. Update via online_count_updated events. Show in the lobby header: '24 players online'",
+            "Add a header/nav bar to the lobby page with: username display, online count, logout button",
+            "Verify: Create table works and navigates to game. Online count displays and updates"
+          ],
+          "passes": true
+        }
+      ]
+    },
+
+    {
+      "phase": 4,
+      "name": "Game Table — Layout, Cards, Players",
+      "features": [
+        {
+          "id": "4.1",
+          "category": "ui",
+          "description": "Build the game page shell and waiting room",
+          "steps": [
+            "Create the game page at /game/[code] (or however the app routes). Extract room code from URL",
+            "On mount: if game hasn't started (no game state from join response), show a waiting room view: room code prominently displayed (for sharing), list of seated players with their positions, empty seats showing 'Waiting for player...', a 'Leave' button",
+            "When the game starts (game_state event arrives with phase != 'not_started'), transition to the game table view",
+            "Use the useGameChannel hook to connect. Show connection status indicator",
+            "Verify: Game page loads, waiting room displays correctly, transitions to game on start"
+          ],
+          "passes": false
+        },
+        {
+          "id": "4.2",
+          "category": "ui",
+          "description": "Build the card table layout with 4 player positions",
+          "steps": [
+            "Create the game table component with compass layout: current player's hand at the bottom, partner at top, opponents on left and right",
+            "The layout must map positions to visual locations based on the player's own position. If I'm 'south': south=bottom, north=top, east=right, west=left. If I'm 'north': north=bottom, south=top, east=left, west=right. Create a helper that maps game positions to visual positions (bottom/top/left/right) based on myPosition",
+            "Each player position shows: player name/username, team indicator (color-coded — e.g., blue for NS, red for EW), card count or face-down cards for opponents, current turn indicator (highlight border or glow when it's their turn)",
+            "Center area: the trick area where played cards appear",
+            "Score display: both team scores visible, current bid info",
+            "Verify: Layout renders correctly for all 4 possible player positions"
+          ],
+          "passes": false
+        },
+        {
+          "id": "4.3",
+          "category": "ui",
+          "description": "Build the playing card component and player hand",
+          "steps": [
+            "Create a Card component that renders a playing card visually. Show rank and suit with proper symbols (♠ ♥ ♦ ♣). Hearts and diamonds in red, spades and clubs in black. Cards should look like actual playing cards — white background, rounded corners, rank in corners, suit in center",
+            "Create a face-down card component for opponent hands (just a card back pattern)",
+            "Create a Hand component that displays the player's cards in a fan or row at the bottom of the screen. Cards should be sortable by suit then rank (trump suit first if known). Playable cards should be visually distinct from unplayable ones during the playing phase (dim/gray out illegal plays based on legal_actions from the server)",
+            "Cards in hand should be clickable/tappable to play them. On click, if it's a legal play, call playCard(card) via the game channel hook",
+            "Verify: Cards render correctly for all ranks and suits. Hand sorts properly. Clicking plays a card"
+          ],
+          "passes": false
+        },
+        {
+          "id": "4.4",
+          "category": "ui",
+          "description": "Build the trick area — cards played to the center",
+          "steps": [
+            "Create a TrickArea component in the center of the table",
+            "Show cards as they're played: each card appears at the position of the player who played it (top/left/right/bottom of the center area, matching the compass layout)",
+            "When all 4 cards are played (trick complete), briefly highlight the winner's card, then clear the trick area for the next trick",
+            "Show trick number and who led the trick",
+            "Between tricks, show the previous trick briefly or have a 'last trick' indicator that can be hovered/tapped to see it",
+            "Verify: Trick area shows played cards in correct positions, clears properly"
+          ],
+          "passes": false
+        }
+      ]
+    },
+
+    {
+      "phase": 5,
+      "name": "Game Actions — Bidding, Trump, Playing",
+      "features": [
+        {
+          "id": "5.1",
+          "category": "ui",
+          "description": "Build the bidding interface",
+          "steps": [
+            "When gameState.phase is 'bidding' and it's my turn: show the bidding UI",
+            "Display: current highest bid (if any), who bid it, and the minimum bid allowed",
+            "Show bid options based on legal_actions from the server. The server sends an array of legal actions like [{type: 'bid', amount: 8}, {type: 'bid', amount: 9}, ...{type: 'pass'}]. Render these as buttons or a slider",
+            "Pass button always available during bidding",
+            "When not my turn during bidding: show who's currently bidding, the current highest bid",
+            "Show bid history as it progresses: 'North bid 8', 'East passed', etc. (derived from gameState.bids array)",
+            "On bid/pass: call bid(amount) or pass() via the channel hook. Disable the UI while waiting for server response",
+            "Verify: Bidding UI appears during bidding phase, bids submit correctly, bid history shows"
+          ],
+          "passes": false
+        },
+        {
+          "id": "5.2",
+          "category": "ui",
+          "description": "Build the trump declaration interface",
+          "steps": [
+            "When gameState.phase is 'trump_selection' and it's my turn: show trump selection UI",
+            "Display four suit buttons: ♠ Spades, ♥ Hearts, ♦ Diamonds, ♣ Clubs. Each with the suit's color",
+            "Help the player choose: show their hand below the suit buttons so they can see what suits they have",
+            "On suit selection: call declareTrump(suit). Disable UI while waiting",
+            "When another player is choosing trump: show 'Waiting for [Player] to declare trump...'",
+            "After trump is declared: briefly flash the trump suit, then show it permanently in the game info area",
+            "Verify: Trump selection appears at right time, submits correctly, trump indicator shows"
+          ],
+          "passes": false
+        },
+        {
+          "id": "5.3",
+          "category": "ui",
+          "description": "Build game-over screen and return-to-lobby flow",
+          "steps": [
+            "Listen for game_over event: {winner, scores}",
+            "Show a game over overlay/modal: winning team, final scores for both teams, round-by-round score if available",
+            "Winning team gets a celebration treatment (colors, animation — keep it simple but satisfying)",
+            "Buttons: 'Back to Lobby' (navigate to lobby), 'Rematch' (future — can be a disabled button with 'Coming soon')",
+            "If the player was on the winning team, the message is different from the losing team",
+            "Verify: Game over screen shows with correct info, back to lobby works"
+          ],
+          "passes": false
+        }
+      ]
+    },
+
+    {
+      "phase": 6,
+      "name": "Disconnect Handling — Seat indicators, reconnection UI",
+      "linear_ticket": "PID-37",
+      "features": [
+        {
+          "id": "6.1",
+          "category": "functional",
+          "description": "Implement client-side reconnection with visual feedback",
+          "steps": [
+            "Add a visibilitychange listener (web): when tab becomes visible, check socket connection. If disconnected, trigger immediate reconnect",
+            "When socket disconnects: show a subtle top bar 'Reconnecting...' with a spinner. This should be global (visible on any page, not just game)",
+            "When socket reconnects: if on the game page, the useGameChannel hook should automatically rejoin the game channel. The server returns {reconnected: true} with full current game state. Replace local game state entirely with server state",
+            "When socket reconnects: show brief green 'Connected!' indicator for 2 seconds, then hide",
+            "If reconnection fails after the grace period (server rejects with seat_permanently_filled or similar): show clear message 'Your seat was filled. The game continues.' with a 'Back to Lobby' button",
+            "Verify: Disconnect/reconnect cycle works. Tab switch triggers reconnect check. Grace expiry handled"
+          ],
+          "passes": false
+        },
+        {
+          "id": "6.2",
+          "category": "ui",
+          "description": "Build seat status indicators for disconnected/bot players",
+          "steps": [
+            "Listen for seat lifecycle events on the game channel: player_reconnecting, bot_substitute_active, player_reclaimed_seat, seat_permanently_botted, substitute_joined",
+            "When player_reconnecting fires: show a small amber spinner on that player's seat area, subtle text 'Reconnecting...'",
+            "When bot_substitute_active fires: change the player's seat to show a bot indicator (robot icon or 'Bot' badge). Show a one-time toast notification: '[PlayerName] disconnected. Bot is filling in.' Auto-dismiss after 4 seconds. Small text under seat: 'Bot • [Player] can rejoin'",
+            "When player_reclaimed_seat fires: flash a brief positive toast '[PlayerName] is back!'. Transition seat back to normal player display. Auto-dismiss toast after 3 seconds",
+            "When seat_permanently_botted fires: update seat text to just 'Bot', remove 'can rejoin' text",
+            "When substitute_joined fires: show new player name on the seat, brief toast '[NewPlayer] joined as substitute'",
+            "All visual changes should be smooth (CSS transitions, not abrupt swaps)",
+            "Verify: Each event triggers the correct visual change. Toasts appear and dismiss"
+          ],
+          "passes": false
+        },
+        {
+          "id": "6.3",
+          "category": "ui",
+          "description": "Build owner decision banner for substitute seats",
+          "steps": [
+            "When owner_decision_available fires AND the current user is the room owner: show a non-blocking banner at the top of the game area",
+            "Banner text: '[PlayerName] left. Open their seat for another player?'",
+            "Two buttons: 'Open Seat' (calls openSeat(position) via channel hook) and 'Keep Bot' (dismisses the banner)",
+            "Banner should not appear during the player's active turn — queue it for between turns. Check gameState.current_turn !== myPosition before showing",
+            "Banner is dismissible and doesn't reappear once dismissed for that seat",
+            "Only one banner at a time. If multiple disconnect events, queue them",
+            "Verify: Banner appears only for owner, dismisses correctly, open seat action works"
+          ],
+          "passes": false
+        }
+      ]
+    },
+
+    {
+      "phase": 7,
+      "name": "Polish — Responsive design, loading states, error handling",
+      "features": [
+        {
+          "id": "7.1",
+          "category": "ui",
+          "description": "Responsive layout — game table works on various screen sizes",
+          "steps": [
+            "The game table should work well on: desktop (1920x1080 down to 1280x720), tablet landscape, tablet portrait, and large phones in landscape. Priority: desktop first since this is the web client",
+            "Cards should scale based on available space — use relative sizing (em/rem or viewport units) not fixed pixels",
+            "On smaller screens: consider stacking the score/bid info vertically, making the trick area smaller, and keeping the player's hand as the largest element",
+            "The lobby should be a single column on mobile, multi-column on desktop",
+            "Test at common breakpoints: 1440px, 1024px, 768px, 390px",
+            "Verify: No horizontal scrolling, no overlapping elements, cards readable at all sizes"
+          ],
+          "passes": false
+        },
+        {
+          "id": "7.2",
+          "category": "ui",
+          "description": "Loading states and error handling throughout the app",
+          "steps": [
+            "Add loading skeletons/spinners for: initial auth check on app load, lobby room list loading, game page connecting to channel",
+            "Add error states for: failed to connect to server (show retry button), room not found (show 'Room not found' with back to lobby), game channel join failed (show error with retry and back to lobby options)",
+            "Add optimistic UI where appropriate: when playing a card, visually move it to the trick area immediately, then confirm/rollback based on server response",
+            "Handle edge case: user navigates to /game/XXXX directly without being in the room — show appropriate message and redirect to lobby",
+            "Ensure no unhandled promise rejections from channel push() calls — wrap all in try/catch or .receive('error')",
+            "Verify: All loading states display. All error states display. No console errors during normal gameplay"
+          ],
+          "passes": false
+        },
+        {
+          "id": "7.3",
+          "category": "ui",
+          "description": "Turn indicators, timing, and game feel",
+          "steps": [
+            "Clear turn indicator: when it's the current player's turn, highlight their seat area with a visible border/glow. When it's YOUR turn, show additional emphasis — a pulsing border, or a text prompt like 'Your turn!'",
+            "Add subtle animation when cards are played to the trick area (slide from player position to center)",
+            "Add a subtle animation when the trick is won (winning card briefly highlighted before clearing)",
+            "Show the trump suit prominently once declared — maybe a colored banner or badge that's always visible during play",
+            "Show team scores prominently and update them smoothly when scoring changes",
+            "Show the current bid prominently during the playing phase so players remember what was bid",
+            "Verify: Turn indicators are clear, animations are smooth and not distracting"
+          ],
+          "passes": false
+        }
+      ]
+    }
+  ],
+
+  "verification": {
+    "final_checks": [
+      "Full flow test: Register → Login → Create table → Wait in room → (open another browser tab) → Login as different user → Join room → Game starts → Complete a full round of bidding/trump/playing → Game ends → Back to lobby",
+      "Reconnection test: While in a game, disable network for 10 seconds → Re-enable → Verify reconnection and state sync",
+      "Disconnect cascade test: While in a game with bots, close a bot's browser tab (or disconnect via admin) → Verify disconnect indicators show on remaining clients",
+      "Lobby real-time test: Open lobby in two browser tabs → Create a room in one → Verify it appears in the other instantly",
+      "Responsive test: Play a full game at 1440px, 1024px, and 768px viewport widths",
+      "No console errors during normal gameplay",
+      "All TypeScript compiles with no errors",
+      "next build succeeds with no errors"
+    ]
+  }
+}

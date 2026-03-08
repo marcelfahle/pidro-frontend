@@ -1,5 +1,5 @@
 import type { GamePhase, Position, Suit } from '@pidro/shared';
-import { SUIT_COLORS_RAW, SUIT_SYMBOLS, getTeamScores } from '@pidro/shared';
+import { getTeamScores, SUIT_COLORS_RAW, SUIT_SYMBOLS } from '@pidro/shared';
 
 interface GameInfoBarProps {
   phase: GamePhase;
@@ -40,7 +40,9 @@ export function GameInfoBar({
     <div className="pidro-score-plaque w-[320px] px-4 pb-4 pt-2 max-md:w-[84vw] max-md:max-w-[320px] max-md:px-3 max-md:pb-2.5">
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 border-b border-[#ffcc54]/20 pb-3">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ffebaa]/65">Us</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ffebaa]/65">
+            Us
+          </div>
           <div className="text-4xl font-black text-white max-md:text-3xl">{teamScores.us}</div>
         </div>
         <div className="h-10 w-px bg-[#ffcc54]/20" />
@@ -48,7 +50,9 @@ export function GameInfoBar({
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ffebaa]/65">
             Them
           </div>
-          <div className="text-4xl font-black text-[#ffcc54] max-md:text-3xl">{teamScores.them}</div>
+          <div className="text-4xl font-black text-[#ffcc54] max-md:text-3xl">
+            {teamScores.them}
+          </div>
         </div>
       </div>
 
@@ -59,7 +63,9 @@ export function GameInfoBar({
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#ffebaa]/70">Hand</span>
-          <span className="text-right text-white">{roundNumber != null ? `#${roundNumber}` : 'Soon'}</span>
+          <span className="text-right text-white">
+            {roundNumber != null ? `#${roundNumber}` : 'Soon'}
+          </span>
         </div>
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#ffebaa]/70">Trump</span>

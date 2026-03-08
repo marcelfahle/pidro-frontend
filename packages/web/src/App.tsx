@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
-import { GamePage } from './pages/GamePage';
 import { DesignSystemPage } from './pages/DesignSystemPage';
+import { GamePage } from './pages/GamePage';
 import { HomePage } from './pages/HomePage';
 import { LobbyPage } from './pages/LobbyPage';
 import { LoginPage } from './pages/LoginPage';

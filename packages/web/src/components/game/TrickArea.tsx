@@ -82,7 +82,9 @@ export function TrickArea({ viewModel, serverState }: TrickAreaProps) {
                 Your turn
               </span>
             ) : (
-              <span className="text-4xl text-cyan-50/65">{trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}</span>
+              <span className="text-4xl text-cyan-50/65">
+                {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
+              </span>
             )}
           </div>
           <TrickSlot position="east" data={trickByRelative.east} trumpSuit={trumpSuit} />
@@ -99,13 +101,13 @@ export function TrickArea({ viewModel, serverState }: TrickAreaProps) {
             const pts = trickPointTotal(trick, trumpSuit);
             return (
               <div
-                key={idx}
+                key={trick.number ?? idx}
                 className="rounded-2xl border border-cyan-300/15 bg-black/10 px-3 py-2 text-center"
               >
                 <div className="flex justify-center -space-x-3">
-                  {trick.cards.map((play, j) => (
+                  {trick.cards.map((play) => (
                     <Card
-                      key={j}
+                      key={`${play.card.rank}-${play.card.suit}`}
                       card={play.card}
                       size="sm"
                       isTrump={play.card.suit === trumpSuit}

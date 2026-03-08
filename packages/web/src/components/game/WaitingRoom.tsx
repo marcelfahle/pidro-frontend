@@ -21,12 +21,14 @@ const SEAT_POSITIONS: { position: Position; label: string; className: string }[]
   {
     position: 'west',
     label: 'West',
-    className: 'left-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:left-[2%] max-md:top-[38%] max-md:w-[30%]',
+    className:
+      'left-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:left-[2%] max-md:top-[38%] max-md:w-[30%]',
   },
   {
     position: 'east',
     label: 'East',
-    className: 'right-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:right-[2%] max-md:top-[38%] max-md:w-[30%]',
+    className:
+      'right-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:right-[2%] max-md:top-[38%] max-md:w-[30%]',
   },
   {
     position: 'south',
@@ -50,9 +52,13 @@ function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; i
 
   return (
     <div className={cardClasses}>
-      <div className="pidro-avatar">{occupied ? (meta.username?.[0]?.toUpperCase() ?? '?') : '?'}</div>
+      <div className="pidro-avatar">
+        {occupied ? (meta.username?.[0]?.toUpperCase() ?? '?') : '?'}
+      </div>
       <div className="min-w-0">
-        <div className="truncate text-sm font-black text-white">{occupied ? meta.username : 'Waiting...'}</div>
+        <div className="truncate text-sm font-black text-white">
+          {occupied ? meta.username : 'Waiting...'}
+        </div>
         <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-50/60">
           {label}
         </div>

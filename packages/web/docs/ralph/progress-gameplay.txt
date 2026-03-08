@@ -1,0 +1,35 @@
+Progress log for PRD gameplay implementation.
+
+## 2026-03-08 — Phase 3.1: Categorized lobby sections
+
+Implemented four categorized sections in the lobby page (LobbyPage.tsx):
+
+1. **Your Tables** — Amber/orange styled cards for games the current user is in
+   (status=playing + user in player_ids/seats). Shows "Rejoin" button that navigates
+   directly to the game page (no API call needed).
+
+2. **Open Tables** — Main section showing waiting rooms with "Join" button.
+   Uses existing RoomTable component. Shows empty state when no rooms available.
+
+3. **Need a Player** — Dashed-border cards for playing rooms with vacant seats.
+   Shows "Substitute" button (calls joinRoom API).
+
+4. **Watch** — Horizontal scrolling compact cards for spectatable games (playing,
+   full seats, not the user's game). Shows "Watch" button.
+
+Categorization is done client-side via `categorizeRooms()` in LobbyPage.tsx. The
+server still sends a flat rooms array; if it ever sends categorized data, the
+channel hook can be updated to handle it.
+
+Also fixed:
+- Updated RoomRow to use generic `onAction`/`actionLabel` interface instead of
+  hardcoded Join-only props. Fixed error display bug (errors now persist after
+  loading completes instead of never showing).
+- Updated RoomTable to match new interface (actionLoadingCode, actionError).
+- Fixed pre-existing lint errors in TrickArea.tsx (array index keys).
+- Fixed all formatter issues across the codebase.
+- Added 4 new tests for categorized sections (13 total lobby tests).
+- Also marked PRD feature 3.2 (create table + online count) as passing since it
+  was already fully implemented.
+
+All checks pass: typecheck, lint, 111 tests.

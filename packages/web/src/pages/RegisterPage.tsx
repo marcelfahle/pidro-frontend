@@ -76,7 +76,10 @@ export function RegisterPage() {
               </div>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="username" className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80">
+                  <label
+                    htmlFor="username"
+                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
+                  >
                     Username
                   </label>
                   <input
@@ -90,7 +93,10 @@ export function RegisterPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="email" className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80">
+                  <label
+                    htmlFor="email"
+                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
+                  >
                     Email
                   </label>
                   <input
@@ -104,7 +110,10 @@ export function RegisterPage() {
                   />
                 </div>
                 <div>
-                  <label htmlFor="password" className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80">
+                  <label
+                    htmlFor="password"
+                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
+                  >
                     Password
                   </label>
                   <input

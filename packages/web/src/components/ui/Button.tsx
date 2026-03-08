@@ -7,8 +7,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses = {
-  gold:
-    'border-2 border-[#d99d1b] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] text-[#ffd84a] shadow-[inset_0_1px_0_rgba(255,244,204,0.2),inset_0_-5px_10px_rgba(0,0,0,0.18),0_6px_12px_rgba(23,7,0,0.2)] hover:border-[#ffcb54] hover:text-[#ffeb8d] disabled:cursor-not-allowed disabled:opacity-50',
+  gold: 'border-2 border-[#d99d1b] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] text-[#ffd84a] shadow-[inset_0_1px_0_rgba(255,244,204,0.2),inset_0_-5px_10px_rgba(0,0,0,0.18),0_6px_12px_rgba(23,7,0,0.2)] hover:border-[#ffcb54] hover:text-[#ffeb8d] disabled:cursor-not-allowed disabled:opacity-50',
   glass:
     'border border-cyan-200/55 bg-[linear-gradient(180deg,rgba(255,255,255,0.22)_0%,rgba(255,255,255,0.08)_28%,transparent_30%),linear-gradient(180deg,rgba(23,119,188,0.84)_0%,rgba(6,69,114,0.82)_48%,rgba(4,46,82,0.88)_100%)] text-cyan-50 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05),inset_0_12px_24px_rgba(255,255,255,0.04),0_7px_14px_rgba(0,0,0,0.16)] hover:border-cyan-100 hover:text-white hover:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06),inset_0_12px_24px_rgba(255,255,255,0.05),0_8px_18px_rgba(0,0,0,0.2)] disabled:cursor-not-allowed disabled:opacity-50',
   danger:

@@ -36,6 +36,7 @@ interface GameState {
   serverState: ServerGameState | null;
   legalActions: LegalAction[];
   playerMeta: Record<Position, PlayerMeta>;
+  readyPlayers: Position[];
 
   isChannelJoined: boolean;
   isRejoining: boolean;
@@ -52,6 +53,7 @@ interface GameState {
     position: Position | null,
     connected: boolean
   ) => void;
+  addReadyPlayer: (position: Position) => void;
   setChannelStatus: (joined: boolean, rejoining?: boolean) => void;
   setError: (err: string | null) => void;
   reset: () => void;
@@ -72,6 +74,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   serverState: null,
   legalActions: [],
   playerMeta: { ...initialPlayerMeta },
+  readyPlayers: [],
   isChannelJoined: false,
   isRejoining: false,
   lastError: null,
@@ -203,6 +206,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { playerMeta: updated };
     }),
 
+  addReadyPlayer: (position) =>
+    set((curr) => ({
+      readyPlayers: curr.readyPlayers.includes(position)
+        ? curr.readyPlayers
+        : [...curr.readyPlayers, position],
+    })),
+
   setChannelStatus: (joined, rejoining = false) =>
     set({ isChannelJoined: joined, isRejoining: rejoining }),
 
@@ -222,6 +232,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         south: createEmptyPlayerMeta('south'),
         west: createEmptyPlayerMeta('west'),
       },
+      readyPlayers: [],
       isChannelJoined: false,
       isRejoining: false,
       lastError: null,

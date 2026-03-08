@@ -27,7 +27,11 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
       <div
         className="relative w-full max-w-2xl overflow-hidden rounded-[18px] border border-cyan-300/30 bg-[linear-gradient(180deg,rgba(15,31,55,0.96)_0px,rgba(15,31,55,0.96)_20px,transparent_20px),radial-gradient(circle_at_center,rgba(53,151,213,0.32)_0%,transparent_45%),linear-gradient(180deg,#176ea7_0%,#0d5087_52%,#07264c_100%)] shadow-[0_40px_100px_rgba(0,0,0,0.65)]"
         role="dialog"

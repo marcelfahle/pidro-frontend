@@ -25,7 +25,9 @@ export function TrumpSelector({ viewModel, legalActions, onDeclareTrump }: Trump
     .map((a) => a.suit);
 
   const currentTurnPlayer = viewModel.players.find((p) => p.isCurrentTurn);
-  const waitingForName = currentTurnPlayer?.isYou ? null : (currentTurnPlayer?.username ?? 'opponent');
+  const waitingForName = currentTurnPlayer?.isYou
+    ? null
+    : (currentTurnPlayer?.username ?? 'opponent');
 
   return (
     <div className="flex h-full w-full items-center justify-center">

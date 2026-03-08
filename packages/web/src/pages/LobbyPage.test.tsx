@@ -84,13 +84,13 @@ beforeEach(() => {
 });
 
 describe('LobbyPage', () => {
-  it('renders header with username and sign out button', () => {
+  it('renders floating header and bottom action buttons', () => {
     setupMocks();
     renderLobby();
 
-    expect(screen.getByText('testuser')).toBeTruthy();
+    expect(screen.getByText('Create or Join Table')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Log Out' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Create Game' })).toBeTruthy();
   });
 
   it('connects lobby channel for real-time updates', () => {
@@ -131,7 +131,7 @@ describe('LobbyPage', () => {
     expect(screen.getByRole('button', { name: 'Join' })).toBeTruthy();
   });
 
-  it('shows Create Game button that opens modal', async () => {
+  it('shows Create Game action that opens modal', async () => {
     setupMocks();
     renderLobby();
 
@@ -195,17 +195,122 @@ describe('LobbyPage', () => {
     setupMocks({}, { stats: { online_players: 5, active_games: 2 } });
     renderLobby();
 
-    expect(screen.getByText('Players Online - 5')).toBeTruthy();
+    expect(screen.getByText('Players Online 5')).toBeTruthy();
   });
 
-  it('navigates to login on sign out', async () => {
-    const clearSession = vi.fn();
-    setupMocks({ clearSession });
+  it('navigates home on back', async () => {
+    setupMocks();
     renderLobby();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Log Out' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
 
-    expect(clearSession).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/login');
+    expect(mockNavigate).toHaveBeenCalledWith('/home');
+  });
+
+  // --- Categorized sections ---
+
+  it('shows Your Tables section for rejoinable games', () => {
+    setupMocks(
+      {},
+      {
+        rooms: [
+          {
+            code: 'REJOIN1',
+            name: 'My Game',
+            status: 'playing',
+            player_ids: ['1'],
+            player_count: 4,
+            max_players: 4,
+          },
+        ],
+      },
+    );
+    renderLobby();
+
+    expect(screen.getByText('Your Tables')).toBeTruthy();
+    expect(screen.getByText('My Game')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Rejoin' })).toBeTruthy();
+  });
+
+  it('navigates directly to game on Rejoin click', async () => {
+    setupMocks(
+      {},
+      {
+        rooms: [
+          {
+            code: 'REJOIN2',
+            name: 'Rejoin Game',
+            status: 'playing',
+            player_ids: ['1'],
+            player_count: 4,
+            max_players: 4,
+          },
+        ],
+      },
+    );
+    renderLobby();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Rejoin' }));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/game/REJOIN2');
+    expect(mockJoinRoom).not.toHaveBeenCalled();
+  });
+
+  it('shows Need a Player section for games with vacant seats', () => {
+    setupMocks(
+      {},
+      {
+        rooms: [
+          {
+            code: 'SUB1',
+            name: 'Needs Help',
+            status: 'playing',
+            player_ids: ['other-user'],
+            player_count: 3,
+            max_players: 4,
+            seats: [
+              { seat_index: 0, status: 'occupied', player: { id: 'other-user', username: 'Bob' } },
+              { seat_index: 1, status: 'occupied', player: { id: 'p2', username: 'Eve' } },
+              { seat_index: 2, status: 'occupied', player: { id: 'p3', username: 'Dan' } },
+              { seat_index: 3, status: 'free', player: null },
+            ],
+          },
+        ],
+      },
+    );
+    renderLobby();
+
+    expect(screen.getByText('Need a Player')).toBeTruthy();
+    expect(screen.getByText('Needs Help')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Substitute' })).toBeTruthy();
+  });
+
+  it('shows Watch section for spectatable games', () => {
+    setupMocks(
+      {},
+      {
+        rooms: [
+          {
+            code: 'WATCH1',
+            name: 'Full Game',
+            status: 'playing',
+            player_ids: ['other1', 'other2', 'other3', 'other4'],
+            player_count: 4,
+            max_players: 4,
+            seats: [
+              { seat_index: 0, status: 'occupied', player: { id: 'other1', username: 'A' } },
+              { seat_index: 1, status: 'occupied', player: { id: 'other2', username: 'B' } },
+              { seat_index: 2, status: 'occupied', player: { id: 'other3', username: 'C' } },
+              { seat_index: 3, status: 'occupied', player: { id: 'other4', username: 'D' } },
+            ],
+          },
+        ],
+      },
+    );
+    renderLobby();
+
+    expect(screen.getByRole('heading', { level: 3, name: /Watch/ })).toBeTruthy();
+    expect(screen.getByText('Full Game')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Watch' })).toBeTruthy();
   });
 });

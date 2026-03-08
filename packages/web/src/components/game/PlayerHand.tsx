@@ -51,7 +51,7 @@ export function PlayerHand({
   const roleLabel = isYou ? 'You' : isTeammate ? 'Partner' : 'Opponent';
   const resolvedStatus = !isConnected
     ? 'Offline'
-    : statusText ?? (isCurrentTurn ? 'Your turn' : isDealer ? 'Dealer' : 'Ready');
+    : (statusText ?? (isCurrentTurn ? 'Your turn' : isDealer ? 'Dealer' : 'Ready'));
 
   const hasPlayableCards = isYou && legalActions.some((a) => a.type === 'play_card');
 

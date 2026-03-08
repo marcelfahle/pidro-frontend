@@ -41,7 +41,9 @@ export function BiddingPanel({
     : null;
   const bidWinnerName = bidWinnerPlayer?.isYou ? 'You' : (bidWinnerPlayer?.username ?? null);
   const currentTurnPlayer = viewModel.players.find((p) => p.isCurrentTurn);
-  const waitingForName = currentTurnPlayer?.isYou ? null : (currentTurnPlayer?.username ?? 'opponent');
+  const waitingForName = currentTurnPlayer?.isYou
+    ? null
+    : (currentTurnPlayer?.username ?? 'opponent');
   const visibleBidHistory = bidHistory.filter(
     ({ bid, name }) => bid === 'pass' || name !== bidWinnerName,
   );

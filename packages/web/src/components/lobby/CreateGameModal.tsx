@@ -75,7 +75,10 @@ export function CreateGameModal({
     >
       <form id="create-game-form" onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="game-name" className="mb-2 block text-sm font-black uppercase tracking-[0.18em] text-cyan-50/80">
+          <label
+            htmlFor="game-name"
+            className="mb-2 block text-sm font-black uppercase tracking-[0.18em] text-cyan-50/80"
+          >
             Game Name
           </label>
           <input

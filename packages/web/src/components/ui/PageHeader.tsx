@@ -19,12 +19,7 @@ const titleClasses = {
   lg: 'text-[clamp(1.72rem,4.45vw,3.35rem)]',
 } as const;
 
-export function PageHeader({
-  title,
-  subtitle,
-  size = 'md',
-  className = '',
-}: PageHeaderProps) {
+export function PageHeader({ title, subtitle, size = 'md', className = '' }: PageHeaderProps) {
   const gradientId = useId().replace(/:/g, '');
 
   return (
