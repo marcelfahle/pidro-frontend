@@ -88,14 +88,14 @@ export function GameInfoBar({
       phase === 'second_deal');
 
   return (
-    <div className="pidro-score-plaque w-[320px] px-4 pb-4 pt-2 max-md:w-[84vw] max-md:max-w-[320px] max-md:px-3 max-md:pb-2.5">
+    <div className="pidro-score-plaque w-[320px] px-4 pb-4 pt-2 max-lg:w-[280px] max-lg:px-3 max-lg:pb-3 max-md:w-[84vw] max-md:max-w-[320px] max-md:pb-2.5">
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3 border-b border-[#ffcc54]/20 pb-3">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-[#ffebaa]/65">
             Us
           </div>
           <div
-            className={`text-4xl font-black text-white max-md:text-3xl ${usBump ? 'animate-score-bump' : ''}`}
+            className={`text-4xl font-black text-white max-lg:text-3xl ${usBump ? 'animate-score-bump' : ''}`}
           >
             {teamScores.us}
           </div>
@@ -106,7 +106,7 @@ export function GameInfoBar({
             Them
           </div>
           <div
-            className={`text-4xl font-black text-[#ffcc54] max-md:text-3xl ${themBump ? 'animate-score-bump' : ''}`}
+            className={`text-4xl font-black text-[#ffcc54] max-lg:text-3xl ${themBump ? 'animate-score-bump' : ''}`}
           >
             {teamScores.them}
           </div>
@@ -134,7 +134,7 @@ export function GameInfoBar({
         </div>
       )}
 
-      <div className="mt-2.5 grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#fff0b8] max-md:grid-cols-2 max-md:text-[11px]">
+      <div className="mt-2.5 grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#fff0b8] max-lg:text-[11px] max-md:grid-cols-2">
         <div className="flex items-center justify-between gap-3">
           <span className="text-[#ffebaa]/70">Phase</span>
           <span className="text-right text-white">{PHASE_LABELS[phase] ?? phase}</span>

@@ -53,7 +53,7 @@ export function GamePlayerCard({
 
   return (
     <div className={seatCardClass}>
-      <div className="pidro-avatar h-12 w-12 max-md:h-9 max-md:w-9">
+      <div className="pidro-avatar h-12 w-12 max-lg:h-10 max-lg:w-10 max-md:h-9 max-md:w-9">
         <span>{avatarContent}</span>
       </div>
       <div className="min-w-0">
@@ -72,7 +72,7 @@ export function GamePlayerCard({
           )}
           {!isConnected && !isReconnecting && !isBot && <Badge variant="red">DC</Badge>}
         </div>
-        <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-50/60 max-md:hidden">
+        <div className="mt-1 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-50/60 max-lg:hidden">
           {roleLabel}
         </div>
         {seatSubtext ? (

@@ -196,7 +196,7 @@ export function LobbyPage() {
 
   return (
     <div className="pidro-page">
-      <div className="pidro-window flex min-h-[720px] flex-col max-md:h-[calc(100dvh-24px)] max-md:min-h-[calc(100dvh-24px)]">
+      <div className="pidro-window flex min-h-[720px] flex-col max-lg:h-[calc(100dvh-24px)] max-lg:min-h-0">
         <div className="pidro-titlebar">Pidro</div>
         <main className="relative flex flex-1 flex-col px-4 pb-4 pt-6 sm:px-6 sm:pt-7">
           <div className="relative z-10 -mb-8 max-md:-mb-7">
@@ -245,7 +245,7 @@ export function LobbyPage() {
                       count={categories.myRejoinable.length}
                       className="text-amber-200/90"
                     />
-                    <div className="space-y-3">
+                    <div className="grid gap-3 lg:grid-cols-2">
                       {categories.myRejoinable.map((room) => (
                         <div
                           key={room.code}
@@ -294,7 +294,7 @@ export function LobbyPage() {
                       title="Need a Player"
                       count={categories.substituteNeeded.length}
                     />
-                    <div className="space-y-3">
+                    <div className="grid gap-3 lg:grid-cols-2">
                       {categories.substituteNeeded.map((room, i) => (
                         <div
                           key={room.code}

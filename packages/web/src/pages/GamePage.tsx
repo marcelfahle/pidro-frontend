@@ -419,9 +419,9 @@ export function GamePage() {
       <div className="pidro-page">
         <ConnectionBanner isConnected={isChannelJoined} />
         <ToastContainer messages={toastMessages} onDismiss={dismissToast} />
-        <div className="pidro-window min-h-[760px]">
+        <div className="pidro-window min-h-[760px] max-lg:min-h-0 max-lg:h-[calc(100dvh-24px)]">
           <div className="pidro-titlebar">Pidro</div>
-          <div className="relative">
+          <div className="relative h-[calc(100%-20px)]">
             {visibleDecision && (
               <OwnerDecisionBanner
                 playerName={visibleDecision.playerName}
@@ -461,7 +461,7 @@ export function GamePage() {
     <div className="pidro-page">
       <ConnectionBanner isConnected={isChannelJoined} />
       <ToastContainer messages={toastMessages} onDismiss={dismissToast} />
-      <div className="pidro-window min-h-[760px]">
+      <div className="pidro-window min-h-[760px] max-lg:min-h-0 max-lg:h-[calc(100dvh-24px)]">
         <div className="pidro-titlebar">Pidro</div>
         <WaitingRoom
           roomCode={code}

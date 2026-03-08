@@ -332,6 +332,22 @@ button:disabled {
     0 0 14px rgba(0, 0, 0, 0.14);
 }
 
+@media (max-width: 1024px) {
+  .pidro-seat-card {
+    min-width: 112px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pidro-seat-card {
+    min-width: 96px;
+    padding: 5px 6px;
+    gap: 6px;
+  }
+}
+
 .pidro-seat-card--active {
   border-color: rgba(67, 245, 255, 0.95);
   box-shadow:
@@ -404,6 +420,18 @@ button:disabled {
 
 .pidro-icon-button:disabled {
   opacity: 0.55;
+}
+
+@media (max-width: 1024px) {
+  .pidro-icon-button {
+    --pidro-control-size: 52px;
+  }
+}
+
+@media (max-width: 640px) {
+  .pidro-icon-button {
+    --pidro-control-size: 44px;
+  }
 }
 
 .pidro-auth-grid {

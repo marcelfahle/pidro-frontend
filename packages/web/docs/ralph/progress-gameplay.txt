@@ -196,3 +196,59 @@ prominent trump/bid display, and score transitions.
 **Remaining features:** 7.1 (responsive layout)
 
 All checks pass: typecheck, lint, 111 tests.
+
+## 2026-03-08 — Phase 7.1: Responsive layout — game table works on various screen sizes
+
+Added tablet breakpoint (`max-lg` at 1024px) and improved responsive behavior across
+the app. The codebase already had good mobile (`max-md`, `max-sm`) breakpoints; this
+fills in the gap between desktop and phone.
+
+**GamePage changes** (GamePage.tsx):
+- Game window now fills viewport on tablets and phones: `max-lg:h-[calc(100dvh-24px)]`
+  instead of fixed `min-h-[760px]`. Desktop keeps the fixed min-height.
+- Inner game area uses `h-[calc(100%-20px)]` to fill below the titlebar.
+
+**GameTable changes** (GameTable.tsx):
+- Canvas adds intermediate `max-lg:aspect-[3/4]` between desktop `4/3` and
+  phone `10/16` — smoother transition for tablet portrait/landscape.
+- All position zones (north/south/east/west, center panel, leave button) gain
+  `max-lg` intermediate values for positioning and sizing.
+- South hand widens to `max-lg:w-[82%]` (between 72% desktop and 94% mobile).
+- GameInfoBar centers on tablet same as mobile (`max-lg:inset-x-0 max-lg:justify-center`).
+
+**Card changes** (Card.tsx):
+- `lg` size adds `max-lg` intermediate step: 96×66px (between 104×72 desktop and
+  92×62 mobile). Rank and suit font sizes also scale at `max-lg`.
+
+**PlayerHand changes** (PlayerHand.tsx):
+- Dynamic card overlap: when card count exceeds 8 (south) or 7 (east/west/north),
+  overlap tightens progressively. Prevents overflow during second_deal phase when
+  players hold up to 13 cards.
+- Seat card sizing gains `max-lg` intermediate step for `min-w` and `max-w`.
+
+**GamePlayerCard changes** (GamePlayerCard.tsx):
+- Avatar scales at `max-lg` to 40×40px (between 48px desktop and 36px mobile).
+- Role label hides at `max-lg` (was `max-md`) to save space on tablets.
+
+**GameInfoBar changes** (GameInfoBar.tsx):
+- Width shrinks to 280px at `max-lg` (between 320px desktop and 84vw mobile).
+- Score text scales to `text-3xl` at `max-lg`.
+- Info detail text scales at `max-lg`.
+
+**TrickArea changes** (TrickArea.tsx):
+- Center circle and empty trick slots scale at `max-lg` (80×80px, 80×56px) and
+  further at `max-sm` (64×64px, 64×48px).
+
+**CSS changes** (index.css):
+- `.pidro-seat-card`: responsive min-width/padding/gap at 1024px (112px) and 640px
+  (96px) breakpoints.
+- `.pidro-icon-button`: responsive control size at 1024px (52px) and 640px (44px).
+
+**LobbyPage changes** (LobbyPage.tsx):
+- "Your Tables" and "Need a Player" sections use `lg:grid-cols-2` for 2-column
+  layout on wider screens (single column on tablet/phone).
+- Window fills viewport on tablets: `max-lg:h-[calc(100dvh-24px)]`.
+
+**Remaining features:** None — PRD is complete.
+
+All checks pass: typecheck, lint, 111 tests.

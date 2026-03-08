@@ -137,7 +137,7 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
             animate={newSlots.has('west')}
             isWinner={winningSlot === 'west'}
           />
-          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-20 max-sm:w-20">
+          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-lg:h-20 max-lg:w-20 max-sm:h-16 max-sm:w-16">
             {isYourTurn && currentTrick.length < 4 ? (
               <span className="text-center text-sm font-black uppercase tracking-[0.12em] text-[#fff0b2]">
                 Your turn
@@ -223,7 +223,7 @@ function TrickSlot({
 }) {
   if (!data) {
     return (
-      <div className="flex h-24 w-16 items-center justify-center rounded-2xl border border-dashed border-cyan-300/20 bg-black/10 max-sm:h-20 max-sm:w-14">
+      <div className="flex h-24 w-16 items-center justify-center rounded-2xl border border-dashed border-cyan-300/20 bg-black/10 max-lg:h-20 max-lg:w-14 max-sm:h-16 max-sm:w-12">
         <span className="text-xs font-black uppercase tracking-[0.2em] text-cyan-50/35">
           {POSITION_LABELS[position]}
         </span>

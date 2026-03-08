@@ -94,8 +94,8 @@ export function PlayerHand({
         seatStatus={seatStatus}
         className={
           position === 'south'
-            ? 'min-w-[168px] max-md:min-w-[132px] max-md:gap-2 max-md:px-2.5 max-md:py-2'
-            : 'w-full max-w-[180px] max-md:max-w-[124px] max-md:grid-cols-[36px_1fr] max-md:gap-2 max-md:px-2.5 max-md:py-2'
+            ? 'min-w-[168px] max-lg:min-w-[148px] max-md:min-w-[132px] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
+            : 'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
         }
       />
 
@@ -146,15 +146,25 @@ function cardOffsetStyle(index: number, total: number, position: RelativePositio
   const offset = index - middle;
 
   if (position === 'east' || position === 'west') {
+    // Tighten vertical overlap when there are many cards
+    const baseOverlap = -38;
+    const overlap = total > 7 ? baseOverlap - Math.min(10, (total - 7) * 2) : baseOverlap;
     return {
-      marginTop: index === 0 ? 0 : -38,
+      marginTop: index === 0 ? 0 : overlap,
       transform: `translateX(${Math.abs(offset) * 1.5}px) rotate(${offset * (position === 'west' ? -2 : 2)}deg)`,
       zIndex: index + 1,
     };
   }
 
+  // Tighten horizontal overlap when there are many cards (e.g. 13 during second_deal)
+  const baseSouth = -22;
+  const baseNorth = -18;
+  const southOverlap = total > 8 ? baseSouth - Math.min(20, (total - 8) * 4) : baseSouth;
+  const northOverlap = total > 7 ? baseNorth - Math.min(12, (total - 7) * 3) : baseNorth;
+  const hOverlap = position === 'south' ? southOverlap : northOverlap;
+
   return {
-    marginLeft: index === 0 ? 0 : position === 'south' ? -22 : -18,
+    marginLeft: index === 0 ? 0 : hOverlap,
     transform: `translateY(${position === 'south' ? Math.abs(offset) * 3 : 0}px) rotate(${offset * 2.5}deg)`,
     zIndex: index + 1,
   };

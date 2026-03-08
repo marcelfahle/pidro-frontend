@@ -349,7 +349,7 @@
             "Test at common breakpoints: 1440px, 1024px, 768px, 390px",
             "Verify: No horizontal scrolling, no overlapping elements, cards readable at all sizes"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "7.2",

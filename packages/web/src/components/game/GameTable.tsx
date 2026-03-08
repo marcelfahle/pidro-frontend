@@ -75,9 +75,9 @@ export function GameTable({
       : youCardsRaw;
 
   return (
-    <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1 max-md:px-1 max-md:pb-2">
-      <div className="relative aspect-[4/3] w-full max-h-[calc(100dvh-2rem)] max-w-[1120px] max-md:max-h-[calc(100dvh-1rem)] max-md:aspect-[10/16]">
-        <div className="absolute left-4 top-0 right-auto z-20 flex max-md:inset-x-0 max-md:justify-center">
+    <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1 max-lg:px-1 max-lg:pb-2">
+      <div className="relative aspect-[4/3] w-full max-h-[calc(100dvh-2rem)] max-w-[1120px] max-lg:max-h-[calc(100dvh-1.5rem)] max-lg:aspect-[3/4] max-md:max-h-[calc(100dvh-1rem)] max-md:aspect-[10/16]">
+        <div className="absolute left-4 top-0 right-auto z-20 flex max-lg:inset-x-0 max-lg:justify-center">
           <GameInfoBar
             phase={phase}
             trumpSuit={trumpSuit}
@@ -90,7 +90,7 @@ export function GameTable({
           />
         </div>
 
-        <div className="absolute inset-x-[18%] top-[24%] bottom-[22%] z-10 max-md:inset-x-[14%] max-md:top-[42%] max-md:bottom-[22%]">
+        <div className="absolute inset-x-[18%] top-[24%] bottom-[22%] z-10 max-lg:inset-x-[16%] max-lg:top-[28%] max-md:inset-x-[14%] max-md:top-[42%] max-md:bottom-[22%]">
           <div className="pidro-panel pidro-panel--glow flex h-full items-center justify-center rounded-[22px] p-4 sm:p-5">
             <CenterContent
               phase={phase}
@@ -109,7 +109,7 @@ export function GameTable({
         </div>
 
         {north && (
-          <div className="absolute left-1/2 top-[16%] z-20 w-[46%] -translate-x-1/2 max-md:top-[24%] max-md:w-[46%]">
+          <div className="absolute left-1/2 top-[16%] z-20 w-[46%] -translate-x-1/2 max-lg:top-[18%] max-md:top-[24%]">
             <PlayerHand
               position="north"
               {...getPlayerCards(north.absolutePosition)}
@@ -129,7 +129,7 @@ export function GameTable({
         )}
 
         {west && (
-          <div className="absolute left-[3%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-md:left-[2%] max-md:top-[49%] max-md:w-[17%]">
+          <div className="absolute left-[3%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:left-[2%] max-lg:w-[18%] max-md:top-[49%] max-md:w-[17%]">
             <PlayerHand
               position="west"
               {...getPlayerCards(west.absolutePosition)}
@@ -149,7 +149,7 @@ export function GameTable({
         )}
 
         {east && (
-          <div className="absolute right-[3%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-md:right-[2%] max-md:top-[49%] max-md:w-[17%]">
+          <div className="absolute right-[3%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:right-[2%] max-lg:w-[18%] max-md:top-[49%] max-md:w-[17%]">
             <PlayerHand
               position="east"
               {...getPlayerCards(east.absolutePosition)}
@@ -181,7 +181,7 @@ export function GameTable({
                   }
                 : southCards;
             return (
-              <div className="absolute bottom-[7%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-md:bottom-[8%] max-md:w-[94%]">
+              <div className="absolute bottom-[7%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-lg:w-[82%] max-md:bottom-[8%] max-md:w-[94%]">
                 <PlayerHand
                   position="south"
                   {...filteredCards}
@@ -206,7 +206,7 @@ export function GameTable({
           type="button"
           aria-label="Leave Game"
           onClick={onLeave}
-          className="pidro-icon-button absolute bottom-[3%] right-[3%] z-30 max-md:bottom-[4%] max-md:right-[4%]"
+          className="pidro-icon-button absolute bottom-[3%] right-[3%] z-30 max-lg:bottom-[4%] max-lg:right-[4%]"
         >
           <span className="text-xl font-black">⤴</span>
         </button>

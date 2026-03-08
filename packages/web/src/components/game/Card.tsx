@@ -39,9 +39,10 @@ const SIZE_CLASSES: Record<CardSize, SizeStyles> = {
     point: 'text-[8px] h-4 w-4',
   },
   lg: {
-    wrapper: 'h-[104px] w-[72px] max-md:h-[92px] max-md:w-[62px] max-sm:h-[82px] max-sm:w-[56px]',
-    rank: 'text-[15px]',
-    suitLarge: 'text-[2rem] max-sm:text-[1.7rem]',
+    wrapper:
+      'h-[104px] w-[72px] max-lg:h-[96px] max-lg:w-[66px] max-md:h-[92px] max-md:w-[62px] max-sm:h-[82px] max-sm:w-[56px]',
+    rank: 'text-[15px] max-lg:text-[14px]',
+    suitLarge: 'text-[2rem] max-lg:text-[1.85rem] max-sm:text-[1.7rem]',
     suitSmall: 'text-[11px]',
     point: 'text-[10px] h-5 w-5',
   },
