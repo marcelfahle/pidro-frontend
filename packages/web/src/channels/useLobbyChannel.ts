@@ -14,6 +14,7 @@ export const useLobbyChannel = () => {
   const removeRoom = useLobbyStore((s) => s.removeRoom);
   const setStats = useLobbyStore((s) => s.setStats);
   const setLoading = useLobbyStore((s) => s.setLoading);
+  const setError = useLobbyStore((s) => s.setError);
 
   useEffect(() => {
     referenceCount++;
@@ -22,6 +23,7 @@ export const useLobbyChannel = () => {
       if (globalChannel) return;
 
       setLoading(true);
+      setError(null);
 
       const channel = phoenixSocket.channel('lobby');
       let presences = {};
@@ -35,10 +37,15 @@ export const useLobbyChannel = () => {
           setRooms(rooms);
           setStats({ active_games: rooms.length });
           setLoading(false);
+          setError(null);
         })
         .receive('error', (resp) => {
           console.error('[LobbyChannel] Unable to join', resp);
           setLoading(false);
+          const reason =
+            (resp as { reason?: string } | undefined)?.reason ||
+            'Unable to connect to lobby. Please try again.';
+          setError(reason);
         });
 
       channel.on('lobby_update', (payload: Record<string, unknown>) => {
@@ -111,5 +118,5 @@ export const useLobbyChannel = () => {
         globalChannel = null;
       }
     };
-  }, [setRooms, addRoom, updateRoom, removeRoom, setStats, setLoading]);
+  }, [setRooms, addRoom, updateRoom, removeRoom, setStats, setLoading, setError]);
 };

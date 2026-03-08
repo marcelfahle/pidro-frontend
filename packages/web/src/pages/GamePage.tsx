@@ -19,6 +19,10 @@ import { Spinner } from '../components/ui/Spinner';
 import { ToastContainer, useToast } from '../components/ui/Toast';
 import { useAuthStore } from '../stores/auth';
 
+function getHttpStatus(err: unknown): number | undefined {
+  return (err as { response?: { status?: number } })?.response?.status;
+}
+
 const ROOM_POLL_INTERVAL = 3000;
 
 function deriveSeatConfig(room: Room): { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType } {
@@ -90,6 +94,8 @@ export function GamePage() {
   const [roomError, setRoomError] = useState<string | null>(null);
   const [channelEnabled, setChannelEnabled] = useState(false);
   const [handShaking, setHandShaking] = useState(false);
+  const [optimisticCard, setOptimisticCard] = useState<Card | null>(null);
+  const fetchIdRef = useRef(0);
 
   const roomConfigRef = useRef<{
     name: string;
@@ -101,6 +107,49 @@ export function GamePage() {
 
   const [ownerDecisionQueue, setOwnerDecisionQueue] = useState<OwnerDecisionEvent[]>([]);
   const dismissedSeatsRef = useRef<Set<Position>>(new Set());
+
+  const fetchRoom = useCallback(
+    async (roomCode: string, playerId: string) => {
+      const currentFetchId = ++fetchIdRef.current;
+      setRoomLoading(true);
+      setRoomError(null);
+      setChannelEnabled(false);
+      try {
+        const room = await lobbyApi.getRoom(roomCode);
+        if (fetchIdRef.current !== currentFetchId) return;
+
+        roomConfigRef.current = {
+          name: room.name ?? 'Game Room',
+          hostId: room.host_id ?? null,
+          seats: deriveSeatConfig(room),
+        };
+
+        initFromRoom({ room, youPlayerId: playerId });
+        setChannelEnabled(true);
+      } catch (err: unknown) {
+        if (fetchIdRef.current !== currentFetchId) return;
+        const status = getHttpStatus(err);
+        if (status === 404) {
+          setRoomError('Room not found. It may have been closed.');
+        } else if (status === 403) {
+          setRoomError('You do not have access to this room.');
+        } else {
+          setRoomError('Failed to connect to server. Please check your connection.');
+        }
+      } finally {
+        if (fetchIdRef.current === currentFetchId) setRoomLoading(false);
+      }
+    },
+    [initFromRoom],
+  );
+
+  const handleRetry = useCallback(() => {
+    setOptimisticCard(null);
+    reset();
+    if (code && userId) {
+      fetchRoom(code, userId);
+    }
+  }, [reset, code, userId, fetchRoom]);
 
   const handleSeatEvent = useCallback(
     (event: SeatEvent) => {
@@ -145,41 +194,8 @@ export function GamePage() {
 
   useEffect(() => {
     if (!code || !userId) return;
-
-    const roomCode = code;
-    const playerId = userId;
-    let cancelled = false;
-
-    async function fetchRoom() {
-      setRoomLoading(true);
-      setRoomError(null);
-      try {
-        const room = await lobbyApi.getRoom(roomCode);
-        if (cancelled) return;
-
-        roomConfigRef.current = {
-          name: room.name ?? 'Game Room',
-          hostId: room.host_id ?? null,
-          seats: deriveSeatConfig(room),
-        };
-
-        initFromRoom({ room, youPlayerId: playerId });
-        setChannelEnabled(true);
-      } catch {
-        if (!cancelled) {
-          setRoomError('Failed to load game room.');
-        }
-      } finally {
-        if (!cancelled) setRoomLoading(false);
-      }
-    }
-
-    fetchRoom();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [code, userId, initFromRoom]);
+    fetchRoom(code, userId);
+  }, [code, userId, fetchRoom]);
 
   useGameChannel({
     roomCode: code ?? '',
@@ -222,6 +238,7 @@ export function GamePage() {
         addToast(message, 'error');
 
         if (event === 'play_card') {
+          setOptimisticCard(null);
           setHandShaking(true);
           setTimeout(() => setHandShaking(false), 400);
         }
@@ -232,6 +249,7 @@ export function GamePage() {
 
   const handlePlayCard = useCallback(
     (card: Card) => {
+      setOptimisticCard(card);
       pushAction('play_card', { card: { rank: card.rank, suit: card.suit } });
     },
     [pushAction],
@@ -306,6 +324,15 @@ export function GamePage() {
     }
   }, [navigate, addToast]);
 
+  // Clear optimistic card when server state updates (confirms the play)
+  const prevServerStateRef = useRef(serverState);
+  if (serverState !== prevServerStateRef.current) {
+    prevServerStateRef.current = serverState;
+    if (optimisticCard) {
+      setOptimisticCard(null);
+    }
+  }
+
   if (!code) {
     return <ShellMessage title="Invalid Game Code">Invalid game code.</ShellMessage>;
   }
@@ -322,17 +349,29 @@ export function GamePage() {
   }
 
   if (roomError) {
+    const isNotFound = roomError.includes('not found');
     return (
       <ShellMessage
-        title="Room Error"
+        title={isNotFound ? 'Room Not Found' : 'Connection Error'}
         action={
-          <button
-            type="button"
-            onClick={() => navigate('/lobby')}
-            className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
-          >
-            Back to Lobby
-          </button>
+          <div className="flex gap-3">
+            {!isNotFound && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="rounded-[7px] border border-emerald-300/40 bg-emerald-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+              >
+                Retry
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => navigate('/lobby')}
+              className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+            >
+              Back to Lobby
+            </button>
+          </div>
         }
       >
         <p className="text-red-200">{roomError}</p>
@@ -345,13 +384,22 @@ export function GamePage() {
       <ShellMessage
         title="Connection Error"
         action={
-          <button
-            type="button"
-            onClick={() => navigate('/lobby')}
-            className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
-          >
-            Back to Lobby
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="rounded-[7px] border border-emerald-300/40 bg-emerald-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+            >
+              Retry
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/lobby')}
+              className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+            >
+              Back to Lobby
+            </button>
+          </div>
         }
       >
         <p className="text-red-200">{lastError}</p>
@@ -392,6 +440,7 @@ export function GamePage() {
               onSelectHand={handleSelectHand}
               onLeave={handleLeave}
               handShaking={handShaking}
+              optimisticCard={optimisticCard}
             />
 
             {isGameOver && (

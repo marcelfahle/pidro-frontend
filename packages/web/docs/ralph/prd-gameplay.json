@@ -363,7 +363,7 @@
             "Ensure no unhandled promise rejections from channel push() calls — wrap all in try/catch or .receive('error')",
             "Verify: All loading states display. All error states display. No console errors during normal gameplay"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "7.3",

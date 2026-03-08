@@ -23,6 +23,7 @@ interface GameTableProps {
   onSelectHand: (cards: CardType[]) => void;
   onLeave: () => void;
   handShaking?: boolean;
+  optimisticCard?: CardType | null;
 }
 
 export function GameTable({
@@ -34,6 +35,7 @@ export function GameTable({
   onSelectHand,
   onLeave,
   handShaking = false,
+  optimisticCard = null,
 }: GameTableProps) {
   const { serverState, legalActions } = useGameStore(
     useShallow((s) => ({
@@ -64,7 +66,13 @@ export function GameTable({
   }
 
   const youPlayer = players.find((p) => p.isYou);
-  const youCards = youPlayer ? getPlayerCards(youPlayer.absolutePosition).cards : null;
+  const youCardsRaw = youPlayer ? getPlayerCards(youPlayer.absolutePosition).cards : null;
+  const youCards =
+    optimisticCard && youCardsRaw
+      ? youCardsRaw.filter(
+          (c) => !(c.rank === optimisticCard.rank && c.suit === optimisticCard.suit),
+        )
+      : youCardsRaw;
 
   return (
     <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1 max-md:px-1 max-md:pb-2">
@@ -93,6 +101,7 @@ export function GameTable({
               onPass={onPass}
               onDeclareTrump={onDeclareTrump}
               onSelectHand={onSelectHand}
+              optimisticCard={optimisticCard}
             />
           </div>
         </div>
@@ -157,26 +166,39 @@ export function GameTable({
           </div>
         )}
 
-        {south && (
-          <div className="absolute bottom-[7%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-md:bottom-[8%] max-md:w-[94%]">
-            <PlayerHand
-              position="south"
-              {...getPlayerCards(south.absolutePosition)}
-              username={south.username}
-              isYou={south.isYou}
-              isDealer={viewModel.dealerAbsolute === south.absolutePosition}
-              isCurrentTurn={south.isCurrentTurn}
-              isConnected={south.isConnected}
-              isTeammate={south.isTeammate}
-              seatStatus={south.seatStatus}
-              legalActions={south.isYou ? legalActions : []}
-              trumpSuit={trumpSuit}
-              statusText={playerStatusText(south.absolutePosition, viewModel, serverState)}
-              onPlayCard={south.isYou ? onPlayCard : undefined}
-              shaking={south.isYou && handShaking}
-            />
-          </div>
-        )}
+        {south &&
+          (() => {
+            const southCards = getPlayerCards(south.absolutePosition);
+            const filteredCards =
+              optimisticCard && south.isYou && southCards.cards
+                ? {
+                    cards: southCards.cards.filter(
+                      (c) => !(c.rank === optimisticCard.rank && c.suit === optimisticCard.suit),
+                    ),
+                    cardCount: southCards.cardCount - 1,
+                  }
+                : southCards;
+            return (
+              <div className="absolute bottom-[7%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-md:bottom-[8%] max-md:w-[94%]">
+                <PlayerHand
+                  position="south"
+                  {...filteredCards}
+                  username={south.username}
+                  isYou={south.isYou}
+                  isDealer={viewModel.dealerAbsolute === south.absolutePosition}
+                  isCurrentTurn={south.isCurrentTurn}
+                  isConnected={south.isConnected}
+                  isTeammate={south.isTeammate}
+                  seatStatus={south.seatStatus}
+                  legalActions={south.isYou ? legalActions : []}
+                  trumpSuit={trumpSuit}
+                  statusText={playerStatusText(south.absolutePosition, viewModel, serverState)}
+                  onPlayCard={south.isYou ? onPlayCard : undefined}
+                  shaking={south.isYou && handShaking}
+                />
+              </div>
+            );
+          })()}
 
         <button
           type="button"
@@ -247,6 +269,7 @@ function CenterContent({
   onPass,
   onDeclareTrump,
   onSelectHand,
+  optimisticCard,
 }: {
   phase: string;
   viewModel: GameViewModel;
@@ -258,6 +281,7 @@ function CenterContent({
   onPass: () => void;
   onDeclareTrump: (suit: Suit) => void;
   onSelectHand: (cards: CardType[]) => void;
+  optimisticCard?: CardType | null;
 }) {
   if (phase === 'bidding' && serverState) {
     return (
@@ -296,7 +320,9 @@ function CenterContent({
   }
 
   if (phase === 'playing' && serverState) {
-    return <TrickArea viewModel={viewModel} serverState={serverState} />;
+    return (
+      <TrickArea viewModel={viewModel} serverState={serverState} optimisticCard={optimisticCard} />
+    );
   }
 
   const phaseLabels: Record<string, string> = {

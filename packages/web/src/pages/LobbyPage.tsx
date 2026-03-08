@@ -83,6 +83,7 @@ export function LobbyPage() {
   const rooms = useLobbyStore((s) => s.rooms);
   const stats = useLobbyStore((s) => s.stats);
   const lobbyLoading = useLobbyStore((s) => s.isLoading);
+  const lobbyError = useLobbyStore((s) => s.error);
   const user = useAuthStore((s) => s.user);
   const navigate = useNavigate();
 
@@ -221,6 +222,21 @@ export function LobbyPage() {
               </div>
 
               <div className="min-h-0 flex-1 overflow-y-auto">
+                {lobbyError && !lobbyLoading && (
+                  <div className="mb-4 rounded-[16px] border border-red-400/30 bg-red-500/10 p-4 text-center">
+                    <p className="text-sm font-black uppercase tracking-[0.1em] text-red-200">
+                      {lobbyError}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => window.location.reload()}
+                      className="mt-3 rounded-[7px] border border-red-300/30 bg-red-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-red-100"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
                 {/* Section 1: Your Tables (rejoinable games) */}
                 {categories.myRejoinable.length > 0 && (
                   <div className="mb-6">

@@ -24,9 +24,10 @@ function isNorthSouth(position: Position): boolean {
 interface TrickAreaProps {
   viewModel: GameViewModel;
   serverState: ServerGameState;
+  optimisticCard?: { rank: number; suit: Suit } | null;
 }
 
-export function TrickArea({ viewModel, serverState }: TrickAreaProps) {
+export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaProps) {
   const youPosition = viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
   const currentTrick = serverState.current_trick ?? [];
   const tricks = serverState.tricks ?? [];
@@ -40,6 +41,14 @@ export function TrickArea({ viewModel, serverState }: TrickAreaProps) {
     if (!youPosition) continue;
     const relPos = mapAbsoluteToRelative(play.player, youPosition);
     trickByRelative[relPos] = { card: play.card, isLeader: i === 0 };
+  }
+
+  // Show optimistic card in the south (you) slot if not already present
+  if (optimisticCard && !trickByRelative.south) {
+    trickByRelative.south = {
+      card: optimisticCard,
+      isLeader: currentTrick.length === 0,
+    };
   }
 
   let trickPoints = 0;

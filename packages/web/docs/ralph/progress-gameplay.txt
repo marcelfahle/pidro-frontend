@@ -109,3 +109,42 @@ the bot.
 **Remaining features:** 7.1-7.3 (polish)
 
 All checks pass: typecheck, lint, 111 tests.
+
+## 2026-03-08 — Phase 7.2: Loading states and error handling throughout the app
+
+Improved loading states, error handling, and added optimistic UI across the app.
+
+**GamePage error improvements** (GamePage.tsx):
+- Differentiated room errors by HTTP status: 404 → "Room not found. It may have
+  been closed." / 403 → "You do not have access to this room." / other → "Failed
+  to connect to server."
+- Added "Retry" button to both room error and channel error states (alongside
+  existing "Back to Lobby" button). Retry re-fetches the room and reconnects
+  the channel. Room-not-found errors only show "Back to Lobby" (no retry).
+- Extracted `fetchRoom()` as a reusable callback for both initial load and retry.
+  Uses a `fetchIdRef` counter to cancel stale fetches.
+
+**Optimistic card play** (GamePage.tsx, GameTable.tsx, TrickArea.tsx):
+- When a player clicks a card to play it, the card immediately moves from their
+  hand to the trick area (south slot) before the server responds.
+- `optimisticCard` state in GamePage flows to GameTable → TrickArea.
+- GameTable filters the optimistic card from the south player's hand so it
+  disappears instantly.
+- TrickArea adds the optimistic card to the south trick slot if not already
+  present from server state.
+- Cleared automatically when server state updates (confirming the play).
+- On error: cleared immediately, card reappears in hand with shake animation
+  and error toast.
+
+**Lobby channel error** (useLobbyChannel.ts, LobbyPage.tsx):
+- Lobby channel join failures now call `setError()` on the lobby store (previously
+  only logged to console).
+- LobbyPage reads the error state and shows a red error banner with "Retry" button
+  when the lobby channel fails to connect.
+
+**Test updates:**
+- Updated GamePage test to match new error message text and verify Retry button.
+
+**Remaining features:** 7.1 (responsive layout), 7.3 (turn indicators/game feel)
+
+All checks pass: typecheck, lint, 111 tests.

@@ -156,8 +156,11 @@ describe('GamePage', () => {
     renderGamePage();
 
     // Wait for the error message to appear
-    const errorText = await screen.findByText('Failed to load game room.');
+    const errorText = await screen.findByText(
+      'Failed to connect to server. Please check your connection.',
+    );
     expect(errorText).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Back to Lobby' })).toBeTruthy();
   });
 
