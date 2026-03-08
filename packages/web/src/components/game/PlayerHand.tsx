@@ -1,4 +1,10 @@
-import type { Card as CardType, LegalAction, RelativePosition, Suit } from '@pidro/shared';
+import type {
+  Card as CardType,
+  LegalAction,
+  RelativePosition,
+  SeatStatus,
+  Suit,
+} from '@pidro/shared';
 import type { CSSProperties } from 'react';
 import { Card } from './Card';
 import { GamePlayerCard } from './GamePlayerCard';
@@ -13,6 +19,7 @@ interface PlayerHandProps {
   isCurrentTurn: boolean;
   isConnected: boolean;
   isTeammate?: boolean;
+  seatStatus?: SeatStatus;
   legalActions: LegalAction[];
   trumpSuit: Suit | null;
   statusText?: string;
@@ -36,6 +43,7 @@ export function PlayerHand({
   isCurrentTurn,
   isConnected,
   isTeammate = false,
+  seatStatus = 'normal',
   legalActions,
   trumpSuit,
   statusText,
@@ -49,16 +57,21 @@ export function PlayerHand({
   const displayName = username ?? (isYou ? 'You' : 'Bot');
   const initial = displayName[0]?.toUpperCase() ?? '?';
   const roleLabel = isYou ? 'You' : isTeammate ? 'Partner' : 'Opponent';
-  const resolvedStatus = !isConnected
-    ? 'Offline'
-    : (statusText ?? (isCurrentTurn ? 'Your turn' : isDealer ? 'Dealer' : 'Ready'));
+  const isBot = seatStatus === 'bot_substitute' || seatStatus === 'permanent_bot';
+  const isReconnecting = seatStatus === 'reconnecting';
+  const resolvedStatus = isReconnecting
+    ? 'Reconnecting...'
+    : !isConnected && !isBot
+      ? 'Offline'
+      : (statusText ?? (isCurrentTurn ? 'Your turn' : isDealer ? 'Dealer' : 'Ready'));
 
   const hasPlayableCards = isYou && legalActions.some((a) => a.type === 'play_card');
 
+  const dimWrapper = (!isConnected || isReconnecting) && !isBot;
   const wrapperClass =
     position === 'south'
-      ? `flex w-full items-end justify-center gap-2.5 max-[390px]:flex-col max-[390px]:items-center ${!isConnected ? 'opacity-50' : ''}`
-      : `flex w-full flex-col items-center gap-1.5 ${!isConnected ? 'opacity-50' : ''}`;
+      ? `flex w-full items-end justify-center gap-2.5 max-[390px]:flex-col max-[390px]:items-center ${dimWrapper ? 'opacity-50' : ''}`
+      : `flex w-full flex-col items-center gap-1.5 ${dimWrapper ? 'opacity-50' : ''}`;
 
   const cardRailClass =
     position === 'south'
@@ -78,6 +91,7 @@ export function PlayerHand({
         isDealer={isDealer}
         isCurrentTurn={isCurrentTurn}
         isConnected={isConnected}
+        seatStatus={seatStatus}
         className={
           position === 'south'
             ? 'min-w-[168px] max-md:min-w-[132px] max-md:gap-2 max-md:px-2.5 max-md:py-2'

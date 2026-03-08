@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { lobbyApi } from '../api/lobby';
-import { pushGameAction, useGameChannel } from '../channels/useGameChannel';
+import { pushGameAction, type SeatEvent, useGameChannel } from '../channels/useGameChannel';
 import { GameOverOverlay } from '../components/game/GameOverOverlay';
 import { GameTable } from '../components/game/GameTable';
 import { WaitingRoom } from '../components/game/WaitingRoom';
@@ -92,6 +92,13 @@ export function GamePage() {
 
   const { messages: toastMessages, addToast, dismissToast } = useToast();
 
+  const handleSeatEvent = useCallback(
+    (event: SeatEvent) => {
+      addToast(event.message, event.variant);
+    },
+    [addToast],
+  );
+
   useEffect(() => {
     if (!code || !userId) return;
 
@@ -129,7 +136,7 @@ export function GamePage() {
     };
   }, [code, userId, initFromRoom]);
 
-  useGameChannel({ roomCode: code ?? '', enabled: channelEnabled });
+  useGameChannel({ roomCode: code ?? '', enabled: channelEnabled, onSeatEvent: handleSeatEvent });
 
   useEffect(() => {
     if (!code || !userId || !channelEnabled) return;

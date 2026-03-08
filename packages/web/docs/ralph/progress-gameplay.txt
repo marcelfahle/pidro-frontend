@@ -33,3 +33,44 @@ Also fixed:
   was already fully implemented.
 
 All checks pass: typecheck, lint, 111 tests.
+
+## 2026-03-08 — Phase 6.2: Seat status indicators for disconnected/bot players
+
+Implemented seat lifecycle event handling and visual indicators for disconnect
+scenarios in the game table.
+
+**Channel events added** (useGameChannel.ts):
+- `player_reconnecting` — Sets seat to 'reconnecting' status, shows warning toast
+- `bot_substitute_active` — Sets seat to 'bot_substitute', shows warning toast
+- `player_reclaimed_seat` — Resets seat to 'normal', shows success toast
+- `seat_permanently_botted` — Sets seat to 'permanent_bot', updates username to 'Bot'
+- `substitute_joined` — Resets seat to 'normal' with new username, shows success toast
+
+**Store changes** (shared/stores/game.ts):
+- Added `seatStatus: SeatStatus` field to `PlayerMeta` interface
+- Added `setSeatStatus(position, status, username?)` action
+- `SeatStatus` flows through `RelativePlayerView` to the view model
+
+**UI changes** (GamePlayerCard.tsx):
+- Reconnecting state: amber spinner + "Reconnecting..." text, dimmed opacity
+- Bot substitute state: robot emoji avatar, "Bot" badge (amber), subtext
+  "Bot · [PlayerName] can rejoin"
+- Permanent bot state: robot emoji avatar, "Bot" badge, simple "Bot" subtext
+- DC badge only shown for plain disconnects (not reconnecting or bot states)
+
+**Other changes:**
+- Added `amber` variant to Badge component
+- PlayerHand passes seatStatus through to GamePlayerCard
+- GameTable passes seatStatus from viewModel to each PlayerHand
+- GamePage passes onSeatEvent callback to useGameChannel for toast notifications
+- Fixed pre-existing TrickArea.tsx typecheck error (trick.number → idx)
+- Fixed pre-existing TrickArea.tsx lint warning (array index key → composite key)
+
+**PRD updates:**
+- Marked all previously-implemented features as passing (1.1-1.5, 2.1-2.2,
+  4.1-4.4, 5.1-5.3, 6.1) — these were already built but the PRD wasn't updated
+- Marked 6.2 as passing
+
+**Remaining features:** 6.3 (owner decision banner), 7.1-7.3 (polish)
+
+All checks pass: typecheck, lint, 111 tests.

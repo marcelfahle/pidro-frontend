@@ -34,7 +34,7 @@
             "Auth types: User {id, username, email, guest}, AuthResponse {user, token}",
             "Verify: TypeScript compiles with no errors"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "1.2",
@@ -49,7 +49,7 @@
             "Implement error handling: parse the server's {errors: [{code, title, detail}]} format into a usable error type",
             "Verify: TypeScript compiles with no errors"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "1.3",
@@ -67,7 +67,7 @@
             "Export a getSocket() function that returns the singleton socket instance",
             "Verify: TypeScript compiles with no errors"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "1.4",
@@ -80,7 +80,7 @@
             "Create a game store: {gameState, myPosition, role, legalActions, isConnected, roomCode}. Actions: setGameState(state), setLegalActions(actions), setPosition(pos), reset(). Derived getters: isMyTurn (gameState.current_turn === myPosition), myHand (gameState?.players[myPosition]?.hand), currentPhase (gameState?.phase)",
             "Verify: TypeScript compiles with no errors"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "1.5",
@@ -92,7 +92,7 @@
             "Both hooks should handle reconnection: when the socket reconnects, automatically rejoin the channel",
             "Verify: TypeScript compiles with no errors"
           ],
-          "passes": false
+          "passes": true
         }
       ]
     },
@@ -113,7 +113,7 @@
             "Style with Tailwind CSS. Clean, minimal design. The game's visual identity can come later — focus on functional and not ugly",
             "Verify: Pages render, forms submit, errors display"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "2.2",
@@ -126,7 +126,7 @@
             "Add a loading state while checking auth on app boot (don't flash login page for authenticated users)",
             "Verify: Refresh browser while logged in → stays logged in. Logout → redirected to login. Visit /lobby without auth → redirected to login"
           ],
-          "passes": false
+          "passes": true
         }
       ]
     },
@@ -182,7 +182,7 @@
             "Use the useGameChannel hook to connect. Show connection status indicator",
             "Verify: Game page loads, waiting room displays correctly, transitions to game on start"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "4.2",
@@ -196,7 +196,7 @@
             "Score display: both team scores visible, current bid info",
             "Verify: Layout renders correctly for all 4 possible player positions"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "4.3",
@@ -209,7 +209,7 @@
             "Cards in hand should be clickable/tappable to play them. On click, if it's a legal play, call playCard(card) via the game channel hook",
             "Verify: Cards render correctly for all ranks and suits. Hand sorts properly. Clicking plays a card"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "4.4",
@@ -223,7 +223,7 @@
             "Between tricks, show the previous trick briefly or have a 'last trick' indicator that can be hovered/tapped to see it",
             "Verify: Trick area shows played cards in correct positions, clears properly"
           ],
-          "passes": false
+          "passes": true
         }
       ]
     },
@@ -246,7 +246,7 @@
             "On bid/pass: call bid(amount) or pass() via the channel hook. Disable the UI while waiting for server response",
             "Verify: Bidding UI appears during bidding phase, bids submit correctly, bid history shows"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "5.2",
@@ -261,7 +261,7 @@
             "After trump is declared: briefly flash the trump suit, then show it permanently in the game info area",
             "Verify: Trump selection appears at right time, submits correctly, trump indicator shows"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "5.3",
@@ -275,7 +275,7 @@
             "If the player was on the winning team, the message is different from the losing team",
             "Verify: Game over screen shows with correct info, back to lobby works"
           ],
-          "passes": false
+          "passes": true
         }
       ]
     },
@@ -297,7 +297,7 @@
             "If reconnection fails after the grace period (server rejects with seat_permanently_filled or similar): show clear message 'Your seat was filled. The game continues.' with a 'Back to Lobby' button",
             "Verify: Disconnect/reconnect cycle works. Tab switch triggers reconnect check. Grace expiry handled"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "6.2",
@@ -313,7 +313,7 @@
             "All visual changes should be smooth (CSS transitions, not abrupt swaps)",
             "Verify: Each event triggers the correct visual change. Toasts appear and dismiss"
           ],
-          "passes": false
+          "passes": true
         },
         {
           "id": "6.3",

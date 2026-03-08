@@ -2,8 +2,13 @@ import type { LegalAction, Position, ServerGameState } from '@pidro/shared';
 import { useGameStore } from '@pidro/shared';
 import type { Channel } from 'phoenix';
 import { Presence } from 'phoenix';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { phoenixSocket } from './socket';
+
+export interface SeatEvent {
+  message: string;
+  variant: 'warning' | 'success' | 'error';
+}
 
 let globalGameChannel: Channel | null = null;
 let gameRefCount = 0;
@@ -12,6 +17,7 @@ let currentTopic: string | null = null;
 interface UseGameChannelOptions {
   roomCode: string;
   enabled?: boolean;
+  onSeatEvent?: (event: SeatEvent) => void;
 }
 
 function extractGameState(data: Record<string, unknown> | undefined): ServerGameState | null {
@@ -34,16 +40,24 @@ function extractGameState(data: Record<string, unknown> | undefined): ServerGame
   return null;
 }
 
-export const useGameChannel = ({ roomCode, enabled = true }: UseGameChannelOptions) => {
+export const useGameChannel = ({
+  roomCode,
+  enabled = true,
+  onSeatEvent,
+}: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
   const setYouPosition = useGameStore((s) => s.setYouPosition);
   const setRole = useGameStore((s) => s.setRole);
   const updateCurrentTurn = useGameStore((s) => s.updateCurrentTurn);
   const setPlayerConnected = useGameStore((s) => s.setPlayerConnected);
+  const setSeatStatus = useGameStore((s) => s.setSeatStatus);
   const addReadyPlayer = useGameStore((s) => s.addReadyPlayer);
   const setChannelStatus = useGameStore((s) => s.setChannelStatus);
   const setError = useGameStore((s) => s.setError);
+
+  const onSeatEventRef = useRef(onSeatEvent);
+  onSeatEventRef.current = onSeatEvent;
 
   useEffect(() => {
     if (!enabled || !roomCode) {
@@ -170,6 +184,68 @@ export const useGameChannel = ({ roomCode, enabled = true }: UseGameChannelOptio
         }
       });
 
+      channel.on('player_reconnecting', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        const username = (data?.username as string) || null;
+        if (position) {
+          setSeatStatus(position, 'reconnecting');
+          onSeatEventRef.current?.({
+            message: `${username ?? 'A player'} is reconnecting...`,
+            variant: 'warning',
+          });
+        }
+      });
+
+      channel.on('bot_substitute_active', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        const username = (data?.username as string) || (data?.player_name as string) || null;
+        if (position) {
+          setSeatStatus(position, 'bot_substitute');
+          onSeatEventRef.current?.({
+            message: `${username ?? 'A player'} disconnected. Bot is filling in.`,
+            variant: 'warning',
+          });
+        }
+      });
+
+      channel.on('player_reclaimed_seat', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        const username = (data?.username as string) || (data?.player_name as string) || null;
+        if (position) {
+          setSeatStatus(position, 'normal');
+          setPlayerConnected(null, position, true);
+          onSeatEventRef.current?.({
+            message: `${username ?? 'A player'} is back!`,
+            variant: 'success',
+          });
+        }
+      });
+
+      channel.on('seat_permanently_botted', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        if (position) {
+          setSeatStatus(position, 'permanent_bot', 'Bot');
+        }
+      });
+
+      channel.on('substitute_joined', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        const username = (data?.username as string) || (data?.player_name as string) || null;
+        if (position) {
+          setSeatStatus(position, 'normal', username);
+          setPlayerConnected(null, position, true);
+          onSeatEventRef.current?.({
+            message: `${username ?? 'A new player'} joined as substitute`,
+            variant: 'success',
+          });
+        }
+      });
+
       channel.onError(() => {
         setChannelStatus(false, true);
       });
@@ -201,6 +277,7 @@ export const useGameChannel = ({ roomCode, enabled = true }: UseGameChannelOptio
     setRole,
     updateCurrentTurn,
     setPlayerConnected,
+    setSeatStatus,
     addReadyPlayer,
     setChannelStatus,
     setError,

@@ -99,9 +99,10 @@ export function TrickArea({ viewModel, serverState }: TrickAreaProps) {
         <div className="flex w-full flex-wrap items-center justify-center gap-2">
           {tricks.map((trick, idx) => {
             const pts = trickPointTotal(trick, trumpSuit);
+            const trickKey = `trick-${idx.toString()}-${trick.winner}`;
             return (
               <div
-                key={trick.number ?? idx}
+                key={trickKey}
                 className="rounded-2xl border border-cyan-300/15 bg-black/10 px-3 py-2 text-center"
               >
                 <div className="flex justify-center -space-x-3">

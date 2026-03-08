@@ -1,6 +1,6 @@
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: 'green' | 'blue' | 'gray' | 'yellow' | 'red';
+  variant?: 'green' | 'blue' | 'gray' | 'yellow' | 'amber' | 'red';
   className?: string;
 }
 
@@ -11,6 +11,8 @@ const variantClasses = {
   gray: 'border border-white/20 bg-white/10 text-white/80 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]',
   yellow:
     'border border-[#ffcc54]/50 bg-[#d98e13]/22 text-[#fff0b2] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]',
+  amber:
+    'border border-amber-300/50 bg-amber-500/20 text-amber-100 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]',
   red: 'border border-red-200/45 bg-red-400/18 text-red-50 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03)]',
 } as const;
 

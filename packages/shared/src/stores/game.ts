@@ -8,6 +8,7 @@ import type {
   RelativePlayerView,
   LegalAction,
   Suit,
+  SeatStatus,
 } from '../types/game';
 import type { Position, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
@@ -24,6 +25,7 @@ function createEmptyPlayerMeta(position: Position): PlayerMeta {
     isTeammate: false,
     isOpponent: false,
     isConnected: false,
+    seatStatus: 'normal',
   };
 }
 
@@ -52,6 +54,11 @@ interface GameState {
     playerId: string | null,
     position: Position | null,
     connected: boolean
+  ) => void;
+  setSeatStatus: (
+    position: Position,
+    status: SeatStatus,
+    username?: string | null
   ) => void;
   addReadyPlayer: (position: Position) => void;
   setChannelStatus: (joined: boolean, rejoining?: boolean) => void;
@@ -108,6 +115,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         isTeammate: false,
         isOpponent: false,
         isConnected: true,
+        seatStatus: seat?.player?.is_bot ? 'bot_substitute' : 'normal',
       };
     });
 
@@ -206,6 +214,17 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { playerMeta: updated };
     }),
 
+  setSeatStatus: (position, status, username) =>
+    set((curr) => {
+      const updated = { ...curr.playerMeta };
+      updated[position] = {
+        ...updated[position],
+        seatStatus: status,
+        ...(username !== undefined ? { username } : {}),
+      };
+      return { playerMeta: updated };
+    }),
+
   addReadyPlayer: (position) =>
     set((curr) => ({
       readyPlayers: curr.readyPlayers.includes(position)
@@ -281,6 +300,7 @@ export function useGameViewModel(): GameViewModel | null {
         isOpponent: meta.isOpponent,
         isConnected: meta.isConnected,
         isCurrentTurn,
+        seatStatus: meta.seatStatus,
       };
     });
 

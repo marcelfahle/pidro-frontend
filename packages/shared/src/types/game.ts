@@ -1,5 +1,7 @@
 import type { Position } from './lobby';
 
+export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot';
+
 export type GamePhase =
   | 'dealer_selection'
   | 'dealing'
@@ -80,6 +82,7 @@ export interface PlayerMeta {
   isTeammate: boolean;
   isOpponent: boolean;
   isConnected: boolean;
+  seatStatus: SeatStatus;
 }
 
 export type RelativePosition = 'north' | 'east' | 'south' | 'west';
@@ -94,6 +97,7 @@ export interface RelativePlayerView {
   isOpponent: boolean;
   isConnected: boolean;
   isCurrentTurn: boolean;
+  seatStatus: SeatStatus;
 }
 
 export interface GameViewModel {

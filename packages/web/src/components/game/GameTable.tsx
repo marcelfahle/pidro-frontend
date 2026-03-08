@@ -108,6 +108,7 @@ export function GameTable({
               isCurrentTurn={north.isCurrentTurn}
               isConnected={north.isConnected}
               isTeammate={north.isTeammate}
+              seatStatus={north.seatStatus}
               legalActions={north.isYou ? legalActions : []}
               trumpSuit={trumpSuit}
               statusText={playerStatusText(north.absolutePosition, viewModel, serverState)}
@@ -127,6 +128,7 @@ export function GameTable({
               isCurrentTurn={west.isCurrentTurn}
               isConnected={west.isConnected}
               isTeammate={west.isTeammate}
+              seatStatus={west.seatStatus}
               legalActions={west.isYou ? legalActions : []}
               trumpSuit={trumpSuit}
               statusText={playerStatusText(west.absolutePosition, viewModel, serverState)}
@@ -146,6 +148,7 @@ export function GameTable({
               isCurrentTurn={east.isCurrentTurn}
               isConnected={east.isConnected}
               isTeammate={east.isTeammate}
+              seatStatus={east.seatStatus}
               legalActions={east.isYou ? legalActions : []}
               trumpSuit={trumpSuit}
               statusText={playerStatusText(east.absolutePosition, viewModel, serverState)}
@@ -165,6 +168,7 @@ export function GameTable({
               isCurrentTurn={south.isCurrentTurn}
               isConnected={south.isConnected}
               isTeammate={south.isTeammate}
+              seatStatus={south.seatStatus}
               legalActions={south.isYou ? legalActions : []}
               trumpSuit={trumpSuit}
               statusText={playerStatusText(south.absolutePosition, viewModel, serverState)}
