@@ -40,11 +40,15 @@ vi.mock('../channels/useGameChannel', () => ({
 // Mock lobby API
 const mockGetRoom = vi.fn();
 const mockLeaveRoom = vi.fn();
+const mockWatchRoom = vi.fn();
+const mockUnwatchRoom = vi.fn();
 const mockCreateRoom = vi.fn();
 vi.mock('../api/lobby', () => ({
   lobbyApi: {
     getRoom: (...args: unknown[]) => mockGetRoom(...args),
     leaveRoom: (...args: unknown[]) => mockLeaveRoom(...args),
+    watchRoom: (...args: unknown[]) => mockWatchRoom(...args),
+    unwatchRoom: (...args: unknown[]) => mockUnwatchRoom(...args),
     createRoom: (...args: unknown[]) => mockCreateRoom(...args),
   },
 }));
@@ -121,10 +125,13 @@ function setupDefaults(overrides: Record<string, unknown> = {}) {
       },
     },
     readyPlayers: [],
+    turnTimer: null,
     youPositionAbs: null,
+    role: null,
     isChannelJoined: false,
     lastError: null,
     initFromRoom: mockInitFromRoom,
+    setError: vi.fn(),
     reset: mockReset,
     _viewModel: null,
   });
@@ -269,6 +276,45 @@ describe('GamePage', () => {
     expect(screen.getByRole('button', { name: 'Back to Lobby' })).toBeTruthy();
   });
 
+  it('shows the inactivity title when the server force-disconnects the player', async () => {
+    setupDefaults();
+    Object.assign(mockGameStoreState, {
+      lastError:
+        'Disconnected for inactivity after repeated turn timeouts. Retry to rejoin when ready.',
+      isChannelJoined: false,
+    });
+    mockGetRoom.mockResolvedValue({ code: 'TEST1', status: 'waiting', seats: [] });
+
+    renderGamePage();
+
+    const title = await screen.findByText('Disconnected for Inactivity');
+    expect(title).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
+  });
+
+  it('offers a watch-as-spectator fallback when reconnection grace expires', async () => {
+    setupDefaults();
+    Object.assign(mockGameStoreState, {
+      lastError: 'reconnection grace period expired',
+      isChannelJoined: false,
+    });
+
+    mockGetRoom
+      .mockResolvedValueOnce({ code: 'TEST1', status: 'playing', seats: [] })
+      .mockResolvedValueOnce({ code: 'TEST1', status: 'playing', seats: [] });
+    mockWatchRoom.mockResolvedValue({ code: 'TEST1', status: 'playing', seats: [] });
+
+    renderGamePage();
+
+    const watchButton = await screen.findByRole('button', { name: 'Watch as Spectator' });
+    await userEvent.click(watchButton);
+
+    await waitFor(() => {
+      expect(mockWatchRoom).toHaveBeenCalledWith('TEST1');
+      expect(mockGetRoom).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('resets game store on unmount', () => {
     setupDefaults();
     mockGetRoom.mockReturnValue(new Promise(() => {}));
@@ -309,6 +355,7 @@ describe('GamePage', () => {
     const gameOverViewModel = {
       phase: 'game_over',
       roomCode: 'TEST1',
+      viewerPositionAbsolute: 'south',
       trumpSuit: null,
       dealerAbsolute: null,
       currentTrick: [],
@@ -406,6 +453,7 @@ describe('GamePage', () => {
     const gameOverViewModel = {
       phase: 'complete',
       roomCode: 'TEST1',
+      viewerPositionAbsolute: 'south',
       trumpSuit: null,
       dealerAbsolute: null,
       currentTrick: [],

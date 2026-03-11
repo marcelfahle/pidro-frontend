@@ -1,4 +1,4 @@
-import type { Card, Position, Room, SeatType, Suit } from '@pidro/shared';
+import type { ActiveTurnTimer, Card, Position, Room, SeatType, Suit } from '@pidro/shared';
 import { useGameStore, useGameViewModel } from '@pidro/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -33,6 +33,17 @@ function deriveSeatConfig(room: Room): { seat_2: SeatType; seat_3: SeatType; sea
     return 'open';
   };
   return { seat_2: seatType(1), seat_3: seatType(2), seat_4: seatType(3) };
+}
+
+function hasActiveTurnWindow(turnTimer: ActiveTurnTimer | null): boolean {
+  if (!turnTimer || turnTimer.scope !== 'seat') {
+    return false;
+  }
+
+  const elapsedMs = Date.now() - turnTimer.receivedAtMs;
+  const remainingMs = Math.max(0, turnTimer.remainingMs - elapsedMs);
+  const transitionRemainingMs = Math.max(0, remainingMs - turnTimer.durationMs);
+  return transitionRemainingMs <= 0 && remainingMs > 0;
 }
 
 function ShellMessage({
@@ -71,9 +82,12 @@ export function GamePage() {
     playerMeta,
     readyPlayers,
     youPositionAbs,
+    role,
+    turnTimer,
     isChannelJoined,
     lastError,
     initFromRoom,
+    setError,
     reset,
   } = useGameStore(
     useShallow((s) => ({
@@ -81,9 +95,12 @@ export function GamePage() {
       playerMeta: s.playerMeta,
       readyPlayers: s.readyPlayers,
       youPositionAbs: s.youPositionAbs,
+      role: s.role,
+      turnTimer: s.turnTimer,
       isChannelJoined: s.isChannelJoined,
       lastError: s.lastError,
       initFromRoom: s.initFromRoom,
+      setError: s.setError,
       reset: s.reset,
     })),
   );
@@ -284,12 +301,15 @@ export function GamePage() {
 
   const handleLeave = useCallback(() => {
     if (code) {
-      lobbyApi.leaveRoom(code).catch(() => {
+      const leavePromise =
+        role === 'spectator' ? lobbyApi.unwatchRoom(code) : lobbyApi.leaveRoom(code);
+
+      leavePromise.catch(() => {
         // Best effort
       });
     }
     navigate('/lobby');
-  }, [code, navigate]);
+  }, [code, navigate, role]);
 
   const handleBackToLobby = useCallback(() => {
     navigate('/lobby');
@@ -298,6 +318,31 @@ export function GamePage() {
   const handleReady = useCallback(() => {
     pushAction('ready', {});
   }, [pushAction]);
+
+  const handleWatchAsSpectator = useCallback(async () => {
+    if (!code || !userId) {
+      return;
+    }
+
+    setRoomLoading(true);
+    setRoomError(null);
+    setChannelEnabled(false);
+
+    try {
+      await lobbyApi.watchRoom(code);
+      setError(null);
+      await fetchRoom(code, userId);
+    } catch (err: unknown) {
+      const status = getHttpStatus(err);
+      setRoomLoading(false);
+      setChannelEnabled(false);
+      setError(
+        status === 404 || status === 403
+          ? 'This game is no longer available to spectate.'
+          : 'Unable to watch this game right now.',
+      );
+    }
+  }, [code, userId, setError, fetchRoom]);
 
   const handlePlayAgain = useCallback(async () => {
     const config = roomConfigRef.current;
@@ -380,18 +425,40 @@ export function GamePage() {
   }
 
   if (lastError && !isChannelJoined) {
+    const isTimeoutDisconnect = lastError.toLowerCase().includes('inactivity');
+    const canWatchAsSpectator =
+      lastError.toLowerCase().includes('seat permanently filled') ||
+      lastError.toLowerCase().includes('grace period expired');
+
     return (
       <ShellMessage
-        title="Connection Error"
+        title={
+          isTimeoutDisconnect
+            ? 'Disconnected for Inactivity'
+            : canWatchAsSpectator
+              ? 'Seat Filled'
+              : 'Connection Error'
+        }
         action={
           <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={handleRetry}
-              className="rounded-[7px] border border-emerald-300/40 bg-emerald-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
-            >
-              Retry
-            </button>
+            {!canWatchAsSpectator && (
+              <button
+                type="button"
+                onClick={handleRetry}
+                className="rounded-[7px] border border-emerald-300/40 bg-emerald-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+              >
+                Retry
+              </button>
+            )}
+            {canWatchAsSpectator && (
+              <button
+                type="button"
+                onClick={handleWatchAsSpectator}
+                className="rounded-[7px] border border-emerald-300/40 bg-emerald-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
+              >
+                Watch as Spectator
+              </button>
+            )}
             <button
               type="button"
               onClick={() => navigate('/lobby')}
@@ -402,7 +469,11 @@ export function GamePage() {
           </div>
         }
       >
-        <p className="text-red-200">{lastError}</p>
+        <p className="text-red-200">
+          {canWatchAsSpectator
+            ? 'Your seat was filled. The game continues without you.'
+            : lastError}
+        </p>
       </ShellMessage>
     );
   }
@@ -412,7 +483,10 @@ export function GamePage() {
     serverState !== null && (serverState.phase === 'complete' || serverState.phase === 'game_over');
 
   const isMyTurn = viewModel?.currentTurnAbsolute === youPositionAbs;
-  const visibleDecision = ownerDecisionQueue.length > 0 && !isMyTurn ? ownerDecisionQueue[0] : null;
+  const visibleDecision =
+    ownerDecisionQueue.length > 0 && !hasActiveTurnWindow(turnTimer) && !isMyTurn
+      ? ownerDecisionQueue[0]
+      : null;
 
   if (hasGameStarted && viewModel) {
     return (

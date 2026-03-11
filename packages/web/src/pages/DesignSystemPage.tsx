@@ -111,7 +111,7 @@ export function DesignSystemPage() {
                       phase="playing"
                       trumpSuit="diamonds"
                       scores={{ north_south: 37, east_west: 29 }}
-                      youPosition="south"
+                      viewerPosition="south"
                       roundNumber={6}
                       roomCode="DSGN"
                       currentBid={9}

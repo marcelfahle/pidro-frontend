@@ -15,6 +15,10 @@ class WebPhoenixSocket extends PhoenixSocket {
   }
 
   private setupVisibilityListener() {
+    if (this.boundHandler) {
+      return;
+    }
+
     this.boundHandler = () => {
       if (document.visibilityState === 'visible') {
         this.connect();

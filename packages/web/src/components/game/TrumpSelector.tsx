@@ -17,12 +17,10 @@ interface TrumpSelectorProps {
 }
 
 export function TrumpSelector({ viewModel, legalActions, onDeclareTrump }: TrumpSelectorProps) {
-  const youPosition = viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
-  const isYourTurn = viewModel.currentTurnAbsolute === youPosition;
-
   const legalSuits = legalActions
     .filter((a): a is Extract<LegalAction, { type: 'declare_trump' }> => a.type === 'declare_trump')
     .map((a) => a.suit);
+  const isYourTurn = legalSuits.length > 0;
 
   const currentTurnPlayer = viewModel.players.find((p) => p.isCurrentTurn);
   const waitingForName = currentTurnPlayer?.isYou

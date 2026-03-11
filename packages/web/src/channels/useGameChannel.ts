@@ -1,4 +1,11 @@
-import type { LegalAction, Position, ServerGameState } from '@pidro/shared';
+import type {
+  ActiveTurnTimer,
+  GamePhase,
+  LegalAction,
+  Position,
+  ServerGameState,
+  ServerTurnTimerPayload,
+} from '@pidro/shared';
 import { useGameStore } from '@pidro/shared';
 import type { Channel } from 'phoenix';
 import { Presence } from 'phoenix';
@@ -24,6 +31,77 @@ interface UseGameChannelOptions {
   enabled?: boolean;
   onSeatEvent?: (event: SeatEvent) => void;
   onOwnerDecision?: (event: OwnerDecisionEvent) => void;
+}
+
+function seatDisplayName(position: Position | null, fallback?: string | null): string {
+  if (fallback) {
+    return fallback;
+  }
+
+  if (!position) {
+    return 'A player';
+  }
+
+  return useGameStore.getState().playerMeta[position].username ?? 'A player';
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function normalizeTurnTimer(payload: unknown): ActiveTurnTimer | null {
+  if (!payload || typeof payload !== 'object') return null;
+
+  const data = payload as Partial<ServerTurnTimerPayload>;
+  const timerId = asNumber(data.timer_id);
+  const durationMs = asNumber(data.duration_ms);
+  const transitionDelayMs = asNumber(data.transition_delay_ms);
+  const eventSeq = asNumber(data.event_seq);
+
+  if (
+    timerId == null ||
+    durationMs == null ||
+    transitionDelayMs == null ||
+    eventSeq == null ||
+    (data.scope !== 'seat' && data.scope !== 'room') ||
+    typeof data.phase !== 'string'
+  ) {
+    return null;
+  }
+
+  const remainingMs = asNumber(data.remaining_ms) ?? durationMs + transitionDelayMs;
+
+  return {
+    timerId,
+    scope: data.scope,
+    position: (data.position as Position | null | undefined) ?? null,
+    phase: data.phase as GamePhase,
+    durationMs,
+    transitionDelayMs,
+    serverTime: typeof data.server_time === 'string' ? data.server_time : new Date().toISOString(),
+    remainingMs,
+    receivedAtMs: Date.now(),
+    eventSeq,
+  };
+}
+
+function describeAction(action: Record<string, unknown> | undefined): string {
+  switch (action?.type) {
+    case 'pass':
+      return 'passed';
+    case 'bid':
+      return `bid ${String(action.amount ?? '')}`.trim();
+    case 'declare_trump':
+      return `declared ${String(action.suit ?? 'trump')}`;
+    case 'play_card':
+      return 'played a card';
+    case 'select_hand':
+      return 'selected a hand';
+    case 'select_dealer':
+      return 'selected the dealer';
+    default:
+      return 'acted';
+  }
 }
 
 function extractGameState(data: Record<string, unknown> | undefined): ServerGameState | null {
@@ -54,7 +132,10 @@ export const useGameChannel = ({
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
+  const setTurnTimer = useGameStore((s) => s.setTurnTimer);
+  const clearTurnTimer = useGameStore((s) => s.clearTurnTimer);
   const setYouPosition = useGameStore((s) => s.setYouPosition);
+  const youPosition = useGameStore((s) => s.youPositionAbs);
   const setRole = useGameStore((s) => s.setRole);
   const updateCurrentTurn = useGameStore((s) => s.updateCurrentTurn);
   const setPlayerConnected = useGameStore((s) => s.setPlayerConnected);
@@ -68,6 +149,9 @@ export const useGameChannel = ({
 
   const onOwnerDecisionRef = useRef(onOwnerDecision);
   onOwnerDecisionRef.current = onOwnerDecision;
+
+  const youPositionRef = useRef(youPosition);
+  youPositionRef.current = youPosition;
 
   useEffect(() => {
     if (!enabled || !roomCode) {
@@ -113,10 +197,17 @@ export const useGameChannel = ({
 
           const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
           setLegalActions(legalActions);
+          setTurnTimer(normalizeTurnTimer(response?.turn_timer));
         })
         .receive('error', (resp) => {
           console.error('[GameChannel] Unable to join', topic, resp);
+          if (globalGameChannel === channel) {
+            globalGameChannel = null;
+            currentTopic = null;
+          }
+          channel.leave();
           setChannelStatus(false);
+          clearTurnTimer();
           const reason =
             (resp as { reason?: string } | undefined)?.reason || 'Unable to join game room.';
           setError(reason);
@@ -130,6 +221,46 @@ export const useGameChannel = ({
           setServerState(gameState);
           setLegalActions(legalActions);
         }
+      });
+
+      channel.on('turn_timer_started', (payload: unknown) => {
+        setTurnTimer(normalizeTurnTimer(payload));
+      });
+
+      channel.on('turn_timer_cancelled', (payload: unknown) => {
+        const data = payload as { timer_id?: number } | undefined;
+        clearTurnTimer(data?.timer_id ?? null);
+      });
+
+      channel.on('turn_auto_played', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const scope = data?.scope;
+        const position = (data?.position as Position | null | undefined) ?? null;
+        const action = data?.action as Record<string, unknown> | undefined;
+
+        if (scope === 'room') {
+          onSeatEventRef.current?.({
+            message: `Dealer selection timed out. The server ${describeAction(action)}.`,
+            variant: 'warning',
+          });
+          return;
+        }
+
+        if (position && position === youPositionRef.current) {
+          onSeatEventRef.current?.({
+            message: `Time expired. The server ${describeAction(action)} for you.`,
+            variant: 'warning',
+          });
+        }
+      });
+
+      channel.on('force_disconnect', () => {
+        clearTurnTimer();
+        setRole(null);
+        setChannelStatus(false, false);
+        setError(
+          'Disconnected for inactivity after repeated turn timeouts. Retry to rejoin when ready.',
+        );
       });
 
       channel.on('turn_changed', (payload: unknown) => {
@@ -183,6 +314,9 @@ export const useGameChannel = ({
         const data = payload as Record<string, unknown> | undefined;
         const playerId = (data?.user_id as string) || null;
         const position = (data?.position as Position) || null;
+        if (position) {
+          setSeatStatus(position, 'normal');
+        }
         setPlayerConnected(playerId, position, true);
       });
 
@@ -197,13 +331,9 @@ export const useGameChannel = ({
       channel.on('player_reconnecting', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = (data?.username as string) || null;
         if (position) {
+          setPlayerConnected(null, position, false);
           setSeatStatus(position, 'reconnecting');
-          onSeatEventRef.current?.({
-            message: `${username ?? 'A player'} is reconnecting...`,
-            variant: 'warning',
-          });
         }
       });
 
@@ -212,9 +342,10 @@ export const useGameChannel = ({
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
         if (position) {
-          setSeatStatus(position, 'bot_substitute');
+          setSeatStatus(position, 'bot_substitute', username);
+          setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
-            message: `${username ?? 'A player'} disconnected. Bot is filling in.`,
+            message: `${seatDisplayName(position, username)} disconnected. Bot is filling in.`,
             variant: 'warning',
           });
         }
@@ -225,10 +356,10 @@ export const useGameChannel = ({
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
         if (position) {
-          setSeatStatus(position, 'normal');
+          setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
-            message: `${username ?? 'A player'} is back!`,
+            message: `${seatDisplayName(position, username)} is back!`,
             variant: 'success',
           });
         }
@@ -238,7 +369,26 @@ export const useGameChannel = ({
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
-          setSeatStatus(position, 'permanent_bot', 'Bot');
+          setSeatStatus(position, 'permanent_bot');
+          setPlayerConnected(null, position, true);
+        }
+      });
+
+      channel.on('substitute_available', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        if (position) {
+          setSeatStatus(position, 'vacant');
+          setPlayerConnected(null, position, false);
+        }
+      });
+
+      channel.on('substitute_seat_closed', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const position = (data?.position as Position) || null;
+        if (position) {
+          setSeatStatus(position, 'permanent_bot');
+          setPlayerConnected(null, position, true);
         }
       });
 
@@ -247,7 +397,7 @@ export const useGameChannel = ({
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
         if (position) {
-          setSeatStatus(position, 'normal', username);
+          setSeatStatus(position, 'normal', username ?? null);
           setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
             message: `${username ?? 'A new player'} joined as substitute`,
@@ -259,8 +409,10 @@ export const useGameChannel = ({
       channel.on('owner_decision_available', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const playerName =
-          (data?.player_name as string) || (data?.username as string) || 'A player';
+        const playerName = seatDisplayName(
+          position,
+          ((data?.player_name as string) || (data?.username as string) || null) as string | null,
+        );
         if (position) {
           onOwnerDecisionRef.current?.({ position, playerName });
         }
@@ -271,6 +423,10 @@ export const useGameChannel = ({
       });
 
       channel.onClose(() => {
+        if (globalGameChannel === channel) {
+          globalGameChannel = null;
+          currentTopic = null;
+        }
         setChannelStatus(false, false);
         setRole(null);
       });
@@ -293,6 +449,8 @@ export const useGameChannel = ({
     enabled,
     setServerState,
     setLegalActions,
+    setTurnTimer,
+    clearTurnTimer,
     setYouPosition,
     setRole,
     updateCurrentTurn,

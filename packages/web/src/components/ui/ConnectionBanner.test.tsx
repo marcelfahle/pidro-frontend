@@ -16,8 +16,18 @@ describe('ConnectionBanner', () => {
     expect(container.innerHTML).toBe('');
   });
 
-  it('shows Reconnecting banner when disconnected', () => {
+  it('renders nothing before the first successful connection', () => {
     render(<ConnectionBanner isConnected={false} />);
+    expect(screen.queryByText('Reconnecting...')).toBeNull();
+  });
+
+  it('shows Reconnecting banner after a connected session disconnects', () => {
+    const { rerender } = render(<ConnectionBanner isConnected={true} />);
+
+    act(() => {
+      rerender(<ConnectionBanner isConnected={false} />);
+    });
+
     expect(screen.getByText('Reconnecting...')).toBeTruthy();
   });
 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import { useMemo } from 'react';
 import type {
+  ActiveTurnTimer,
   ServerGameState,
   PlayerMeta,
   GameViewModel,
@@ -39,6 +40,7 @@ interface GameState {
   legalActions: LegalAction[];
   playerMeta: Record<Position, PlayerMeta>;
   readyPlayers: Position[];
+  turnTimer: ActiveTurnTimer | null;
 
   isChannelJoined: boolean;
   isRejoining: boolean;
@@ -47,19 +49,17 @@ interface GameState {
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
   setServerState: (state: ServerGameState | Record<string, any>) => void;
   setLegalActions: (actions: LegalAction[]) => void;
+  setTurnTimer: (timer: ActiveTurnTimer | null) => void;
+  clearTurnTimer: (timerId?: number | null) => void;
   setYouPosition: (position: Position) => void;
   setRole: (role: 'player' | 'spectator' | null) => void;
   updateCurrentTurn: (position: Position | null) => void;
   setPlayerConnected: (
     playerId: string | null,
     position: Position | null,
-    connected: boolean
+    connected: boolean,
   ) => void;
-  setSeatStatus: (
-    position: Position,
-    status: SeatStatus,
-    username?: string | null
-  ) => void;
+  setSeatStatus: (position: Position, status: SeatStatus, username?: string | null) => void;
   addReadyPlayer: (position: Position) => void;
   setChannelStatus: (joined: boolean, rejoining?: boolean) => void;
   setError: (err: string | null) => void;
@@ -82,6 +82,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   legalActions: [],
   playerMeta: { ...initialPlayerMeta },
   readyPlayers: [],
+  turnTimer: null,
   isChannelJoined: false,
   isRejoining: false,
   lastError: null,
@@ -105,7 +106,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       const playerId = positions?.[pos] ?? null;
       const seat = room.seats?.find(
         (s) =>
-          s.player?.id === playerId || s.position === pos || s.seat_index === POSITION_TO_INDEX[pos]
+          s.player?.id === playerId ||
+          s.position === pos ||
+          s.seat_index === POSITION_TO_INDEX[pos],
       );
       baseMeta[pos] = {
         position: pos,
@@ -154,7 +157,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             if (pos) acc[pos] = amount ?? acc[pos] ?? 'pass';
             return acc;
           },
-          {} as Record<Position, number | 'pass'>
+          {} as Record<Position, number | 'pass'>,
         );
       } else if (bidsRaw && typeof bidsRaw === 'object') {
         bids = bidsRaw as Record<Position, number | 'pass'>;
@@ -165,6 +168,9 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       const bidWinner: Position | null | undefined =
         raw.bid_winner ?? raw.highest_bid?.position ?? null;
+
+      const phase = (raw.phase as ServerGameState['phase'] | undefined) ?? null;
+      const isTerminalPhase = phase === 'complete' || phase === 'game_over';
 
       return {
         serverState: {
@@ -177,6 +183,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           bid_winner: bidWinner,
           highest_bid: raw.highest_bid,
         },
+        ...(isTerminalPhase ? { turnTimer: null } : {}),
       };
     }),
 
@@ -201,6 +208,17 @@ export const useGameStore = create<GameState>((set, get) => ({
   setRole: (role) => set({ role }),
 
   setLegalActions: (actions) => set({ legalActions: actions }),
+
+  setTurnTimer: (timer) => set({ turnTimer: timer }),
+
+  clearTurnTimer: (timerId) =>
+    set((curr) => {
+      if (timerId != null && curr.turnTimer?.timerId !== timerId) {
+        return {};
+      }
+
+      return { turnTimer: null };
+    }),
 
   updateCurrentTurn: (position) =>
     set((curr) => ({
@@ -249,6 +267,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       role: null,
       serverState: null,
       legalActions: [],
+      turnTimer: null,
       playerMeta: {
         north: createEmptyPlayerMeta('north'),
         east: createEmptyPlayerMeta('east'),
@@ -269,29 +288,27 @@ export function useGameViewModel(): GameViewModel | null {
       playerMeta: state.playerMeta,
       youPositionAbs: state.youPositionAbs,
       roomCode: state.roomCode,
-    }))
+    })),
   );
 
   return useMemo(() => {
-    if (!serverState || !youPositionAbs || !roomCode) {
+    if (!serverState || !roomCode) {
       return null;
     }
 
+    const viewerPositionAbs = youPositionAbs ?? 'south';
+
     const rawState = serverState as unknown as Record<string, unknown>;
     const currentPlayer =
-      serverState.current_player ??
-      (rawState.current_turn as Position | null | undefined) ??
-      null;
+      serverState.current_player ?? (rawState.current_turn as Position | null | undefined) ?? null;
     const trumpSuit = serverState.trump ?? (rawState.trump_suit as Suit | null) ?? null;
     const dealerPosition =
-      serverState.dealer ??
-      (rawState.current_dealer as Position | null | undefined) ??
-      null;
+      serverState.dealer ?? (rawState.current_dealer as Position | null | undefined) ?? null;
     const { phase } = serverState;
 
     const players: RelativePlayerView[] = POSITIONS.map((absPos) => {
       const meta = playerMeta[absPos];
-      const relPos = mapAbsoluteToRelative(absPos, youPositionAbs);
+      const relPos = mapAbsoluteToRelative(absPos, viewerPositionAbs);
       const isCurrentTurn = currentPlayer === absPos;
 
       return {
@@ -311,12 +328,15 @@ export function useGameViewModel(): GameViewModel | null {
     return {
       roomCode,
       phase,
+      viewerPositionAbsolute: viewerPositionAbs,
       trumpSuit,
       dealerAbsolute: dealerPosition ?? null,
-      dealerRelative: dealerPosition ? mapAbsoluteToRelative(dealerPosition, youPositionAbs) : null,
+      dealerRelative: dealerPosition
+        ? mapAbsoluteToRelative(dealerPosition, viewerPositionAbs)
+        : null,
       currentTurnAbsolute: currentPlayer ?? null,
       currentTurnRelative: currentPlayer
-        ? mapAbsoluteToRelative(currentPlayer, youPositionAbs)
+        ? mapAbsoluteToRelative(currentPlayer, viewerPositionAbs)
         : null,
       players,
     };

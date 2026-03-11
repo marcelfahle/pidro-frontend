@@ -301,6 +301,27 @@ button:disabled {
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
+.pidro-score-strip {
+  position: relative;
+  border-bottom: 2px solid rgba(215, 124, 0, 0.8);
+  background:
+    linear-gradient(180deg, rgba(255, 212, 95, 0.1) 0%, transparent 40%),
+    linear-gradient(180deg, #6b3100 0%, #4b1b00 100%);
+  color: #fff6d1;
+  box-shadow:
+    0 4px 12px rgba(28, 9, 0, 0.4),
+    inset 0 1px 0 rgba(255, 230, 165, 0.2);
+}
+
+@keyframes pidroTimerSweep {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(120%);
+  }
+}
+
 .pidro-score-plaque {
   position: relative;
   border-radius: 0 0 18px 18px;

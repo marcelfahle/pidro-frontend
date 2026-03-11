@@ -72,7 +72,7 @@ export function createLobbyApi(api: ApiClient) {
 
     joinRoom: async (
       code: string,
-      position?: PositionPreference
+      position?: PositionPreference,
     ): Promise<{ room: Room; assigned_position: string }> => {
       const body = position ? { position } : undefined;
       const response = await api.post<JoinRoomResponse>(`/api/v1/rooms/${code}/join`, body);
@@ -83,8 +83,19 @@ export function createLobbyApi(api: ApiClient) {
       };
     },
 
+    watchRoom: async (code: string): Promise<Room> => {
+      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/watch`);
+      const payload = response.data;
+      const rawRoom = payload?.data?.room ?? payload?.room ?? payload;
+      return normalizeRoom(rawRoom);
+    },
+
     leaveRoom: async (code: string): Promise<void> => {
       await api.delete(`/api/v1/rooms/${code}/leave`);
+    },
+
+    unwatchRoom: async (code: string): Promise<void> => {
+      await api.delete(`/api/v1/rooms/${code}/unwatch`);
     },
   };
 }

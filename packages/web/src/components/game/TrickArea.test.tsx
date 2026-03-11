@@ -82,6 +82,7 @@ function makeViewModel(overrides: Partial<GameViewModel> = {}): GameViewModel {
   return {
     roomCode: 'ABC',
     phase: 'playing',
+    viewerPositionAbsolute: 'south',
     trumpSuit: 'hearts',
     dealerAbsolute: 'north',
     dealerRelative: 'north',

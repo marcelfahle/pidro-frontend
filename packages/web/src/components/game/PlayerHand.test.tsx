@@ -54,7 +54,7 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getByText('Alice')).toBeTruthy();
+    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
   });
 
   it('shows dealer badge when player is dealer', () => {
@@ -212,6 +212,26 @@ describe('PlayerHand', () => {
     );
 
     expect(screen.getByText('No cards')).toBeTruthy();
+  });
+
+  it('shows a waiting placeholder for vacant substitute seats', () => {
+    render(
+      <PlayerHand
+        position="east"
+        cards={null}
+        cardCount={0}
+        username={null}
+        isYou={false}
+        isDealer={false}
+        isCurrentTurn={false}
+        isConnected={false}
+        seatStatus="vacant"
+        legalActions={[]}
+        trumpSuit={null}
+      />,
+    );
+
+    expect(screen.getAllByText('Waiting for player...').length).toBeGreaterThan(0);
   });
 
   it('shows turn indicator when it is the player turn', () => {

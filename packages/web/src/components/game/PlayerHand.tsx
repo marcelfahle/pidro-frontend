@@ -53,25 +53,37 @@ export function PlayerHand({
   const isVertical = position === 'east' || position === 'west';
   const sortedCards = cards ? sortPlayerCards(cards, trumpSuit) : null;
   const showFaceUp = isYou && sortedCards !== null;
+  const visibleCards = sortedCards ?? [];
   const count = sortedCards?.length ?? cardCount ?? 0;
-  const displayName = username ?? (isYou ? 'You' : 'Bot');
+  const displayName = username ?? (isYou ? 'You' : 'Player');
   const initial = displayName[0]?.toUpperCase() ?? '?';
   const roleLabel = isYou ? 'You' : isTeammate ? 'Partner' : 'Opponent';
   const isBot = seatStatus === 'bot_substitute' || seatStatus === 'permanent_bot';
   const isReconnecting = seatStatus === 'reconnecting';
+  const isVacant = seatStatus === 'vacant';
   const resolvedStatus = isReconnecting
     ? 'Reconnecting...'
-    : !isConnected && !isBot
-      ? 'Offline'
-      : (statusText ?? (isCurrentTurn ? 'Your turn' : isDealer ? 'Dealer' : 'Ready'));
+    : isVacant
+      ? 'Waiting for player...'
+      : !isConnected && !isBot
+        ? 'Offline'
+        : (statusText ?? (isCurrentTurn ? 'Your turn' : isDealer ? 'Dealer' : 'Ready'));
 
   const hasPlayableCards = isYou && legalActions.some((a) => a.type === 'play_card');
 
-  const dimWrapper = (!isConnected || isReconnecting) && !isBot;
-  const wrapperClass =
-    position === 'south'
-      ? `flex w-full items-end justify-center gap-2.5 max-[390px]:flex-col max-[390px]:items-center ${dimWrapper ? 'opacity-50' : ''}`
-      : `flex w-full flex-col items-center gap-1.5 ${dimWrapper ? 'opacity-50' : ''}`;
+  const dimWrapper = !isVacant && (!isConnected || isReconnecting) && !isBot;
+
+  const playerCardProps = {
+    displayName,
+    roleLabel,
+    statusText: resolvedStatus,
+    initial,
+    isYou,
+    isDealer,
+    isCurrentTurn,
+    isConnected,
+    seatStatus,
+  };
 
   const cardRailClass =
     position === 'south'
@@ -80,41 +92,190 @@ export function PlayerHand({
         ? 'flex flex-col items-center justify-center'
         : 'flex items-start justify-center';
 
+  // Desktop wrapper class
+  const wrapperClass =
+    position === 'south'
+      ? `flex w-full items-end justify-center gap-2.5 max-sm:flex-col max-sm:items-center max-sm:gap-1 ${dimWrapper ? 'opacity-50' : ''}`
+      : `flex w-full flex-col items-center gap-1.5 ${dimWrapper ? 'opacity-50' : ''}`;
+
+  // Mobile east/west: rotated card rail peeking from edges
+  if (isVacant) {
+    return (
+      <div className={wrapperClass}>
+        <GamePlayerCard
+          {...playerCardProps}
+          className={
+            position === 'south'
+              ? 'min-w-[168px] max-lg:min-w-[148px] max-md:min-w-[132px] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
+              : 'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
+          }
+        />
+        <WaitingForPlayer />
+      </div>
+    );
+  }
+
+  if (isVertical) {
+    return (
+      <div
+        className={`${dimWrapper ? 'opacity-50' : ''} flex w-full flex-col items-center gap-1.5`}
+      >
+        {/* Desktop: normal layout */}
+        <div className="max-sm:hidden contents">
+          <GamePlayerCard
+            {...playerCardProps}
+            className={
+              'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
+            }
+          />
+          {count === 0 ? (
+            <NoCards />
+          ) : showFaceUp ? (
+            <div className={cardRailClass}>
+              {sortedCards.map((card, index) => {
+                const playable = hasPlayableCards && isCardPlayable(card, legalActions);
+                const isTrump = trumpSuit !== null && card.suit === trumpSuit;
+                return (
+                  <div
+                    key={`${card.rank}-${card.suit}`}
+                    style={cardOffsetStyle(index, sortedCards.length, position)}
+                  >
+                    <Card
+                      card={card}
+                      size="lg"
+                      playable={playable}
+                      isTrump={isTrump}
+                      onClick={playable && onPlayCard ? () => onPlayCard(card) : undefined}
+                      className={
+                        !playable && hasPlayableCards
+                          ? 'brightness-[0.6] saturate-[0.3] translate-y-0.5'
+                          : ''
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={cardRailClass}>
+              {Array.from({ length: count }, (_, i) => (
+                <div key={`back-${i.toString()}`} style={cardOffsetStyle(i, count, position)}>
+                  <Card faceDown size="md" />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile: rotated cards peeking from edge (badge rendered separately in GameTable) */}
+        <div className="hidden max-sm:flex max-sm:flex-col max-sm:items-center max-sm:gap-0">
+          {count > 0 && (
+            <>
+              <div className="flex flex-col items-center">
+                {Array.from({ length: Math.min(count, 6) }, (_, i) => (
+                  <div
+                    key={`peek-${i.toString()}`}
+                    className="rotate-90"
+                    style={{ marginTop: i === 0 ? 0 : -22 }}
+                  >
+                    <Card faceDown size="sm" />
+                  </div>
+                ))}
+              </div>
+              <span className="rounded-full border border-cyan-300/25 bg-black/70 px-1.5 py-px text-[10px] font-black text-white shadow-sm">
+                {count}
+              </span>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // North position
+  if (position === 'north') {
+    return (
+      <div
+        className={`${dimWrapper ? 'opacity-50' : ''} flex w-full flex-col items-center gap-1.5`}
+      >
+        {/* Desktop: badge on top, cards below */}
+        <div className="max-sm:hidden">
+          <GamePlayerCard
+            {...playerCardProps}
+            className={
+              'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
+            }
+          />
+        </div>
+        {count === 0 ? (
+          <NoCards />
+        ) : showFaceUp ? (
+          <div className={cardRailClass}>
+            {sortedCards.map((card, index) => {
+              const playable = hasPlayableCards && isCardPlayable(card, legalActions);
+              const isTrump = trumpSuit !== null && card.suit === trumpSuit;
+              return (
+                <div
+                  key={`${card.rank}-${card.suit}`}
+                  style={cardOffsetStyle(index, sortedCards.length, position)}
+                >
+                  <Card
+                    card={card}
+                    size="lg"
+                    playable={playable}
+                    isTrump={isTrump}
+                    onClick={playable && onPlayCard ? () => onPlayCard(card) : undefined}
+                    className={
+                      !playable && hasPlayableCards
+                        ? 'brightness-[0.6] saturate-[0.3] translate-y-0.5'
+                        : ''
+                    }
+                  />
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className={cardRailClass}>
+            {Array.from({ length: count }, (_, i) => (
+              <div key={`back-${i.toString()}`} style={cardOffsetStyle(i, count, position)}>
+                <Card faceDown size="md" />
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Mobile: compact badge below cards */}
+        <GamePlayerCard {...playerCardProps} compact className="hidden max-sm:inline-flex" />
+      </div>
+    );
+  }
+
+  // South position
   return (
     <div className={wrapperClass}>
-      <GamePlayerCard
-        displayName={displayName}
-        roleLabel={roleLabel}
-        statusText={resolvedStatus}
-        initial={initial}
-        isYou={isYou}
-        isDealer={isDealer}
-        isCurrentTurn={isCurrentTurn}
-        isConnected={isConnected}
-        seatStatus={seatStatus}
-        className={
-          position === 'south'
-            ? 'min-w-[168px] max-lg:min-w-[148px] max-md:min-w-[132px] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
-            : 'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
-        }
-      />
+      <div className="max-sm:hidden">
+        <GamePlayerCard
+          {...playerCardProps}
+          className={
+            'min-w-[168px] max-lg:min-w-[148px] max-md:min-w-[132px] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
+          }
+        />
+      </div>
+      {/* Mobile: compact badge */}
+      <GamePlayerCard {...playerCardProps} compact className="hidden max-sm:inline-flex" />
 
       {count === 0 ? (
-        <div className="flex h-16 items-center justify-center rounded-xl border border-dashed border-cyan-300/15 bg-black/10 px-4">
-          <span className="text-xs font-black uppercase tracking-[0.16em] text-cyan-50/45">
-            No cards
-          </span>
-        </div>
+        <NoCards />
       ) : showFaceUp ? (
         <div className={`${cardRailClass} ${shaking ? 'animate-shake' : ''}`}>
-          {sortedCards.map((card, index) => {
+          {visibleCards.map((card, index) => {
             const playable = hasPlayableCards && isCardPlayable(card, legalActions);
             const isTrump = trumpSuit !== null && card.suit === trumpSuit;
 
             return (
               <div
                 key={`${card.rank}-${card.suit}`}
-                style={cardOffsetStyle(index, sortedCards.length, position)}
+                style={cardOffsetStyle(index, visibleCards.length, position)}
               >
                 <Card
                   card={card}
@@ -122,7 +283,11 @@ export function PlayerHand({
                   playable={playable}
                   isTrump={isTrump}
                   onClick={playable && onPlayCard ? () => onPlayCard(card) : undefined}
-                  className={!playable && hasPlayableCards ? 'opacity-60' : ''}
+                  className={
+                    !playable && hasPlayableCards
+                      ? 'brightness-[0.6] saturate-[0.3] translate-y-0.5'
+                      : ''
+                  }
                 />
               </div>
             );
@@ -137,6 +302,27 @@ export function PlayerHand({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function NoCards() {
+  return (
+    <div className="flex h-16 items-center justify-center rounded-xl border border-dashed border-cyan-300/15 bg-black/10 px-4">
+      <span className="text-xs font-black uppercase tracking-[0.16em] text-cyan-50/45">
+        No cards
+      </span>
+    </div>
+  );
+}
+
+function WaitingForPlayer() {
+  return (
+    <div className="flex h-16 min-w-[168px] items-center justify-center gap-2 rounded-xl border border-dashed border-amber-300/40 bg-amber-400/10 px-4 text-center">
+      <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-amber-200/90" />
+      <span className="text-xs font-black uppercase tracking-[0.14em] text-amber-100/90">
+        Waiting for player...
+      </span>
     </div>
   );
 }

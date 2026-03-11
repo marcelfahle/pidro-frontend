@@ -17,27 +17,37 @@ export function GameOverOverlay({
 }: GameOverOverlayProps) {
   const rawScores = serverState.scores ?? { north_south: 0, east_west: 0 };
   const youPlayer = viewModel.players.find((p) => p.isYou);
-  const youPosition = youPlayer?.absolutePosition ?? null;
-  const teamScores = getTeamScores(rawScores, youPosition);
+  const viewerPosition = viewModel.viewerPositionAbsolute;
+  const viewerIsSpectator = !youPlayer;
+  const teamScores = getTeamScores(rawScores, viewerPosition);
+  const homeTeamWon = teamScores.us > teamScores.them;
 
   let winnerLabel: string;
   let youWon: boolean | null = null;
 
-  if (teamScores.us > teamScores.them) {
-    winnerLabel = 'Your team wins!';
-    youWon = true;
-  } else if (teamScores.them > teamScores.us) {
-    winnerLabel = 'Opponents win!';
-    youWon = false;
+  if (rawScores.north_south > rawScores.east_west) {
+    winnerLabel = viewerIsSpectator
+      ? 'North / South win!'
+      : homeTeamWon
+        ? 'Your team wins!'
+        : 'Opponents win!';
+    youWon = viewerIsSpectator ? null : homeTeamWon;
+  } else if (rawScores.east_west > rawScores.north_south) {
+    winnerLabel = viewerIsSpectator
+      ? 'East / West win!'
+      : homeTeamWon
+        ? 'Your team wins!'
+        : 'Opponents win!';
+    youWon = viewerIsSpectator ? null : homeTeamWon;
   } else {
     winnerLabel = "It's a tie!";
     youWon = null;
   }
 
   const winnersAreNorthSouth =
-    teamScores.us === teamScores.them
+    rawScores.north_south === rawScores.east_west
       ? null
-      : isNorthSouthTeam(youPosition ?? 'north') === teamScores.us > teamScores.them;
+      : rawScores.north_south > rawScores.east_west;
 
   const winners = viewModel.players.filter((player) => {
     if (winnersAreNorthSouth == null) return true;
@@ -93,12 +103,12 @@ export function GameOverOverlay({
             </div>
             <div className="mt-4 grid grid-cols-2 gap-3 text-left">
               <ScoreTile
-                label="Us"
+                label={viewerIsSpectator ? 'North / South' : 'Us'}
                 value={teamScores.us}
                 highlighted={teamScores.us >= teamScores.them}
               />
               <ScoreTile
-                label="Them"
+                label={viewerIsSpectator ? 'East / West' : 'Them'}
                 value={teamScores.them}
                 highlighted={teamScores.them >= teamScores.us}
               />

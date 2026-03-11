@@ -12,6 +12,11 @@ export class PhoenixSocket {
   private socket: Socket | null = null;
   private tokenGetter: TokenGetter | null = null;
 
+  private reconnectDelay(tries: number) {
+    const schedule = [1000, 2000, 3000, 5000, 8000, 10_000];
+    return schedule[Math.max(0, Math.min(tries - 1, schedule.length - 1))] ?? 10_000;
+  }
+
   init({ config, getToken }: PhoenixSocketOptions) {
     if (this.socket) return this.socket;
     this.tokenGetter = getToken;
@@ -21,8 +26,8 @@ export class PhoenixSocket {
         const token = this.tokenGetter?.();
         return token ? { token } : {};
       },
-      heartbeatIntervalMs: 30_000,
-      reconnectAfterMs: (tries: number) => [1000, 2000, 5000, 10_000][tries - 1] ?? 10_000,
+      heartbeatIntervalMs: 15_000,
+      reconnectAfterMs: (tries: number) => this.reconnectDelay(tries),
     });
 
     return this.socket;

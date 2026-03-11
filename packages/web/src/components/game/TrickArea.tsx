@@ -37,6 +37,7 @@ interface TrickAreaProps {
 
 export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaProps) {
   const youPosition = viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
+  const viewerPosition = viewModel.viewerPositionAbsolute;
   const currentTrick = serverState.current_trick ?? [];
   const tricks = serverState.tricks ?? [];
   const trickNumber = tricks.length + 1;
@@ -49,8 +50,7 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
     {};
   for (let i = 0; i < currentTrick.length; i++) {
     const play = currentTrick[i];
-    if (!youPosition) continue;
-    const relPos = mapAbsoluteToRelative(play.player, youPosition);
+    const relPos = mapAbsoluteToRelative(play.player, viewerPosition);
     trickByRelative[relPos] = { card: play.card, isLeader: i === 0 };
   }
 
@@ -81,15 +81,13 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
   useEffect(() => {
     if (tricks.length > prevTrickCountRef.current && tricks.length > 0) {
       const lastTrick = tricks[tricks.length - 1];
-      if (youPosition) {
-        const winRelPos = mapAbsoluteToRelative(lastTrick.winner, youPosition);
-        setWinningSlot(winRelPos);
-        const timer = setTimeout(() => setWinningSlot(null), 1000);
-        return () => clearTimeout(timer);
-      }
+      const winRelPos = mapAbsoluteToRelative(lastTrick.winner, viewerPosition);
+      setWinningSlot(winRelPos);
+      const timer = setTimeout(() => setWinningSlot(null), 1000);
+      return () => clearTimeout(timer);
     }
     prevTrickCountRef.current = tricks.length;
-  }, [tricks.length, youPosition, tricks]);
+  }, [tricks.length, viewerPosition, tricks]);
 
   let trickPoints = 0;
   for (const play of currentTrick) {
@@ -103,11 +101,11 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
   return (
     <div className="flex h-full w-full flex-col items-center justify-between gap-4">
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <div className="rounded-full border border-cyan-300/20 bg-black/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-cyan-50/82">
+        <div className="rounded-full border border-cyan-300/20 bg-black/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-cyan-50/82 max-sm:hidden">
           Trick #{trickNumber}
         </div>
         {trumpSuit && (
-          <div className="rounded-full border border-cyan-300/20 bg-black/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-cyan-50/82">
+          <div className="rounded-full border border-cyan-300/20 bg-black/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-cyan-50/82 max-sm:hidden">
             Trump {SUIT_SYMBOLS[trumpSuit]}
           </div>
         )}
@@ -138,15 +136,22 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
             isWinner={winningSlot === 'west'}
           />
           <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-lg:h-20 max-lg:w-20 max-sm:h-16 max-sm:w-16">
-            {isYourTurn && currentTrick.length < 4 ? (
-              <span className="text-center text-sm font-black uppercase tracking-[0.12em] text-[#fff0b2]">
-                Your turn
-              </span>
-            ) : (
-              <span className="text-4xl text-cyan-50/65">
-                {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
-              </span>
-            )}
+            {/* Desktop: show "Your turn" or trump */}
+            <span className="max-sm:hidden">
+              {isYourTurn && currentTrick.length < 4 ? (
+                <span className="text-center text-sm font-black uppercase tracking-[0.12em] text-[#fff0b2]">
+                  Your turn
+                </span>
+              ) : (
+                <span className="text-4xl text-cyan-50/65">
+                  {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
+                </span>
+              )}
+            </span>
+            {/* Mobile: always show trump */}
+            <span className="hidden text-3xl text-cyan-50/65 max-sm:block">
+              {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
+            </span>
           </div>
           <TrickSlot
             position="east"

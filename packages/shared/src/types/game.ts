@@ -1,6 +1,7 @@
 import type { Position } from './lobby';
 
-export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot';
+export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
+export type TurnTimerScope = 'seat' | 'room';
 
 export type GamePhase =
   | 'dealer_selection'
@@ -74,6 +75,31 @@ export interface ServerGameState {
   round_number?: number;
 }
 
+export interface ServerTurnTimerPayload {
+  timer_id: number;
+  scope: TurnTimerScope;
+  position: Position | null;
+  phase: GamePhase;
+  duration_ms: number;
+  transition_delay_ms: number;
+  server_time: string;
+  remaining_ms?: number;
+  event_seq: number;
+}
+
+export interface ActiveTurnTimer {
+  timerId: number;
+  scope: TurnTimerScope;
+  position: Position | null;
+  phase: GamePhase;
+  durationMs: number;
+  transitionDelayMs: number;
+  serverTime: string;
+  remainingMs: number;
+  receivedAtMs: number;
+  eventSeq: number;
+}
+
 export interface PlayerMeta {
   position: Position;
   playerId: string | null;
@@ -103,6 +129,7 @@ export interface RelativePlayerView {
 export interface GameViewModel {
   roomCode: string;
   phase: GamePhase;
+  viewerPositionAbsolute: Position;
   trumpSuit: Suit | null;
   dealerAbsolute: Position | null;
   dealerRelative: RelativePosition | null;
