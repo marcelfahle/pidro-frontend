@@ -35,9 +35,25 @@ describe('LoginPage', () => {
 
     renderLoginPage();
 
+    expect(screen.getByRole('heading', { name: 'Classic Pidro. Live Tables.' })).toBeTruthy();
     expect(screen.getByLabelText('Username')).toBeTruthy();
     expect(screen.getByLabelText('Password')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy();
+  });
+
+  it('does not render legacy multiplayer and single-player promo tiles', () => {
+    mockUseAuthStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
+      selector({
+        status: 'unauthenticated',
+        user: null,
+        setSession: vi.fn(),
+      }),
+    );
+
+    renderLoginPage();
+
+    expect(screen.queryByText('Multiplayer')).toBeNull();
+    expect(screen.queryByText('Single Player')).toBeNull();
   });
 
   it('shows link to register page', () => {

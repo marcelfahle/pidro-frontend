@@ -39,26 +39,17 @@ export function LoginPage() {
       <div className="pidro-window min-h-[720px]">
         <div className="pidro-titlebar">Pidro</div>
         <div className="pidro-auth-grid relative gap-8 px-6 pb-8 pt-10 max-md:px-4 max-md:pt-8">
-          <section className="flex flex-col justify-between gap-8 px-2 py-4 max-md:px-0">
+          <section className="flex flex-col items-center justify-center gap-6 px-2 text-center max-md:px-0">
             <div className="flex flex-col items-center gap-6 text-center">
               <PidroWordmark className="mt-4" />
-              <p className="max-w-md text-sm leading-6 text-cyan-50/80">
-                The legacy table feel, rebuilt for the browser. Sign in to jump into multiplayer,
-                create a room, and keep the whole board playable in portrait or landscape.
-              </p>
-            </div>
-
-            <div className="mx-auto flex w-full max-w-xl flex-wrap justify-center gap-4">
-              <div className="min-w-[220px] rounded-[18px] border-2 border-[#d98d18] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] px-8 py-4 text-center shadow-[0_10px_20px_rgba(23,7,0,0.28)]">
-                <div className="text-2xl font-black uppercase tracking-[0.05em] text-[#ffd84a]">
-                  Multiplayer
-                </div>
-              </div>
-              <div className="min-w-[220px] rounded-[18px] border border-cyan-300/30 bg-cyan-950/30 px-8 py-4 text-center text-cyan-50/65 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04)]">
-                <div className="text-2xl font-black uppercase tracking-[0.05em]">Single Player</div>
-                <div className="mt-1 text-xs uppercase tracking-[0.2em] text-cyan-100/55">
-                  Coming later
-                </div>
+              <div className="max-w-md space-y-3">
+                <h1 className="text-3xl font-black uppercase tracking-[0.08em] text-white">
+                  Classic Pidro. Live Tables.
+                </h1>
+                <p className="text-sm leading-6 text-cyan-50/80">
+                  Sign in to rejoin your seat, open a table, or jump straight into live
+                  multiplayer from the browser.
+                </p>
               </div>
             </div>
           </section>
@@ -66,7 +57,7 @@ export function LoginPage() {
           <section className="flex items-center">
             <div className="pidro-panel pidro-panel--glow w-full p-6 max-md:p-5">
               <div className="mb-5 flex justify-center">
-                <div className="pidro-banner">Enter Multiplayer</div>
+                <div className="pidro-banner">Sign In</div>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
