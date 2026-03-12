@@ -107,6 +107,9 @@
         "vite": "^7.0.0",
         "vitest": "^4.0.18",
       },
+      "optionalDependencies": {
+        "lightningcss-linux-x64-gnu": "1.30.2",
+      },
     },
   },
   "packages": {
@@ -1489,6 +1492,8 @@
     "lightningcss": ["lightningcss@1.30.2", "", { "dependencies": { "detect-libc": "^2.0.3" }, "optionalDependencies": { "lightningcss-darwin-arm64": "1.30.2" } }, ""],
 
     "lightningcss-darwin-arm64": ["lightningcss-darwin-arm64@1.30.2", "", { "os": "darwin", "cpu": "arm64" }, ""],
+
+    "lightningcss-linux-x64-gnu": ["lightningcss-linux-x64-gnu@1.30.2", "", { "os": "linux", "cpu": "x64" }, "sha512-Cfd46gdmj1vQ+lR6VRTTadNHu6ALuw2pKR9lYq4FnhvgBc4zWY1EtZcAc6EffShbb1MFrIPfLDXD6Xprbnni4w=="],
 
     "lilconfig": ["lilconfig@3.1.3", "", {}, ""],
 
