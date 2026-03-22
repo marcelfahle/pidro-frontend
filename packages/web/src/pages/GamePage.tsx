@@ -1,23 +1,30 @@
-import type { ActiveTurnTimer, Card, Position, Room, SeatType, Suit } from '@pidro/shared';
-import { useGameStore, useGameViewModel } from '@pidro/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useShallow } from 'zustand/react/shallow';
-import { lobbyApi } from '../api/lobby';
+import type {
+  ActiveTurnTimer,
+  Card,
+  Position,
+  Room,
+  SeatType,
+  Suit,
+} from "@pidro/shared";
+import { useGameStore, useGameViewModel } from "@pidro/shared";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useShallow } from "zustand/react/shallow";
+import { lobbyApi } from "../api/lobby";
 import {
   type OwnerDecisionEvent,
   pushGameAction,
   type SeatEvent,
   useGameChannel,
-} from '../channels/useGameChannel';
-import { GameOverOverlay } from '../components/game/GameOverOverlay';
-import { GameTable } from '../components/game/GameTable';
-import { OwnerDecisionBanner } from '../components/game/OwnerDecisionBanner';
-import { WaitingRoom } from '../components/game/WaitingRoom';
-import { ConnectionBanner } from '../components/ui/ConnectionBanner';
-import { Spinner } from '../components/ui/Spinner';
-import { ToastContainer, useToast } from '../components/ui/Toast';
-import { useAuthStore } from '../stores/auth';
+} from "../channels/useGameChannel";
+import { GameOverOverlay } from "../components/game/GameOverOverlay";
+import { GameTable } from "../components/game/GameTable";
+import { OwnerDecisionBanner } from "../components/game/OwnerDecisionBanner";
+import { WaitingRoom } from "../components/game/WaitingRoom";
+import { ConnectionBanner } from "../components/ui/ConnectionBanner";
+import { Spinner } from "../components/ui/Spinner";
+import { ToastContainer, useToast } from "../components/ui/Toast";
+import { useAuthStore } from "../stores/auth";
 
 function getHttpStatus(err: unknown): number | undefined {
   return (err as { response?: { status?: number } })?.response?.status;
@@ -25,18 +32,22 @@ function getHttpStatus(err: unknown): number | undefined {
 
 const ROOM_POLL_INTERVAL = 3000;
 
-function deriveSeatConfig(room: Room): { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType } {
+function deriveSeatConfig(room: Room): {
+  seat_2: SeatType;
+  seat_3: SeatType;
+  seat_4: SeatType;
+} {
   const seats = room.seats ?? [];
   const seatType = (index: number): SeatType => {
     const seat = seats.find((s) => s.seat_index === index);
-    if (seat?.player?.is_bot) return 'ai';
-    return 'open';
+    if (seat?.player?.is_bot) return "ai";
+    return "open";
   };
   return { seat_2: seatType(1), seat_3: seatType(2), seat_4: seatType(3) };
 }
 
 function hasActiveTurnWindow(turnTimer: ActiveTurnTimer | null): boolean {
-  if (!turnTimer || turnTimer.scope !== 'seat') {
+  if (!turnTimer || turnTimer.scope !== "seat") {
     return false;
   }
 
@@ -121,7 +132,9 @@ export function GamePage() {
 
   const { messages: toastMessages, addToast, dismissToast } = useToast();
 
-  const [ownerDecisionQueue, setOwnerDecisionQueue] = useState<OwnerDecisionEvent[]>([]);
+  const [ownerDecisionQueue, setOwnerDecisionQueue] = useState<
+    OwnerDecisionEvent[]
+  >([]);
   const dismissedSeatsRef = useRef<Set<Position>>(new Set());
 
   const fetchRoom = useCallback(
@@ -135,7 +148,7 @@ export function GamePage() {
         if (fetchIdRef.current !== currentFetchId) return;
 
         roomConfigRef.current = {
-          name: room.name ?? 'Game Room',
+          name: room.name ?? "Game Room",
           hostId: room.host_id ?? null,
           seats: deriveSeatConfig(room),
         };
@@ -146,11 +159,13 @@ export function GamePage() {
         if (fetchIdRef.current !== currentFetchId) return;
         const status = getHttpStatus(err);
         if (status === 404) {
-          setRoomError('Room not found. It may have been closed.');
+          setRoomError("Room not found. It may have been closed.");
         } else if (status === 403) {
-          setRoomError('You do not have access to this room.');
+          setRoomError("You do not have access to this room.");
         } else {
-          setRoomError('Failed to connect to server. Please check your connection.');
+          setRoomError(
+            "Failed to connect to server. Please check your connection.",
+          );
         }
       } finally {
         if (fetchIdRef.current === currentFetchId) setRoomLoading(false);
@@ -191,13 +206,15 @@ export function GamePage() {
   const handleOpenSeat = useCallback(
     (position: Position) => {
       dismissedSeatsRef.current.add(position);
-      setOwnerDecisionQueue((prev) => prev.filter((e) => e.position !== position));
-      pushGameAction('open_seat', { position }).catch((err: unknown) => {
+      setOwnerDecisionQueue((prev) =>
+        prev.filter((e) => e.position !== position),
+      );
+      pushGameAction("open_seat", { position }).catch((err: unknown) => {
         const message =
-          typeof err === 'object' && err !== null && 'reason' in err
+          typeof err === "object" && err !== null && "reason" in err
             ? String((err as { reason: string }).reason)
-            : 'Failed to open seat';
-        addToast(message, 'error');
+            : "Failed to open seat";
+        addToast(message, "error");
       });
     },
     [addToast],
@@ -205,7 +222,9 @@ export function GamePage() {
 
   const handleKeepBot = useCallback((position: Position) => {
     dismissedSeatsRef.current.add(position);
-    setOwnerDecisionQueue((prev) => prev.filter((e) => e.position !== position));
+    setOwnerDecisionQueue((prev) =>
+      prev.filter((e) => e.position !== position),
+    );
   }, []);
 
   useEffect(() => {
@@ -214,7 +233,7 @@ export function GamePage() {
   }, [code, userId, fetchRoom]);
 
   useGameChannel({
-    roomCode: code ?? '',
+    roomCode: code ?? "",
     enabled: channelEnabled,
     onSeatEvent: handleSeatEvent,
     onOwnerDecision: handleOwnerDecision,
@@ -248,12 +267,12 @@ export function GamePage() {
         await pushGameAction(event, payload);
       } catch (err: unknown) {
         const message =
-          typeof err === 'object' && err !== null && 'reason' in err
+          typeof err === "object" && err !== null && "reason" in err
             ? String((err as { reason: string }).reason)
-            : 'Action failed';
-        addToast(message, 'error');
+            : "Action failed";
+        addToast(message, "error");
 
-        if (event === 'play_card') {
+        if (event === "play_card") {
           setOptimisticCard(null);
           setHandShaking(true);
           setTimeout(() => setHandShaking(false), 400);
@@ -266,32 +285,32 @@ export function GamePage() {
   const handlePlayCard = useCallback(
     (card: Card) => {
       setOptimisticCard(card);
-      pushAction('play_card', { card: { rank: card.rank, suit: card.suit } });
+      pushAction("play_card", { card: { rank: card.rank, suit: card.suit } });
     },
     [pushAction],
   );
 
   const handleBid = useCallback(
     (amount: number) => {
-      pushAction('bid', { amount });
+      pushAction("bid", { amount });
     },
     [pushAction],
   );
 
   const handlePass = useCallback(() => {
-    pushAction('pass', {});
+    pushAction("pass", {});
   }, [pushAction]);
 
   const handleDeclareTrump = useCallback(
     (suit: Suit) => {
-      pushAction('declare_trump', { suit });
+      pushAction("declare_trump", { suit });
     },
     [pushAction],
   );
 
   const handleSelectHand = useCallback(
     (cards: Card[]) => {
-      pushAction('select_hand', {
+      pushAction("select_hand", {
         cards: cards.map((c) => ({ rank: c.rank, suit: c.suit })),
       });
     },
@@ -301,21 +320,23 @@ export function GamePage() {
   const handleLeave = useCallback(() => {
     if (code) {
       const leavePromise =
-        role === 'spectator' ? lobbyApi.unwatchRoom(code) : lobbyApi.leaveRoom(code);
+        role === "spectator"
+          ? lobbyApi.unwatchRoom(code)
+          : lobbyApi.leaveRoom(code);
 
       leavePromise.catch(() => {
         // Best effort
       });
     }
-    navigate('/lobby');
+    navigate("/lobby");
   }, [code, navigate, role]);
 
   const handleBackToLobby = useCallback(() => {
-    navigate('/lobby');
+    navigate("/lobby");
   }, [navigate]);
 
   const handleReady = useCallback(() => {
-    pushAction('ready', {});
+    pushAction("ready", {});
   }, [pushAction]);
 
   const handleWatchAsSpectator = useCallback(async () => {
@@ -337,8 +358,8 @@ export function GamePage() {
       setChannelEnabled(false);
       setError(
         status === 404 || status === 403
-          ? 'This game is no longer available to spectate.'
-          : 'Unable to watch this game right now.',
+          ? "This game is no longer available to spectate."
+          : "Unable to watch this game right now.",
       );
     }
   }, [code, userId, setError, fetchRoom]);
@@ -346,25 +367,27 @@ export function GamePage() {
   const handlePlayAgain = useCallback(async () => {
     const config = roomConfigRef.current;
     if (!config) {
-      navigate('/lobby');
+      navigate("/lobby");
       return;
     }
 
     const hasBot =
-      config.seats.seat_2 === 'ai' || config.seats.seat_3 === 'ai' || config.seats.seat_4 === 'ai';
+      config.seats.seat_2 === "ai" ||
+      config.seats.seat_3 === "ai" ||
+      config.seats.seat_4 === "ai";
 
     try {
       const result = await lobbyApi.createRoom({
         name: config.name,
         settings: { min_games: 1, time_limit: 0, private: false },
         seats: config.seats,
-        ...(hasBot && { bot_difficulty: 'basic' }),
+        ...(hasBot && { bot_difficulty: "basic" }),
       });
       const newCode = result?.code;
-      if (!newCode) throw new Error('No room code returned');
+      if (!newCode) throw new Error("No room code returned");
       navigate(`/game/${newCode}`);
     } catch {
-      addToast('Failed to create new game', 'error');
+      addToast("Failed to create new game", "error");
     }
   }, [navigate, addToast]);
 
@@ -378,7 +401,9 @@ export function GamePage() {
   }
 
   if (!code) {
-    return <ShellMessage title="Invalid Game Code">Invalid game code.</ShellMessage>;
+    return (
+      <ShellMessage title="Invalid Game Code">Invalid game code.</ShellMessage>
+    );
   }
 
   if (roomLoading) {
@@ -393,10 +418,10 @@ export function GamePage() {
   }
 
   if (roomError) {
-    const isNotFound = roomError.includes('not found');
+    const isNotFound = roomError.includes("not found");
     return (
       <ShellMessage
-        title={isNotFound ? 'Room Not Found' : 'Connection Error'}
+        title={isNotFound ? "Room Not Found" : "Connection Error"}
         action={
           <div className="flex gap-3">
             {!isNotFound && (
@@ -410,7 +435,7 @@ export function GamePage() {
             )}
             <button
               type="button"
-              onClick={() => navigate('/lobby')}
+              onClick={() => navigate("/lobby")}
               className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
             >
               Back to Lobby
@@ -424,19 +449,19 @@ export function GamePage() {
   }
 
   if (lastError && !isChannelJoined) {
-    const isTimeoutDisconnect = lastError.toLowerCase().includes('inactivity');
+    const isTimeoutDisconnect = lastError.toLowerCase().includes("inactivity");
     const canWatchAsSpectator =
-      lastError.toLowerCase().includes('seat permanently filled') ||
-      lastError.toLowerCase().includes('grace period expired');
+      lastError.toLowerCase().includes("seat permanently filled") ||
+      lastError.toLowerCase().includes("grace period expired");
 
     return (
       <ShellMessage
         title={
           isTimeoutDisconnect
-            ? 'Disconnected for Inactivity'
+            ? "Disconnected for Inactivity"
             : canWatchAsSpectator
-              ? 'Seat Filled'
-              : 'Connection Error'
+              ? "Seat Filled"
+              : "Connection Error"
         }
         action={
           <div className="flex gap-3">
@@ -460,7 +485,7 @@ export function GamePage() {
             )}
             <button
               type="button"
-              onClick={() => navigate('/lobby')}
+              onClick={() => navigate("/lobby")}
               className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
             >
               Back to Lobby
@@ -470,7 +495,7 @@ export function GamePage() {
       >
         <p className="text-red-200">
           {canWatchAsSpectator
-            ? 'Your seat was filled. The game continues without you.'
+            ? "Your seat was filled. The game continues without you."
             : lastError}
         </p>
       </ShellMessage>
@@ -479,17 +504,20 @@ export function GamePage() {
 
   const hasGameStarted = serverState !== null && serverState.phase != null;
   const isGameOver =
-    serverState !== null && (serverState.phase === 'complete' || serverState.phase === 'game_over');
+    serverState !== null &&
+    (serverState.phase === "complete" || serverState.phase === "game_over");
 
   const isMyTurn = viewModel?.currentTurnAbsolute === youPositionAbs;
   const visibleDecision =
-    ownerDecisionQueue.length > 0 && !hasActiveTurnWindow(turnTimer) && !isMyTurn
+    ownerDecisionQueue.length > 0 &&
+    !hasActiveTurnWindow(turnTimer) &&
+    !isMyTurn
       ? ownerDecisionQueue[0]
       : null;
 
   if (hasGameStarted && viewModel) {
     return (
-      <div className="relative h-dvh w-full overflow-hidden">
+      <div className="relative h-dvh w-full select-none overflow-hidden">
         <ConnectionBanner isConnected={isChannelJoined} />
         <ToastContainer messages={toastMessages} onDismiss={dismissToast} />
         <div className="pidro-window h-full w-full">

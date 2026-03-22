@@ -1,0 +1,8 @@
+{
+  "name": "Pidro",
+  "short_name": "Pidro",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#01050b",
+  "theme_color": "#01050b"
+}

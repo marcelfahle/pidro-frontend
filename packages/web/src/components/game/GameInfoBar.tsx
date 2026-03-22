@@ -1,7 +1,7 @@
-import type { ActiveTurnTimer, GamePhase, Position, Suit } from '@pidro/shared';
-import { getTeamScores, SUIT_COLORS_RAW, SUIT_SYMBOLS } from '@pidro/shared';
-import { useEffect, useRef, useState } from 'react';
-import { TurnTimerBanner } from './TurnTimerBanner';
+import type { ActiveTurnTimer, GamePhase, Position, Suit } from "@pidro/shared";
+import { getTeamScores, SUIT_COLORS_RAW, SUIT_SYMBOLS } from "@pidro/shared";
+import { useEffect, useRef, useState } from "react";
+import { TurnTimerBanner } from "./TurnTimerBanner";
 
 interface GameInfoBarProps {
   phase: GamePhase;
@@ -17,23 +17,23 @@ interface GameInfoBarProps {
 }
 
 const PHASE_LABELS: Record<GamePhase, string> = {
-  dealer_selection: 'Selecting Dealer',
-  dealing: 'Dealing',
-  bidding: 'Bidding',
-  declaring: 'Declaring Trump',
-  declaring_trump: 'Declaring Trump',
-  trump_declaration: 'Declaring Trump',
-  discarding: 'Discarding',
-  second_deal: 'Second Deal',
-  playing: 'Playing',
-  scoring: 'Scoring',
-  hand_complete: 'Hand Complete',
-  complete: 'Game Over',
-  game_over: 'Game Over',
+  dealer_selection: "Selecting Dealer",
+  dealing: "Dealing",
+  bidding: "Bidding",
+  declaring: "Declaring Trump",
+  declaring_trump: "Declaring Trump",
+  trump_declaration: "Declaring Trump",
+  discarding: "Discarding",
+  second_deal: "Second Deal",
+  playing: "Playing",
+  scoring: "Scoring",
+  hand_complete: "Hand Complete",
+  complete: "Game Over",
+  game_over: "Game Over",
 };
 
 function isNorthSouth(position: Position): boolean {
-  return position === 'north' || position === 'south';
+  return position === "north" || position === "south";
 }
 
 function bidTeamLabel(
@@ -41,9 +41,9 @@ function bidTeamLabel(
   viewerPosition: Position,
   viewerIsSpectator: boolean,
 ): string {
-  if (viewerIsSpectator) return isNorthSouth(bidWinner) ? 'NS' : 'EW';
+  if (viewerIsSpectator) return isNorthSouth(bidWinner) ? "NS" : "EW";
   const sameTeam = isNorthSouth(bidWinner) === isNorthSouth(viewerPosition);
-  return sameTeam ? 'Us' : 'Them';
+  return sameTeam ? "Us" : "Them";
 }
 
 export function GameInfoBar({
@@ -58,11 +58,13 @@ export function GameInfoBar({
   bidWinner,
   turnTimer = null,
 }: GameInfoBarProps) {
-  const teamScores = scores ? getTeamScores(scores, viewerPosition) : { us: 0, them: 0 };
-  const homeTeamLabel = viewerIsSpectator ? 'North / South' : 'Us';
-  const awayTeamLabel = viewerIsSpectator ? 'East / West' : 'Them';
-  const mobileHomeTeamLabel = viewerIsSpectator ? 'NS' : 'Us';
-  const mobileAwayTeamLabel = viewerIsSpectator ? 'EW' : 'Them';
+  const teamScores = scores
+    ? getTeamScores(scores, viewerPosition)
+    : { us: 0, them: 0 };
+  const homeTeamLabel = viewerIsSpectator ? "North / South" : "Us";
+  const awayTeamLabel = viewerIsSpectator ? "East / West" : "Them";
+  const mobileHomeTeamLabel = viewerIsSpectator ? "NS" : "Us";
+  const mobileAwayTeamLabel = viewerIsSpectator ? "EW" : "Them";
 
   // Track score changes for bump animation
   const prevScoresRef = useRef(teamScores);
@@ -93,23 +95,27 @@ export function GameInfoBar({
   const showBid =
     currentBid != null &&
     bidWinner != null &&
-    (phase === 'playing' ||
-      phase === 'declaring' ||
-      phase === 'declaring_trump' ||
-      phase === 'trump_declaration' ||
-      phase === 'discarding' ||
-      phase === 'second_deal');
-  const bidLabel = bidWinner ? bidTeamLabel(bidWinner, viewerPosition, viewerIsSpectator) : null;
+    (phase === "playing" ||
+      phase === "declaring" ||
+      phase === "declaring_trump" ||
+      phase === "trump_declaration" ||
+      phase === "discarding" ||
+      phase === "second_deal");
+  const bidLabel = bidWinner
+    ? bidTeamLabel(bidWinner, viewerPosition, viewerIsSpectator)
+    : null;
 
   return (
     <div className="flex w-full flex-col items-center gap-2 max-sm:gap-0">
       {/* Mobile compact strip */}
-      <div className="pidro-score-strip hidden w-full items-center justify-between px-3 py-1.5 max-sm:flex">
+      <div className="pidro-score-strip hidden w-full items-center justify-between px-3 py-1.5 pt-[max(0.375rem,env(safe-area-inset-top))] max-sm:flex">
         <div className="flex items-center gap-1.5">
           <span className="text-[10px] font-black uppercase tracking-wider text-[#ffebaa]/65">
             {mobileHomeTeamLabel}
           </span>
-          <span className={`text-lg font-black text-white ${usBump ? 'animate-score-bump' : ''}`}>
+          <span
+            className={`text-lg font-black text-white ${usBump ? "animate-score-bump" : ""}`}
+          >
             {teamScores.us}
           </span>
         </div>
@@ -117,7 +123,9 @@ export function GameInfoBar({
         <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider text-[#fff0b8]">
           {trumpSuit && (
             <>
-              <span style={{ color: SUIT_COLORS_RAW[trumpSuit] }}>{SUIT_SYMBOLS[trumpSuit]}</span>
+              <span style={{ color: SUIT_COLORS_RAW[trumpSuit] }}>
+                {SUIT_SYMBOLS[trumpSuit]}
+              </span>
               <span className="text-white/40">·</span>
             </>
           )}
@@ -125,14 +133,18 @@ export function GameInfoBar({
           {showBid && (
             <>
               <span className="text-white/40">·</span>
-              <span>{bidLabel ? `Bid ${currentBid} (${bidLabel})` : `Bid ${currentBid}`}</span>
+              <span>
+                {bidLabel
+                  ? `Bid ${currentBid} (${bidLabel})`
+                  : `Bid ${currentBid}`}
+              </span>
             </>
           )}
         </div>
 
         <div className="flex items-center gap-1.5">
           <span
-            className={`text-lg font-black text-[#ffcc54] ${themBump ? 'animate-score-bump' : ''}`}
+            className={`text-lg font-black text-[#ffcc54] ${themBump ? "animate-score-bump" : ""}`}
           >
             {teamScores.them}
           </span>
@@ -150,7 +162,7 @@ export function GameInfoBar({
               {homeTeamLabel}
             </div>
             <div
-              className={`text-4xl font-black text-white max-lg:text-3xl ${usBump ? 'animate-score-bump' : ''}`}
+              className={`text-4xl font-black text-white max-lg:text-3xl ${usBump ? "animate-score-bump" : ""}`}
             >
               {teamScores.us}
             </div>
@@ -161,7 +173,7 @@ export function GameInfoBar({
               {awayTeamLabel}
             </div>
             <div
-              className={`text-4xl font-black text-[#ffcc54] max-lg:text-3xl ${themBump ? 'animate-score-bump' : ''}`}
+              className={`text-4xl font-black text-[#ffcc54] max-lg:text-3xl ${themBump ? "animate-score-bump" : ""}`}
             >
               {teamScores.them}
             </div>
@@ -177,7 +189,9 @@ export function GameInfoBar({
             <span className="text-white">{trumpSuit}</span>
             {showBid && (
               <span className="ml-2 text-sm text-[#fff0b2]">
-                {bidLabel ? `Bid ${currentBid} (${bidLabel})` : `Bid ${currentBid}`}
+                {bidLabel
+                  ? `Bid ${currentBid} (${bidLabel})`
+                  : `Bid ${currentBid}`}
               </span>
             )}
           </div>
@@ -192,12 +206,14 @@ export function GameInfoBar({
         <div className="mt-2.5 grid gap-2 text-xs font-black uppercase tracking-[0.12em] text-[#fff0b8] max-lg:text-[11px] max-md:grid-cols-2">
           <div className="flex items-center justify-between gap-3">
             <span className="text-[#ffebaa]/70">Phase</span>
-            <span className="text-right text-white">{PHASE_LABELS[phase] ?? phase}</span>
+            <span className="text-right text-white">
+              {PHASE_LABELS[phase] ?? phase}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-3">
             <span className="text-[#ffebaa]/70">Hand</span>
             <span className="text-right text-white">
-              {roundNumber != null ? `#${roundNumber}` : 'Soon'}
+              {roundNumber != null ? `#${roundNumber}` : "Soon"}
             </span>
           </div>
           {!trumpSuit && (
@@ -208,7 +224,9 @@ export function GameInfoBar({
           )}
           <div className="flex items-center justify-between gap-3">
             <span className="text-[#ffebaa]/70">Room</span>
-            <span className="font-mono text-right tracking-[0.28em] text-white">{roomCode}</span>
+            <span className="font-mono text-right tracking-[0.28em] text-white">
+              {roomCode}
+            </span>
           </div>
         </div>
       </div>
