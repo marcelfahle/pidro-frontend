@@ -226,27 +226,27 @@ function TrickSlot({
   animate?: boolean;
   isWinner?: boolean;
 }) {
-  if (!data) {
-    return <div />;
-  }
+  // Fixed-size slot — always reserves space so the grid doesn't shift
+  const pointValue =
+    data && trumpSuit
+      ? (getPidroPoints(data.card.rank, data.card.suit, trumpSuit) ?? undefined)
+      : undefined;
 
-  const pointValue = trumpSuit
-    ? (getPidroPoints(data.card.rank, data.card.suit, trumpSuit) ?? undefined)
-    : undefined;
-
-  const animClass = animate ? (CARD_ENTER_CLASSES[position] ?? "") : "";
-  const winClass = isWinner ? "animate-trick-win" : "";
+  const animClass = data && animate ? (CARD_ENTER_CLASSES[position] ?? "") : "";
+  const winClass = data && isWinner ? "animate-trick-win" : "";
 
   return (
     <div
-      className={`relative flex flex-col items-center gap-1 ${animClass} ${winClass}`.trim()}
+      className={`flex h-[5.5rem] w-[3.75rem] items-center justify-center max-sm:h-[4.5rem] max-sm:w-[3rem] ${animClass} ${winClass}`.trim()}
     >
-      <Card
-        card={data.card}
-        size="md"
-        isTrump={data.card.suit === trumpSuit}
-        pointValue={pointValue}
-      />
+      {data && (
+        <Card
+          card={data.card}
+          size="md"
+          isTrump={data.card.suit === trumpSuit}
+          pointValue={pointValue}
+        />
+      )}
     </div>
   );
 }

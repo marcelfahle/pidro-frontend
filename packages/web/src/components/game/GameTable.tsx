@@ -173,29 +173,29 @@ export function GameTable({
           </div>
         )}
 
-        {/* West: avatar above hand */}
+        {/* West: avatar above hand — fixed top so it aligns with east */}
         {west && (
-          <div className="absolute left-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-start gap-1.5 pl-2">
+          <div className="absolute left-0 top-[26%] z-20 flex flex-col items-start gap-1.5 pl-2">
             <GamePlayerCard
               {...avatarProps(west)}
               compact
               imagePosition="left"
             />
-            <div className="w-[80px] translate-x-[-45%] max-sm:w-[48px]">
+            <div className="flex h-[35dvh] w-[80px] translate-x-[-45%] items-center justify-center max-sm:w-[48px]">
               <PlayerHand {...handProps(west, "west")} />
             </div>
           </div>
         )}
 
-        {/* East: avatar above hand */}
+        {/* East: avatar above hand — fixed top so it aligns with west */}
         {east && (
-          <div className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-end gap-1.5 pr-2">
+          <div className="absolute right-0 top-[26%] z-20 flex flex-col items-end gap-1.5 pr-2">
             <GamePlayerCard
               {...avatarProps(east)}
               compact
               imagePosition="right"
             />
-            <div className="w-[80px] translate-x-[45%] max-sm:w-[48px]">
+            <div className="flex h-[35dvh] w-[80px] translate-x-[45%] items-center justify-center max-sm:w-[48px]">
               <PlayerHand {...handProps(east, "east")} />
             </div>
           </div>
