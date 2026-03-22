@@ -43,7 +43,6 @@ export function DesignSystemPage() {
   return (
     <div className="pidro-page items-start py-4">
       <div className="pidro-window w-full max-w-[1240px] overflow-hidden">
-        <div className="pidro-titlebar">Pidro</div>
         <main className="relative max-h-[calc(100vh-2rem)] overflow-y-auto px-4 pb-10 pt-6 sm:px-6 lg:px-8">
           <div className="pointer-events-none absolute inset-x-0 top-0 h-56 bg-[radial-gradient(circle_at_top,rgba(94,237,255,0.18),transparent_60%)]" />
 

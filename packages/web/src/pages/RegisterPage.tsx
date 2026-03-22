@@ -53,8 +53,7 @@ export function RegisterPage() {
 
   return (
     <div className="pidro-page">
-      <div className="pidro-window min-h-[760px]">
-        <div className="pidro-titlebar">Pidro</div>
+      <div className="pidro-window h-dvh">
         <div className="pidro-auth-grid relative gap-8 px-6 pb-8 pt-10 max-md:px-4 max-md:pt-8">
           <section className="flex flex-col items-center justify-center gap-6 px-2 text-center max-md:px-0">
             <PidroWordmark />

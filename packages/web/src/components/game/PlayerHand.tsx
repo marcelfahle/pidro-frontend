@@ -87,7 +87,7 @@ export function PlayerHand({
 
   const cardRailClass =
     position === 'south'
-      ? 'flex flex-1 items-end justify-center'
+      ? 'flex flex-1 items-center justify-center'
       : isVertical
         ? 'flex flex-col items-center justify-center'
         : 'flex items-start justify-center';
@@ -120,14 +120,8 @@ export function PlayerHand({
       <div
         className={`${dimWrapper ? 'opacity-50' : ''} flex w-full flex-col items-center gap-1.5`}
       >
-        {/* Desktop: normal layout */}
+        {/* Desktop */}
         <div className="max-sm:hidden contents">
-          <GamePlayerCard
-            {...playerCardProps}
-            className={
-              'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
-            }
-          />
           {count === 0 ? (
             <NoCards />
           ) : showFaceUp ? (
@@ -167,46 +161,32 @@ export function PlayerHand({
           )}
         </div>
 
-        {/* Mobile: rotated cards peeking from edge (badge rendered separately in GameTable) */}
+        {/* Mobile: rotated cards peeking from edge */}
         <div className="hidden max-sm:flex max-sm:flex-col max-sm:items-center max-sm:gap-0">
           {count > 0 && (
-            <>
-              <div className="flex flex-col items-center">
-                {Array.from({ length: Math.min(count, 6) }, (_, i) => (
-                  <div
-                    key={`peek-${i.toString()}`}
-                    className="rotate-90"
-                    style={{ marginTop: i === 0 ? 0 : -22 }}
-                  >
-                    <Card faceDown size="sm" />
-                  </div>
-                ))}
-              </div>
-              <span className="rounded-full border border-cyan-300/25 bg-black/70 px-1.5 py-px text-[10px] font-black text-white shadow-sm">
-                {count}
-              </span>
-            </>
+            <div className="flex flex-col items-center">
+              {Array.from({ length: Math.min(count, 6) }, (_, i) => (
+                <div
+                  key={`peek-${i.toString()}`}
+                  className="rotate-90"
+                  style={{ marginTop: i === 0 ? 0 : -22 }}
+                >
+                  <Card faceDown size="sm" />
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>
     );
   }
 
-  // North position
+  // North position — cards only, avatar rendered separately in GameTable
   if (position === 'north') {
     return (
       <div
-        className={`${dimWrapper ? 'opacity-50' : ''} flex w-full flex-col items-center gap-1.5`}
+        className={`${dimWrapper ? 'opacity-50' : ''} flex w-full flex-col items-center`}
       >
-        {/* Desktop: badge on top, cards below */}
-        <div className="max-sm:hidden">
-          <GamePlayerCard
-            {...playerCardProps}
-            className={
-              'w-full max-w-[180px] max-lg:max-w-[148px] max-md:max-w-[124px] max-lg:grid-cols-[36px_1fr] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
-            }
-          />
-        </div>
         {count === 0 ? (
           <NoCards />
         ) : showFaceUp ? (
@@ -244,26 +224,13 @@ export function PlayerHand({
             ))}
           </div>
         )}
-        {/* Mobile: compact badge below cards */}
-        <GamePlayerCard {...playerCardProps} compact className="hidden max-sm:inline-flex" />
       </div>
     );
   }
 
-  // South position
+  // South position — cards only, avatar rendered separately in GameTable
   return (
-    <div className={wrapperClass}>
-      <div className="max-sm:hidden">
-        <GamePlayerCard
-          {...playerCardProps}
-          className={
-            'min-w-[168px] max-lg:min-w-[148px] max-md:min-w-[132px] max-lg:gap-2 max-lg:px-2.5 max-lg:py-2'
-          }
-        />
-      </div>
-      {/* Mobile: compact badge */}
-      <GamePlayerCard {...playerCardProps} compact className="hidden max-sm:inline-flex" />
-
+    <div className={`flex w-full flex-col items-center ${dimWrapper ? 'opacity-50' : ''}`}>
       {count === 0 ? (
         <NoCards />
       ) : showFaceUp ? (
@@ -297,7 +264,7 @@ export function PlayerHand({
         <div className={cardRailClass}>
           {Array.from({ length: count }, (_, i) => (
             <div key={`back-${i.toString()}`} style={cardOffsetStyle(i, count, position)}>
-              <Card faceDown size={position === 'south' ? 'lg' : 'md'} />
+              <Card faceDown size="lg" />
             </div>
           ))}
         </div>
@@ -349,9 +316,9 @@ function cardOffsetStyle(index: number, total: number, position: RelativePositio
   const northOverlap = total > 7 ? baseNorth - Math.min(12, (total - 7) * 3) : baseNorth;
   const hOverlap = position === 'south' ? southOverlap : northOverlap;
 
+  // North and south: flat row, no fan/curve
   return {
     marginLeft: index === 0 ? 0 : hOverlap,
-    transform: `translateY(${position === 'south' ? Math.abs(offset) * 3 : 0}px) rotate(${offset * 2.5}deg)`,
     zIndex: index + 1,
   };
 }

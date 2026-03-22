@@ -55,6 +55,21 @@ export function GameTable({
   const south = players.find((p) => p.relativePosition === 'south');
   const west = players.find((p) => p.relativePosition === 'west');
 
+  function avatarProps(player: NonNullable<typeof north>) {
+    const name = player.username ?? (player.isYou ? 'You' : 'Player');
+    return {
+      displayName: name,
+      roleLabel: player.isYou ? 'You' : player.isTeammate ? 'Partner' : 'Opponent',
+      statusText: playerStatusText(player.absolutePosition, viewModel, serverState),
+      initial: name[0]?.toUpperCase() ?? '?',
+      isYou: player.isYou,
+      isDealer: viewModel.dealerAbsolute === player.absolutePosition,
+      isCurrentTurn: player.isCurrentTurn,
+      isConnected: player.isConnected,
+      seatStatus: player.seatStatus,
+    };
+  }
+
   function getPlayerCards(absPos: string) {
     const playerView = serverState?.players?.[absPos as keyof typeof serverState.players];
     if (!playerView) return { cards: null, cardCount: 0 };
@@ -79,9 +94,9 @@ export function GameTable({
       : youCardsRaw;
 
   return (
-    <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1 max-lg:px-1 max-lg:pb-2 max-sm:px-0 max-sm:pb-0 max-sm:pt-0">
-      <div className="relative aspect-[4/3] w-full max-h-[calc(100dvh-2rem)] max-w-[1120px] max-lg:max-h-[calc(100dvh-1.5rem)] max-lg:aspect-[3/4] max-md:aspect-auto max-md:h-full max-sm:overflow-hidden">
-        <div className="absolute left-4 top-0 right-auto z-20 flex max-lg:inset-x-0 max-lg:justify-center max-sm:left-0 max-sm:right-0 max-sm:z-30">
+    <div className="h-full w-full">
+      <div className="relative h-full w-full overflow-hidden">
+        <div className="absolute left-4 top-0 right-auto z-30 flex max-lg:inset-x-0 max-lg:justify-center max-sm:left-0 max-sm:right-0">
           <GameInfoBar
             phase={phase}
             trumpSuit={trumpSuit}
@@ -96,26 +111,28 @@ export function GameTable({
           />
         </div>
 
-        <div className="absolute inset-x-[18%] top-[24%] bottom-[22%] z-10 max-lg:inset-x-[16%] max-lg:top-[28%] max-md:inset-x-[8%] max-md:top-[26%] max-md:bottom-[28%] max-sm:inset-x-[4%] max-sm:top-[18%] max-sm:bottom-[30%]">
-          <div className="pidro-panel pidro-panel--glow flex h-full items-center justify-center rounded-[22px] p-4 sm:p-5 max-sm:p-2">
-            <CenterContent
-              phase={phase}
-              viewModel={viewModel}
-              serverState={serverState}
-              legalActions={legalActions}
-              trumpSuit={trumpSuit}
-              youCards={youCards}
-              onBid={onBid}
-              onPass={onPass}
-              onDeclareTrump={onDeclareTrump}
-              onSelectHand={onSelectHand}
-              optimisticCard={optimisticCard}
-            />
+        {phase !== 'bidding' && (
+          <div className="absolute inset-x-[18%] top-[24%] bottom-[22%] z-10 max-lg:inset-x-[16%] max-lg:top-[28%] max-md:inset-x-[8%] max-md:top-[26%] max-md:bottom-[28%] max-sm:inset-x-[4%] max-sm:top-[18%] max-sm:bottom-[30%]">
+            <div className="pidro-panel pidro-panel--glow flex h-full items-center justify-center rounded-[22px] p-4 sm:p-5 max-sm:p-2">
+              <CenterContent
+                phase={phase}
+                viewModel={viewModel}
+                serverState={serverState}
+                legalActions={legalActions}
+                trumpSuit={trumpSuit}
+                youCards={youCards}
+                onBid={onBid}
+                onPass={onPass}
+                onDeclareTrump={onDeclareTrump}
+                onSelectHand={onSelectHand}
+                optimisticCard={optimisticCard}
+              />
+            </div>
           </div>
-        </div>
+        )}
 
         {north && (
-          <div className="absolute left-1/2 top-[16%] z-20 w-[46%] -translate-x-1/2 max-lg:top-[18%] max-md:top-[12%] max-sm:top-[3%] max-sm:z-10 max-sm:w-[56%]">
+          <div className="absolute left-1/2 top-[0%] z-20 w-[46%] -translate-x-1/2 max-lg:top-[1%] max-md:top-[0%] max-sm:top-[-1%] max-sm:z-10 max-sm:w-[56%]">
             <PlayerHand
               position="north"
               {...getPlayerCards(north.absolutePosition)}
@@ -133,9 +150,14 @@ export function GameTable({
             />
           </div>
         )}
+        {north && (
+          <div className="absolute left-1/2 top-[12%] z-30 -translate-x-1/2 max-md:top-[9%] max-sm:top-[6%]">
+            <GamePlayerCard {...avatarProps(north)} compact />
+          </div>
+        )}
 
         {west && (
-          <div className="absolute left-[3%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:left-[2%] max-lg:w-[18%] max-md:top-[44%] max-md:w-[14%] max-sm:left-[-20px] max-sm:top-[42%] max-sm:w-[52px]">
+          <div className="absolute left-[-1%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:left-[-2%] max-lg:w-[18%] max-md:top-[44%] max-md:w-[14%] max-sm:left-[-30px] max-sm:top-[42%] max-sm:w-[52px]">
             <PlayerHand
               position="west"
               {...getPlayerCards(west.absolutePosition)}
@@ -153,9 +175,14 @@ export function GameTable({
             />
           </div>
         )}
+        {west && (
+          <div className="absolute left-2 top-[15%] z-30 max-sm:top-[12%]">
+            <GamePlayerCard {...avatarProps(west)} compact imagePosition="left" />
+          </div>
+        )}
 
         {east && (
-          <div className="absolute right-[3%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:right-[2%] max-lg:w-[18%] max-md:top-[44%] max-md:w-[14%] max-sm:right-[-20px] max-sm:top-[42%] max-sm:w-[52px]">
+          <div className="absolute right-[-1%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:right-[-2%] max-lg:w-[18%] max-md:top-[44%] max-md:w-[14%] max-sm:right-[-30px] max-sm:top-[42%] max-sm:w-[52px]">
             <PlayerHand
               position="east"
               {...getPlayerCards(east.absolutePosition)}
@@ -173,40 +200,12 @@ export function GameTable({
             />
           </div>
         )}
-
-        {/* Mobile floating badges for east/west */}
-        {west && (
-          <div className="absolute left-[50px] top-[200px] z-30 hidden max-sm:block">
-            <GamePlayerCard
-              compact
-              displayName={west.username ?? (west.isYou ? 'You' : 'Player')}
-              roleLabel={west.isYou ? 'You' : west.isTeammate ? 'Partner' : 'Opponent'}
-              statusText={playerStatusText(west.absolutePosition, viewModel, serverState)}
-              initial={(west.username ?? (west.isYou ? 'You' : 'Player'))[0]?.toUpperCase() ?? '?'}
-              isYou={west.isYou}
-              isDealer={viewModel.dealerAbsolute === west.absolutePosition}
-              isCurrentTurn={west.isCurrentTurn}
-              isConnected={west.isConnected}
-              seatStatus={west.seatStatus}
-            />
-          </div>
-        )}
         {east && (
-          <div className="absolute right-[30px] top-[200px] z-30 hidden max-sm:block">
-            <GamePlayerCard
-              compact
-              displayName={east.username ?? (east.isYou ? 'You' : 'Player')}
-              roleLabel={east.isYou ? 'You' : east.isTeammate ? 'Partner' : 'Opponent'}
-              statusText={playerStatusText(east.absolutePosition, viewModel, serverState)}
-              initial={(east.username ?? (east.isYou ? 'You' : 'Player'))[0]?.toUpperCase() ?? '?'}
-              isYou={east.isYou}
-              isDealer={viewModel.dealerAbsolute === east.absolutePosition}
-              isCurrentTurn={east.isCurrentTurn}
-              isConnected={east.isConnected}
-              seatStatus={east.seatStatus}
-            />
+          <div className="absolute right-2 top-[60%] z-30 max-sm:top-[58%]">
+            <GamePlayerCard {...avatarProps(east)} compact imagePosition="right" />
           </div>
         )}
+
 
         {south &&
           (() => {
@@ -221,7 +220,7 @@ export function GameTable({
                   }
                 : southCards;
             return (
-              <div className="absolute bottom-[7%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-lg:w-[82%] max-md:bottom-[2%] max-md:w-[92%] max-sm:bottom-[1%] max-sm:w-[96%]">
+              <div className="absolute bottom-[14%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-lg:w-[82%] max-md:bottom-[12%] max-md:w-[92%] max-sm:bottom-[10%] max-sm:w-[96%]">
                 <PlayerHand
                   position="south"
                   {...filteredCards}
@@ -241,6 +240,11 @@ export function GameTable({
               </div>
             );
           })()}
+        {south && (
+          <div className="absolute bottom-[4%] left-1/2 z-30 -translate-x-1/2 max-sm:bottom-[2%]">
+            <GamePlayerCard {...avatarProps(south)} compact />
+          </div>
+        )}
 
         <button
           type="button"
@@ -250,6 +254,18 @@ export function GameTable({
         >
           <span className="text-xl font-black">⤴</span>
         </button>
+
+        {phase === 'bidding' && serverState && (
+          <div className="absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-[calc(50%+56px)]">
+            <BiddingPanel
+              viewModel={viewModel}
+              serverState={serverState}
+              legalActions={legalActions}
+              onBid={onBid}
+              onPass={onPass}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
@@ -326,15 +342,7 @@ function CenterContent({
   optimisticCard?: CardType | null;
 }) {
   if (phase === 'bidding' && serverState) {
-    return (
-      <BiddingPanel
-        viewModel={viewModel}
-        serverState={serverState}
-        legalActions={legalActions}
-        onBid={onBid}
-        onPass={onPass}
-      />
-    );
+    return null;
   }
 
   if (

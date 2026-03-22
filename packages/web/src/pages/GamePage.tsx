@@ -58,7 +58,6 @@ function ShellMessage({
   return (
     <div className="pidro-page">
       <div className="pidro-window flex min-h-[520px] items-center justify-center">
-        <div className="pidro-titlebar">Pidro</div>
         <div className="pidro-panel w-full max-w-lg p-8 text-center">
           <div className="mb-5 flex justify-center">
             <div className="pidro-banner">{title}</div>
@@ -490,12 +489,11 @@ export function GamePage() {
 
   if (hasGameStarted && viewModel) {
     return (
-      <div className="pidro-page">
+      <div className="relative h-dvh w-full overflow-hidden">
         <ConnectionBanner isConnected={isChannelJoined} />
         <ToastContainer messages={toastMessages} onDismiss={dismissToast} />
-        <div className="pidro-window min-h-[760px] max-lg:min-h-0 max-lg:h-[calc(100dvh-24px)]">
-          <div className="pidro-titlebar">Pidro</div>
-          <div className="relative h-[calc(100%-20px)]">
+        <div className="pidro-window h-full w-full">
+          <div className="relative h-full">
             {visibleDecision && (
               <OwnerDecisionBanner
                 playerName={visibleDecision.playerName}
@@ -535,8 +533,7 @@ export function GamePage() {
     <div className="pidro-page">
       <ConnectionBanner isConnected={isChannelJoined} />
       <ToastContainer messages={toastMessages} onDismiss={dismissToast} />
-      <div className="pidro-window min-h-[760px] max-lg:min-h-0 max-lg:h-[calc(100dvh-24px)]">
-        <div className="pidro-titlebar">Pidro</div>
+      <div className="pidro-window h-dvh">
         <WaitingRoom
           roomCode={code}
           playerMeta={playerMeta}

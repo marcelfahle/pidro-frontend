@@ -196,8 +196,7 @@ export function LobbyPage() {
 
   return (
     <div className="pidro-page">
-      <div className="pidro-window flex min-h-[720px] flex-col max-lg:h-[calc(100dvh-24px)] max-lg:min-h-0">
-        <div className="pidro-titlebar">Pidro</div>
+      <div className="pidro-window flex h-dvh flex-col">
         <main className="relative flex flex-1 flex-col px-4 pb-4 pt-6 sm:px-6 sm:pt-7">
           <div className="relative z-10 -mb-8 max-md:-mb-7">
             <PageHeader title="Create or Join Table" size="md" />

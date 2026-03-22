@@ -38,7 +38,6 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
         aria-modal="true"
         aria-label={title}
       >
-        <div className="pidro-titlebar">Pidro</div>
         <div className="relative px-5 pb-5 pt-4">
           <div className="mb-5 flex justify-center">
             <div className="pidro-banner text-lg">{title}</div>

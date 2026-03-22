@@ -48,8 +48,8 @@ export function HomePage() {
 
   return (
     <div className="pidro-page">
-      <div className="pidro-window pidro-window--home flex min-h-[720px] flex-col max-md:h-[calc(100dvh-24px)] max-md:min-h-[calc(100dvh-24px)]">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 top-[20px]">
+      <div className="pidro-window pidro-window--home flex h-dvh flex-col">
+        <div className="pointer-events-none absolute inset-0">
           <div
             className="absolute inset-0 opacity-[0.96]"
             style={{
@@ -61,7 +61,6 @@ export function HomePage() {
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,31,56,0.08)_0%,rgba(3,19,41,0.26)_100%)]" />
         </div>
-        <div className="pidro-titlebar">Pidro</div>
         <main className="relative z-10 flex flex-1 flex-col px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
           <div className="pidro-home-hero pointer-events-none absolute inset-x-0 z-0 flex justify-center">
             <img
