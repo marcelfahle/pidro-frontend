@@ -43,7 +43,7 @@ export function GamePlayerCard({
   const avatar = (
     <div
       className={`flex shrink-0 items-center justify-center rounded text-xs font-black text-white ${
-        compact ? "h-6 w-6" : "h-8 w-8"
+        compact ? "h-7 w-7" : "h-9 w-9"
       } ${isVacant ? "border border-dashed border-amber-300/40 bg-amber-400/10" : "bg-[#1a5a80]"}`}
     >
       {isVacant ? (

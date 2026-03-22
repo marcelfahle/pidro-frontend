@@ -245,7 +245,7 @@ export function GameTable({
                 />
               </div>
             )}
-            <GamePlayerCard {...avatarProps(south)} compact />
+            <GamePlayerCard {...avatarProps(south)} compact className="mt-2" />
           </div>
         )}
       </div>

@@ -4,6 +4,8 @@ import type {
   ServerGameState,
 } from "@pidro/shared";
 
+const ALL_BID_VALUES = [6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
+
 interface BiddingPanelProps {
   viewModel: GameViewModel;
   serverState: ServerGameState;
@@ -55,16 +57,24 @@ export function BiddingPanel({
       {isYourTurn ? (
         <div className="w-full">
           <div className="grid grid-cols-3 gap-1.5">
-            {legalBidAmounts.map((amount) => (
-              <button
-                key={amount}
-                type="button"
-                onClick={() => onBid(amount)}
-                className="rounded-md border border-cyan-200/65 bg-cyan-400/12 py-1.5 text-sm font-black text-white shadow-[0_4px_10px_rgba(0,0,0,0.14)] transition-all hover:-translate-y-0.5 hover:border-cyan-100 hover:bg-cyan-400/18"
-              >
-                {amount}
-              </button>
-            ))}
+            {ALL_BID_VALUES.map((amount) => {
+              const isLegal = legalBidAmounts.includes(amount);
+              return (
+                <button
+                  key={amount}
+                  type="button"
+                  disabled={!isLegal}
+                  onClick={() => isLegal && onBid(amount)}
+                  className={`rounded-md py-1.5 text-sm font-black transition-all ${
+                    isLegal
+                      ? "border border-cyan-200/65 bg-cyan-400/12 text-white shadow-[0_4px_10px_rgba(0,0,0,0.14)] hover:-translate-y-0.5 hover:border-cyan-100 hover:bg-cyan-400/18"
+                      : "border border-white/8 text-white/25 line-through decoration-white/30"
+                  }`}
+                >
+                  {amount}
+                </button>
+              );
+            })}
           </div>
           {canPass && (
             <button
