@@ -163,10 +163,10 @@ export function GameTable({
           />
         </div>
 
-        {/* North: cards barely peeking + avatar below */}
+        {/* North: cards peeking from top + avatar below */}
         {north && (
           <div className="absolute left-1/2 top-0 z-20 flex w-[50%] -translate-x-1/2 flex-col items-center gap-1 max-sm:w-[60%]">
-            <div className="translate-y-[-40%]">
+            <div className="mt-[-10px]">
               <PlayerHand {...handProps(north, "north")} />
             </div>
             <GamePlayerCard {...avatarProps(north)} compact />
@@ -181,7 +181,7 @@ export function GameTable({
               compact
               imagePosition="left"
             />
-            <div className="w-[80px] translate-x-[-30%] max-sm:w-[48px]">
+            <div className="w-[80px] translate-x-[-45%] max-sm:w-[48px]">
               <PlayerHand {...handProps(west, "west")} />
             </div>
           </div>
@@ -195,7 +195,7 @@ export function GameTable({
               compact
               imagePosition="right"
             />
-            <div className="w-[80px] translate-x-[30%] max-sm:w-[48px]">
+            <div className="w-[80px] translate-x-[45%] max-sm:w-[48px]">
               <PlayerHand {...handProps(east, "east")} />
             </div>
           </div>
@@ -203,22 +203,20 @@ export function GameTable({
 
         {/* Center content (trick area, trump selector, hand selector, phase labels) */}
         {phase !== "bidding" && (
-          <div className="absolute inset-x-[20%] top-[28%] bottom-[8%] z-10 max-lg:inset-x-[16%] max-md:inset-x-[10%] max-sm:inset-x-[6%] max-sm:top-[22%]">
-            <div className="pidro-panel pidro-panel--glow flex h-full items-center justify-center rounded-[22px] p-4 sm:p-5 max-sm:p-2">
-              <CenterContent
-                phase={phase}
-                viewModel={viewModel}
-                serverState={serverState}
-                legalActions={legalActions}
-                trumpSuit={trumpSuit}
-                youCards={youCards}
-                onBid={onBid}
-                onPass={onPass}
-                onDeclareTrump={onDeclareTrump}
-                onSelectHand={onSelectHand}
-                optimisticCard={optimisticCard}
-              />
-            </div>
+          <div className="absolute inset-x-[20%] top-[20%] bottom-[12%] z-10 flex items-center justify-center max-lg:inset-x-[16%] max-md:inset-x-[10%] max-sm:inset-x-[6%] max-sm:top-[16%]">
+            <CenterContent
+              phase={phase}
+              viewModel={viewModel}
+              serverState={serverState}
+              legalActions={legalActions}
+              trumpSuit={trumpSuit}
+              youCards={youCards}
+              onBid={onBid}
+              onPass={onPass}
+              onDeclareTrump={onDeclareTrump}
+              onSelectHand={onSelectHand}
+              optimisticCard={optimisticCard}
+            />
           </div>
         )}
 

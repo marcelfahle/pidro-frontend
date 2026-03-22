@@ -1,32 +1,43 @@
-import type { GameViewModel, Position, ServerGameState, ServerTrick, Suit } from '@pidro/shared';
-import { mapAbsoluteToRelative, SUIT_SYMBOLS } from '@pidro/shared';
-import { useEffect, useRef, useState } from 'react';
-import { Card, getPidroPoints } from './Card';
+import type {
+  GameViewModel,
+  Position,
+  ServerGameState,
+  ServerTrick,
+  Suit,
+} from "@pidro/shared";
+import { mapAbsoluteToRelative, SUIT_SYMBOLS } from "@pidro/shared";
+import { useEffect, useRef, useState } from "react";
+import { Card, getPidroPoints } from "./Card";
 
-function trickWinnerLabel(winner: Position, youPosition: Position | null): string {
-  if (!youPosition) return isNorthSouth(winner) ? 'NS' : 'EW';
+function trickWinnerLabel(
+  winner: Position,
+  youPosition: Position | null,
+): string {
+  if (!youPosition) return isNorthSouth(winner) ? "NS" : "EW";
   const sameTeam = isNorthSouth(winner) === isNorthSouth(youPosition);
-  return sameTeam ? 'Us' : 'Them';
+  return sameTeam ? "Us" : "Them";
 }
 
 function trickPointTotal(trick: ServerTrick, trumpSuit: Suit | null): number {
   let pts = 0;
   for (const play of trick.cards) {
-    const p = trumpSuit ? getPidroPoints(play.card.rank, play.card.suit, trumpSuit) : null;
+    const p = trumpSuit
+      ? getPidroPoints(play.card.rank, play.card.suit, trumpSuit)
+      : null;
     if (p != null) pts += p;
   }
   return pts;
 }
 
 function isNorthSouth(position: Position): boolean {
-  return position === 'north' || position === 'south';
+  return position === "north" || position === "south";
 }
 
 const CARD_ENTER_CLASSES: Record<string, string> = {
-  north: 'animate-card-enter-north',
-  south: 'animate-card-enter-south',
-  east: 'animate-card-enter-east',
-  west: 'animate-card-enter-west',
+  north: "animate-card-enter-north",
+  south: "animate-card-enter-south",
+  east: "animate-card-enter-east",
+  west: "animate-card-enter-west",
 };
 
 interface TrickAreaProps {
@@ -35,8 +46,13 @@ interface TrickAreaProps {
   optimisticCard?: { rank: number; suit: Suit } | null;
 }
 
-export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaProps) {
-  const youPosition = viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
+export function TrickArea({
+  viewModel,
+  serverState,
+  optimisticCard,
+}: TrickAreaProps) {
+  const youPosition =
+    viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
   const viewerPosition = viewModel.viewerPositionAbsolute;
   const currentTrick = serverState.current_trick ?? [];
   const tricks = serverState.tricks ?? [];
@@ -46,8 +62,10 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
   // Track which slots had cards on the previous render to detect newly played cards
   const prevSlotKeysRef = useRef<Set<string>>(new Set());
 
-  const trickByRelative: Record<string, { card: { rank: number; suit: Suit }; isLeader: boolean }> =
-    {};
+  const trickByRelative: Record<
+    string,
+    { card: { rank: number; suit: Suit }; isLeader: boolean }
+  > = {};
   for (let i = 0; i < currentTrick.length; i++) {
     const play = currentTrick[i];
     const relPos = mapAbsoluteToRelative(play.player, viewerPosition);
@@ -91,7 +109,9 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
 
   let trickPoints = 0;
   for (const play of currentTrick) {
-    const pts = trumpSuit ? getPidroPoints(play.card.rank, play.card.suit, trumpSuit) : null;
+    const pts = trumpSuit
+      ? getPidroPoints(play.card.rank, play.card.suit, trumpSuit)
+      : null;
     if (pts != null) trickPoints += pts;
   }
 
@@ -99,78 +119,58 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
   const isYourTurn = currentTurnPlayer?.isYou ?? false;
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-between gap-4">
-      <div className="flex flex-wrap items-center justify-center gap-3">
-        <div className="rounded-full border border-cyan-300/20 bg-black/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-cyan-50/82 max-sm:hidden">
-          Trick #{trickNumber}
+    <div className="relative flex h-full w-full flex-col items-center justify-center">
+      {/* Trick points — top left, aligned with north avatar row */}
+      {trickPoints > 0 && (
+        <div className="absolute left-0 -top-8 rounded-full border border-[#ffcc54]/30 bg-[#ffcc54]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#fff0b2]">
+          {trickPoints} pts
         </div>
-        {trumpSuit && (
-          <div className="rounded-full border border-cyan-300/20 bg-black/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-cyan-50/82 max-sm:hidden">
-            Trump {SUIT_SYMBOLS[trumpSuit]}
-          </div>
-        )}
-        {trickPoints > 0 && (
-          <div className="rounded-full border border-[#ffcc54]/30 bg-[#ffcc54]/10 px-4 py-2 text-sm font-black uppercase tracking-[0.14em] text-[#fff0b2]">
-            {trickPoints} pts
-          </div>
-        )}
-      </div>
+      )}
 
-      <div className="relative flex h-full w-full items-center justify-center">
-        <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 place-items-center gap-2">
-          <div />
-          <TrickSlot
-            position="north"
-            data={trickByRelative.north}
-            trumpSuit={trumpSuit}
-            animate={newSlots.has('north')}
-            isWinner={winningSlot === 'north'}
-          />
-          <div />
+      {/* Card grid — tight cross layout */}
+      <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-3">
+        {/* Row 1: north */}
+        <div />
+        <TrickSlot
+          position="north"
+          data={trickByRelative.north}
+          trumpSuit={trumpSuit}
+          animate={newSlots.has("north")}
+          isWinner={winningSlot === "north"}
+        />
+        <div />
 
-          <TrickSlot
-            position="west"
-            data={trickByRelative.west}
-            trumpSuit={trumpSuit}
-            animate={newSlots.has('west')}
-            isWinner={winningSlot === 'west'}
-          />
-          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-lg:h-20 max-lg:w-20 max-sm:h-16 max-sm:w-16">
-            {/* Desktop: show "Your turn" or trump */}
-            <span className="max-sm:hidden">
-              {isYourTurn && currentTrick.length < 4 ? (
-                <span className="text-center text-sm font-black uppercase tracking-[0.12em] text-[#fff0b2]">
-                  Your turn
-                </span>
-              ) : (
-                <span className="text-4xl text-cyan-50/65">
-                  {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
-                </span>
-              )}
-            </span>
-            {/* Mobile: always show trump */}
-            <span className="hidden text-3xl text-cyan-50/65 max-sm:block">
-              {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
-            </span>
-          </div>
-          <TrickSlot
-            position="east"
-            data={trickByRelative.east}
-            trumpSuit={trumpSuit}
-            animate={newSlots.has('east')}
-            isWinner={winningSlot === 'east'}
-          />
-
-          <div />
-          <TrickSlot
-            position="south"
-            data={trickByRelative.south}
-            trumpSuit={trumpSuit}
-            animate={newSlots.has('south')}
-            isWinner={winningSlot === 'south'}
-          />
-          <div />
+        {/* Row 2: west — trump — east */}
+        <TrickSlot
+          position="west"
+          data={trickByRelative.west}
+          trumpSuit={trumpSuit}
+          animate={newSlots.has("west")}
+          isWinner={winningSlot === "west"}
+        />
+        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10">
+          <span className="text-2xl text-cyan-50/50 max-sm:text-xl">
+            {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : "•"}
+          </span>
         </div>
+        <TrickSlot
+          position="east"
+          data={trickByRelative.east}
+          trumpSuit={trumpSuit}
+          animate={newSlots.has("east")}
+          isWinner={winningSlot === "east"}
+        />
+
+        {/* Row 3: south */}
+        <div />
+        <TrickSlot
+          position="south"
+          data={trickByRelative.south}
+          trumpSuit={trumpSuit}
+          animate={newSlots.has("south")}
+          isWinner={winningSlot === "south"}
+        />
+        <div />
       </div>
 
       {tricks.length > 0 && (
@@ -195,7 +195,7 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
                 </div>
                 <div className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-50/72">
                   #{idx + 1} {trickWinnerLabel(trick.winner, youPosition)}
-                  {pts > 0 ? ` ${pts}pt` : ''}
+                  {pts > 0 ? ` ${pts}pt` : ""}
                 </div>
               </div>
             );
@@ -207,10 +207,10 @@ export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaP
 }
 
 const POSITION_LABELS: Record<string, string> = {
-  north: 'N',
-  east: 'E',
-  south: 'S',
-  west: 'W',
+  north: "N",
+  east: "E",
+  south: "S",
+  west: "W",
 };
 
 function TrickSlot({
@@ -227,29 +227,20 @@ function TrickSlot({
   isWinner?: boolean;
 }) {
   if (!data) {
-    return (
-      <div className="flex h-24 w-16 items-center justify-center rounded-2xl border border-dashed border-cyan-300/20 bg-black/10 max-lg:h-20 max-lg:w-14 max-sm:h-16 max-sm:w-12">
-        <span className="text-xs font-black uppercase tracking-[0.2em] text-cyan-50/35">
-          {POSITION_LABELS[position]}
-        </span>
-      </div>
-    );
+    return <div />;
   }
 
   const pointValue = trumpSuit
     ? (getPidroPoints(data.card.rank, data.card.suit, trumpSuit) ?? undefined)
     : undefined;
 
-  const animClass = animate ? (CARD_ENTER_CLASSES[position] ?? '') : '';
-  const winClass = isWinner ? 'animate-trick-win' : '';
+  const animClass = animate ? (CARD_ENTER_CLASSES[position] ?? "") : "";
+  const winClass = isWinner ? "animate-trick-win" : "";
 
   return (
-    <div className={`relative flex flex-col items-center gap-1 ${animClass} ${winClass}`.trim()}>
-      {data.isLeader && (
-        <span className="rounded-full border border-cyan-300/25 bg-black/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-50/75">
-          Led
-        </span>
-      )}
+    <div
+      className={`relative flex flex-col items-center gap-1 ${animClass} ${winClass}`.trim()}
+    >
       <Card
         card={data.card}
         size="md"
