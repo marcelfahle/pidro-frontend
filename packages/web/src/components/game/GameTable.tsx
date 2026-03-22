@@ -4,16 +4,16 @@ import type {
   LegalAction,
   ServerGameState,
   Suit,
-} from '@pidro/shared';
-import { getRankLabel, SUIT_SYMBOLS, useGameStore } from '@pidro/shared';
-import { useShallow } from 'zustand/react/shallow';
-import { BiddingPanel } from './BiddingPanel';
-import { GameInfoBar } from './GameInfoBar';
-import { GamePlayerCard } from './GamePlayerCard';
-import { HandSelector } from './HandSelector';
-import { PlayerHand } from './PlayerHand';
-import { TrickArea } from './TrickArea';
-import { TrumpSelector } from './TrumpSelector';
+} from "@pidro/shared";
+import { getRankLabel, SUIT_SYMBOLS, useGameStore } from "@pidro/shared";
+import { useShallow } from "zustand/react/shallow";
+import { BiddingPanel } from "./BiddingPanel";
+import { GameInfoBar } from "./GameInfoBar";
+import { GamePlayerCard } from "./GamePlayerCard";
+import { HandSelector } from "./HandSelector";
+import { PlayerHand } from "./PlayerHand";
+import { TrickArea } from "./TrickArea";
+import { TrumpSelector } from "./TrumpSelector";
 
 interface GameTableProps {
   viewModel: GameViewModel;
@@ -50,20 +50,21 @@ export function GameTable({
   const viewerIsSpectator = !players.some((player) => player.isYou);
   const viewerPosition = viewModel.viewerPositionAbsolute;
 
-  const north = players.find((p) => p.relativePosition === 'north');
-  const east = players.find((p) => p.relativePosition === 'east');
-  const south = players.find((p) => p.relativePosition === 'south');
-  const west = players.find((p) => p.relativePosition === 'west');
+  const north = players.find((p) => p.relativePosition === "north");
+  const east = players.find((p) => p.relativePosition === "east");
+  const south = players.find((p) => p.relativePosition === "south");
+  const west = players.find((p) => p.relativePosition === "west");
 
   function avatarProps(player: NonNullable<typeof north>) {
-    const name = player.username ?? (player.isYou ? 'You' : 'Player');
+    const name = player.username ?? (player.isYou ? "You" : "Player");
     return {
       displayName: name,
-      roleLabel: player.isYou ? 'You' : player.isTeammate ? 'Partner' : 'Opponent',
-      statusText: playerStatusText(player.absolutePosition, viewModel, serverState),
-      initial: name[0]?.toUpperCase() ?? '?',
-      isYou: player.isYou,
-      isDealer: viewModel.dealerAbsolute === player.absolutePosition,
+      statusText: playerStatusText(
+        player.absolutePosition,
+        viewModel,
+        serverState,
+      ),
+      initial: name[0]?.toUpperCase() ?? "?",
       isCurrentTurn: player.isCurrentTurn,
       isConnected: player.isConnected,
       seatStatus: player.seatStatus,
@@ -71,32 +72,83 @@ export function GameTable({
   }
 
   function getPlayerCards(absPos: string) {
-    const playerView = serverState?.players?.[absPos as keyof typeof serverState.players];
+    const playerView =
+      serverState?.players?.[absPos as keyof typeof serverState.players];
     if (!playerView) return { cards: null, cardCount: 0 };
 
     if (Array.isArray(playerView.hand)) {
-      return { cards: playerView.hand as CardType[], cardCount: playerView.hand.length };
+      return {
+        cards: playerView.hand as CardType[],
+        cardCount: playerView.hand.length,
+      };
     }
 
     const count =
-      typeof playerView.hand === 'number' ? playerView.hand : (playerView.card_count ?? 0);
+      typeof playerView.hand === "number"
+        ? playerView.hand
+        : (playerView.card_count ?? 0);
 
     return { cards: null, cardCount: count };
   }
 
+  function handProps(
+    player: NonNullable<typeof north>,
+    position: "north" | "east" | "south" | "west",
+  ) {
+    return {
+      position,
+      ...getPlayerCards(player.absolutePosition),
+      username: player.username,
+      isYou: player.isYou,
+      isDealer: viewModel.dealerAbsolute === player.absolutePosition,
+      isCurrentTurn: player.isCurrentTurn,
+      isConnected: player.isConnected,
+      isTeammate: player.isTeammate,
+      seatStatus: player.seatStatus,
+      legalActions: player.isYou ? legalActions : ([] as LegalAction[]),
+      trumpSuit,
+      statusText: playerStatusText(
+        player.absolutePosition,
+        viewModel,
+        serverState,
+      ),
+      onPlayCard: player.isYou ? onPlayCard : undefined,
+    };
+  }
+
   const youPlayer = players.find((p) => p.isYou);
-  const youCardsRaw = youPlayer ? getPlayerCards(youPlayer.absolutePosition).cards : null;
+  const youCardsRaw = youPlayer
+    ? getPlayerCards(youPlayer.absolutePosition).cards
+    : null;
   const youCards =
     optimisticCard && youCardsRaw
       ? youCardsRaw.filter(
-          (c) => !(c.rank === optimisticCard.rank && c.suit === optimisticCard.suit),
+          (c) =>
+            !(c.rank === optimisticCard.rank && c.suit === optimisticCard.suit),
         )
       : youCardsRaw;
 
+  // South cards with optimistic filtering
+  const southCards = south ? getPlayerCards(south.absolutePosition) : null;
+  const filteredSouthCards =
+    south && optimisticCard && south.isYou && southCards?.cards
+      ? {
+          cards: southCards.cards.filter(
+            (c) =>
+              !(
+                c.rank === optimisticCard.rank && c.suit === optimisticCard.suit
+              ),
+          ),
+          cardCount: southCards.cardCount - 1,
+        }
+      : southCards;
+
   return (
-    <div className="h-full w-full">
-      <div className="relative h-full w-full overflow-hidden">
-        <div className="absolute left-4 top-0 right-auto z-30 flex max-lg:inset-x-0 max-lg:justify-center max-sm:left-0 max-sm:right-0">
+    <div className="flex h-full w-full flex-col">
+      {/* ── Game zone: top ~85% ── */}
+      <div className="relative h-[85%] shrink-0 overflow-hidden">
+        {/* Info bar */}
+        <div className="absolute inset-x-0 top-0 z-30 flex justify-center">
           <GameInfoBar
             phase={phase}
             trumpSuit={trumpSuit}
@@ -111,8 +163,47 @@ export function GameTable({
           />
         </div>
 
-        {phase !== 'bidding' && (
-          <div className="absolute inset-x-[18%] top-[24%] bottom-[22%] z-10 max-lg:inset-x-[16%] max-lg:top-[28%] max-md:inset-x-[8%] max-md:top-[26%] max-md:bottom-[28%] max-sm:inset-x-[4%] max-sm:top-[18%] max-sm:bottom-[30%]">
+        {/* North: cards barely peeking + avatar below */}
+        {north && (
+          <div className="absolute left-1/2 top-0 z-20 flex w-[50%] -translate-x-1/2 flex-col items-center gap-1 max-sm:w-[60%]">
+            <div className="translate-y-[-40%]">
+              <PlayerHand {...handProps(north, "north")} />
+            </div>
+            <GamePlayerCard {...avatarProps(north)} compact />
+          </div>
+        )}
+
+        {/* West: avatar above hand */}
+        {west && (
+          <div className="absolute left-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-start gap-1.5 pl-2">
+            <GamePlayerCard
+              {...avatarProps(west)}
+              compact
+              imagePosition="left"
+            />
+            <div className="w-[80px] translate-x-[-30%] max-sm:w-[48px]">
+              <PlayerHand {...handProps(west, "west")} />
+            </div>
+          </div>
+        )}
+
+        {/* East: avatar above hand */}
+        {east && (
+          <div className="absolute right-0 top-1/2 z-20 flex -translate-y-1/2 flex-col items-end gap-1.5 pr-2">
+            <GamePlayerCard
+              {...avatarProps(east)}
+              compact
+              imagePosition="right"
+            />
+            <div className="w-[80px] translate-x-[30%] max-sm:w-[48px]">
+              <PlayerHand {...handProps(east, "east")} />
+            </div>
+          </div>
+        )}
+
+        {/* Center content (trick area, trump selector, hand selector, phase labels) */}
+        {phase !== "bidding" && (
+          <div className="absolute inset-x-[20%] top-[28%] bottom-[8%] z-10 max-lg:inset-x-[16%] max-md:inset-x-[10%] max-sm:inset-x-[6%] max-sm:top-[22%]">
             <div className="pidro-panel pidro-panel--glow flex h-full items-center justify-center rounded-[22px] p-4 sm:p-5 max-sm:p-2">
               <CenterContent
                 phase={phase}
@@ -131,132 +222,9 @@ export function GameTable({
           </div>
         )}
 
-        {north && (
-          <div className="absolute left-1/2 top-[0%] z-20 w-[46%] -translate-x-1/2 max-lg:top-[1%] max-md:top-[0%] max-sm:top-[-1%] max-sm:z-10 max-sm:w-[56%]">
-            <PlayerHand
-              position="north"
-              {...getPlayerCards(north.absolutePosition)}
-              username={north.username}
-              isYou={north.isYou}
-              isDealer={viewModel.dealerAbsolute === north.absolutePosition}
-              isCurrentTurn={north.isCurrentTurn}
-              isConnected={north.isConnected}
-              isTeammate={north.isTeammate}
-              seatStatus={north.seatStatus}
-              legalActions={north.isYou ? legalActions : []}
-              trumpSuit={trumpSuit}
-              statusText={playerStatusText(north.absolutePosition, viewModel, serverState)}
-              onPlayCard={north.isYou ? onPlayCard : undefined}
-            />
-          </div>
-        )}
-        {north && (
-          <div className="absolute left-1/2 top-[12%] z-30 -translate-x-1/2 max-md:top-[9%] max-sm:top-[6%]">
-            <GamePlayerCard {...avatarProps(north)} compact />
-          </div>
-        )}
-
-        {west && (
-          <div className="absolute left-[-1%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:left-[-2%] max-lg:w-[18%] max-md:top-[44%] max-md:w-[14%] max-sm:left-[-30px] max-sm:top-[42%] max-sm:w-[52px]">
-            <PlayerHand
-              position="west"
-              {...getPlayerCards(west.absolutePosition)}
-              username={west.username}
-              isYou={west.isYou}
-              isDealer={viewModel.dealerAbsolute === west.absolutePosition}
-              isCurrentTurn={west.isCurrentTurn}
-              isConnected={west.isConnected}
-              isTeammate={west.isTeammate}
-              seatStatus={west.seatStatus}
-              legalActions={west.isYou ? legalActions : []}
-              trumpSuit={trumpSuit}
-              statusText={playerStatusText(west.absolutePosition, viewModel, serverState)}
-              onPlayCard={west.isYou ? onPlayCard : undefined}
-            />
-          </div>
-        )}
-        {west && (
-          <div className="absolute left-2 top-[15%] z-30 max-sm:top-[12%]">
-            <GamePlayerCard {...avatarProps(west)} compact imagePosition="left" />
-          </div>
-        )}
-
-        {east && (
-          <div className="absolute right-[-1%] top-1/2 z-20 w-[19%] -translate-y-1/2 max-lg:right-[-2%] max-lg:w-[18%] max-md:top-[44%] max-md:w-[14%] max-sm:right-[-30px] max-sm:top-[42%] max-sm:w-[52px]">
-            <PlayerHand
-              position="east"
-              {...getPlayerCards(east.absolutePosition)}
-              username={east.username}
-              isYou={east.isYou}
-              isDealer={viewModel.dealerAbsolute === east.absolutePosition}
-              isCurrentTurn={east.isCurrentTurn}
-              isConnected={east.isConnected}
-              isTeammate={east.isTeammate}
-              seatStatus={east.seatStatus}
-              legalActions={east.isYou ? legalActions : []}
-              trumpSuit={trumpSuit}
-              statusText={playerStatusText(east.absolutePosition, viewModel, serverState)}
-              onPlayCard={east.isYou ? onPlayCard : undefined}
-            />
-          </div>
-        )}
-        {east && (
-          <div className="absolute right-2 top-[60%] z-30 max-sm:top-[58%]">
-            <GamePlayerCard {...avatarProps(east)} compact imagePosition="right" />
-          </div>
-        )}
-
-
-        {south &&
-          (() => {
-            const southCards = getPlayerCards(south.absolutePosition);
-            const filteredCards =
-              optimisticCard && south.isYou && southCards.cards
-                ? {
-                    cards: southCards.cards.filter(
-                      (c) => !(c.rank === optimisticCard.rank && c.suit === optimisticCard.suit),
-                    ),
-                    cardCount: southCards.cardCount - 1,
-                  }
-                : southCards;
-            return (
-              <div className="absolute bottom-[14%] left-1/2 z-20 w-[72%] -translate-x-1/2 max-lg:w-[82%] max-md:bottom-[12%] max-md:w-[92%] max-sm:bottom-[10%] max-sm:w-[96%]">
-                <PlayerHand
-                  position="south"
-                  {...filteredCards}
-                  username={south.username}
-                  isYou={south.isYou}
-                  isDealer={viewModel.dealerAbsolute === south.absolutePosition}
-                  isCurrentTurn={south.isCurrentTurn}
-                  isConnected={south.isConnected}
-                  isTeammate={south.isTeammate}
-                  seatStatus={south.seatStatus}
-                  legalActions={south.isYou ? legalActions : []}
-                  trumpSuit={trumpSuit}
-                  statusText={playerStatusText(south.absolutePosition, viewModel, serverState)}
-                  onPlayCard={south.isYou ? onPlayCard : undefined}
-                  shaking={south.isYou && handShaking}
-                />
-              </div>
-            );
-          })()}
-        {south && (
-          <div className="absolute bottom-[4%] left-1/2 z-30 -translate-x-1/2 max-sm:bottom-[2%]">
-            <GamePlayerCard {...avatarProps(south)} compact />
-          </div>
-        )}
-
-        <button
-          type="button"
-          aria-label="Leave Game"
-          onClick={onLeave}
-          className="pidro-icon-button absolute bottom-[3%] right-[3%] z-30 max-lg:bottom-[4%] max-lg:right-[4%]"
-        >
-          <span className="text-xl font-black">⤴</span>
-        </button>
-
-        {phase === 'bidding' && serverState && (
-          <div className="absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-[calc(50%+56px)]">
+        {/* Bidding panel — floating, centered in game zone, shifted up */}
+        {phase === "bidding" && serverState && (
+          <div className="absolute left-1/2 top-[45%] z-30 -translate-x-1/2 -translate-y-1/2">
             <BiddingPanel
               viewModel={viewModel}
               serverState={serverState}
@@ -266,6 +234,34 @@ export function GameTable({
             />
           </div>
         )}
+
+        {/* South: hand + avatar anchored at bottom of game zone */}
+        {south && (
+          <div className="absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1 px-2 pb-1">
+            {filteredSouthCards && (
+              <div className="w-[75%] max-lg:w-[85%] max-md:w-[92%] max-sm:w-full">
+                <PlayerHand
+                  {...handProps(south, "south")}
+                  {...filteredSouthCards}
+                  shaking={south.isYou && handShaking}
+                />
+              </div>
+            )}
+            <GamePlayerCard {...avatarProps(south)} compact />
+          </div>
+        )}
+      </div>
+
+      {/* ── Control strip: bottom ~15% ── */}
+      <div className="relative flex h-[15%] shrink-0 items-end justify-end px-3 pb-3">
+        <button
+          type="button"
+          aria-label="Leave Game"
+          onClick={onLeave}
+          className="pidro-icon-button"
+        >
+          <span className="text-xl font-black">⤴</span>
+        </button>
       </div>
     </div>
   );
@@ -277,42 +273,58 @@ function playerStatusText(
   serverState: ServerGameState | null,
 ): string {
   const phase = viewModel.phase;
-  const currentPlay = serverState?.current_trick?.find((play) => play.player === absolutePosition);
+  const currentPlay = serverState?.current_trick?.find(
+    (play) => play.player === absolutePosition,
+  );
   const lastTrick =
     serverState?.tricks && serverState.tricks.length > 0
       ? serverState.tricks[serverState.tricks.length - 1]
       : null;
-  const bid = serverState?.bids?.[absolutePosition as keyof NonNullable<ServerGameState['bids']>];
+  const bid =
+    serverState?.bids?.[
+      absolutePosition as keyof NonNullable<ServerGameState["bids"]>
+    ];
 
   switch (phase) {
-    case 'dealer_selection':
+    case "dealer_selection":
       if (currentPlay) return `Draws ${getRankLabel(currentPlay.card.rank)}`;
-      return viewModel.currentTurnAbsolute === absolutePosition ? 'Drawing' : 'Waiting';
-    case 'bidding':
-      if (bid === 'pass') return 'Passed';
-      if (typeof bid === 'number') return `Bet ${bid}`;
-      return viewModel.currentTurnAbsolute === absolutePosition ? 'Bidding' : 'Waiting';
-    case 'declaring':
-    case 'declaring_trump':
-    case 'trump_declaration':
-      if (viewModel.currentTurnAbsolute === absolutePosition) return 'Choose trump';
-      return viewModel.trumpSuit ? `Trump ${SUIT_SYMBOLS[viewModel.trumpSuit]}` : 'Waiting';
-    case 'discarding':
-    case 'second_deal':
-      return viewModel.currentTurnAbsolute === absolutePosition ? 'Selecting hand' : 'Waiting';
-    case 'playing':
+      return viewModel.currentTurnAbsolute === absolutePosition
+        ? "Drawing"
+        : "Waiting";
+    case "bidding":
+      if (bid === "pass") return "Passed";
+      if (typeof bid === "number") return `Bet ${bid}`;
+      return viewModel.currentTurnAbsolute === absolutePosition
+        ? "Bidding"
+        : "Waiting";
+    case "declaring":
+    case "declaring_trump":
+    case "trump_declaration":
+      if (viewModel.currentTurnAbsolute === absolutePosition)
+        return "Choose trump";
+      return viewModel.trumpSuit
+        ? `Trump ${SUIT_SYMBOLS[viewModel.trumpSuit]}`
+        : "Waiting";
+    case "discarding":
+    case "second_deal":
+      return viewModel.currentTurnAbsolute === absolutePosition
+        ? "Selecting hand"
+        : "Waiting";
+    case "playing":
       if (currentPlay) return `Plays ${getRankLabel(currentPlay.card.rank)}`;
-      if (viewModel.currentTurnAbsolute === absolutePosition) return 'Turn';
-      if (lastTrick?.winner === absolutePosition) return 'Won trick';
-      return 'Ready';
-    case 'scoring':
-    case 'hand_complete':
-      return 'Ready';
-    case 'complete':
-    case 'game_over':
-      return 'Finished';
+      if (viewModel.currentTurnAbsolute === absolutePosition) return "Turn";
+      if (lastTrick?.winner === absolutePosition) return "Won trick";
+      return "Ready";
+    case "scoring":
+    case "hand_complete":
+      return "Ready";
+    case "complete":
+    case "game_over":
+      return "Finished";
     default:
-      return viewModel.dealerAbsolute === absolutePosition ? 'Dealer' : 'Waiting';
+      return viewModel.dealerAbsolute === absolutePosition
+        ? "Dealer"
+        : "Waiting";
   }
 }
 
@@ -341,12 +353,14 @@ function CenterContent({
   onSelectHand: (cards: CardType[]) => void;
   optimisticCard?: CardType | null;
 }) {
-  if (phase === 'bidding' && serverState) {
+  if (phase === "bidding" && serverState) {
     return null;
   }
 
   if (
-    (phase === 'declaring' || phase === 'declaring_trump' || phase === 'trump_declaration') &&
+    (phase === "declaring" ||
+      phase === "declaring_trump" ||
+      phase === "trump_declaration") &&
     serverState
   ) {
     return (
@@ -358,7 +372,12 @@ function CenterContent({
     );
   }
 
-  if (phase === 'second_deal' && serverState && youCards && youCards.length > 6) {
+  if (
+    phase === "second_deal" &&
+    serverState &&
+    youCards &&
+    youCards.length > 6
+  ) {
     return (
       <HandSelector
         viewModel={viewModel}
@@ -369,27 +388,31 @@ function CenterContent({
     );
   }
 
-  if (phase === 'playing' && serverState) {
+  if (phase === "playing" && serverState) {
     return (
-      <TrickArea viewModel={viewModel} serverState={serverState} optimisticCard={optimisticCard} />
+      <TrickArea
+        viewModel={viewModel}
+        serverState={serverState}
+        optimisticCard={optimisticCard}
+      />
     );
   }
 
   const phaseLabels: Record<string, string> = {
-    dealing: 'Dealing cards...',
-    dealer_selection: 'Selecting dealer...',
-    discarding: 'Discarding...',
-    second_deal: 'Second deal in progress...',
-    scoring: 'Scoring hand...',
-    hand_complete: 'Hand complete',
-    complete: 'Game finished',
-    game_over: 'Game finished',
+    dealing: "Dealing cards...",
+    dealer_selection: "Selecting dealer...",
+    discarding: "Discarding...",
+    second_deal: "Second deal in progress...",
+    scoring: "Scoring hand...",
+    hand_complete: "Hand complete",
+    complete: "Game finished",
+    game_over: "Game finished",
   };
 
   return (
     <div className="flex flex-col items-center gap-3 text-center">
       <span className="text-lg font-black uppercase tracking-[0.14em] text-cyan-50">
-        {phaseLabels[phase] ?? 'Game in progress...'}
+        {phaseLabels[phase] ?? "Game in progress..."}
       </span>
       <span className="text-sm text-cyan-50/75">
         Watch the table for the next active player or completed trick.
