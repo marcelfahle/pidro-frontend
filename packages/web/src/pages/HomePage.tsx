@@ -39,8 +39,14 @@ export function HomePage() {
       const code = result?.code;
       if (!code) throw new Error('No room code returned');
       navigate(`/game/${code}`);
-    } catch {
-      setError('Failed to create a solo table. Try multiplayer or retry.');
+    } catch (err: unknown) {
+      const errorCode = (err as { response?: { data?: { errors?: { code?: string }[] } } })
+        ?.response?.data?.errors?.[0]?.code;
+      if (errorCode === 'ALREADY_IN_ROOM') {
+        setError("You're already in a game. Leave it first or go to the lobby to rejoin.");
+      } else {
+        setError('Failed to create a solo table. Try multiplayer or retry.');
+      }
     } finally {
       setSinglePlayerLoading(false);
     }

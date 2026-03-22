@@ -26,24 +26,24 @@ interface SizeStyles {
 const SIZE_CLASSES: Record<CardSize, SizeStyles> = {
   sm: {
     wrapper: "h-[54px] w-[38px]",
-    rank: "text-[12px]",
-    suitLarge: "text-2xl",
-    suitSmall: "text-[10px]",
+    rank: "text-[14px]",
+    suitLarge: "text-[1.6rem]",
+    suitSmall: "text-[8px]",
     point: "text-[7px] w-3 h-3",
   },
   md: {
     wrapper: "h-[74px] w-[52px] max-sm:h-[68px] max-sm:w-[48px]",
-    rank: "text-[15px]",
-    suitLarge: "text-4xl",
-    suitSmall: "text-[12px]",
+    rank: "text-[18px]",
+    suitLarge: "text-[2.2rem]",
+    suitSmall: "text-[10px]",
     point: "text-[8px] h-4 w-4",
   },
   lg: {
     wrapper:
       "h-[104px] w-[72px] max-lg:h-[96px] max-lg:w-[66px] max-md:h-[92px] max-md:w-[62px] max-sm:h-[82px] max-sm:w-[56px]",
-    rank: "text-[20px] max-lg:text-[18px]",
+    rank: "text-[24px] max-lg:text-[22px] max-sm:text-[20px]",
     suitLarge: "text-[3rem] max-lg:text-[2.6rem] max-sm:text-[2.3rem]",
-    suitSmall: "text-[14px]",
+    suitSmall: "text-[12px]",
     point: "text-[10px] h-5 w-5",
   },
 };
@@ -93,19 +93,16 @@ function CardFace({
     <>
       {/* Top-left rank + suit */}
       <div
-        className="absolute left-1 top-0.5 flex flex-col items-center leading-none"
+        className="absolute left-[4px] top-[2px] flex flex-col items-center leading-[1]"
         style={{ color }}
       >
-        <span className={`${styles.rank} font-bold`}>{label}</span>
-        <span className={styles.suitSmall}>{suitSymbol}</span>
+        <span className={`${styles.rank} font-black`}>{label}</span>
+        <span className={`${styles.suitSmall} -mt-[1px]`}>{suitSymbol}</span>
       </div>
 
-      {/* Main suit symbol — shifted toward bottom-right */}
-      <div
-        className="absolute inset-0 flex items-end justify-end pb-[12%] pr-[10%]"
-        style={{ color }}
-      >
-        <span className={styles.suitLarge}>{suitSymbol}</span>
+      {/* Main suit symbol — bottom-right corner */}
+      <div className="absolute bottom-[3px] right-[4px]" style={{ color }}>
+        <span className={`${styles.suitLarge} leading-[1]`}>{suitSymbol}</span>
       </div>
 
       {/* Point badge */}
