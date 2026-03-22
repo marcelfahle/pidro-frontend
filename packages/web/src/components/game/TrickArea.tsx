@@ -2,32 +2,11 @@ import type {
   GameViewModel,
   Position,
   ServerGameState,
-  ServerTrick,
   Suit,
 } from "@pidro/shared";
 import { mapAbsoluteToRelative, SUIT_SYMBOLS } from "@pidro/shared";
 import { useEffect, useRef, useState } from "react";
 import { Card, getPidroPoints } from "./Card";
-
-function trickWinnerLabel(
-  winner: Position,
-  youPosition: Position | null,
-): string {
-  if (!youPosition) return isNorthSouth(winner) ? "NS" : "EW";
-  const sameTeam = isNorthSouth(winner) === isNorthSouth(youPosition);
-  return sameTeam ? "Us" : "Them";
-}
-
-function trickPointTotal(trick: ServerTrick, trumpSuit: Suit | null): number {
-  let pts = 0;
-  for (const play of trick.cards) {
-    const p = trumpSuit
-      ? getPidroPoints(play.card.rank, play.card.suit, trumpSuit)
-      : null;
-    if (p != null) pts += p;
-  }
-  return pts;
-}
 
 function isNorthSouth(position: Position): boolean {
   return position === "north" || position === "south";
@@ -40,6 +19,12 @@ const CARD_ENTER_CLASSES: Record<string, string> = {
   west: "animate-card-enter-west",
 };
 
+interface PlayedCard {
+  card: { rank: number; suit: Suit };
+  trickIndex: number;
+  isLatest: boolean;
+}
+
 interface TrickAreaProps {
   viewModel: GameViewModel;
   serverState: ServerGameState;
@@ -51,62 +36,68 @@ export function TrickArea({
   serverState,
   optimisticCard,
 }: TrickAreaProps) {
-  const youPosition =
-    viewModel.players.find((p) => p.isYou)?.absolutePosition ?? null;
   const viewerPosition = viewModel.viewerPositionAbsolute;
   const currentTrick = serverState.current_trick ?? [];
   const tricks = serverState.tricks ?? [];
-  const trickNumber = tricks.length + 1;
   const trumpSuit: Suit | null = viewModel.trumpSuit;
 
-  // Track which slots had cards on the previous render to detect newly played cards
-  const prevSlotKeysRef = useRef<Set<string>>(new Set());
+  // Accumulate all cards per relative position across all tricks
+  const cardsByPosition: Record<string, PlayedCard[]> = {
+    north: [],
+    east: [],
+    south: [],
+    west: [],
+  };
 
-  const trickByRelative: Record<
-    string,
-    { card: { rank: number; suit: Suit }; isLeader: boolean }
-  > = {};
-  for (let i = 0; i < currentTrick.length; i++) {
-    const play = currentTrick[i];
-    const relPos = mapAbsoluteToRelative(play.player, viewerPosition);
-    trickByRelative[relPos] = { card: play.card, isLeader: i === 0 };
-  }
-
-  // Show optimistic card in the south (you) slot if not already present
-  if (optimisticCard && !trickByRelative.south) {
-    trickByRelative.south = {
-      card: optimisticCard,
-      isLeader: currentTrick.length === 0,
-    };
-  }
-
-  // Determine which slots are new (just played this render)
-  const currentSlotKeys = new Set(Object.keys(trickByRelative));
-  const newSlots = new Set<string>();
-  for (const key of currentSlotKeys) {
-    if (!prevSlotKeysRef.current.has(key)) {
-      newSlots.add(key);
+  // Add completed trick cards
+  for (let t = 0; t < tricks.length; t++) {
+    for (const play of tricks[t].cards) {
+      const relPos = mapAbsoluteToRelative(play.player, viewerPosition);
+      cardsByPosition[relPos]?.push({
+        card: play.card,
+        trickIndex: t,
+        isLatest: false,
+      });
     }
   }
-  useEffect(() => {
-    prevSlotKeysRef.current = currentSlotKeys;
-  });
 
-  // Track trick win: detect when the last completed trick just appeared
-  const prevTrickCountRef = useRef(tricks.length);
-  const [winningSlot, setWinningSlot] = useState<string | null>(null);
+  // Add current trick cards
+  for (const play of currentTrick) {
+    const relPos = mapAbsoluteToRelative(play.player, viewerPosition);
+    cardsByPosition[relPos]?.push({
+      card: play.card,
+      trickIndex: tricks.length,
+      isLatest: true,
+    });
+  }
+
+  // Add optimistic card
+  if (optimisticCard && cardsByPosition.south.every((c) => !c.isLatest)) {
+    cardsByPosition.south.push({
+      card: optimisticCard,
+      trickIndex: tricks.length,
+      isLatest: true,
+    });
+  }
+
+  // Track new cards for enter animation
+  const totalCardCount = Object.values(cardsByPosition).reduce(
+    (sum, arr) => sum + arr.length,
+    0,
+  );
+  const prevCountRef = useRef(totalCardCount);
+  const [animateLatest, setAnimateLatest] = useState(false);
 
   useEffect(() => {
-    if (tricks.length > prevTrickCountRef.current && tricks.length > 0) {
-      const lastTrick = tricks[tricks.length - 1];
-      const winRelPos = mapAbsoluteToRelative(lastTrick.winner, viewerPosition);
-      setWinningSlot(winRelPos);
-      const timer = setTimeout(() => setWinningSlot(null), 1000);
+    if (totalCardCount > prevCountRef.current) {
+      setAnimateLatest(true);
+      const timer = setTimeout(() => setAnimateLatest(false), 300);
       return () => clearTimeout(timer);
     }
-    prevTrickCountRef.current = tricks.length;
-  }, [tricks.length, viewerPosition, tricks]);
+    prevCountRef.current = totalCardCount;
+  }, [totalCardCount]);
 
+  // Trick points for current trick
   let trickPoints = 0;
   for (const play of currentTrick) {
     const pts = trumpSuit
@@ -115,12 +106,9 @@ export function TrickArea({
     if (pts != null) trickPoints += pts;
   }
 
-  const currentTurnPlayer = viewModel.players.find((p) => p.isCurrentTurn);
-  const isYourTurn = currentTurnPlayer?.isYou ?? false;
-
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center">
-      {/* Trick points — top left, aligned with north avatar row */}
+      {/* Trick points — top left */}
       {trickPoints > 0 && (
         <div className="absolute left-0 -top-8 rounded-full border border-[#ffcc54]/30 bg-[#ffcc54]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#fff0b2]">
           {trickPoints} pts
@@ -131,121 +119,112 @@ export function TrickArea({
       <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-3">
         {/* Row 1: north */}
         <div />
-        <TrickSlot
+        <PositionStack
           position="north"
-          data={trickByRelative.north}
+          cards={cardsByPosition.north}
           trumpSuit={trumpSuit}
-          animate={newSlots.has("north")}
-          isWinner={winningSlot === "north"}
+          animateLatest={animateLatest}
         />
         <div />
 
         {/* Row 2: west — trump — east */}
-        <TrickSlot
+        <PositionStack
           position="west"
-          data={trickByRelative.west}
+          cards={cardsByPosition.west}
           trumpSuit={trumpSuit}
-          animate={newSlots.has("west")}
-          isWinner={winningSlot === "west"}
+          animateLatest={animateLatest}
         />
         <div className="flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10">
           <span className="text-2xl text-cyan-50/50 max-sm:text-xl">
             {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : "•"}
           </span>
         </div>
-        <TrickSlot
+        <PositionStack
           position="east"
-          data={trickByRelative.east}
+          cards={cardsByPosition.east}
           trumpSuit={trumpSuit}
-          animate={newSlots.has("east")}
-          isWinner={winningSlot === "east"}
+          animateLatest={animateLatest}
         />
 
         {/* Row 3: south */}
         <div />
-        <TrickSlot
+        <PositionStack
           position="south"
-          data={trickByRelative.south}
+          cards={cardsByPosition.south}
           trumpSuit={trumpSuit}
-          animate={newSlots.has("south")}
-          isWinner={winningSlot === "south"}
+          animateLatest={animateLatest}
         />
         <div />
       </div>
-
-      {tricks.length > 0 && (
-        <div className="flex w-full flex-wrap items-center justify-center gap-2">
-          {tricks.map((trick, idx) => {
-            const pts = trickPointTotal(trick, trumpSuit);
-            const trickKey = `trick-${idx.toString()}-${trick.winner}`;
-            return (
-              <div
-                key={trickKey}
-                className="rounded-2xl border border-cyan-300/15 bg-black/10 px-3 py-2 text-center"
-              >
-                <div className="flex justify-center -space-x-3">
-                  {trick.cards.map((play) => (
-                    <Card
-                      key={`${play.card.rank}-${play.card.suit}`}
-                      card={play.card}
-                      size="sm"
-                      isTrump={play.card.suit === trumpSuit}
-                    />
-                  ))}
-                </div>
-                <div className="mt-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-50/72">
-                  #{idx + 1} {trickWinnerLabel(trick.winner, youPosition)}
-                  {pts > 0 ? ` ${pts}pt` : ""}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
 
-const POSITION_LABELS: Record<string, string> = {
-  north: "N",
-  east: "E",
-  south: "S",
-  west: "W",
-};
-
-function TrickSlot({
+function PositionStack({
   position,
-  data,
+  cards,
   trumpSuit,
-  animate = false,
-  isWinner = false,
+  animateLatest,
 }: {
   position: string;
-  data?: { card: { rank: number; suit: Suit }; isLeader: boolean };
+  cards: PlayedCard[];
   trumpSuit: Suit | null;
-  animate?: boolean;
-  isWinner?: boolean;
+  animateLatest: boolean;
 }) {
-  // Fixed-size slot — always reserves space so the grid doesn't shift
-  const pointValue =
-    data && trumpSuit
-      ? (getPidroPoints(data.card.rank, data.card.suit, trumpSuit) ?? undefined)
-      : undefined;
-
-  const animClass = data && animate ? (CARD_ENTER_CLASSES[position] ?? "") : "";
-  const winClass = data && isWinner ? "animate-trick-win" : "";
+  // Fixed-size container so grid doesn't shift
+  // Stack cards with tight overlap
+  // West grows leftward, east grows rightward (away from center trump)
+  const reverseOrder = position === "west" || position === "east";
+  const displayCards = reverseOrder ? [...cards].reverse() : cards;
 
   return (
-    <div
-      className={`flex h-[5.5rem] w-[3.75rem] items-center justify-center max-sm:h-[4.5rem] max-sm:w-[3rem] ${animClass} ${winClass}`.trim()}
-    >
-      {data && (
-        <Card
-          card={data.card}
-          size="md"
-          isTrump={data.card.suit === trumpSuit}
-          pointValue={pointValue}
-        />
+    <div className="flex h-[5.5rem] w-[3.75rem] items-center justify-center max-sm:h-[4.5rem] max-sm:w-[3rem]">
+      {displayCards.length > 0 && (
+        <div
+          className={`flex flex-row items-center ${position === "west" ? "flex-row-reverse" : ""}`}
+        >
+          {displayCards.map((played, i) => {
+            const isLast = reverseOrder
+              ? i === 0
+              : i === displayCards.length - 1;
+            const animClass =
+              isLast && played.isLatest && animateLatest
+                ? (CARD_ENTER_CLASSES[position] ?? "")
+                : "";
+
+            // All positions: horizontal overlap
+            const overlapProp =
+              position === "west" ? "marginRight" : "marginLeft";
+            const style: React.CSSProperties = {
+              position: "relative",
+              zIndex: reverseOrder ? displayCards.length - i : i,
+              ...(i > 0 ? { [overlapProp]: -35 } : {}),
+            };
+
+            return (
+              <div
+                key={`${played.trickIndex}-${played.card.rank}-${played.card.suit}`}
+                className={animClass}
+                style={style}
+              >
+                <Card
+                  card={played.card}
+                  size="md"
+                  isTrump={played.card.suit === trumpSuit}
+                  pointValue={
+                    isLast && trumpSuit
+                      ? (getPidroPoints(
+                          played.card.rank,
+                          played.card.suit,
+                          trumpSuit,
+                        ) ?? undefined)
+                      : undefined
+                  }
+                />
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
