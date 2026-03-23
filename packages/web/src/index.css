@@ -420,6 +420,12 @@ button:disabled {
     0 5px 12px rgba(0, 0, 0, 0.2);
 }
 
+.pidro-card-face {
+  box-shadow:
+    -3px 2px 5px rgba(0, 0, 0, 0.28),
+    0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
 .pidro-card-back {
   background:
     radial-gradient(
@@ -566,62 +572,70 @@ button:disabled {
 
 @keyframes card-enter-north {
   from {
-    opacity: 0;
-    transform: translateY(-70px) scale(0.7);
+    opacity: 0.8;
+    transform: translateY(-150px) scale(0.65) rotate(-4deg);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1) rotate(0deg);
   }
 }
 
 @keyframes card-enter-south {
   from {
-    opacity: 0;
-    transform: translateY(70px) scale(0.7);
+    opacity: 0.8;
+    transform: translateY(150px) scale(0.65) rotate(4deg);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1) rotate(0deg);
   }
 }
 
 @keyframes card-enter-east {
   from {
-    opacity: 0;
-    transform: translateX(70px) scale(0.7);
+    opacity: 0.8;
+    transform: translateX(150px) scale(0.65) rotate(4deg);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(0) scale(1) rotate(0deg);
   }
 }
 
 @keyframes card-enter-west {
   from {
-    opacity: 0;
-    transform: translateX(-70px) scale(0.7);
+    opacity: 0.8;
+    transform: translateX(-150px) scale(0.65) rotate(-4deg);
   }
   to {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translateX(0) scale(1) rotate(0deg);
   }
 }
 
-.animate-card-enter-north {
-  animation: card-enter-north 0.3s ease-out;
-}
-
-.animate-card-enter-south {
-  animation: card-enter-south 0.3s ease-out;
-}
-
-.animate-card-enter-east {
-  animation: card-enter-east 0.3s ease-out;
-}
-
+.animate-card-enter-north,
+.animate-card-enter-south,
+.animate-card-enter-east,
 .animate-card-enter-west {
-  animation: card-enter-west 0.3s ease-out;
+  animation-duration: 1.3s;
+  animation-timing-function: cubic-bezier(0.16, 0.7, 0.3, 1);
+}
+
+.animate-card-enter-north { animation-name: card-enter-north; }
+.animate-card-enter-south { animation-name: card-enter-south; }
+.animate-card-enter-east { animation-name: card-enter-east; }
+.animate-card-enter-west { animation-name: card-enter-west; }
+
+@keyframes card-back-fade {
+  0% { opacity: 1; }
+  55% { opacity: 1; }
+  80% { opacity: 0; }
+  100% { opacity: 0; }
+}
+
+.animate-card-back-fade {
+  animation: card-back-fade 1.3s cubic-bezier(0.16, 0.7, 0.3, 1) forwards;
 }
 
 @keyframes trick-win-flash {
@@ -657,4 +671,32 @@ button:disabled {
 
 .animate-score-bump {
   animation: score-bump 0.4s ease-out;
+}
+
+@keyframes dealer-card-appear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-dealer-card-appear {
+  animation: dealer-card-appear 0.25s ease-out forwards;
+}
+
+@keyframes active-turn-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(67, 245, 255, 0.3), 0 0 18px rgba(67, 245, 255, 0.12);
+  }
+  50% {
+    box-shadow: 0 0 12px rgba(67, 245, 255, 0.45), 0 0 24px rgba(67, 245, 255, 0.18);
+  }
+}
+
+.animate-active-turn {
+  animation: active-turn-glow 2s ease-in-out infinite;
 }

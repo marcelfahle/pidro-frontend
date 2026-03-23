@@ -96,8 +96,8 @@ export function HomePage() {
               <Button
                 variant="gold"
                 size="xl"
-                onClick={handleMultiplayer}
-                className="w-full tracking-[0.05em]"
+                disabled
+                className="w-full tracking-[0.05em] !opacity-40"
               >
                 Multiplayer
               </Button>

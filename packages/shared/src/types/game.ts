@@ -72,6 +72,7 @@ export interface ServerGameState {
   };
 
   dealer?: Position | null;
+  dealer_selection_cuts?: Record<Position, Card> | null;
   round_number?: number;
 }
 

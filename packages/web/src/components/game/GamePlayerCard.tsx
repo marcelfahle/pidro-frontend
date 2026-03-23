@@ -19,6 +19,7 @@ export function GamePlayerCard({
   displayName,
   statusText,
   initial,
+  isDealer = false,
   isCurrentTurn = false,
   isConnected = true,
   seatStatus = "normal",
@@ -41,15 +42,22 @@ export function GamePlayerCard({
       : statusText;
 
   const avatar = (
-    <div
-      className={`flex shrink-0 items-center justify-center rounded text-xs font-black text-white ${
-        compact ? "h-7 w-7" : "h-9 w-9"
-      } ${isVacant ? "border border-dashed border-amber-300/40 bg-amber-400/10" : "bg-[#1a5a80]"}`}
-    >
-      {isVacant ? (
-        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300/80" />
-      ) : (
-        avatarContent
+    <div className="relative">
+      <div
+        className={`flex shrink-0 items-center justify-center rounded text-xs font-black text-white ${
+          compact ? "h-7 w-7" : "h-9 w-9"
+        } ${isVacant ? "border border-dashed border-amber-300/40 bg-amber-400/10" : "bg-[#1a5a80]"}`}
+      >
+        {isVacant ? (
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-300/80" />
+        ) : (
+          avatarContent
+        )}
+      </div>
+      {isDealer && (
+        <div className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full border border-amber-300/80 bg-amber-500 text-[8px] font-black text-white">
+          D
+        </div>
       )}
     </div>
   );
@@ -62,9 +70,6 @@ export function GamePlayerCard({
         >
           {resolvedName}
         </span>
-        {isCurrentTurn && (
-          <span className="h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.6)]" />
-        )}
       </div>
       <div
         className={`font-bold uppercase tracking-wide ${
@@ -80,7 +85,7 @@ export function GamePlayerCard({
     <div
       className={`inline-flex items-center gap-1.5 rounded-lg border border-cyan-300/20 bg-black/30 backdrop-blur-sm ${
         compact ? "px-1.5 py-1" : "px-2 py-1.5"
-      } ${isCurrentTurn ? "border-cyan-300/60 shadow-[0_0_12px_rgba(67,245,255,0.2)]" : ""} ${
+      } ${isCurrentTurn ? "border-cyan-300/70 animate-active-turn" : ""} ${
         dimmed ? "opacity-50" : ""
       } ${className}`}
     >

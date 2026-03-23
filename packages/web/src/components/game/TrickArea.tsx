@@ -94,7 +94,7 @@ export function TrickArea({
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center">
       {/* Card grid — tight cross layout */}
-      <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-y-3">
         {/* Row 1: north */}
         <div />
         <PositionStack
@@ -111,8 +111,9 @@ export function TrickArea({
           cards={cardsByPosition.west}
           trumpSuit={trumpSuit}
           newCardKeys={newCardKeys}
+          align="right"
         />
-        <div className="flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10">
+        <div className="mx-2 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10">
           <span className="text-2xl text-cyan-50/50 max-sm:text-xl">
             {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : "•"}
           </span>
@@ -122,6 +123,7 @@ export function TrickArea({
           cards={cardsByPosition.east}
           trumpSuit={trumpSuit}
           newCardKeys={newCardKeys}
+          align="left"
         />
 
         {/* Row 3: south */}
@@ -143,15 +145,25 @@ function PositionStack({
   cards,
   trumpSuit,
   newCardKeys,
+  align = "center",
 }: {
   position: string;
   cards: PlayedCard[];
   trumpSuit: Suit | null;
   newCardKeys: Set<string>;
+  align?: "left" | "right" | "center";
 }) {
-  // Always overlap to the right so the top-left rank of each card stays visible
+  const justifyClass =
+    align === "left"
+      ? "justify-start"
+      : align === "right"
+        ? "justify-end"
+        : "justify-center";
+
   return (
-    <div className="flex h-[5.5rem] w-[3.75rem] items-center justify-center max-sm:h-[4.5rem] max-sm:w-[3rem]">
+    <div
+      className={`flex h-[5.5rem] w-[3.75rem] items-center ${justifyClass} max-sm:h-[4.5rem] max-sm:w-[3rem]`}
+    >
       {cards.length > 0 && (
         <div className="flex flex-row items-center">
           {cards.map((played, i) => {
@@ -166,13 +178,20 @@ function PositionStack({
               ...(i > 0 ? { marginLeft: -30 } : {}),
             };
 
+            const isNew = newCardKeys.has(cardKey);
             return (
               <div key={cardKey} className={animClass} style={style}>
                 <Card
                   card={played.card}
                   size="md"
-                  isTrump={played.card.suit === trumpSuit}
                 />
+                {isNew && (
+                  <div className="animate-card-back-fade pointer-events-none absolute inset-0 rounded-[7px]">
+                    <div className="pidro-card-back h-full w-full rounded-[7px]">
+                      <div className="absolute inset-[3px] rounded-[5px] border border-cyan-100/35" />
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

@@ -9,14 +9,14 @@ export const SUIT_SYMBOLS: Record<Suit, string> = {
 
 export const SUIT_COLORS_RAW: Record<Suit, string> = {
   hearts: '#e11d48',
-  diamonds: '#d97706',
+  diamonds: '#e11d48',
   clubs: '#1e293b',
-  spades: '#0f172a',
+  spades: '#1e293b',
 };
 
 export const SUIT_BADGE_COLORS: Record<Suit, string> = {
   hearts: '#fff1f2',
-  diamonds: '#fffbeb',
+  diamonds: '#fff1f2',
   clubs: '#f1f5f9',
   spades: '#f1f5f9',
 };

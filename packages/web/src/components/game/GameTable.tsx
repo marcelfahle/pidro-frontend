@@ -13,6 +13,7 @@ import { GamePlayerCard } from "./GamePlayerCard";
 import { HandSelector } from "./HandSelector";
 import { PlayerHand } from "./PlayerHand";
 import { TrickArea } from "./TrickArea";
+import { DealerSelectionReveal } from "./DealerSelectionReveal";
 import { TrumpSelector } from "./TrumpSelector";
 
 interface GameTableProps {
@@ -50,6 +51,10 @@ export function GameTable({
   const viewerIsSpectator = !players.some((player) => player.isYou);
   const viewerPosition = viewModel.viewerPositionAbsolute;
 
+  const cuts = serverState?.dealer_selection_cuts;
+  const showDealerReveal =
+    phase === "dealer_selection" && !!cuts && Object.keys(cuts).length > 0;
+
   const north = players.find((p) => p.relativePosition === "north");
   const east = players.find((p) => p.relativePosition === "east");
   const south = players.find((p) => p.relativePosition === "south");
@@ -65,6 +70,7 @@ export function GameTable({
         serverState,
       ),
       initial: name[0]?.toUpperCase() ?? "?",
+      isDealer: viewModel.dealerAbsolute === player.absolutePosition,
       isCurrentTurn: player.isCurrentTurn,
       isConnected: player.isConnected,
       seatStatus: player.seatStatus,
@@ -201,8 +207,19 @@ export function GameTable({
           </div>
         )}
 
+        {/* Dealer selection reveal */}
+        {showDealerReveal && cuts && (
+          <div className="absolute inset-x-[20%] top-[20%] bottom-[12%] z-20 flex items-center justify-center max-lg:inset-x-[16%] max-md:inset-x-[10%] max-sm:inset-x-[6%] max-sm:top-[16%]">
+            <DealerSelectionReveal
+              cuts={cuts}
+              dealer={serverState?.dealer ?? null}
+              viewerPosition={viewModel.viewerPositionAbsolute}
+            />
+          </div>
+        )}
+
         {/* Center content (trick area, trump selector, hand selector, phase labels) */}
-        {phase !== "bidding" && (
+        {!showDealerReveal && phase !== "bidding" && (
           <div className="absolute inset-x-[20%] top-[20%] bottom-[12%] z-10 flex items-center justify-center max-lg:inset-x-[16%] max-md:inset-x-[10%] max-sm:inset-x-[6%] max-sm:top-[16%]">
             <CenterContent
               phase={phase}
@@ -221,7 +238,7 @@ export function GameTable({
         )}
 
         {/* Bidding panel — floating, centered in game zone, shifted up */}
-        {phase === "bidding" && serverState && (
+        {!showDealerReveal && phase === "bidding" && serverState && (
           <div className="absolute left-1/2 top-[45%] z-30 -translate-x-1/2 -translate-y-1/2">
             <BiddingPanel
               viewModel={viewModel}
@@ -251,12 +268,16 @@ export function GameTable({
       </div>
 
       {/* ── Control strip: bottom ~15% ── */}
-      <div className="relative flex h-[13%] shrink-0 items-end justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="relative flex h-[13%] shrink-0 items-center justify-between gap-3 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        {/* Ad placeholder */}
+        <div className="flex h-[50px] flex-1 items-center justify-center rounded-lg border border-dashed border-cyan-300/20 bg-black/20 text-[10px] font-bold uppercase tracking-widest text-cyan-50/30">
+          Ad Space
+        </div>
         <button
           type="button"
           aria-label="Leave Game"
           onClick={onLeave}
-          className="pidro-icon-button"
+          className="pidro-icon-button shrink-0"
         >
           <span className="text-xl font-black">⤴</span>
         </button>
@@ -396,25 +417,17 @@ function CenterContent({
     );
   }
 
-  const phaseLabels: Record<string, string> = {
-    dealing: "Dealing cards...",
-    dealer_selection: "Selecting dealer...",
-    discarding: "Discarding...",
-    second_deal: "Second deal in progress...",
-    scoring: "Scoring hand...",
-    hand_complete: "Hand complete",
-    complete: "Game finished",
-    game_over: "Game finished",
-  };
+  if (phase === "complete" || phase === "game_over") {
+    return (
+      <span className="text-lg font-black uppercase tracking-[0.14em] text-cyan-50">
+        Game finished
+      </span>
+    );
+  }
 
   return (
-    <div className="flex flex-col items-center gap-3 text-center">
-      <span className="text-lg font-black uppercase tracking-[0.14em] text-cyan-50">
-        {phaseLabels[phase] ?? "Game in progress..."}
-      </span>
-      <span className="text-sm text-cyan-50/75">
-        Watch the table for the next active player or completed trick.
-      </span>
+    <div className="flex items-center justify-center">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-50/40" />
     </div>
   );
 }
