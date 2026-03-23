@@ -25,6 +25,13 @@ export interface OwnerDecisionEvent {
 let globalGameChannel: Channel | null = null;
 let gameRefCount = 0;
 let currentTopic: string | null = null;
+let isPageUnloading = false;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    isPageUnloading = true;
+  });
+}
 
 interface UseGameChannelOptions {
   roomCode: string;
@@ -439,7 +446,12 @@ export const useGameChannel = ({
     return () => {
       gameRefCount--;
       if (gameRefCount === 0 && globalGameChannel) {
-        globalGameChannel.leave();
+        // During page refresh/unload, don't explicitly leave — let the socket
+        // drop naturally so the backend treats it as a disconnect (with
+        // reconnection window) rather than an intentional leave.
+        if (!isPageUnloading) {
+          globalGameChannel.leave();
+        }
         globalGameChannel = null;
         currentTopic = null;
       }

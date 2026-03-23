@@ -567,7 +567,7 @@ button:disabled {
 @keyframes card-enter-north {
   from {
     opacity: 0;
-    transform: translateY(-24px) scale(0.85);
+    transform: translateY(-70px) scale(0.7);
   }
   to {
     opacity: 1;
@@ -578,7 +578,7 @@ button:disabled {
 @keyframes card-enter-south {
   from {
     opacity: 0;
-    transform: translateY(24px) scale(0.85);
+    transform: translateY(70px) scale(0.7);
   }
   to {
     opacity: 1;
@@ -589,7 +589,7 @@ button:disabled {
 @keyframes card-enter-east {
   from {
     opacity: 0;
-    transform: translateX(24px) scale(0.85);
+    transform: translateX(70px) scale(0.7);
   }
   to {
     opacity: 1;
@@ -600,7 +600,7 @@ button:disabled {
 @keyframes card-enter-west {
   from {
     opacity: 0;
-    transform: translateX(-24px) scale(0.85);
+    transform: translateX(-70px) scale(0.7);
   }
   to {
     opacity: 1;
@@ -609,19 +609,19 @@ button:disabled {
 }
 
 .animate-card-enter-north {
-  animation: card-enter-north 0.25s ease-out;
+  animation: card-enter-north 0.3s ease-out;
 }
 
 .animate-card-enter-south {
-  animation: card-enter-south 0.25s ease-out;
+  animation: card-enter-south 0.3s ease-out;
 }
 
 .animate-card-enter-east {
-  animation: card-enter-east 0.25s ease-out;
+  animation: card-enter-east 0.3s ease-out;
 }
 
 .animate-card-enter-west {
-  animation: card-enter-west 0.25s ease-out;
+  animation: card-enter-west 0.3s ease-out;
 }
 
 @keyframes trick-win-flash {

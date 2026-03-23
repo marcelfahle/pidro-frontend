@@ -1,16 +1,7 @@
-import type {
-  GameViewModel,
-  Position,
-  ServerGameState,
-  Suit,
-} from "@pidro/shared";
+import type { GameViewModel, ServerGameState, Suit } from "@pidro/shared";
 import { mapAbsoluteToRelative, SUIT_SYMBOLS } from "@pidro/shared";
-import { useEffect, useRef, useState } from "react";
-import { Card, getPidroPoints } from "./Card";
-
-function isNorthSouth(position: Position): boolean {
-  return position === "north" || position === "south";
-}
+import { useEffect, useRef } from "react";
+import { Card } from "./Card";
 
 const CARD_ENTER_CLASSES: Record<string, string> = {
   north: "animate-card-enter-north",
@@ -80,41 +71,28 @@ export function TrickArea({
     });
   }
 
-  // Track new cards for enter animation
-  const totalCardCount = Object.values(cardsByPosition).reduce(
-    (sum, arr) => sum + arr.length,
-    0,
-  );
-  const prevCountRef = useRef(totalCardCount);
-  const [animateLatest, setAnimateLatest] = useState(false);
-
-  useEffect(() => {
-    if (totalCardCount > prevCountRef.current) {
-      setAnimateLatest(true);
-      const timer = setTimeout(() => setAnimateLatest(false), 300);
-      return () => clearTimeout(timer);
+  // Track which cards have already been rendered so only truly new ones animate
+  const seenCardsRef = useRef<Set<string>>(new Set());
+  const allCardKeys = new Set<string>();
+  for (const cards of Object.values(cardsByPosition)) {
+    for (const played of cards) {
+      allCardKeys.add(
+        `${played.trickIndex}-${played.card.rank}-${played.card.suit}`,
+      );
     }
-    prevCountRef.current = totalCardCount;
-  }, [totalCardCount]);
-
-  // Trick points for current trick
-  let trickPoints = 0;
-  for (const play of currentTrick) {
-    const pts = trumpSuit
-      ? getPidroPoints(play.card.rank, play.card.suit, trumpSuit)
-      : null;
-    if (pts != null) trickPoints += pts;
   }
+  const newCardKeys = new Set<string>();
+  for (const key of allCardKeys) {
+    if (!seenCardsRef.current.has(key)) {
+      newCardKeys.add(key);
+    }
+  }
+  useEffect(() => {
+    seenCardsRef.current = new Set(allCardKeys);
+  });
 
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center">
-      {/* Trick points — top left */}
-      {trickPoints > 0 && (
-        <div className="absolute left-0 -top-8 rounded-full border border-[#ffcc54]/30 bg-[#ffcc54]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[#fff0b2]">
-          {trickPoints} pts
-        </div>
-      )}
-
       {/* Card grid — tight cross layout */}
       <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-3">
         {/* Row 1: north */}
@@ -123,7 +101,7 @@ export function TrickArea({
           position="north"
           cards={cardsByPosition.north}
           trumpSuit={trumpSuit}
-          animateLatest={animateLatest}
+          newCardKeys={newCardKeys}
         />
         <div />
 
@@ -132,7 +110,7 @@ export function TrickArea({
           position="west"
           cards={cardsByPosition.west}
           trumpSuit={trumpSuit}
-          animateLatest={animateLatest}
+          newCardKeys={newCardKeys}
         />
         <div className="flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10">
           <span className="text-2xl text-cyan-50/50 max-sm:text-xl">
@@ -143,7 +121,7 @@ export function TrickArea({
           position="east"
           cards={cardsByPosition.east}
           trumpSuit={trumpSuit}
-          animateLatest={animateLatest}
+          newCardKeys={newCardKeys}
         />
 
         {/* Row 3: south */}
@@ -152,7 +130,7 @@ export function TrickArea({
           position="south"
           cards={cardsByPosition.south}
           trumpSuit={trumpSuit}
-          animateLatest={animateLatest}
+          newCardKeys={newCardKeys}
         />
         <div />
       </div>
@@ -164,62 +142,36 @@ function PositionStack({
   position,
   cards,
   trumpSuit,
-  animateLatest,
+  newCardKeys,
 }: {
   position: string;
   cards: PlayedCard[];
   trumpSuit: Suit | null;
-  animateLatest: boolean;
+  newCardKeys: Set<string>;
 }) {
-  // Fixed-size container so grid doesn't shift
-  // Stack cards with tight overlap
-  // West grows leftward, east grows rightward (away from center trump)
-  const reverseOrder = position === "west" || position === "east";
-  const displayCards = reverseOrder ? [...cards].reverse() : cards;
-
+  // Always overlap to the right so the top-left rank of each card stays visible
   return (
     <div className="flex h-[5.5rem] w-[3.75rem] items-center justify-center max-sm:h-[4.5rem] max-sm:w-[3rem]">
-      {displayCards.length > 0 && (
-        <div
-          className={`flex flex-row items-center ${position === "west" ? "flex-row-reverse" : ""}`}
-        >
-          {displayCards.map((played, i) => {
-            const isLast = reverseOrder
-              ? i === 0
-              : i === displayCards.length - 1;
-            const animClass =
-              isLast && played.isLatest && animateLatest
-                ? (CARD_ENTER_CLASSES[position] ?? "")
-                : "";
+      {cards.length > 0 && (
+        <div className="flex flex-row items-center">
+          {cards.map((played, i) => {
+            const cardKey = `${played.trickIndex}-${played.card.rank}-${played.card.suit}`;
+            const animClass = newCardKeys.has(cardKey)
+              ? (CARD_ENTER_CLASSES[position] ?? "")
+              : "";
 
-            // All positions: horizontal overlap
-            const overlapProp =
-              position === "west" ? "marginRight" : "marginLeft";
             const style: React.CSSProperties = {
               position: "relative",
-              zIndex: reverseOrder ? displayCards.length - i : i,
-              ...(i > 0 ? { [overlapProp]: -35 } : {}),
+              zIndex: i,
+              ...(i > 0 ? { marginLeft: -30 } : {}),
             };
 
             return (
-              <div
-                key={`${played.trickIndex}-${played.card.rank}-${played.card.suit}`}
-                className={animClass}
-                style={style}
-              >
+              <div key={cardKey} className={animClass} style={style}>
                 <Card
                   card={played.card}
                   size="md"
                   isTrump={played.card.suit === trumpSuit}
-                  pointValue={
-                    isLast && trumpSuit
-                      ? (getPidroPoints(
-                          played.card.rank,
-                          played.card.suit,
-                          trumpSuit,
-                        ) ?? undefined)
-                      : undefined
-                  }
                 />
               </div>
             );

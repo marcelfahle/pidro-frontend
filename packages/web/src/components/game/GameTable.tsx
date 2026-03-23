@@ -146,7 +146,7 @@ export function GameTable({
   return (
     <div className="flex h-full w-full flex-col">
       {/* ── Game zone: top ~85% ── */}
-      <div className="relative h-[85%] shrink-0 overflow-hidden">
+      <div className="relative h-[87%] shrink-0 overflow-hidden">
         {/* Info bar */}
         <div className="absolute inset-x-0 top-0 z-30 flex justify-center">
           <GameInfoBar
@@ -251,7 +251,7 @@ export function GameTable({
       </div>
 
       {/* ── Control strip: bottom ~15% ── */}
-      <div className="relative flex h-[15%] shrink-0 items-end justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="relative flex h-[13%] shrink-0 items-end justify-end px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <button
           type="button"
           aria-label="Leave Game"

@@ -70,9 +70,9 @@ function ShellMessage({
     <div className="pidro-page">
       <div className="pidro-window flex min-h-[520px] items-center justify-center">
         <div className="pidro-panel w-full max-w-lg p-8 text-center">
-          <div className="mb-5 flex justify-center">
-            <div className="pidro-banner">{title}</div>
-          </div>
+          <h2 className="mb-5 text-xl font-black uppercase tracking-[0.14em] text-[#ffd83e]">
+            {title}
+          </h2>
           <div className="text-base text-cyan-50/80">{children}</div>
           {action && <div className="mt-6 flex justify-center">{action}</div>}
         </div>
@@ -159,7 +159,13 @@ export function GamePage() {
         if (fetchIdRef.current !== currentFetchId) return;
         const status = getHttpStatus(err);
         if (status === 404) {
-          setRoomError("Room not found. It may have been closed.");
+          // Room HTTP endpoint returned 404 — the room may still exist on the
+          // server (e.g. after a browser refresh where the REST cache is stale).
+          // Attempt a direct WebSocket channel join which will either reconnect
+          // us or give a definitive error.
+          setChannelEnabled(true);
+          setRoomLoading(false);
+          return;
         } else if (status === 403) {
           setRoomError("You do not have access to this room.");
         } else {
@@ -242,6 +248,8 @@ export function GamePage() {
   useEffect(() => {
     if (!code || !userId || !channelEnabled) return;
     if (serverState !== null) return;
+    // Stop polling if the channel join already failed (room gone)
+    if (lastError) return;
 
     const interval = setInterval(async () => {
       try {
@@ -253,7 +261,7 @@ export function GamePage() {
     }, ROOM_POLL_INTERVAL);
 
     return () => clearInterval(interval);
-  }, [code, userId, channelEnabled, serverState, initFromRoom]);
+  }, [code, userId, channelEnabled, serverState, lastError, initFromRoom]);
 
   useEffect(() => {
     return () => {
@@ -328,11 +336,11 @@ export function GamePage() {
         // Best effort
       });
     }
-    navigate("/lobby");
+    navigate("/home");
   }, [code, navigate, role]);
 
   const handleBackToLobby = useCallback(() => {
-    navigate("/lobby");
+    navigate("/home");
   }, [navigate]);
 
   const handleReady = useCallback(() => {
@@ -367,7 +375,7 @@ export function GamePage() {
   const handlePlayAgain = useCallback(async () => {
     const config = roomConfigRef.current;
     if (!config) {
-      navigate("/lobby");
+      navigate("/home");
       return;
     }
 
@@ -435,10 +443,10 @@ export function GamePage() {
             )}
             <button
               type="button"
-              onClick={() => navigate("/lobby")}
+              onClick={() => navigate("/home")}
               className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
             >
-              Back to Lobby
+              Back to Menu
             </button>
           </div>
         }
@@ -485,10 +493,10 @@ export function GamePage() {
             )}
             <button
               type="button"
-              onClick={() => navigate("/lobby")}
+              onClick={() => navigate("/home")}
               className="rounded-[7px] border border-cyan-300/40 bg-cyan-400/10 px-5 py-3 text-sm font-black uppercase tracking-[0.12em] text-white"
             >
-              Back to Lobby
+              Back to Menu
             </button>
           </div>
         }
