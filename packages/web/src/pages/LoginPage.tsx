@@ -40,7 +40,7 @@ export function LoginPage() {
         <img
           src={homeLogoUrl}
           alt="Pidro"
-          className="pointer-events-none w-[280px] max-w-[65vw] select-none drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] max-sm:w-[180px]"
+          className="pointer-events-none w-[380px] max-w-[75vw] select-none drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] max-sm:w-[240px]"
         />
 
         <div className="mt-1 w-full max-w-[380px]">
