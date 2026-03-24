@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import * as authApi from '../api/auth';
+import homeLogoUrl from '../assets/legacy/home-logo.png';
 import { Button } from '../components/ui/Button';
-import { PidroWordmark } from '../components/ui/PidroWordmark';
 import { useAuthStore } from '../stores/auth';
 
 export function RegisterPage() {
@@ -53,108 +53,78 @@ export function RegisterPage() {
 
   return (
     <div className="pidro-page">
-      <div className="pidro-window h-dvh">
-        <div className="pidro-auth-grid relative gap-8 px-6 pb-8 pt-10 max-md:px-4 max-md:pt-8">
-          <section className="flex flex-col items-center justify-center gap-6 px-2 text-center max-md:px-0">
-            <PidroWordmark />
-            <div className="max-w-md space-y-3">
-              <h1 className="text-3xl font-black uppercase tracking-[0.08em] text-white">
-                Build your table identity
-              </h1>
-              <p className="text-sm leading-6 text-cyan-50/80">
-                Create an account once, then use it across the web table and the mobile client we
-                tackle next. Same room flow, same seat logic, same old-school feel.
-              </p>
-            </div>
-          </section>
+      <div className="pidro-window flex h-dvh flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-5 py-4 max-sm:justify-start max-sm:px-4 max-sm:pt-0">
+        <img
+          src={homeLogoUrl}
+          alt="Pidro"
+          className="pointer-events-none w-[600px] max-w-none select-none max-sm:w-[420px]"
+        />
 
-          <section className="flex items-center">
-            <div className="pidro-panel pidro-panel--glow w-full p-6 max-md:p-5">
-              <div className="mb-5 flex justify-center">
-                <div className="pidro-banner">Create Account</div>
-              </div>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="username"
-                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
-                  >
-                    Username
-                  </label>
-                  <input
-                    id="username"
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="pidro-input"
-                    placeholder="Choose a username"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="pidro-input"
-                    placeholder="you@example.com"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="password"
-                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
-                  >
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="pidro-input"
-                    placeholder="At least 6 characters"
-                    required
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="confirmPassword"
-                    className="mb-2 block text-sm font-black uppercase tracking-[0.2em] text-cyan-50/80"
-                  >
-                    Confirm Password
-                  </label>
-                  <input
-                    id="confirmPassword"
-                    type="password"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pidro-input"
-                    placeholder="Repeat your password"
-                    required
-                  />
-                </div>
-                {error && <p className="text-sm font-bold text-red-200">{error}</p>}
-                <Button type="submit" disabled={isLoading} className="w-full">
-                  {isLoading ? 'Creating account...' : 'Create Account'}
-                </Button>
-              </form>
-              <p className="mt-5 text-center text-sm text-cyan-50/75">
-                Already have an account?{' '}
-                <Link to="/login" className="font-black uppercase tracking-[0.08em] text-[#ffd84a]">
-                  Sign in
-                </Link>
-              </p>
-            </div>
-          </section>
+        <div className="-mt-8 w-full max-w-[380px] max-sm:-mt-12">
+          <div className="pidro-panel pidro-panel--glow p-5 max-sm:p-4">
+            <form onSubmit={handleSubmit} autoComplete="on" className="space-y-3">
+              <input
+                id="reg-username"
+                name="username"
+                type="text"
+                autoComplete="username"
+                aria-label="Username"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="pidro-input"
+                required
+              />
+              <input
+                id="reg-email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                aria-label="Email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="pidro-input"
+                required
+              />
+              <input
+                id="reg-password"
+                name="new-password"
+                type="password"
+                autoComplete="new-password"
+                aria-label="Password"
+                placeholder="Password (min 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pidro-input"
+                required
+              />
+              <input
+                id="reg-confirm-password"
+                name="confirm-password"
+                type="password"
+                autoComplete="new-password"
+                aria-label="Confirm password"
+                placeholder="Confirm password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="pidro-input"
+                required
+              />
+              {error && <p className="text-sm font-bold text-red-200">{error}</p>}
+              <Button type="submit" disabled={isLoading} className="w-full" size="lg">
+                {isLoading ? 'Creating account...' : 'Create Account'}
+              </Button>
+            </form>
+          </div>
+
+          <div className="mt-3">
+            <Link to="/login" className="block">
+              <Button variant="glass" size="md" className="w-full">
+                Already have an account? Sign In
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </div>
