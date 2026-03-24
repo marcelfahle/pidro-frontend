@@ -36,14 +36,14 @@ export function LoginPage() {
 
   return (
     <div className="pidro-page">
-      <div className="pidro-window flex h-dvh flex-col items-center justify-center overflow-y-auto px-5 py-4 max-sm:justify-start max-sm:px-4 max-sm:pt-3">
+      <div className="pidro-window flex h-dvh flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-5 py-4 max-sm:justify-start max-sm:px-4 max-sm:pt-0">
         <img
           src={homeLogoUrl}
           alt="Pidro"
-          className="pointer-events-none w-[380px] max-w-[75vw] select-none drop-shadow-[0_10px_24px_rgba(0,0,0,0.35)] max-sm:w-[240px]"
+          className="pointer-events-none w-[600px] max-w-none select-none max-sm:w-[420px]"
         />
 
-        <div className="mt-1 w-full max-w-[380px]">
+        <div className="-mt-8 w-full max-w-[380px] max-sm:-mt-12">
           <div className="pidro-panel pidro-panel--glow p-5 max-sm:p-4">
             <form onSubmit={handleSubmit} autoComplete="on" className="space-y-3">
               <input
