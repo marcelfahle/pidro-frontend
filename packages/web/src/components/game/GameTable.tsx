@@ -13,6 +13,7 @@ import { GamePlayerCard } from "./GamePlayerCard";
 import { HandSelector } from "./HandSelector";
 import { PlayerHand } from "./PlayerHand";
 import { TrickArea } from "./TrickArea";
+import { DealerChip } from "./DealerChip";
 import { DealerSelectionReveal } from "./DealerSelectionReveal";
 import { TrumpSelector } from "./TrumpSelector";
 
@@ -76,6 +77,10 @@ export function GameTable({
       seatStatus: player.seatStatus,
     };
   }
+
+  const isPlayerDealer = (player: NonNullable<typeof north>) =>
+    phase !== "dealer_selection" &&
+    viewModel.dealerAbsolute === player.absolutePosition;
 
   function getPlayerCards(absPos: string) {
     const playerView =
@@ -171,23 +176,29 @@ export function GameTable({
 
         {/* North: cards peeking from top + avatar below */}
         {north && (
-          <div className="absolute left-1/2 top-0 z-20 flex w-[50%] -translate-x-1/2 flex-col items-center gap-1 max-sm:w-[60%]">
+          <div className="absolute left-1/2 top-[6px] z-20 flex w-[50%] -translate-x-1/2 flex-col items-center gap-2.5 max-sm:w-[60%]">
             <div className="mt-[-10px]">
               <PlayerHand {...handProps(north, "north")} />
             </div>
-            <GamePlayerCard {...avatarProps(north)} compact />
+            <div className="relative">
+              {isPlayerDealer(north) && <DealerChip className="absolute -left-9 top-1/2 -translate-y-1/2" />}
+              <GamePlayerCard {...avatarProps(north)} compact />
+            </div>
           </div>
         )}
 
         {/* West: avatar above hand — fixed top so it aligns with east */}
         {west && (
           <div className="absolute left-0 top-[26%] z-20 flex flex-col items-start gap-1.5 pl-2">
-            <GamePlayerCard
-              {...avatarProps(west)}
-              compact
-              imagePosition="left"
-            />
-            <div className="flex h-[35dvh] w-[80px] translate-x-[-45%] items-center justify-center max-sm:w-[48px]">
+            <div className="relative">
+              {isPlayerDealer(west) && <DealerChip className="absolute -top-8 left-[6px]" />}
+              <GamePlayerCard
+                {...avatarProps(west)}
+                compact
+                imagePosition="left"
+              />
+            </div>
+            <div className="flex h-[35dvh] w-[80px] translate-x-[calc(-45%-16px)] items-center justify-center max-sm:w-[48px]">
               <PlayerHand {...handProps(west, "west")} />
             </div>
           </div>
@@ -196,12 +207,15 @@ export function GameTable({
         {/* East: avatar above hand — fixed top so it aligns with west */}
         {east && (
           <div className="absolute right-0 top-[26%] z-20 flex flex-col items-end gap-1.5 pr-2">
-            <GamePlayerCard
-              {...avatarProps(east)}
-              compact
-              imagePosition="right"
-            />
-            <div className="flex h-[35dvh] w-[80px] translate-x-[45%] items-center justify-center max-sm:w-[48px]">
+            <div className="relative">
+              {isPlayerDealer(east) && <DealerChip className="absolute -top-8 right-[6px]" />}
+              <GamePlayerCard
+                {...avatarProps(east)}
+                compact
+                imagePosition="right"
+              />
+            </div>
+            <div className="flex h-[35dvh] w-[80px] translate-x-[calc(45%+16px)] items-center justify-center max-sm:w-[48px]">
               <PlayerHand {...handProps(east, "east")} />
             </div>
           </div>
@@ -239,7 +253,7 @@ export function GameTable({
 
         {/* Bidding panel — floating, centered in game zone, shifted up */}
         {!showDealerReveal && phase === "bidding" && serverState && (
-          <div className="absolute left-1/2 top-[45%] z-30 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute left-1/2 top-[calc(45%+44px)] z-30 -translate-x-1/2 -translate-y-1/2">
             <BiddingPanel
               viewModel={viewModel}
               serverState={serverState}
@@ -262,7 +276,10 @@ export function GameTable({
                 />
               </div>
             )}
-            <GamePlayerCard {...avatarProps(south)} compact className="mt-2" />
+            <div className="relative mt-2">
+              {isPlayerDealer(south) && <DealerChip className="absolute -left-9 top-1/2 -translate-y-1/2" />}
+              <GamePlayerCard {...avatarProps(south)} compact />
+            </div>
           </div>
         )}
       </div>
@@ -320,7 +337,7 @@ function playerStatusText(
     case "declaring_trump":
     case "trump_declaration":
       if (viewModel.currentTurnAbsolute === absolutePosition)
-        return "Choose trump";
+        return "Naming";
       return viewModel.trumpSuit
         ? `Trump ${SUIT_SYMBOLS[viewModel.trumpSuit]}`
         : "Waiting";

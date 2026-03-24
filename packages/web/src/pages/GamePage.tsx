@@ -408,6 +408,11 @@ export function GamePage() {
     }
   }
 
+  const hasGameStarted = serverState !== null && serverState.phase != null;
+  const isGameOver =
+    serverState !== null &&
+    (serverState.phase === "complete" || serverState.phase === "game_over");
+
   if (!code) {
     return (
       <ShellMessage title="Invalid Game Code">Invalid game code.</ShellMessage>
@@ -425,7 +430,7 @@ export function GamePage() {
     );
   }
 
-  if (roomError) {
+  if (roomError && !isGameOver) {
     const isNotFound = roomError.includes("not found");
     return (
       <ShellMessage
@@ -456,7 +461,7 @@ export function GamePage() {
     );
   }
 
-  if (lastError && !isChannelJoined) {
+  if (lastError && !isChannelJoined && !isGameOver) {
     const isTimeoutDisconnect = lastError.toLowerCase().includes("inactivity");
     const canWatchAsSpectator =
       lastError.toLowerCase().includes("seat permanently filled") ||
@@ -509,11 +514,6 @@ export function GamePage() {
       </ShellMessage>
     );
   }
-
-  const hasGameStarted = serverState !== null && serverState.phase != null;
-  const isGameOver =
-    serverState !== null &&
-    (serverState.phase === "complete" || serverState.phase === "game_over");
 
   const isMyTurn = viewModel?.currentTurnAbsolute === youPositionAbs;
   const visibleDecision =

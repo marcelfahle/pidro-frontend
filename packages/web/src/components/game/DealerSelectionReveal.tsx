@@ -2,6 +2,7 @@ import type { Card as CardType, Position } from "@pidro/shared";
 import { mapAbsoluteToRelative, POS_ORDER } from "@pidro/shared";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Card } from "./Card";
+import { DealerChip } from "./DealerChip";
 
 interface DealerSelectionRevealProps {
   cuts: Record<Position, CardType>;
@@ -100,9 +101,7 @@ export function DealerSelectionReveal({
 
         {slotFor("west")}
         <div className="flex h-14 w-14 items-center justify-center max-sm:h-10 max-sm:w-10">
-          <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-amber-300/80 bg-amber-500 text-sm font-black text-white shadow-[0_0_10px_rgba(245,158,11,0.4)]">
-            D
-          </div>
+          <DealerChip />
         </div>
         {slotFor("east")}
 
