@@ -1,3 +1,17 @@
-export { createApiClient, type ApiClient, type TokenGetter, type SessionClearer } from './client';
-export { createAuthApi, type AuthApi, type User, type LoginResponse, type RegisterResponse } from './auth';
-export { createLobbyApi, type LobbyApi, type ListRoomsResponse, type GetRoomResponse, type JoinRoomResponse, type CreateRoomResponse } from './lobby';
+export {
+  type AuthApi,
+  createAuthApi,
+  type LoginResponse,
+  type PasswordResetRequestResponse,
+  type RegisterResponse,
+  type User,
+} from './auth';
+export { type ApiClient, createApiClient, type SessionClearer, type TokenGetter } from './client';
+export {
+  type CreateRoomResponse,
+  createLobbyApi,
+  type GetRoomResponse,
+  type JoinRoomResponse,
+  type ListRoomsResponse,
+  type LobbyApi,
+} from './lobby';

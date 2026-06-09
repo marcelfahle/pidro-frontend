@@ -43,14 +43,14 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
   }
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4">
-      <div className="text-sm font-black uppercase tracking-[0.16em] text-[#fff0b2]">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-4 short:gap-1.5">
+      <div className="text-sm font-black uppercase tracking-[0.16em] text-[#fff0b2] short:text-xs">
         Select {targetCount} cards to keep
       </div>
-      <div className="text-xs font-black uppercase tracking-[0.16em] text-cyan-50/70">
+      <div className="text-xs font-black uppercase tracking-[0.16em] text-cyan-50/70 short:text-[10px]">
         {selected.size}/{targetCount} selected
       </div>
-      <div className="flex flex-wrap justify-center gap-2">
+      <div className="flex max-w-[440px] flex-wrap justify-center gap-2 short:max-w-[460px] short:gap-1.5">
         {cards.map((card, i) => {
           const pointValue = trumpSuit
             ? (getPidroPoints(card.rank, card.suit, trumpSuit) ?? undefined)
@@ -74,7 +74,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
         type="button"
         onClick={handleConfirm}
         disabled={selected.size !== targetCount}
-        className="rounded-[7px] border-2 border-[#d99d1b] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#ffd84a] disabled:cursor-not-allowed disabled:opacity-50"
+        className="rounded-[7px] border-2 border-[#d99d1b] bg-[linear-gradient(180deg,rgba(255,213,88,0.22)_0%,transparent_36%),linear-gradient(180deg,#6d3000_0%,#4a1900_38%,#2f1100_100%)] px-6 py-3 text-sm font-black uppercase tracking-[0.12em] text-[#ffd84a] disabled:cursor-not-allowed disabled:opacity-50 short:px-4 short:py-1.5 short:text-xs"
       >
         Confirm Selection
       </button>

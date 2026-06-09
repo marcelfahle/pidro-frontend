@@ -1,12 +1,13 @@
-import { LogOut, Settings } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { BarChart3, CircleHelp, LogOut, Settings, Spade, Star, Trophy } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { lobbyApi } from '../api/lobby';
+import { getProfile, veteranProgressFraction } from '../api/profile';
 import homeBackgroundUrl from '../assets/legacy/home-bg.jpg';
-import homeLogoUrl from '../assets/legacy/home-logo.png';
-import { Button } from '../components/ui/Button';
+import pidroLogoUrl from '../assets/pidro-logo.png';
+import { GlassCard, PidroButton } from '../components/ds';
 import { IconButton } from '../components/ui/IconButton';
-import { PlayerMiniCard } from '../components/ui/PlayerMiniCard';
+import { type MiniProfile, PlayerMiniCard } from '../components/ui/PlayerMiniCard';
 import { useAuthStore } from '../stores/auth';
 
 export function HomePage() {
@@ -15,6 +16,31 @@ export function HomePage() {
   const clearSession = useAuthStore((s) => s.clearSession);
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<MiniProfile | undefined>(undefined);
+
+  // Pull the player's progression once for the identity badge. Best-effort:
+  // if it fails (offline / older server), the badge falls back to the plain
+  // avatar — the menu still works.
+  useEffect(() => {
+    let active = true;
+    getProfile()
+      .then((p) => {
+        if (!active) return;
+        setProfile({
+          level: p.veteran.level,
+          progress: veteranProgressFraction(p.veteran.progress),
+          tier: p.skill.provisional ? 'provisional' : p.skill.tier,
+          prestige: p.veteran.prestige,
+          title: p.veteran.title,
+        });
+      })
+      .catch(() => {
+        /* no profile yet — keep the fallback avatar */
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const handleLogout = useCallback(() => {
     clearSession();
@@ -70,54 +96,88 @@ export function HomePage() {
         <main className="relative z-10 flex flex-1 flex-col px-4 pb-4 pt-4 sm:px-6 sm:pb-6">
           <div className="pidro-home-hero pointer-events-none absolute inset-x-0 z-0 flex justify-center">
             <img
-              src={homeLogoUrl}
+              src={pidroLogoUrl}
               alt=""
               aria-hidden="true"
-              className="w-[760px] max-w-none select-none opacity-[0.98] drop-shadow-[0_16px_34px_rgba(0,0,0,0.36)] max-md:w-[520px]"
+              className="mt-[72px] w-[340px] max-w-[78vw] select-none opacity-[0.98] drop-shadow-[0_0_44px_rgba(0,160,255,0.4)] max-md:mt-[88px] max-md:w-[272px]"
             />
           </div>
 
           <div className="relative z-10 flex items-start justify-between gap-3">
-            <PlayerMiniCard username={user?.username} />
+            <PlayerMiniCard username={user?.username} profile={profile} />
           </div>
 
           <section className="relative z-10 mx-auto flex w-full max-w-[460px] flex-1 flex-col items-center justify-center gap-6 px-1 pb-8 pt-[168px] max-md:gap-5 max-md:pt-[202px]">
             <div className="w-full max-w-[260px] space-y-3 max-md:max-w-[248px]">
-              <Button
-                variant="gold"
-                size="xl"
-                loading={singlePlayerLoading}
+              <PidroButton
+                size="md"
+                fullWidth
+                disabled={singlePlayerLoading}
                 onClick={handleSinglePlayer}
-                className="w-full tracking-[0.05em]"
               >
-                Single Player
-              </Button>
+                {singlePlayerLoading ? 'Starting…' : 'Single Player'}
+              </PidroButton>
 
-              <Button
-                variant="gold"
-                size="xl"
-                disabled
-                className="w-full tracking-[0.05em] !opacity-40"
-              >
+              <PidroButton size="md" fullWidth onClick={handleMultiplayer}>
                 Multiplayer
-              </Button>
+              </PidroButton>
             </div>
 
             {error && <p className="text-center text-sm font-bold text-red-200">{error}</p>}
           </section>
 
-          <div className="mt-auto flex items-end justify-between pb-0">
-            <div>
+          {/* Bottom bar — Remove Ads centered, icon groups on the sides */}
+          <div className="relative z-10 mt-auto h-[var(--pidro-control-size)]">
+            <div className="absolute inset-y-0 left-0 flex items-center gap-2.5 max-md:gap-2">
               <IconButton
                 label="Settings"
-                icon={<Settings className="h-6 w-6" strokeWidth={2.2} />}
+                icon={<Settings className="pidro-metal-icon h-6 w-6" strokeWidth={2.2} />}
                 disabled
               />
+              <IconButton
+                label="Leaderboard"
+                icon={<BarChart3 className="pidro-metal-icon h-6 w-6" strokeWidth={2.2} />}
+                className="max-md:hidden"
+                disabled
+              />
+              <IconButton
+                label="Achievements"
+                icon={<Trophy className="pidro-metal-icon h-6 w-6" strokeWidth={2.2} />}
+                className="max-md:hidden"
+                onClick={() => navigate('/profile')}
+              />
+              <IconButton
+                label="How to Play"
+                icon={<CircleHelp className="pidro-metal-icon h-6 w-6" strokeWidth={2.2} />}
+                onClick={() => navigate('/tutorial')}
+              />
             </div>
-            <div>
+
+            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+              <GlassCard style={{ padding: '10px 20px', borderRadius: 'var(--pidro-radius-md)' }}>
+                <div className="flex items-center gap-3">
+                  <Star className="pidro-metal-icon--gold h-5 w-5 shrink-0 fill-current" />
+                  <span className="text-left leading-tight">
+                    <span className="block font-[family-name:var(--pidro-font-display)] text-[15px] font-bold text-[var(--pidro-gold)] max-md:text-sm">
+                      Remove Ads
+                    </span>
+                    <span className="block text-[11px] text-[var(--pidro-text-secondary)] max-md:hidden">
+                      Play without interruptions!
+                    </span>
+                  </span>
+                </div>
+              </GlassCard>
+            </div>
+
+            <div className="absolute inset-y-0 right-0 flex items-center gap-2.5 max-md:gap-2">
+              <IconButton
+                label="Profile"
+                icon={<Spade className="pidro-metal-icon--gold h-6 w-6 fill-current" />}
+                onClick={() => navigate('/profile')}
+              />
               <IconButton
                 label="Log Out"
-                icon={<LogOut className="h-6 w-6" strokeWidth={2.2} />}
+                icon={<LogOut className="pidro-metal-icon h-6 w-6" strokeWidth={2.2} />}
                 onClick={handleLogout}
               />
             </div>

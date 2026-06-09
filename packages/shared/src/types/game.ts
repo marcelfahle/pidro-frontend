@@ -43,6 +43,7 @@ export interface ServerTrick {
 
 export interface ServerGameState {
   phase: GamePhase;
+  hand_number?: number | null;
   current_player: Position | null;
   players: Record<Position, ServerPlayerView>;
   highest_bid?: { position: Position; amount: number | 'pass' };
@@ -163,9 +164,14 @@ export interface SelectHandAction {
   cards: Card[];
 }
 
+export interface SelectDealerAction {
+  type: 'select_dealer';
+}
+
 export type LegalAction =
   | PassAction
   | BidAction
   | PlayCardAction
   | DeclareTrumpAction
-  | SelectHandAction;
+  | SelectHandAction
+  | SelectDealerAction;

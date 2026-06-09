@@ -101,7 +101,7 @@ const emptyPlayers: ServerGameState['players'] = {
 };
 
 describe('TrickArea', () => {
-  it('shows trick number and empty slots when no cards played', () => {
+  it('shows the trump suit indicator and no cards on an empty board', () => {
     render(
       <TrickArea
         viewModel={makeViewModel()}
@@ -115,15 +115,13 @@ describe('TrickArea', () => {
       />,
     );
 
-    expect(screen.getByText('Trick #1')).toBeTruthy();
-    // Empty slots show position initials
-    expect(screen.getByText('N')).toBeTruthy();
-    expect(screen.getByText('E')).toBeTruthy();
-    expect(screen.getByText('S')).toBeTruthy();
-    expect(screen.getByText('W')).toBeTruthy();
+    // Center trump indicator renders the suit symbol (cards draw suits as SVG).
+    expect(screen.getByText('♥')).toBeTruthy();
+    // No played cards yet.
+    expect(screen.queryByText('10')).toBeNull();
   });
 
-  it('shows played cards in their relative positions', () => {
+  it('shows played cards from the current trick', () => {
     render(
       <TrickArea
         viewModel={makeViewModel()}
@@ -140,14 +138,11 @@ describe('TrickArea', () => {
       />,
     );
 
-    // The first card (east) is the leader
-    expect(screen.getByText('Led')).toBeTruthy();
-    // Remaining empty slots
-    expect(screen.getByText('N')).toBeTruthy();
-    expect(screen.getByText('W')).toBeTruthy();
+    expect(screen.getByText('10')).toBeTruthy();
+    expect(screen.getByText('5')).toBeTruthy();
   });
 
-  it('increments trick number based on completed tricks', () => {
+  it('shows cards accumulated from completed tricks', () => {
     render(
       <TrickArea
         viewModel={makeViewModel()}
@@ -171,11 +166,11 @@ describe('TrickArea', () => {
       />,
     );
 
-    // Should be trick #2 since one trick is completed
-    expect(screen.getByText('Trick #2')).toBeTruthy();
+    expect(screen.getByText('7')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
   });
 
-  it('shows "Your turn" indicator when it is your turn', () => {
+  it('renders the optimistic card in the south stack', () => {
     render(
       <TrickArea
         viewModel={makeViewModel()}
@@ -186,9 +181,10 @@ describe('TrickArea', () => {
           current_trick: [],
           tricks: [],
         }}
+        optimisticCard={{ rank: 9, suit: 'spades' }}
       />,
     );
 
-    expect(screen.getByText('Your turn')).toBeTruthy();
+    expect(screen.getByText('9')).toBeTruthy();
   });
 });

@@ -12,9 +12,10 @@ describe('DesignSystemPage', () => {
     );
 
     expect(screen.getByText('Pidro Design System')).toBeInTheDocument();
-    expect(screen.getByText('Page Headers')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Gold md' })).toBeInTheDocument();
+    expect(screen.getByText('Buttons')).toBeInTheDocument();
+    expect(screen.getByText('Avatars, Skill & Dedication')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Multiplayer' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Glass lg' })).toBeInTheDocument();
-    expect(screen.getByText('Card Faces')).toBeInTheDocument();
+    expect(screen.getByText('Achievements')).toBeInTheDocument();
   });
 });

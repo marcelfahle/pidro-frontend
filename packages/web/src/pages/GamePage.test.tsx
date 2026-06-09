@@ -168,7 +168,7 @@ describe('GamePage', () => {
     );
     expect(errorText).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Back to Lobby' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Back to Menu' })).toBeTruthy();
   });
 
   it('initializes game store and connects channel after fetching room', async () => {
@@ -247,7 +247,7 @@ describe('GamePage', () => {
     expect(screen.getByRole('button', { name: 'Leave Room' })).toBeTruthy();
   });
 
-  it('navigates back to lobby when Leave Room is clicked', async () => {
+  it('leaves the room and navigates home when Leave Room is clicked', async () => {
     setupDefaults();
     mockGetRoom.mockResolvedValue({ code: 'TEST1', status: 'waiting', seats: [] });
     mockLeaveRoom.mockResolvedValue(undefined);
@@ -257,7 +257,7 @@ describe('GamePage', () => {
     const leaveButton = await screen.findByRole('button', { name: 'Leave Room' });
     await userEvent.click(leaveButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith('/lobby');
+    expect(mockNavigate).toHaveBeenCalledWith('/home');
     expect(mockLeaveRoom).toHaveBeenCalledWith('TEST1');
   });
 
@@ -273,7 +273,7 @@ describe('GamePage', () => {
 
     const errorText = await screen.findByText('Unable to join game room.');
     expect(errorText).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Back to Lobby' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Back to Menu' })).toBeTruthy();
   });
 
   it('shows the inactivity title when the server force-disconnects the player', async () => {

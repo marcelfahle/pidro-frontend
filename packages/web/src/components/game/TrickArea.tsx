@@ -1,13 +1,13 @@
-import type { GameViewModel, ServerGameState, Suit } from "@pidro/shared";
-import { mapAbsoluteToRelative, SUIT_SYMBOLS } from "@pidro/shared";
-import { useEffect, useRef } from "react";
-import { Card } from "./Card";
+import type { GameViewModel, ServerGameState, Suit } from '@pidro/shared';
+import { mapAbsoluteToRelative, SUIT_SYMBOLS } from '@pidro/shared';
+import { useEffect, useRef } from 'react';
+import { Card } from './Card';
 
 const CARD_ENTER_CLASSES: Record<string, string> = {
-  north: "animate-card-enter-north",
-  south: "animate-card-enter-south",
-  east: "animate-card-enter-east",
-  west: "animate-card-enter-west",
+  north: 'animate-card-enter-north',
+  south: 'animate-card-enter-south',
+  east: 'animate-card-enter-east',
+  west: 'animate-card-enter-west',
 };
 
 interface PlayedCard {
@@ -22,11 +22,7 @@ interface TrickAreaProps {
   optimisticCard?: { rank: number; suit: Suit } | null;
 }
 
-export function TrickArea({
-  viewModel,
-  serverState,
-  optimisticCard,
-}: TrickAreaProps) {
+export function TrickArea({ viewModel, serverState, optimisticCard }: TrickAreaProps) {
   const viewerPosition = viewModel.viewerPositionAbsolute;
   const currentTrick = serverState.current_trick ?? [];
   const tricks = serverState.tricks ?? [];
@@ -76,9 +72,7 @@ export function TrickArea({
   const allCardKeys = new Set<string>();
   for (const cards of Object.values(cardsByPosition)) {
     for (const played of cards) {
-      allCardKeys.add(
-        `${played.trickIndex}-${played.card.rank}-${played.card.suit}`,
-      );
+      allCardKeys.add(`${played.trickIndex}-${played.card.rank}-${played.card.suit}`);
     }
   }
   const newCardKeys = new Set<string>();
@@ -94,7 +88,7 @@ export function TrickArea({
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center">
       {/* Card grid — tight cross layout */}
-      <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-y-3">
+      <div className="grid grid-cols-[1fr_auto_1fr] grid-rows-[auto_auto_auto] place-items-center gap-y-3 short:gap-y-1">
         {/* Row 1: north */}
         <div />
         <PositionStack
@@ -113,9 +107,9 @@ export function TrickArea({
           newCardKeys={newCardKeys}
           align="right"
         />
-        <div className="mx-2 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10">
-          <span className="text-2xl text-cyan-50/50 max-sm:text-xl">
-            {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : "•"}
+        <div className="mx-2 flex h-14 w-14 items-center justify-center rounded-full border border-cyan-300/15 bg-black/10 shadow-inner max-sm:h-10 max-sm:w-10 short:h-10 short:w-10">
+          <span className="text-2xl text-cyan-50/50 max-sm:text-xl short:text-xl">
+            {trumpSuit ? SUIT_SYMBOLS[trumpSuit] : '•'}
           </span>
         </div>
         <PositionStack
@@ -145,35 +139,29 @@ function PositionStack({
   cards,
   trumpSuit,
   newCardKeys,
-  align = "center",
+  align = 'center',
 }: {
   position: string;
   cards: PlayedCard[];
   trumpSuit: Suit | null;
   newCardKeys: Set<string>;
-  align?: "left" | "right" | "center";
+  align?: 'left' | 'right' | 'center';
 }) {
   const justifyClass =
-    align === "left"
-      ? "justify-start"
-      : align === "right"
-        ? "justify-end"
-        : "justify-center";
+    align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center';
 
   return (
     <div
-      className={`flex h-[5.5rem] w-[3.75rem] items-center ${justifyClass} max-sm:h-[4.5rem] max-sm:w-[3rem]`}
+      className={`flex h-[5.5rem] w-[3.75rem] items-center ${justifyClass} max-sm:h-[4.5rem] max-sm:w-[3rem] short:h-[4.25rem] short:w-[3rem]`}
     >
       {cards.length > 0 && (
         <div className="flex flex-row items-center">
           {cards.map((played, i) => {
             const cardKey = `${played.trickIndex}-${played.card.rank}-${played.card.suit}`;
-            const animClass = newCardKeys.has(cardKey)
-              ? (CARD_ENTER_CLASSES[position] ?? "")
-              : "";
+            const animClass = newCardKeys.has(cardKey) ? (CARD_ENTER_CLASSES[position] ?? '') : '';
 
             const style: React.CSSProperties = {
-              position: "relative",
+              position: 'relative',
               zIndex: i,
               ...(i > 0 ? { marginLeft: -30 } : {}),
             };
@@ -181,10 +169,7 @@ function PositionStack({
             const isNew = newCardKeys.has(cardKey);
             return (
               <div key={cardKey} className={animClass} style={style}>
-                <Card
-                  card={played.card}
-                  size="md"
-                />
+                <Card card={played.card} size="md" />
                 {isNew && (
                   <div className="animate-card-back-fade pointer-events-none absolute inset-0 rounded-[7px]">
                     <div className="pidro-card-back h-full w-full rounded-[7px]">

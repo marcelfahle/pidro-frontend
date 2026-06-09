@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import * as authApi from '../api/auth';
-import homeLogoUrl from '../assets/legacy/home-logo.png';
-import { Button } from '../components/ui/Button';
+import pidroLogoUrl from '../assets/pidro-logo.png';
+import { GlassButton, GlassCard, PidroButton, PidroInput } from '../components/ds';
 import { useAuthStore } from '../stores/auth';
 
 export function RegisterPage() {
@@ -55,74 +55,68 @@ export function RegisterPage() {
     <div className="pidro-page">
       <div className="pidro-window flex h-dvh flex-col items-center justify-center overflow-x-hidden overflow-y-auto px-5 py-4 max-sm:justify-start max-sm:px-4 max-sm:pt-0">
         <img
-          src={homeLogoUrl}
+          src={pidroLogoUrl}
           alt="Pidro"
-          className="pointer-events-none w-[600px] max-w-none select-none max-sm:w-[420px]"
+          className="pointer-events-none w-[260px] select-none drop-shadow-[0_0_36px_rgba(0,160,255,0.35)] max-sm:mt-5 max-sm:w-[200px]"
         />
 
-        <div className="-mt-8 w-full max-w-[380px] max-sm:-mt-12">
-          <div className="pidro-panel pidro-panel--glow p-5 max-sm:p-4">
+        <div className="mt-5 w-full max-w-[380px] max-sm:mt-4">
+          <GlassCard style={{ padding: 20 }}>
             <form onSubmit={handleSubmit} autoComplete="on" className="space-y-3">
-              <input
+              <PidroInput
                 id="reg-username"
                 name="username"
                 type="text"
                 autoComplete="username"
-                aria-label="Username"
+                ariaLabel="Username"
                 placeholder="Username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="pidro-input"
                 required
               />
-              <input
+              <PidroInput
                 id="reg-email"
                 name="email"
                 type="email"
                 autoComplete="email"
-                aria-label="Email"
+                ariaLabel="Email"
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="pidro-input"
                 required
               />
-              <input
+              <PidroInput
                 id="reg-password"
                 name="new-password"
                 type="password"
                 autoComplete="new-password"
-                aria-label="Password"
+                ariaLabel="Password"
                 placeholder="Password (min 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="pidro-input"
                 required
               />
-              <input
+              <PidroInput
                 id="reg-confirm-password"
                 name="confirm-password"
                 type="password"
                 autoComplete="new-password"
-                aria-label="Confirm password"
+                ariaLabel="Confirm password"
                 placeholder="Confirm password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pidro-input"
                 required
               />
               {error && <p className="text-sm font-bold text-red-200">{error}</p>}
-              <Button type="submit" disabled={isLoading} className="w-full" size="lg">
+              <PidroButton type="submit" disabled={isLoading} fullWidth>
                 {isLoading ? 'Creating account...' : 'Create Account'}
-              </Button>
+              </PidroButton>
             </form>
-          </div>
+          </GlassCard>
 
           <div className="mt-3">
             <Link to="/login" className="block">
-              <Button variant="glass" size="md" className="w-full">
-                Already have an account? Sign In
-              </Button>
+              <GlassButton fullWidth>Already have an account? Sign In</GlassButton>
             </Link>
           </div>
         </div>

@@ -1,5 +1,24 @@
 @import "tailwindcss";
 
+/* Compact layout for height-constrained viewports (phones in landscape). */
+@custom-variant short (@media (max-height: 540px));
+
+/* ── Brand fonts (Pidro Design System) ──────────────────────── */
+@font-face {
+  font-family: "Bree Serif";
+  src: url("/fonts/BreeSerif-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/Nunito-VariableFont_wght.ttf") format("truetype");
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -16,6 +35,89 @@
   --pidro-radius-surface: 8px;
   --pidro-radius-panel: 10px;
   --pidro-control-size: 64px;
+
+  /* ── Pidro Design System tokens (Claude design handoff) ──────
+     Full token set so the ported DS components render faithfully.
+     Keeps the app's existing --pidro-cyan (#46dcff) and felt vars. */
+  --pidro-font-display: "Bree Serif", Georgia, serif;
+  --pidro-font-body: "Nunito", "Segoe UI", sans-serif;
+
+  --pidro-bg-deep: #081422;
+  --pidro-bg-primary: #0e2240;
+  --pidro-bg-gradient: radial-gradient(ellipse at 50% 30%, #1e5a8a 0%, #0e2240 55%, #081422 100%);
+
+  --pidro-glass-bg: rgba(20, 65, 115, 0.55);
+  --pidro-glass-bg-hover: rgba(25, 80, 140, 0.65);
+  --pidro-glass-border: rgba(0, 200, 255, 0.45);
+  --pidro-cyan-dim: #3a8eb5;
+  --pidro-cyan-glow: rgba(0, 207, 255, 0.35);
+
+  --pidro-gold: #ffd426;
+  --pidro-gold-light: #ffe566;
+  --pidro-gold-dark: #d4a020;
+
+  --pidro-btn-primary-border: #d4a020;
+  --pidro-btn-primary-text: #ffd426;
+  --pidro-btn-secondary-bg: rgba(30, 90, 150, 0.5);
+  --pidro-btn-secondary-bg-hover: rgba(40, 110, 180, 0.6);
+  --pidro-btn-secondary-border: rgba(0, 200, 255, 0.5);
+  --pidro-btn-secondary-text: #ffffff;
+
+  --pidro-text-primary: #ffffff;
+  --pidro-text-secondary: rgba(255, 255, 255, 0.7);
+  --pidro-text-muted: rgba(255, 255, 255, 0.45);
+  --pidro-text-gold: #ffd426;
+  --pidro-text-cyan: #00cfff;
+  --pidro-text-green: #4ae06a;
+  --pidro-online: #4ae06a;
+
+  --pidro-text-xs: 12px;
+  --pidro-text-sm: 14px;
+  --pidro-text-base: 16px;
+  --pidro-text-lg: 18px;
+  --pidro-text-xl: 22px;
+  --pidro-text-2xl: 28px;
+  --pidro-text-3xl: 36px;
+  --pidro-weight-bold: 700;
+  --pidro-weight-black: 900;
+
+  --pidro-space-sm: 8px;
+  --pidro-space-md: 12px;
+  --pidro-space-lg: 16px;
+  --pidro-space-xl: 24px;
+
+  --pidro-radius-sm: 6px;
+  --pidro-radius-md: 10px;
+  --pidro-radius-lg: 14px;
+  --pidro-radius-xl: 20px;
+  --pidro-radius-full: 999px;
+  --pidro-shadow-text: 0 2px 4px rgba(0, 0, 0, 0.5);
+  --pidro-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --pidro-duration: 180ms;
+  --pidro-z-banner: 20;
+}
+
+/* Brushed-metal finish for menu icons (lucide → currentColor + shadow). */
+.pidro-metal-icon {
+  color: #cbd8e4;
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
+}
+.pidro-metal-icon--gold {
+  color: var(--pidro-gold);
+}
+
+/* Skill-emblem "being placed" pulse (provisional / Unrated). */
+@keyframes pidroCalibrate {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.pidro-calibrate-pulse {
+  animation: pidroCalibrate 1.8s ease-in-out infinite;
 }
 
 html,
@@ -46,11 +148,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(
-    circle,
-    rgba(255, 255, 255, 0.08) 1px,
-    transparent 1px
-  );
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
   background-size: 16px 16px;
   opacity: 0.05;
 }
@@ -89,11 +187,7 @@ button:disabled {
   border-radius: 20px;
   border: 1px solid rgba(131, 215, 255, 0.18);
   background:
-    radial-gradient(
-      circle at center,
-      rgba(53, 151, 213, 0.35) 0%,
-      transparent 45%
-    ),
+    radial-gradient(circle at center, rgba(53, 151, 213, 0.35) 0%, transparent 45%),
     linear-gradient(
       180deg,
       var(--pidro-felt-top) 0%,
@@ -128,6 +222,62 @@ button:disabled {
     max-width: 100%;
     border-radius: 0;
     border: none;
+    box-shadow: none;
+  }
+}
+
+.pidro-game-shell {
+  position: relative;
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 12px;
+}
+
+.pidro-game-frame {
+  flex: 0 0 auto;
+  width: min(1200px, calc(100vw - 24px), calc(133.333dvh - 32px));
+  height: min(900px, calc(100dvh - 24px), calc(75vw - 18px));
+  max-width: 1200px;
+  max-height: 900px;
+  border-radius: 20px;
+  border: 1px solid rgba(131, 215, 255, 0.18);
+  box-shadow:
+    0 40px 100px rgba(0, 0, 0, 0.68),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    inset 0 -24px 80px rgba(0, 0, 0, 0.3);
+}
+
+.pidro-ad-slot {
+  width: 728px;
+  max-width: calc(100vw - 10rem);
+  height: 90px;
+  flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+  .pidro-ad-slot {
+    width: 320px;
+    max-width: calc(100vw - 5rem);
+    height: 50px;
+  }
+}
+
+@media (max-width: 640px), (max-height: 540px) {
+  .pidro-game-shell {
+    padding: 0;
+  }
+
+  .pidro-game-frame {
+    width: 100%;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    border: none;
+    border-radius: 0;
     box-shadow: none;
   }
 }
@@ -219,8 +369,7 @@ button:disabled {
 }
 
 .pidro-plaque > span {
-  padding: var(--pidro-plaque-pad-y) var(--pidro-plaque-pad-x)
-    calc(var(--pidro-plaque-pad-y) - 1px);
+  padding: var(--pidro-plaque-pad-y) var(--pidro-plaque-pad-x) calc(var(--pidro-plaque-pad-y) - 1px);
   line-height: 1.08;
   text-wrap: balance;
 }
@@ -261,8 +410,7 @@ button:disabled {
   border-radius: var(--pidro-radius-panel);
   border: 1px solid rgba(91, 221, 255, 0.42);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 32%),
-    rgba(9, 55, 96, 0.54);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 32%), rgba(9, 55, 96, 0.54);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.05),
     inset 0 0 40px rgba(0, 175, 255, 0.08),
@@ -348,6 +496,37 @@ button:disabled {
     inset 0 -10px 16px rgba(0, 0, 0, 0.3);
 }
 
+.pidro-score-mini {
+  position: relative;
+  border-radius: 0 0 16px 16px;
+  border: 3px solid rgba(215, 124, 0, 0.95);
+  border-top: none;
+  background:
+    linear-gradient(180deg, rgba(255, 212, 95, 0.15) 0%, transparent 38%),
+    linear-gradient(180deg, #774000 0%, #6b3100 22%, #562500 100%);
+  color: #fff6d1;
+  box-shadow:
+    0 8px 24px rgba(28, 9, 0, 0.38),
+    inset 0 1px 0 rgba(255, 230, 165, 0.3),
+    inset 0 -8px 14px rgba(0, 0, 0, 0.28);
+}
+
+.pidro-score-mini:focus-visible {
+  outline: 2px solid rgba(123, 235, 255, 0.95);
+  outline-offset: 3px;
+}
+
+.pidro-score-history {
+  border-radius: 8px;
+  border: 1px solid rgba(65, 183, 242, 0.42);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 34%), rgba(3, 47, 82, 0.92);
+  box-shadow:
+    0 14px 30px rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+}
+
 .pidro-seat-card {
   display: grid;
   grid-template-columns: auto 1fr;
@@ -358,8 +537,7 @@ button:disabled {
   border-radius: var(--pidro-radius-tight);
   border: 1px solid rgba(65, 183, 242, 0.42);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 36%),
-    rgba(3, 47, 82, 0.86);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 36%), rgba(3, 47, 82, 0.86);
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.04),
     0 0 14px rgba(0, 0, 0, 0.14);
@@ -405,11 +583,7 @@ button:disabled {
   border-radius: var(--pidro-radius-tight);
   border: 1px solid rgba(125, 221, 255, 0.55);
   background:
-    radial-gradient(
-      circle at 30% 25%,
-      rgba(255, 255, 255, 0.38),
-      transparent 26%
-    ),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.38), transparent 26%),
     linear-gradient(180deg, #4ea6d4 0%, #1f6f9a 100%);
   color: white;
   font-size: 1rem;
@@ -428,11 +602,7 @@ button:disabled {
 
 .pidro-card-back {
   background:
-    radial-gradient(
-      circle at top right,
-      rgba(255, 255, 255, 0.16),
-      transparent 32%
-    ),
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.16), transparent 32%),
     linear-gradient(180deg, #287ec0 0%, #0a5b9a 52%, #083d70 100%);
   border: 1px solid rgba(170, 225, 255, 0.72);
   box-shadow:
@@ -449,8 +619,7 @@ button:disabled {
   border-radius: var(--pidro-radius-tight);
   border: 1px solid rgba(92, 214, 255, 0.55);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 35%),
-    rgba(6, 69, 114, 0.8);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 35%), rgba(6, 69, 114, 0.8);
   color: white;
   box-shadow:
     inset 0 0 0 1px rgba(255, 255, 255, 0.05),
@@ -482,6 +651,12 @@ button:disabled {
   }
 }
 
+@media (max-height: 540px) {
+  .pidro-icon-button {
+    --pidro-control-size: 36px;
+  }
+}
+
 .pidro-auth-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(320px, 440px);
@@ -497,6 +672,34 @@ button:disabled {
   .pidro-table-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* Tutorial — transform-only entries (opacity-from-zero starts read as blank
+   screens in automated captures; keep these visible from frame one). */
+@keyframes tutorial-step-enter {
+  from {
+    transform: translateY(14px) scale(0.985);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tutorial-step-enter {
+  animation: tutorial-step-enter 0.28s var(--pidro-ease);
+}
+
+@keyframes tutorial-card-enter {
+  from {
+    transform: translateY(-26px) rotate(-3deg) scale(0.8);
+  }
+  to {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+.tutorial-card-enter {
+  animation: tutorial-card-enter 0.4s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
 @keyframes shake {
@@ -618,24 +821,41 @@ button:disabled {
 .animate-card-enter-south,
 .animate-card-enter-east,
 .animate-card-enter-west {
-  animation-duration: 1.3s;
+  animation-duration: var(--card-enter-duration, 650ms);
   animation-timing-function: cubic-bezier(0.16, 0.7, 0.3, 1);
 }
 
-.animate-card-enter-north { animation-name: card-enter-north; }
-.animate-card-enter-south { animation-name: card-enter-south; }
-.animate-card-enter-east { animation-name: card-enter-east; }
-.animate-card-enter-west { animation-name: card-enter-west; }
+.animate-card-enter-north {
+  animation-name: card-enter-north;
+}
+.animate-card-enter-south {
+  animation-name: card-enter-south;
+}
+.animate-card-enter-east {
+  animation-name: card-enter-east;
+}
+.animate-card-enter-west {
+  animation-name: card-enter-west;
+}
 
 @keyframes card-back-fade {
-  0% { opacity: 1; }
-  55% { opacity: 1; }
-  80% { opacity: 0; }
-  100% { opacity: 0; }
+  0% {
+    opacity: 1;
+  }
+  55% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
 }
 
 .animate-card-back-fade {
-  animation: card-back-fade 1.3s cubic-bezier(0.16, 0.7, 0.3, 1) forwards;
+  animation: card-back-fade var(--card-enter-duration, 650ms) cubic-bezier(0.16, 0.7, 0.3, 1)
+    forwards;
 }
 
 @keyframes trick-win-flash {
@@ -653,8 +873,29 @@ button:disabled {
 }
 
 .animate-trick-win {
-  animation: trick-win-flash 1s ease-out;
+  animation: trick-win-flash var(--trick-win-duration, 1s) ease-out;
   border-radius: 8px;
+}
+
+/* Dealing — a card flies from the central deck out to a hand. The seat target
+   is supplied per-card via --deal-x / --deal-y (and a little --deal-r tilt). */
+@keyframes deal-out {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  14% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--deal-x, 0px)), calc(-50% + var(--deal-y, 0px)))
+      scale(0.92) rotate(var(--deal-r, 0deg));
+    opacity: 1;
+  }
+}
+
+.animate-deal-out {
+  animation: deal-out var(--deal-duration, 420ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
 }
 
 @keyframes score-bump {
@@ -670,7 +911,7 @@ button:disabled {
 }
 
 .animate-score-bump {
-  animation: score-bump 0.4s ease-out;
+  animation: score-bump var(--score-bump-duration, 0.4s) ease-out;
 }
 
 @keyframes dealer-card-appear {
@@ -689,14 +930,39 @@ button:disabled {
 }
 
 @keyframes active-turn-glow {
-  0%, 100% {
-    box-shadow: 0 0 8px rgba(67, 245, 255, 0.3), 0 0 18px rgba(67, 245, 255, 0.12);
+  0%,
+  100% {
+    box-shadow:
+      0 0 8px rgba(67, 245, 255, 0.3),
+      0 0 18px rgba(67, 245, 255, 0.12);
   }
   50% {
-    box-shadow: 0 0 12px rgba(67, 245, 255, 0.45), 0 0 24px rgba(67, 245, 255, 0.18);
+    box-shadow:
+      0 0 12px rgba(67, 245, 255, 0.45),
+      0 0 24px rgba(67, 245, 255, 0.18);
   }
 }
 
 .animate-active-turn {
   animation: active-turn-glow 2s ease-in-out infinite;
+}
+
+/* Placed after every animation utility so plain specificity wins. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-card-enter-north,
+  .animate-card-enter-south,
+  .animate-card-enter-east,
+  .animate-card-enter-west,
+  .animate-card-back-fade,
+  .animate-deal-out,
+  .animate-shake,
+  .animate-trick-win,
+  .animate-score-bump,
+  .animate-dealer-card-appear,
+  .animate-active-turn,
+  .tutorial-step-enter,
+  .tutorial-card-enter,
+  .pidro-calibrate-pulse {
+    animation: none;
+  }
 }

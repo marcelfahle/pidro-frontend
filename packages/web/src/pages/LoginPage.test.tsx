@@ -35,7 +35,7 @@ describe('LoginPage', () => {
 
     renderLoginPage();
 
-    expect(screen.getByRole('heading', { name: 'Classic Pidro. Live Tables.' })).toBeTruthy();
+    expect(screen.getByRole('img', { name: 'Pidro' })).toBeTruthy();
     expect(screen.getByLabelText('Username')).toBeTruthy();
     expect(screen.getByLabelText('Password')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign In' })).toBeTruthy();
@@ -67,7 +67,7 @@ describe('LoginPage', () => {
 
     renderLoginPage();
 
-    const link = screen.getByRole('link', { name: 'Create one' });
+    const link = screen.getByRole('link', { name: 'Create Account' });
     expect(link).toBeTruthy();
     expect(link.getAttribute('href')).toBe('/register');
   });

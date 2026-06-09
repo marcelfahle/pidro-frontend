@@ -68,8 +68,8 @@ describe('getPidroPoints', () => {
     expect(getPidroPoints(11, 'clubs', 'clubs')).toBe(1);
   });
 
-  it('returns 10 for the ten of trump (game)', () => {
-    expect(getPidroPoints(10, 'diamonds', 'diamonds')).toBe(10);
+  it('returns 1 for the ten of trump (matches server Card.point_value)', () => {
+    expect(getPidroPoints(10, 'diamonds', 'diamonds')).toBe(1);
   });
 
   it('returns null for non-scoring trump cards (e.g. 3, 4, 6-9, Q, K)', () => {

@@ -10,6 +10,7 @@ import { useGameStore } from '@pidro/shared';
 import type { Channel } from 'phoenix';
 import { Presence } from 'phoenix';
 import { useEffect, useRef } from 'react';
+import { type ProgressionSummary, parseProgressionSummary } from '../components/profile/postgame';
 import { phoenixSocket } from './socket';
 
 export interface SeatEvent {
@@ -38,6 +39,7 @@ interface UseGameChannelOptions {
   enabled?: boolean;
   onSeatEvent?: (event: SeatEvent) => void;
   onOwnerDecision?: (event: OwnerDecisionEvent) => void;
+  onProgressionSummary?: (summary: ProgressionSummary) => void;
 }
 
 function seatDisplayName(position: Position | null, fallback?: string | null): string {
@@ -131,11 +133,25 @@ function extractGameState(data: Record<string, unknown> | undefined): ServerGame
   return null;
 }
 
+function shouldAutoSelectDealer(
+  gameState: ServerGameState,
+  legalActions: LegalAction[],
+  position: Position | null,
+): boolean {
+  return (
+    position === 'north' &&
+    gameState.phase === 'dealer_selection' &&
+    !gameState.dealer_selection_cuts &&
+    legalActions.some((action) => action.type === 'select_dealer')
+  );
+}
+
 export const useGameChannel = ({
   roomCode,
   enabled = true,
   onSeatEvent,
   onOwnerDecision,
+  onProgressionSummary,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
@@ -156,6 +172,9 @@ export const useGameChannel = ({
 
   const onOwnerDecisionRef = useRef(onOwnerDecision);
   onOwnerDecisionRef.current = onOwnerDecision;
+
+  const onProgressionSummaryRef = useRef(onProgressionSummary);
+  onProgressionSummaryRef.current = onProgressionSummary;
 
   const youPositionRef = useRef(youPosition);
   youPositionRef.current = youPosition;
@@ -180,6 +199,25 @@ export const useGameChannel = ({
       const channel = phoenixSocket.channel(topic);
       currentTopic = topic;
       let presences: Record<string, unknown> = {};
+      let dealerSelectionRequestKey: string | null = null;
+
+      const maybeAutoSelectDealer = (
+        gameState: ServerGameState,
+        legalActions: LegalAction[],
+        position: Position | null,
+      ) => {
+        if (!shouldAutoSelectDealer(gameState, legalActions, position)) return;
+
+        const handNumber =
+          typeof gameState.hand_number === 'number' ? gameState.hand_number : 'initial';
+        const key = `${roomCode}:${handNumber}`;
+        if (dealerSelectionRequestKey === key) return;
+
+        dealerSelectionRequestKey = key;
+        channel.push('select_dealer', {}).receive('error', (error: unknown) => {
+          console.debug('[GameChannel] Auto dealer selection skipped', error);
+        });
+      };
 
       channel
         .join()
@@ -191,6 +229,7 @@ export const useGameChannel = ({
 
           const position = response?.position as Position | undefined;
           if (position) {
+            youPositionRef.current = position;
             setYouPosition(position);
           }
 
@@ -205,6 +244,9 @@ export const useGameChannel = ({
           const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
           setLegalActions(legalActions);
           setTurnTimer(normalizeTurnTimer(response?.turn_timer));
+          if (gameState) {
+            maybeAutoSelectDealer(gameState, legalActions, position ?? youPositionRef.current);
+          }
         })
         .receive('error', (resp) => {
           console.error('[GameChannel] Unable to join', topic, resp);
@@ -227,6 +269,7 @@ export const useGameChannel = ({
           const legalActions = (data?.legal_actions as LegalAction[] | undefined) ?? [];
           setServerState(gameState);
           setLegalActions(legalActions);
+          maybeAutoSelectDealer(gameState, legalActions, youPositionRef.current);
         }
       });
 
@@ -411,6 +454,11 @@ export const useGameChannel = ({
             variant: 'success',
           });
         }
+      });
+
+      channel.on('progression_summary', (payload: unknown) => {
+        const summary = parseProgressionSummary(payload);
+        if (summary) onProgressionSummaryRef.current?.(summary);
       });
 
       channel.on('owner_decision_available', (payload: unknown) => {

@@ -24,6 +24,7 @@ class MockChannel {
   leave = vi.fn(() => {
     this.closeHandler?.();
   });
+  push = vi.fn(() => new MockPush());
 
   join() {
     return this.joinPush;
@@ -165,6 +166,28 @@ describe('useGameChannel', () => {
       eventSeq: 42,
     });
     expect(mockChannelFactory).toHaveBeenCalledTimes(1);
+
+    unmount();
+  });
+
+  it('auto-triggers dealer selection from the north player', () => {
+    const { unmount } = renderHook(() => useGameChannel({ roomCode: 'ABCD', enabled: true }));
+
+    act(() => {
+      currentChannel?.joinPush.trigger('ok', {
+        role: 'player',
+        position: 'north',
+        state: {
+          ...gameState('dealer_selection'),
+          hand_number: 1,
+          dealer_selection_cuts: null,
+        },
+        legal_actions: [{ type: 'select_dealer' }],
+        turn_timer: null,
+      });
+    });
+
+    expect(currentChannel?.push).toHaveBeenCalledWith('select_dealer', {});
 
     unmount();
   });

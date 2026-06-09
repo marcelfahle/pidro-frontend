@@ -51,9 +51,47 @@ export function buildPositionsFromSeats(
   return positions;
 }
 
+/**
+ * The REST room payload (`GET /rooms/:code`) keys seats by position
+ * (`{north: {user_id, substitute, ...}}`) instead of the array shape the
+ * lobby channel sends. Bots are detectable only here: `substitute: true`
+ * or a `bot_*` user id.
+ */
+function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
+  return Object.entries(rawSeats).map(([key, value], idx) => {
+    const position = (value?.position ?? key) as Position;
+    const userId = value?.user_id ?? value?.player_id ?? null;
+    const isBot =
+      Boolean(value?.substitute) || (typeof userId === 'string' && userId.startsWith('bot_'));
+    const username = value?.username ?? value?.player_username ?? null;
+
+    return {
+      seat_index: idx,
+      position,
+      status: userId ? 'occupied' : 'free',
+      player:
+        userId && (isBot || username)
+          ? {
+              id: String(userId),
+              username: username ?? 'Bot',
+              is_bot: isBot,
+            }
+          : null,
+      // Only expose player_id when we have a display name — normalizeSeat
+      // falls back to using the raw id as a username otherwise.
+      player_id: isBot || username ? userId : null,
+    };
+  });
+}
+
 export function normalizeRoom(raw: any): Room {
-  const seats = Array.isArray(raw?.seats)
-    ? raw.seats.map((seat: any, idx: number) => normalizeSeat(seat, idx))
+  const rawSeats =
+    raw?.seats && !Array.isArray(raw.seats) && typeof raw.seats === 'object'
+      ? seatsFromPositionMap(raw.seats)
+      : raw?.seats;
+
+  const seats = Array.isArray(rawSeats)
+    ? rawSeats.map((seat: any, idx: number) => normalizeSeat(seat, idx))
     : [];
 
   const positions = raw?.positions ?? buildPositionsFromSeats(seats);

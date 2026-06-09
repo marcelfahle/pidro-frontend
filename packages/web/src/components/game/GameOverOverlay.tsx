@@ -1,10 +1,13 @@
 import type { GameViewModel, ServerGameState } from '@pidro/shared';
 import { getTeamScores, isNorthSouthTeam } from '@pidro/shared';
+import { PostGameStrip } from '../profile/PostGameStrip';
+import type { ProgressionSummary } from '../profile/postgame';
 import { Button } from '../ui/Button';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
   serverState: ServerGameState;
+  progressionSummary?: ProgressionSummary | null;
   onBackToLobby: () => void;
   onPlayAgain: () => void;
 }
@@ -12,6 +15,7 @@ interface GameOverOverlayProps {
 export function GameOverOverlay({
   viewModel,
   serverState,
+  progressionSummary,
   onBackToLobby,
   onPlayAgain,
 }: GameOverOverlayProps) {
@@ -55,9 +59,18 @@ export function GameOverOverlay({
   });
   const runnersUp = viewModel.players.filter((player) => !winners.includes(player));
 
+  const displayName = (player: (typeof viewModel.players)[number]) => {
+    if (player.isYou) return 'You';
+    if (player.username) return player.username;
+    if (player.seatStatus === 'bot_substitute' || player.seatStatus === 'permanent_bot') {
+      return 'Bot';
+    }
+    return player.absolutePosition;
+  };
+
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
-      <div className="pidro-panel pidro-panel--glow w-full max-w-3xl p-6 text-center">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/55 px-4 py-3 backdrop-blur-sm">
+      <div className="pidro-panel pidro-panel--glow max-h-[94dvh] w-full max-w-3xl overflow-y-auto p-6 text-center short:p-4">
         {youWon === true && (
           <div className="text-sm font-black uppercase tracking-[0.18em] text-[#fff0b2]">
             You win!
@@ -87,11 +100,9 @@ export function GameOverOverlay({
                   className="rounded-2xl border border-white/12 bg-black/10 p-3"
                 >
                   <div className="pidro-avatar mx-auto">
-                    {(player.username?.[0] ?? '?').toUpperCase()}
+                    {displayName(player)[0]?.toUpperCase() ?? '?'}
                   </div>
-                  <div className="mt-2 text-sm font-black text-white">
-                    {player.username ?? player.absolutePosition}
-                  </div>
+                  <div className="mt-2 text-sm font-black text-white">{displayName(player)}</div>
                 </div>
               ))}
             </div>
@@ -124,7 +135,7 @@ export function GameOverOverlay({
                       key={player.absolutePosition}
                       className="rounded-full border border-cyan-300/15 bg-cyan-400/10 px-3 py-1.5 text-xs font-black uppercase tracking-[0.1em] text-white"
                     >
-                      {player.username ?? player.absolutePosition}
+                      {displayName(player)}
                     </span>
                   ))}
                 </div>
@@ -132,6 +143,8 @@ export function GameOverOverlay({
             )}
           </div>
         </div>
+
+        {progressionSummary && <PostGameStrip summary={progressionSummary} />}
 
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Button variant="secondary" onClick={onBackToLobby}>

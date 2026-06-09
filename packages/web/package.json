@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "bun --cwd ../shared build && tsc -b && vite build",
+    "gallery:game": "bun scripts/capture-game-gallery.mjs",
+    "gallery:multiplayer": "bun scripts/capture-multiplayer-flow.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",

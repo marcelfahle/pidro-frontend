@@ -75,7 +75,7 @@ describe('TrumpSelector', () => {
       />,
     );
 
-    expect(screen.getByText('Choose Trump Suit')).toBeTruthy();
+    expect(screen.getByText('Call Suit')).toBeTruthy();
     expect(screen.getByText('Hearts')).toBeTruthy();
     expect(screen.getByText('Diamonds')).toBeTruthy();
     expect(screen.getByText('Clubs')).toBeTruthy();

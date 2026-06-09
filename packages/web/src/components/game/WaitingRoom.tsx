@@ -16,7 +16,8 @@ const SEAT_POSITIONS: { position: Position; label: string; className: string }[]
   {
     position: 'north',
     label: 'North',
-    className: 'left-1/2 top-[16%] w-[46%] -translate-x-1/2 max-md:top-[18%] max-md:w-[62%]',
+    className:
+      'left-1/2 top-[16%] w-[46%] -translate-x-1/2 max-md:top-[18%] max-md:w-[62%] short:top-[6%]',
   },
   {
     position: 'west',
@@ -33,7 +34,8 @@ const SEAT_POSITIONS: { position: Position; label: string; className: string }[]
   {
     position: 'south',
     label: 'South',
-    className: 'bottom-[8%] left-1/2 w-[60%] -translate-x-1/2 max-md:bottom-[10%] max-md:w-[78%]',
+    className:
+      'bottom-[8%] left-1/2 w-[60%] -translate-x-1/2 max-md:bottom-[10%] max-md:w-[78%] short:bottom-[5%] short:w-[44%]',
   },
 ];
 
@@ -88,12 +90,14 @@ export function WaitingRoom({
   return (
     <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1">
       <div className="relative aspect-[4/3] w-full max-w-[1120px] max-h-[calc(100dvh-2rem)] max-md:aspect-[10/16]">
-        <div className="absolute left-1/2 top-[6%] z-20 -translate-x-1/2 text-center">
-          <div className="pidro-panel rounded-[18px] px-6 py-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-50/70">
+        <div className="absolute left-1/2 top-[6%] z-20 -translate-x-1/2 text-center short:left-[2%] short:top-[2%] short:translate-x-0 short:text-left">
+          <div className="pidro-panel rounded-[18px] px-6 py-3 short:rounded-lg short:px-3 short:py-1.5">
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-50/70 short:text-[9px] short:tracking-[0.2em]">
               Room Code
             </p>
-            <p className="mt-1 text-4xl font-black tracking-[0.28em] text-white">{roomCode}</p>
+            <p className="mt-1 text-4xl font-black tracking-[0.28em] text-white short:mt-0 short:text-xl short:tracking-[0.18em]">
+              {roomCode}
+            </p>
           </div>
         </div>
 
@@ -107,7 +111,7 @@ export function WaitingRoom({
           </div>
         ))}
 
-        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[44%]">
+        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[44%] short:top-[42%] short:gap-2">
           {isFull ? (
             <>
               <div className="text-base font-black uppercase tracking-[0.16em] text-cyan-50/80">

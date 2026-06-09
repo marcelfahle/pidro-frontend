@@ -18,7 +18,7 @@ describe('App', () => {
     window.history.pushState({}, '', '/');
     render(<App />);
     expect(window.location.pathname).toBe('/');
-    expect(screen.getByRole('heading', { name: 'Classic Pidro. Live Tables.' })).toBeTruthy();
+    expect(screen.getByLabelText('Username')).toBeTruthy();
   });
 
   it('allows the public design system route without authentication', () => {

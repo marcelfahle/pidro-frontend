@@ -40,7 +40,7 @@ describe('RegisterPage', () => {
     expect(screen.getByLabelText('Username')).toBeTruthy();
     expect(screen.getByLabelText('Email')).toBeTruthy();
     expect(screen.getByLabelText('Password')).toBeTruthy();
-    expect(screen.getByLabelText('Confirm Password')).toBeTruthy();
+    expect(screen.getByLabelText('Confirm password')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Create Account' })).toBeTruthy();
   });
 
@@ -48,7 +48,7 @@ describe('RegisterPage', () => {
     mockUnauthenticated();
     renderRegisterPage();
 
-    const link = screen.getByRole('link', { name: 'Sign in' });
+    const link = screen.getByRole('link', { name: /Sign In/i });
     expect(link).toBeTruthy();
     expect(link.getAttribute('href')).toBe('/login');
   });
@@ -76,7 +76,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Username'), 'testuser');
     await user.type(screen.getByLabelText('Email'), 'test@test.com');
     await user.type(screen.getByLabelText('Password'), 'short');
-    await user.type(screen.getByLabelText('Confirm Password'), 'short');
+    await user.type(screen.getByLabelText('Confirm password'), 'short');
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
 
     expect(screen.getByText('Password must be at least 6 characters')).toBeTruthy();
@@ -90,7 +90,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Username'), 'testuser');
     await user.type(screen.getByLabelText('Email'), 'test@test.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password'), 'different123');
+    await user.type(screen.getByLabelText('Confirm password'), 'different123');
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
 
     expect(screen.getByText('Passwords do not match')).toBeTruthy();
@@ -104,7 +104,7 @@ describe('RegisterPage', () => {
     await user.type(screen.getByLabelText('Username'), 'ab');
     await user.type(screen.getByLabelText('Email'), 'test@test.com');
     await user.type(screen.getByLabelText('Password'), 'password123');
-    await user.type(screen.getByLabelText('Confirm Password'), 'password123');
+    await user.type(screen.getByLabelText('Confirm password'), 'password123');
     await user.click(screen.getByRole('button', { name: 'Create Account' }));
 
     expect(screen.getByText('Username must be at least 3 characters')).toBeTruthy();

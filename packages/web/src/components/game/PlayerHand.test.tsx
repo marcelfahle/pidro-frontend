@@ -38,7 +38,9 @@ const testCards: CardType[] = [
 ];
 
 describe('PlayerHand', () => {
-  it('shows username and You badge for the current player', () => {
+  // The seat name / dealer / disconnected / turn badges moved to GameTable +
+  // GamePlayerCard; for the standard seats PlayerHand now renders cards only.
+  it('renders cards only for the south seat (name lives in GameTable)', () => {
     render(
       <PlayerHand
         position="south"
@@ -54,10 +56,11 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0);
+    expect(screen.getByTitle('A of spades')).toBeTruthy();
+    expect(screen.queryByText('Alice')).toBeNull();
   });
 
-  it('shows dealer badge when player is dealer', () => {
+  it('renders face-down cards by count for the north seat', () => {
     render(
       <PlayerHand
         position="north"
@@ -73,10 +76,10 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getByText('D')).toBeTruthy();
+    expect(screen.getAllByTitle('Face-down card')).toHaveLength(6);
   });
 
-  it('shows DC badge and dims when player is disconnected', () => {
+  it('dims the seat and hides cards when a player is disconnected', () => {
     const { container } = render(
       <PlayerHand
         position="east"
@@ -92,7 +95,8 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getByText('DC')).toBeTruthy();
+    // East renders the hidden hand as face-down cards (desktop + mobile rails).
+    expect(screen.getAllByTitle('Face-down card').length).toBeGreaterThanOrEqual(4);
     // Outer container has opacity-50 when disconnected
     const outerDiv = container.firstElementChild;
     expect(outerDiv?.className).toContain('opacity-50');
@@ -195,7 +199,7 @@ describe('PlayerHand', () => {
     expect(onPlayCard).toHaveBeenCalledWith({ rank: 14, suit: 'spades' });
   });
 
-  it('shows "No cards" when count is 0', () => {
+  it('does not show an empty-hand placeholder when count is 0', () => {
     render(
       <PlayerHand
         position="south"
@@ -211,7 +215,7 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getByText('No cards')).toBeTruthy();
+    expect(screen.queryByText('No cards')).toBeNull();
   });
 
   it('shows a waiting placeholder for vacant substitute seats', () => {
@@ -234,7 +238,7 @@ describe('PlayerHand', () => {
     expect(screen.getAllByText('Waiting for player...').length).toBeGreaterThan(0);
   });
 
-  it('shows turn indicator when it is the player turn', () => {
+  it('renders the hand with no inline turn badge (turn UI lives in GameTable)', () => {
     const { container } = render(
       <PlayerHand
         position="south"
@@ -250,8 +254,9 @@ describe('PlayerHand', () => {
       />,
     );
 
-    // Turn indicator is a pulsing yellow dot with animate-pulse class
-    const pulsingDot = container.querySelector('.animate-pulse');
-    expect(pulsingDot).toBeTruthy();
+    // Cards still render for the active player...
+    expect(screen.getByTitle('A of spades')).toBeTruthy();
+    // ...but the seat itself no longer owns the pulsing turn indicator.
+    expect(container.querySelector('.animate-pulse')).toBeNull();
   });
 });

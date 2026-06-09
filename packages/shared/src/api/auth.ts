@@ -16,6 +16,16 @@ interface AuthResponseEnvelope {
 export type LoginResponse = AuthResponseEnvelope['data'];
 export type RegisterResponse = AuthResponseEnvelope['data'];
 
+interface PasswordResetRequestEnvelope {
+  data: {
+    message: string;
+    reset_token?: string;
+    reset_url?: string;
+  };
+}
+
+export type PasswordResetRequestResponse = PasswordResetRequestEnvelope['data'];
+
 export function createAuthApi(api: ApiClient) {
   return {
     login: async (username: string, password: string): Promise<LoginResponse> => {
@@ -29,10 +39,25 @@ export function createAuthApi(api: ApiClient) {
     register: async (
       username: string,
       email: string,
-      password: string
+      password: string,
     ): Promise<RegisterResponse> => {
       const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/register', {
         user: { username, email, password },
+      });
+      return response.data.data;
+    },
+
+    requestPasswordReset: async (identifier: string): Promise<PasswordResetRequestResponse> => {
+      const response = await api.post<PasswordResetRequestEnvelope>('/api/v1/auth/password-reset', {
+        identifier,
+      });
+      return response.data.data;
+    },
+
+    resetPassword: async (token: string, password: string): Promise<LoginResponse> => {
+      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/password-reset/confirm', {
+        token,
+        password,
       });
       return response.data.data;
     },
