@@ -5,7 +5,8 @@ import type {
   ServerGameState,
   Suit,
 } from '@pidro/shared';
-import { getRankLabel, SUIT_SYMBOLS, useGameStore } from '@pidro/shared';
+import { getRankLabel, SUIT_COLORS_RAW, SUIT_SYMBOLS, useGameStore } from '@pidro/shared';
+import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { BiddingPanel } from './BiddingPanel';
 import { DealerChip } from './DealerChip';
@@ -54,6 +55,7 @@ export function GameTable({
 
   const cuts = serverState?.dealer_selection_cuts;
   const showDealerReveal = phase === 'dealer_selection' && !!cuts && Object.keys(cuts).length > 0;
+  const handNumber = serverState?.hand_number ?? serverState?.round_number ?? null;
 
   const north = players.find((p) => p.relativePosition === 'north');
   const east = players.find((p) => p.relativePosition === 'east');
@@ -139,50 +141,56 @@ export function GameTable({
 
   return (
     <div className="flex h-full w-full flex-col">
-      {/* ── Game zone: top ~85% ── */}
-      <div className="relative h-[87%] shrink-0 overflow-hidden short:h-[calc(100%-2.75rem)]">
-        {/* Score */}
-        <div className="absolute left-3 top-0 z-30 flex items-start max-sm:left-2">
-          <GameInfoBar
-            scores={serverState?.scores ?? null}
-            viewerPosition={viewerPosition}
-            viewerIsSpectator={viewerIsSpectator}
-            handNumber={serverState?.round_number ?? null}
-            roomCode={roomCode}
-            turnTimer={turnTimer}
-          />
+      {/* ── Top bar: score · trump + hand · menu (safe-area aware) ── */}
+      <div className="relative z-40 shrink-0 border-b border-cyan-200/12 bg-[linear-gradient(180deg,rgba(4,16,32,0.88)_0%,rgba(8,28,52,0.45)_100%)] pt-[env(safe-area-inset-top)]">
+        <div className="relative h-11">
+          {/* Score plaque hangs from the bar into the table */}
+          <div className="absolute left-3 top-0 z-30 flex items-start max-sm:left-2">
+            <GameInfoBar
+              scores={serverState?.scores ?? null}
+              viewerPosition={viewerPosition}
+              viewerIsSpectator={viewerIsSpectator}
+              handNumber={handNumber}
+              roomCode={roomCode}
+              turnTimer={turnTimer}
+            />
+          </div>
+
+          {/* Center: hand number + trump suit */}
+          <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5">
+            {handNumber != null && (
+              <span className="whitespace-nowrap text-[9px] font-black uppercase tracking-[0.22em] text-cyan-50/55">
+                Hand {handNumber}
+              </span>
+            )}
+            {trumpSuit && (
+              <span
+                role="img"
+                aria-label={`Trump: ${trumpSuit}`}
+                className="flex h-6 w-6 items-center justify-center rounded-full border border-[var(--pidro-gold)]/55 bg-[linear-gradient(180deg,#fcfcfc_0%,#e8e8e8_100%)] text-[13px] leading-none shadow-[0_1px_4px_rgba(0,0,0,0.4)]"
+                style={{ color: SUIT_COLORS_RAW[trumpSuit] }}
+              >
+                {SUIT_SYMBOLS[trumpSuit]}
+              </span>
+            )}
+          </div>
+
+          <TableMenu onLeave={onLeave} />
         </div>
+      </div>
 
-        {/* Leave — quiet glass door in the top-right corner, clear of play */}
-        <button
-          type="button"
-          aria-label="Leave Game"
-          onClick={onLeave}
-          className="group absolute right-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-[10px] border border-cyan-300/25 bg-[rgba(10,32,60,0.7)] text-cyan-100/70 shadow-[0_2px_8px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-all hover:border-cyan-200/60 hover:text-cyan-50 hover:brightness-115 active:scale-[0.97] max-sm:right-2 max-sm:top-2"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2.2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5"
-          >
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
-
-        {/* North: cards peeking from top + avatar below */}
+      {/* ── Game zone ── */}
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {/* North: card backs tucked under the bar + seat pill at a fixed spot */}
         {north && (
-          <div className="absolute left-1/2 top-[6px] z-20 flex w-[50%] -translate-x-1/2 flex-col items-center gap-2.5 max-sm:w-[60%] short:gap-1">
-            <div className="mt-[-10px] short:hidden">
-              <PlayerHand {...handProps(north, 'north')} />
+          <div className="absolute left-1/2 top-0 z-20 flex -translate-x-1/2 flex-col items-center">
+            {/* Fixed-height slot — the pill stays put even with zero cards */}
+            <div className="flex h-[42px] items-start justify-center short:hidden">
+              <div className="-mt-[34px]">
+                <PlayerHand {...handProps(north, 'north')} />
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="mt-2 flex items-center gap-1.5 short:mt-1.5">
               <GamePlayerCard {...avatarProps(north)} compact />
               {isPlayerDealer(north) && <DealerChip />}
             </div>
@@ -196,7 +204,7 @@ export function GameTable({
               <GamePlayerCard {...avatarProps(west)} compact imagePosition="left" />
               {isPlayerDealer(west) && <DealerChip />}
             </div>
-            <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(-45%-16px)] items-center justify-center max-sm:w-[48px] short:h-[150px] short:w-[48px]">
+            <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(-45%-16px)] items-center justify-center max-sm:w-[48px] max-sm:-translate-x-[20px] short:h-[150px] short:w-[48px] short:-translate-x-[20px]">
               <PlayerHand {...handProps(west, 'west')} />
             </div>
           </div>
@@ -209,7 +217,7 @@ export function GameTable({
               {isPlayerDealer(east) && <DealerChip />}
               <GamePlayerCard {...avatarProps(east)} compact imagePosition="right" />
             </div>
-            <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(45%+16px)] items-center justify-center max-sm:w-[48px] short:h-[150px] short:w-[48px]">
+            <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(45%+16px)] items-center justify-center max-sm:w-[48px] max-sm:translate-x-[20px] short:h-[150px] short:w-[48px] short:translate-x-[20px]">
               <PlayerHand {...handProps(east, 'east')} />
             </div>
           </div>
@@ -290,12 +298,148 @@ export function GameTable({
         )}
       </div>
 
-      {/* ── Control strip: bottom ~15% (ad slot only — leave lives top-right) ── */}
-      <div className="flex h-[13%] shrink-0 items-center justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] short:h-11 short:pb-1.5">
-        <div className="pidro-ad-slot flex items-center justify-center rounded-lg border border-dashed border-cyan-300/20 bg-black/20 text-[10px] font-bold uppercase tracking-widest text-cyan-50/30 short:hidden">
+      {/* ── Control strip: ad slot (portrait only — landscape uses every pixel) ── */}
+      <div className="flex h-[12%] shrink-0 items-center justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] short:hidden">
+        <div className="pidro-ad-slot flex items-center justify-center rounded-lg border border-dashed border-cyan-300/20 bg-black/20 text-[10px] font-bold uppercase tracking-widest text-cyan-50/30">
           Ad Space
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * TableMenu — the quiet "more" menu in the top bar. Leaving the table lives
+ * here behind a confirm step so quitting never reads as a primary action.
+ * Room to grow: chat, sound, game info.
+ */
+function TableMenu({ onLeave }: { onLeave: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [confirmingLeave, setConfirmingLeave] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) setConfirmingLeave(false);
+  }, [open]);
+
+  return (
+    <div ref={menuRef} className="absolute right-2 top-1/2 z-50 -translate-y-1/2">
+      <button
+        type="button"
+        aria-label="Game menu"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className={`flex h-9 w-9 items-center justify-center rounded-[9px] border transition-all active:scale-[0.96] ${
+          open
+            ? 'border-cyan-200/50 bg-cyan-400/15 text-cyan-50'
+            : 'border-transparent bg-transparent text-cyan-100/55 hover:bg-white/6 hover:text-cyan-50'
+        }`}
+      >
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.4}
+          strokeLinecap="round"
+          className="h-[18px] w-[18px]"
+        >
+          <line x1="4" y1="7" x2="20" y2="7" />
+          <line x1="4" y1="12" x2="20" y2="12" />
+          <line x1="4" y1="17" x2="20" y2="17" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-[calc(100%+8px)] w-[210px] overflow-hidden rounded-xl border border-cyan-200/25 bg-[rgba(6,24,46,0.96)] shadow-[0_16px_40px_rgba(0,0,0,0.5)] backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => {
+              window.open('/tutorial', '_blank', 'noopener');
+              setOpen(false);
+            }}
+            className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-bold text-cyan-50/85 transition-colors hover:bg-cyan-400/10"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="h-4 w-4 shrink-0 text-cyan-300/70"
+            >
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <path d="M12 17h.01" />
+            </svg>
+            How to Play
+          </button>
+
+          <div className="mx-3 h-px bg-cyan-200/12" />
+
+          {confirmingLeave ? (
+            <div className="px-4 py-3">
+              <div className="text-[12px] font-bold text-red-200/90">Leave the table?</div>
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmingLeave(false)}
+                  className="flex-1 rounded-md border border-cyan-200/30 bg-white/6 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-cyan-50/80 transition-colors hover:bg-white/12"
+                >
+                  Stay
+                </button>
+                <button
+                  type="button"
+                  onClick={onLeave}
+                  className="flex-1 rounded-md border border-red-400/50 bg-red-500/20 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-red-100 transition-colors hover:bg-red-500/30"
+                >
+                  Leave
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmingLeave(true)}
+              className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-bold text-red-200/75 transition-colors hover:bg-red-500/10 hover:text-red-100"
+            >
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-4 w-4 shrink-0"
+              >
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+              Leave Table
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
