@@ -91,18 +91,18 @@ describe('getPidroPoints', () => {
 describe('Card component', () => {
   it('renders face-down card when faceDown is true', () => {
     render(<Card faceDown />);
-    expect(screen.getByTitle('Face-down card')).toBeTruthy();
+    expect(screen.getByLabelText('Face-down card')).toBeTruthy();
   });
 
   it('renders face-down card when no card data is provided', () => {
     render(<Card />);
-    expect(screen.getByTitle('Face-down card')).toBeTruthy();
+    expect(screen.getByLabelText('Face-down card')).toBeTruthy();
   });
 
   it('renders face-up card with rank and suit', () => {
     render(<Card card={{ rank: 14, suit: 'spades' }} />);
     // Should show rank label "A" and suit symbol "♠"
-    expect(screen.getByTitle('A of spades')).toBeTruthy();
+    expect(screen.getByLabelText('A of spades')).toBeTruthy();
   });
 
   it('renders as a button when playable', () => {
@@ -123,7 +123,7 @@ describe('Card component', () => {
   it('renders as a div (not button) when not playable', () => {
     render(<Card card={{ rank: 3, suit: 'clubs' }} />);
     expect(screen.queryByRole('button')).toBeNull();
-    expect(screen.getByTitle('3 of clubs')).toBeTruthy();
+    expect(screen.getByLabelText('3 of clubs')).toBeTruthy();
   });
 
   it('shows point value badge when pointValue is provided', () => {

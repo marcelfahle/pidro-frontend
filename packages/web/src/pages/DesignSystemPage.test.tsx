@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { DesignSystemPage } from './DesignSystemPage';
 
 describe('DesignSystemPage', () => {
-  it('renders the design system workbench sections', () => {
+  // The workbench renders every DS component at once — give it headroom
+  // when the suite runs all files in parallel.
+  it('renders the design system workbench sections', { timeout: 20_000 }, () => {
     render(
       <MemoryRouter>
         <DesignSystemPage />

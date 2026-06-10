@@ -1,5 +1,6 @@
 import type { GameViewModel, ServerGameState } from '@pidro/shared';
 import { getTeamScores, isNorthSouthTeam } from '@pidro/shared';
+import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { PostGameStrip } from '../profile/PostGameStrip';
 import type { ProgressionSummary } from '../profile/postgame';
 import { Button } from '../ui/Button';
@@ -99,8 +100,16 @@ export function GameOverOverlay({
                   key={player.absolutePosition}
                   className="rounded-2xl border border-white/12 bg-black/10 p-3"
                 >
-                  <div className="pidro-avatar mx-auto">
-                    {displayName(player)[0]?.toUpperCase() ?? '?'}
+                  <div className="flex justify-center">
+                    <PlayerAvatar
+                      initial={displayName(player)[0]?.toUpperCase() ?? '?'}
+                      name={displayName(player)}
+                      size={48}
+                      isBot={
+                        player.seatStatus === 'bot_substitute' ||
+                        player.seatStatus === 'permanent_bot'
+                      }
+                    />
                   </div>
                   <div className="mt-2 text-sm font-black text-white">{displayName(player)}</div>
                 </div>

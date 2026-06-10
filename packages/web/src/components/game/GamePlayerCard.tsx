@@ -1,6 +1,14 @@
 import type { SeatStatus } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
 
+/**
+ * GamePlayerCard — the DS `TableSeat`: a circular avatar tucked into a
+ * rounded name/status pill (the pill slides ~26px behind the circle so the
+ * two read as one piece). Opponent names render gold, your team's white;
+ * status is always cyan. The active turn pulses the avatar's cyan ring —
+ * presence dots are never shown at the table (canon).
+ */
+
 interface GamePlayerCardProps {
   displayName: string;
   roleLabel?: string;
@@ -11,6 +19,8 @@ interface GamePlayerCardProps {
   isCurrentTurn?: boolean;
   isConnected?: boolean;
   seatStatus?: SeatStatus;
+  /** Opponents ('them') get gold names; you + partner ('us') get white. */
+  team?: 'us' | 'them';
   compact?: boolean;
   imagePosition?: 'left' | 'right';
   className?: string;
@@ -20,10 +30,10 @@ export function GamePlayerCard({
   displayName,
   statusText,
   initial,
-  isDealer = false,
   isCurrentTurn = false,
   isConnected = true,
   seatStatus = 'normal',
+  team = 'them',
   compact = false,
   imagePosition = 'left',
   className = '',
@@ -33,32 +43,75 @@ export function GamePlayerCard({
   const isVacant = seatStatus === 'vacant';
   const dimmed = !isVacant && (!isConnected || isReconnecting);
 
-  const resolvedName = isVacant ? 'Waiting...' : isBot ? 'Bot' : displayName;
-  const resolvedStatus = isVacant ? 'Open seat' : isReconnecting ? 'Reconnecting...' : statusText;
+  const resolvedName = isVacant ? 'Open seat' : isBot ? 'Bot' : displayName;
+  const resolvedStatus = isVacant ? 'Waiting...' : isReconnecting ? 'Reconnecting...' : statusText;
+
+  const onRight = imagePosition === 'right';
+  const avatarSize = compact ? 40 : 50;
+  const tuck = Math.round(avatarSize * 0.52);
+  const nameColor = team === 'us' ? '#ffffff' : 'var(--pidro-gold)';
 
   const avatar = (
-    <PlayerAvatar
-      initial={initial}
-      size={compact ? 30 : 38}
-      isBot={isBot}
-      isVacant={isVacant}
-      state={isCurrentTurn ? 'active' : 'normal'}
-    />
+    <div className="relative z-[2] shrink-0">
+      <PlayerAvatar
+        initial={initial}
+        name={resolvedName}
+        size={avatarSize}
+        isBot={isBot}
+        isVacant={isVacant}
+        state={isCurrentTurn ? 'active' : dimmed ? 'dimmed' : 'normal'}
+      />
+    </div>
   );
 
-  const text = (
-    <div className="min-w-0 flex-1 text-center">
-      <div className="flex items-center justify-center gap-1">
-        <span
-          className={`truncate font-bold text-white ${compact ? 'max-w-[64px] text-[10px]' : 'text-[11px]'}`}
-        >
-          {resolvedName}
-        </span>
+  const pill = (
+    <div
+      className={isCurrentTurn ? 'animate-active-turn' : ''}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        minWidth: compact ? 96 : 116,
+        maxWidth: compact ? 148 : 168,
+        padding: '7px 0',
+        paddingLeft: onRight ? 14 : tuck,
+        paddingRight: onRight ? tuck : 14,
+        marginLeft: onRight ? 0 : -tuck + 6,
+        marginRight: onRight ? -tuck + 6 : 0,
+        background: 'rgba(10, 32, 60, 0.92)',
+        border: `2px solid ${isCurrentTurn ? 'var(--pidro-cyan)' : 'rgba(0,200,255,0.3)'}`,
+        borderRadius: 12,
+        boxShadow: isCurrentTurn ? '0 0 10px rgba(0,207,255,0.3)' : '0 2px 8px rgba(0,0,0,0.3)',
+        overflow: 'hidden',
+        opacity: dimmed ? 0.55 : 1,
+        transition: 'border-color var(--pidro-duration) var(--pidro-ease)',
+      }}
+    >
+      <div
+        style={{
+          fontSize: compact ? 12 : 13,
+          fontWeight: 700,
+          color: nameColor,
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          textAlign: onRight ? 'right' : 'left',
+          textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+        }}
+      >
+        {resolvedName}
       </div>
       <div
-        className={`font-bold uppercase tracking-wide ${
-          compact ? 'text-[8px]' : 'text-[9px]'
-        } ${isCurrentTurn ? 'text-cyan-50/90' : 'text-cyan-50/55'}`}
+        style={{
+          fontSize: compact ? 10 : 11,
+          fontWeight: 600,
+          color: isCurrentTurn ? 'var(--pidro-text-cyan)' : 'rgba(0,207,255,0.7)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          marginTop: 1,
+          textAlign: onRight ? 'right' : 'left',
+        }}
       >
         {resolvedStatus}
       </div>
@@ -66,22 +119,16 @@ export function GamePlayerCard({
   );
 
   return (
-    <div
-      className={`inline-flex items-center gap-1.5 rounded-lg border border-cyan-300/20 bg-black/30 backdrop-blur-sm ${
-        compact ? 'w-[100px] px-1.5 py-1' : 'px-2 py-1.5'
-      } ${isCurrentTurn ? 'border-cyan-300/70 animate-active-turn' : ''} ${
-        dimmed ? 'opacity-50' : ''
-      } ${className}`}
-    >
-      {imagePosition === 'left' ? (
+    <div className={`inline-flex items-center ${className}`}>
+      {onRight ? (
         <>
+          {pill}
           {avatar}
-          {text}
         </>
       ) : (
         <>
-          {text}
           {avatar}
+          {pill}
         </>
       )}
     </div>

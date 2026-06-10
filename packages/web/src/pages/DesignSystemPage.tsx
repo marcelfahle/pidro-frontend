@@ -250,6 +250,88 @@ export function DesignSystemPage() {
                 </div>
 
                 <div>
+                  <SubLabel>
+                    Progression — the chip's number is the level, its metal is the skill
+                  </SubLabel>
+                  <div className="pidro-glass-box flex flex-wrap items-end gap-7 p-5 pb-7">
+                    {[
+                      {
+                        node: (
+                          <PlayerAvatar
+                            initial="K"
+                            name="Kalle"
+                            size={56}
+                            level={7}
+                            tier="bronze"
+                            online
+                          />
+                        ),
+                        label: 'Chip + presence',
+                      },
+                      {
+                        node: (
+                          <PlayerAvatar
+                            initial="A"
+                            name="Astrid"
+                            size={56}
+                            progress={0.62}
+                            level={24}
+                            tier="silver"
+                          />
+                        ),
+                        label: 'Halo · Steady',
+                      },
+                      {
+                        node: (
+                          <PlayerAvatar
+                            initial="S"
+                            name="Sven"
+                            size={56}
+                            progress={0.35}
+                            level={48}
+                            prestige={1}
+                            tier="gold"
+                          />
+                        ),
+                        label: 'Halo · Sharp ★1',
+                      },
+                      {
+                        node: (
+                          <PlayerAvatar
+                            initial="E"
+                            name="Elsa"
+                            size={56}
+                            progress={0.88}
+                            level={71}
+                            tier="platinum"
+                          />
+                        ),
+                        label: 'Halo · Cardsharp',
+                      },
+                      {
+                        node: (
+                          <PlayerAvatar
+                            initial="V"
+                            name="Veikko"
+                            size={56}
+                            progress={0.95}
+                            level={100}
+                            prestige={3}
+                            tier="master"
+                          />
+                        ),
+                        label: 'Halo · Master ★3',
+                      },
+                    ].map((x) => (
+                      <div key={x.label} className="flex flex-col items-center gap-3">
+                        {x.node}
+                        <span className="text-[10px] text-cyan-50/65">{x.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
                   <SubLabel>Menu &amp; in-game cards</SubLabel>
                   <div className="flex flex-wrap items-start gap-4">
                     <PlayerMiniCard

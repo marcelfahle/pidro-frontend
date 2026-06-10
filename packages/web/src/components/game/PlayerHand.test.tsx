@@ -56,7 +56,7 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getByTitle('A of spades')).toBeTruthy();
+    expect(screen.getByLabelText('A of spades')).toBeTruthy();
     expect(screen.queryByText('Alice')).toBeNull();
   });
 
@@ -76,7 +76,7 @@ describe('PlayerHand', () => {
       />,
     );
 
-    expect(screen.getAllByTitle('Face-down card')).toHaveLength(6);
+    expect(screen.getAllByLabelText('Face-down card')).toHaveLength(6);
   });
 
   it('dims the seat and hides cards when a player is disconnected', () => {
@@ -96,7 +96,7 @@ describe('PlayerHand', () => {
     );
 
     // East renders the hidden hand as face-down cards (desktop + mobile rails).
-    expect(screen.getAllByTitle('Face-down card').length).toBeGreaterThanOrEqual(4);
+    expect(screen.getAllByLabelText('Face-down card').length).toBeGreaterThanOrEqual(4);
     // Outer container has opacity-50 when disconnected
     const outerDiv = container.firstElementChild;
     expect(outerDiv?.className).toContain('opacity-50');
@@ -119,7 +119,7 @@ describe('PlayerHand', () => {
     );
 
     // Should render 5 face-down cards
-    const faceDownCards = screen.getAllByTitle('Face-down card');
+    const faceDownCards = screen.getAllByLabelText('Face-down card');
     expect(faceDownCards).toHaveLength(5);
   });
 
@@ -140,9 +140,9 @@ describe('PlayerHand', () => {
     );
 
     // Should render face-up cards (by title "Rank of suit")
-    expect(screen.getByTitle('A of spades')).toBeTruthy();
-    expect(screen.getByTitle('10 of spades')).toBeTruthy();
-    expect(screen.getByTitle('5 of hearts')).toBeTruthy();
+    expect(screen.getByLabelText('A of spades')).toBeTruthy();
+    expect(screen.getByLabelText('10 of spades')).toBeTruthy();
+    expect(screen.getByLabelText('5 of hearts')).toBeTruthy();
   });
 
   it('marks playable cards as buttons and non-playable as divs', () => {
@@ -255,7 +255,7 @@ describe('PlayerHand', () => {
     );
 
     // Cards still render for the active player...
-    expect(screen.getByTitle('A of spades')).toBeTruthy();
+    expect(screen.getByLabelText('A of spades')).toBeTruthy();
     // ...but the seat itself no longer owns the pulsing turn indicator.
     expect(container.querySelector('.animate-pulse')).toBeNull();
   });

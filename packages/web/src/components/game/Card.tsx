@@ -161,7 +161,8 @@ export function Card({
     return (
       <div
         className={`${sizeStyles.wrapper} pidro-card-back relative shrink-0 rounded-[7px] ${className}`}
-        title="Face-down card"
+        role="img"
+        aria-label="Face-down card"
       >
         <div className="absolute inset-[3px] rounded-[5px] border border-cyan-100/35 bg-transparent" />
       </div>
@@ -203,7 +204,7 @@ export function Card({
   }
 
   return (
-    <div className={baseClass} title={`${label} of ${card.suit}`}>
+    <div className={baseClass} role="img" aria-label={`${label} of ${card.suit}`}>
       <CardFace
         label={label}
         suit={card.suit}

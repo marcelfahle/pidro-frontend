@@ -70,6 +70,7 @@ export function GameTable({
       isCurrentTurn: player.isCurrentTurn,
       isConnected: player.isConnected,
       seatStatus: player.seatStatus,
+      team: (player.isYou || player.isTeammate ? 'us' : 'them') as 'us' | 'them',
     };
   }
 
@@ -152,17 +153,38 @@ export function GameTable({
           />
         </div>
 
+        {/* Leave — quiet glass door in the top-right corner, clear of play */}
+        <button
+          type="button"
+          aria-label="Leave Game"
+          onClick={onLeave}
+          className="group absolute right-3 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-[10px] border border-cyan-300/25 bg-[rgba(10,32,60,0.7)] text-cyan-100/70 shadow-[0_2px_8px_rgba(0,0,0,0.3)] backdrop-blur-sm transition-all hover:border-cyan-200/60 hover:text-cyan-50 hover:brightness-115 active:scale-[0.97] max-sm:right-2 max-sm:top-2"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2.2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-[18px] w-[18px] transition-transform group-hover:translate-x-0.5"
+          >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+
         {/* North: cards peeking from top + avatar below */}
         {north && (
           <div className="absolute left-1/2 top-[6px] z-20 flex w-[50%] -translate-x-1/2 flex-col items-center gap-2.5 max-sm:w-[60%] short:gap-1">
             <div className="mt-[-10px] short:hidden">
               <PlayerHand {...handProps(north, 'north')} />
             </div>
-            <div className="relative">
-              {isPlayerDealer(north) && (
-                <DealerChip className="absolute -left-9 top-1/2 -translate-y-1/2" />
-              )}
+            <div className="flex items-center gap-1.5">
               <GamePlayerCard {...avatarProps(north)} compact />
+              {isPlayerDealer(north) && <DealerChip />}
             </div>
           </div>
         )}
@@ -170,9 +192,9 @@ export function GameTable({
         {/* West: avatar above hand — fixed top so it aligns with east */}
         {west && (
           <div className="absolute left-0 top-[26%] z-20 flex flex-col items-start gap-1.5 pl-2 short:top-[22%]">
-            <div className="relative">
-              {isPlayerDealer(west) && <DealerChip className="absolute -top-8 left-[6px]" />}
+            <div className="flex items-center gap-1.5">
               <GamePlayerCard {...avatarProps(west)} compact imagePosition="left" />
+              {isPlayerDealer(west) && <DealerChip />}
             </div>
             <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(-45%-16px)] items-center justify-center max-sm:w-[48px] short:h-[150px] short:w-[48px]">
               <PlayerHand {...handProps(west, 'west')} />
@@ -183,8 +205,8 @@ export function GameTable({
         {/* East: avatar above hand — fixed top so it aligns with west */}
         {east && (
           <div className="absolute right-0 top-[26%] z-20 flex flex-col items-end gap-1.5 pr-2 short:top-[22%]">
-            <div className="relative">
-              {isPlayerDealer(east) && <DealerChip className="absolute -top-8 right-[6px]" />}
+            <div className="flex items-center gap-1.5">
+              {isPlayerDealer(east) && <DealerChip />}
               <GamePlayerCard {...avatarProps(east)} compact imagePosition="right" />
             </div>
             <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(45%+16px)] items-center justify-center max-sm:w-[48px] short:h-[150px] short:w-[48px]">
@@ -209,7 +231,7 @@ export function GameTable({
           <div
             className={`absolute inset-x-[20%] top-[20%] bottom-[12%] z-10 flex items-center justify-center max-lg:inset-x-[16%] max-md:inset-x-[10%] max-sm:inset-x-[6%] max-sm:top-[16%] ${
               phase === 'playing'
-                ? 'short:top-[13%] short:bottom-[39%] short:scale-[0.78]'
+                ? 'short:top-[18%] short:bottom-[39%] short:scale-[0.7]'
                 : selectingHand
                   ? 'short:top-[8%] short:bottom-[10%]'
                   : 'short:top-[12%] short:bottom-[42%]'
@@ -260,30 +282,19 @@ export function GameTable({
                 />
               </div>
             )}
-            <div className="relative mt-2 short:mt-0.5">
-              {isPlayerDealer(south) && (
-                <DealerChip className="absolute -left-9 top-1/2 -translate-y-1/2" />
-              )}
+            <div className="mt-2 flex items-center gap-1.5 short:mt-0.5">
               <GamePlayerCard {...avatarProps(south)} compact />
+              {isPlayerDealer(south) && <DealerChip />}
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Control strip: bottom ~15% ── */}
-      <div className="grid h-[13%] shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] short:h-11 short:pb-1.5">
-        {/* Ad placeholder */}
-        <div className="pidro-ad-slot col-start-2 flex items-center justify-center rounded-lg border border-dashed border-cyan-300/20 bg-black/20 text-[10px] font-bold uppercase tracking-widest text-cyan-50/30 short:hidden">
+      {/* ── Control strip: bottom ~15% (ad slot only — leave lives top-right) ── */}
+      <div className="flex h-[13%] shrink-0 items-center justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] short:h-11 short:pb-1.5">
+        <div className="pidro-ad-slot flex items-center justify-center rounded-lg border border-dashed border-cyan-300/20 bg-black/20 text-[10px] font-bold uppercase tracking-widest text-cyan-50/30 short:hidden">
           Ad Space
         </div>
-        <button
-          type="button"
-          aria-label="Leave Game"
-          onClick={onLeave}
-          className="pidro-icon-button col-start-3 justify-self-end"
-        >
-          <span className="text-xl font-black">⤴</span>
-        </button>
       </div>
     </div>
   );

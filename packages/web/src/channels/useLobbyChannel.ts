@@ -21,6 +21,9 @@ export const useLobbyChannel = () => {
 
     const connect = () => {
       if (globalChannel) return;
+      // Socket may not be initialized yet (e.g. cold mount before auth
+      // bootstrap). Skip quietly — the next mount retries.
+      if (!phoenixSocket.isInitialized?.()) return;
 
       setLoading(true);
       setError(null);

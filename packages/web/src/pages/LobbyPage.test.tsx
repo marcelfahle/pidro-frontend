@@ -127,7 +127,7 @@ describe('LobbyPage', () => {
     renderLobby();
 
     expect(screen.getByText("Alice's game")).toBeTruthy();
-    expect(screen.getByText('2/4')).toBeTruthy();
+    expect(screen.getByText(/2\/4 players/i)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Join' })).toBeTruthy();
   });
 

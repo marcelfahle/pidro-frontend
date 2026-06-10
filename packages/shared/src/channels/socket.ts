@@ -40,6 +40,10 @@ export class PhoenixSocket {
     return this.socket;
   }
 
+  isInitialized(): boolean {
+    return this.socket !== null;
+  }
+
   connect() {
     if (!this.socket) return;
     if (!this.socket.isConnected()) {

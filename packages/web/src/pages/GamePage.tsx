@@ -10,6 +10,7 @@ import {
   type SeatEvent,
   useGameChannel,
 } from '../channels/useGameChannel';
+import { useLobbyChannel } from '../channels/useLobbyChannel';
 import { GameOverOverlay } from '../components/game/GameOverOverlay';
 import { GameTable } from '../components/game/GameTable';
 import { OwnerDecisionBanner } from '../components/game/OwnerDecisionBanner';
@@ -151,6 +152,27 @@ export function GamePage() {
   );
 
   const viewModel = useGameViewModel();
+
+  // Keep the lobby feed alive while in-game: it's the only payload that
+  // carries other humans' usernames. Merge them into seat meta as they land.
+  useLobbyChannel();
+  const lobbyRooms = useLobbyStore((s) => s.rooms);
+  useEffect(() => {
+    if (!code) return;
+    const lobbyRoom = lobbyRooms.find((r) => r.code === code);
+    if (!lobbyRoom?.seats?.length) return;
+
+    const { playerMeta: meta, setSeatStatus } = useGameStore.getState();
+    for (const seat of lobbyRoom.seats) {
+      const pos = seat.position;
+      const username = seat.player?.username;
+      if (!pos || !username || seat.player?.is_bot) continue;
+      const m = meta[pos];
+      if (m && !m.username) {
+        setSeatStatus(pos, m.seatStatus, username);
+      }
+    }
+  }, [lobbyRooms, code]);
 
   const [roomLoading, setRoomLoading] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);

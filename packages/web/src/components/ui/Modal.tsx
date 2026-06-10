@@ -1,4 +1,5 @@
 import { useCallback, useEffect } from 'react';
+import { GlassCard, HeaderBanner } from '../ds';
 
 interface ModalProps {
   open: boolean;
@@ -8,6 +9,11 @@ interface ModalProps {
   footer?: React.ReactNode;
 }
 
+/**
+ * PidroModal — the DS modal pattern: dark blurred overlay, wooden
+ * HeaderBanner overlapping the glass card's top edge by ~16px. Tall content
+ * scrolls inside the card so the banner and footer always stay put.
+ */
 export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -26,25 +32,38 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50">
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-[rgba(4,10,20,0.72)] backdrop-blur-[4px]"
         onClick={onClose}
         aria-hidden="true"
       />
       <div
-        className="relative w-full max-w-2xl overflow-hidden rounded-[18px] border border-cyan-300/30 bg-[linear-gradient(180deg,rgba(15,31,55,0.96)_0px,rgba(15,31,55,0.96)_20px,transparent_20px),radial-gradient(circle_at_center,rgba(53,151,213,0.32)_0%,transparent_45%),linear-gradient(180deg,#176ea7_0%,#0d5087_52%,#07264c_100%)] shadow-[0_40px_100px_rgba(0,0,0,0.65)]"
+        className="absolute left-1/2 top-1/2 flex w-[min(92vw,520px)] -translate-x-1/2 -translate-y-1/2 flex-col items-center"
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <div className="relative px-5 pb-5 pt-4">
-          <div className="mb-5 flex justify-center">
-            <div className="pidro-banner text-lg">{title}</div>
+        <HeaderBanner size="sm">{title}</HeaderBanner>
+        <GlassCard
+          noPadding
+          style={{
+            width: '100%',
+            marginTop: -16,
+            maxHeight: 'calc(100dvh - 96px)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4 pt-8 max-sm:px-4">
+            {children}
           </div>
-          <div className="pidro-panel p-5">{children}</div>
-          {footer && <div className="mt-5 flex flex-wrap justify-end gap-3">{footer}</div>}
-        </div>
+          {footer && (
+            <div className="flex flex-wrap justify-end gap-3 border-t border-cyan-200/15 px-5 py-4 max-sm:px-4">
+              {footer}
+            </div>
+          )}
+        </GlassCard>
       </div>
     </div>
   );

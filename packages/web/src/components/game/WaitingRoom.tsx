@@ -1,4 +1,5 @@
 import type { PlayerMeta, Position } from '@pidro/shared';
+import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -17,19 +18,19 @@ const SEAT_POSITIONS: { position: Position; label: string; className: string }[]
     position: 'north',
     label: 'North',
     className:
-      'left-1/2 top-[16%] w-[46%] -translate-x-1/2 max-md:top-[18%] max-md:w-[62%] short:top-[6%]',
+      'left-1/2 top-[16%] w-[46%] -translate-x-1/2 max-md:top-[21%] max-md:w-[62%] short:top-[6%]',
   },
   {
     position: 'west',
     label: 'West',
     className:
-      'left-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:left-[2%] max-md:top-[38%] max-md:w-[30%]',
+      'left-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:left-[2%] max-md:top-[40%] max-md:w-[36%]',
   },
   {
     position: 'east',
     label: 'East',
     className:
-      'right-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:right-[2%] max-md:top-[38%] max-md:w-[30%]',
+      'right-[3%] top-1/2 w-[19%] -translate-y-1/2 max-md:right-[2%] max-md:top-[40%] max-md:w-[36%]',
   },
   {
     position: 'south',
@@ -54,9 +55,14 @@ function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; i
 
   return (
     <div className={cardClasses}>
-      <div className="pidro-avatar">
-        {occupied ? (meta.username?.[0]?.toUpperCase() ?? '?') : '?'}
-      </div>
+      <PlayerAvatar
+        initial={meta.username?.[0]?.toUpperCase() ?? '?'}
+        name={meta.username ?? undefined}
+        size={44}
+        isVacant={!occupied}
+        isBot={meta.seatStatus === 'bot_substitute' || meta.seatStatus === 'permanent_bot'}
+        online={occupied ? (meta.isConnected ? 'online' : 'offline') : undefined}
+      />
       <div className="min-w-0">
         <div className="truncate text-sm font-black text-white">
           {occupied ? meta.username : 'Waiting...'}
@@ -90,7 +96,7 @@ export function WaitingRoom({
   return (
     <div className="flex h-full w-full items-center justify-center px-2 pb-3 pt-1">
       <div className="relative aspect-[4/3] w-full max-w-[1120px] max-h-[calc(100dvh-2rem)] max-md:aspect-[10/16]">
-        <div className="absolute left-1/2 top-[6%] z-20 -translate-x-1/2 text-center short:left-[2%] short:top-[2%] short:translate-x-0 short:text-left">
+        <div className="absolute left-1/2 top-[6%] z-20 -translate-x-1/2 text-center max-md:top-[2%] short:left-[2%] short:top-[2%] short:translate-x-0 short:text-left">
           <div className="pidro-panel rounded-[18px] px-6 py-3 short:rounded-lg short:px-3 short:py-1.5">
             <p className="text-[11px] font-black uppercase tracking-[0.28em] text-cyan-50/70 short:text-[9px] short:tracking-[0.2em]">
               Room Code
@@ -111,7 +117,7 @@ export function WaitingRoom({
           </div>
         ))}
 
-        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[44%] short:top-[42%] short:gap-2">
+        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[49%] short:top-[42%] short:gap-2">
           {isFull ? (
             <>
               <div className="text-base font-black uppercase tracking-[0.16em] text-cyan-50/80">

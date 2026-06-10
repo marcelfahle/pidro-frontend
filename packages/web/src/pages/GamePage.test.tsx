@@ -37,6 +37,11 @@ vi.mock('../channels/useGameChannel', () => ({
   pushGameAction: vi.fn(),
 }));
 
+// Mock lobby channel (GamePage keeps it alive for username sync)
+vi.mock('../channels/useLobbyChannel', () => ({
+  useLobbyChannel: vi.fn(),
+}));
+
 // Mock lobby API
 const mockGetRoom = vi.fn();
 const mockLeaveRoom = vi.fn();
