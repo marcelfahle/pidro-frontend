@@ -355,6 +355,62 @@ export function DesignSystemPage() {
                     />
                   </div>
                 </div>
+
+                <div>
+                  <SubLabel>
+                    Table seats — ranked chip, draining turn clock, dealer pin, bare (tiny portrait)
+                  </SubLabel>
+                  <div className="flex flex-wrap items-end gap-x-8 gap-y-7 pb-2 pt-3">
+                    <GamePlayerCard
+                      displayName="Astrid"
+                      statusText="Bet 9"
+                      initial="A"
+                      team="them"
+                      compact
+                      rank={{ level: 24, tier: 'silver', prestige: 0 }}
+                    />
+                    <GamePlayerCard
+                      displayName="Sven"
+                      statusText="Turn"
+                      initial="S"
+                      team="us"
+                      compact
+                      isCurrentTurn
+                      timerProgress={0.62}
+                      rank={{ level: 48, tier: 'gold', prestige: 1 }}
+                    />
+                    <GamePlayerCard
+                      displayName="Veikko"
+                      statusText="Turn"
+                      initial="V"
+                      team="them"
+                      compact
+                      isCurrentTurn
+                      timerProgress={0.12}
+                      rank={{ level: 71, tier: 'platinum', prestige: 0 }}
+                    />
+                    <GamePlayerCard
+                      displayName="Elsa"
+                      statusText="Waiting"
+                      initial="E"
+                      team="them"
+                      compact
+                      isDealer
+                      imagePosition="right"
+                      rank={{ level: 100, tier: 'master', prestige: 3 }}
+                    />
+                    <GamePlayerCard
+                      displayName="Kalle"
+                      statusText="Plays A"
+                      initial="K"
+                      team="them"
+                      compact
+                      bare
+                      isDealer
+                      rank={{ level: 7, tier: 'bronze', prestige: 0 }}
+                    />
+                  </div>
+                </div>
               </div>
             </ShowcasePanel>
 
