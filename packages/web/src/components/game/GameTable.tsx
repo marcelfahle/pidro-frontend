@@ -1,4 +1,5 @@
 import type {
+  ActiveTurnTimer,
   Card as CardType,
   GameViewModel,
   LegalAction,
@@ -9,7 +10,6 @@ import { getRankLabel, SUIT_COLORS_RAW, SUIT_SYMBOLS, useGameStore } from '@pidr
 import { useEffect, useRef, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { BiddingPanel } from './BiddingPanel';
-import { DealerChip } from './DealerChip';
 import { DealerSelectionReveal } from './DealerSelectionReveal';
 import { GameInfoBar } from './GameInfoBar';
 import { GamePlayerCard } from './GamePlayerCard';
@@ -62,22 +62,28 @@ export function GameTable({
   const south = players.find((p) => p.relativePosition === 'south');
   const west = players.find((p) => p.relativePosition === 'west');
 
+  const timerTick = useTurnTimerProgress(turnTimer);
+  // The pill box crowds SE/mini-class screens — go circle + floating text.
+  const bareSeats = useMediaQuery('(max-width: 389px) and (orientation: portrait)');
+
   function avatarProps(player: NonNullable<typeof north>) {
     const name = player.username ?? (player.isYou ? 'You' : 'Player');
     return {
       displayName: name,
       statusText: playerStatusText(player.absolutePosition, viewModel, serverState),
       initial: name[0]?.toUpperCase() ?? '?',
-      isDealer: viewModel.dealerAbsolute === player.absolutePosition,
+      isDealer:
+        phase !== 'dealer_selection' && viewModel.dealerAbsolute === player.absolutePosition,
       isCurrentTurn: player.isCurrentTurn,
       isConnected: player.isConnected,
       seatStatus: player.seatStatus,
       team: (player.isYou || player.isTeammate ? 'us' : 'them') as 'us' | 'them',
+      rank: player.rank ?? null,
+      timerProgress:
+        timerTick && timerTick.position === player.absolutePosition ? timerTick.progress : null,
+      bare: bareSeats,
     };
   }
-
-  const isPlayerDealer = (player: NonNullable<typeof north>) =>
-    phase !== 'dealer_selection' && viewModel.dealerAbsolute === player.absolutePosition;
 
   function getPlayerCards(absPos: string) {
     const playerView = serverState?.players?.[absPos as keyof typeof serverState.players];
@@ -152,7 +158,6 @@ export function GameTable({
               viewerIsSpectator={viewerIsSpectator}
               handNumber={handNumber}
               roomCode={roomCode}
-              turnTimer={turnTimer}
             />
           </div>
 
@@ -190,9 +195,8 @@ export function GameTable({
                 <PlayerHand {...handProps(north, 'north')} />
               </div>
             </div>
-            <div className="mt-2 flex items-center gap-1.5 short:mt-1.5">
+            <div className="mt-2 short:mt-1.5">
               <GamePlayerCard {...avatarProps(north)} compact />
-              {isPlayerDealer(north) && <DealerChip />}
             </div>
           </div>
         )}
@@ -200,10 +204,7 @@ export function GameTable({
         {/* West: avatar above hand — fixed top so it aligns with east */}
         {west && (
           <div className="absolute left-0 top-[26%] z-20 flex flex-col items-start gap-1.5 pl-2 short:top-[22%]">
-            <div className="flex items-center gap-1.5">
-              <GamePlayerCard {...avatarProps(west)} compact imagePosition="left" />
-              {isPlayerDealer(west) && <DealerChip />}
-            </div>
+            <GamePlayerCard {...avatarProps(west)} compact imagePosition="left" />
             <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(-45%-16px)] items-center justify-center max-sm:w-[48px] max-sm:-translate-x-[20px] short:h-[150px] short:w-[48px] short:-translate-x-[20px]">
               <PlayerHand {...handProps(west, 'west')} />
             </div>
@@ -213,10 +214,7 @@ export function GameTable({
         {/* East: avatar above hand — fixed top so it aligns with west */}
         {east && (
           <div className="absolute right-0 top-[26%] z-20 flex flex-col items-end gap-1.5 pr-2 short:top-[22%]">
-            <div className="flex items-center gap-1.5">
-              {isPlayerDealer(east) && <DealerChip />}
-              <GamePlayerCard {...avatarProps(east)} compact imagePosition="right" />
-            </div>
+            <GamePlayerCard {...avatarProps(east)} compact imagePosition="right" />
             <div className="flex h-[clamp(220px,32vw,330px)] w-[80px] translate-x-[calc(45%+16px)] items-center justify-center max-sm:w-[48px] max-sm:translate-x-[20px] short:h-[150px] short:w-[48px] short:translate-x-[20px]">
               <PlayerHand {...handProps(east, 'east')} />
             </div>
@@ -290,9 +288,8 @@ export function GameTable({
                 />
               </div>
             )}
-            <div className="mt-2 flex items-center gap-1.5 short:mt-0.5">
+            <div className="mt-2 short:mt-0.5">
               <GamePlayerCard {...avatarProps(south)} compact />
-              {isPlayerDealer(south) && <DealerChip />}
             </div>
           </div>
         )}
@@ -306,6 +303,53 @@ export function GameTable({
       </div>
     </div>
   );
+}
+
+/** Reactive CSS media query — used for the bare-seat treatment on tiny phones. */
+function useMediaQuery(query: string): boolean {
+  const supported = typeof window !== 'undefined' && typeof window.matchMedia === 'function';
+  const [matches, setMatches] = useState(() => supported && window.matchMedia(query).matches);
+
+  useEffect(() => {
+    if (!supported) return;
+    const mql = window.matchMedia(query);
+    const onChange = () => setMatches(mql.matches);
+    setMatches(mql.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, [query, supported]);
+
+  return matches;
+}
+
+/**
+ * Live turn clock for the seat the server is timing. Returns the remaining
+ * fraction (1 → 0) — full during the pre-countdown grace, then draining.
+ */
+function useTurnTimerProgress(
+  turnTimer: ActiveTurnTimer | null,
+): { position: string; progress: number } | null {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    if (!turnTimer) return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, [turnTimer]);
+
+  if (!turnTimer || turnTimer.scope !== 'seat' || !turnTimer.position) return null;
+  if (turnTimer.durationMs <= 0) return null;
+
+  const elapsedMs = now - turnTimer.receivedAtMs;
+  const remainingTotalMs = Math.max(0, turnTimer.remainingMs - elapsedMs);
+  if (remainingTotalMs <= 0) return null;
+
+  const countdownRemainingMs = Math.min(turnTimer.durationMs, remainingTotalMs);
+  return {
+    position: turnTimer.position,
+    progress: countdownRemainingMs / turnTimer.durationMs,
+  };
 }
 
 /**

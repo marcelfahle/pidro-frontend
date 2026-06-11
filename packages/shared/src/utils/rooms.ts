@@ -54,15 +54,15 @@ export function buildPositionsFromSeats(
 /**
  * The REST room payload (`GET /rooms/:code`) keys seats by position
  * (`{north: {user_id, substitute, ...}}`) instead of the array shape the
- * lobby channel sends. Bots are detectable only here: `substitute: true`
- * or a `bot_*` user id.
+ * lobby channel sends. Bots are detectable only by the `bot_*` user id —
+ * `substitute: true` also marks HUMANS who filled an open seat, and
+ * `occupant_type` is unreliable in this payload.
  */
 function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
   return Object.entries(rawSeats).map(([key, value], idx) => {
     const position = (value?.position ?? key) as Position;
     const userId = value?.user_id ?? value?.player_id ?? null;
-    const isBot =
-      Boolean(value?.substitute) || (typeof userId === 'string' && userId.startsWith('bot_'));
+    const isBot = typeof userId === 'string' && userId.startsWith('bot_');
     const username = value?.username ?? value?.player_username ?? null;
 
     return {

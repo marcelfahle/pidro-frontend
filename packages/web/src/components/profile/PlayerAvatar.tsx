@@ -40,6 +40,12 @@ interface PlayerAvatarProps {
   premium?: boolean;
   /** Dedication ring fill, 0–1. Renders the halo ring when set. */
   progress?: number;
+  /**
+   * Turn-timer ring, 0–1 of time REMAINING. In-game the ring slot belongs to
+   * the clock, not dedication — cyan, then gold under 40%, red under 15%.
+   * Takes precedence over `progress`.
+   */
+  timerProgress?: number;
   /** Veteran level — gold chip notched at the avatar's bottom edge. */
   level?: number;
   prestige?: number;
@@ -143,6 +149,7 @@ export function PlayerAvatar({
   online,
   premium = false,
   progress,
+  timerProgress,
   level,
   prestige = 0,
   tier,
@@ -242,7 +249,8 @@ export function PlayerAvatar({
 
   const chip =
     level != null ? <LevelChip level={level} prestige={prestige} dim={size} tier={tier} /> : null;
-  const haloMode = progress != null;
+  const isTimer = timerProgress != null;
+  const haloMode = isTimer || progress != null;
 
   /* ── plain layout (no ring) ── */
   if (!haloMode) {
@@ -273,7 +281,9 @@ export function PlayerAvatar({
     );
   }
 
-  /* ── halo layout (dedication progress ring, gap at the bottom) ── */
+  /* ── halo layout (ring with a gap at the bottom for the chip) ──
+     Outside the game the ring is dedication progress (cyan). In-game the
+     same slot is the turn clock: it drains and shifts cyan → gold → red. */
   const ringW = Math.max(4, size * 0.06);
   const pad = ringW + size * 0.06;
   const box = size + pad * 2;
@@ -282,8 +292,22 @@ export function PlayerAvatar({
   const circ = 2 * Math.PI * rr;
   const gapFrac = 0.26;
   const trackDash = circ * (1 - gapFrac);
-  const prog = Math.max(0, Math.min(1, progress));
+  const prog = Math.max(0, Math.min(1, isTimer ? timerProgress : (progress ?? 0)));
   const startRot = 90 + gapFrac * 180;
+  const ringColor = !isTimer
+    ? 'var(--pidro-cyan)'
+    : prog <= 0.15
+      ? '#FF5252'
+      : prog <= 0.4
+        ? 'var(--pidro-gold)'
+        : 'var(--pidro-cyan)';
+  const ringGlow = !isTimer
+    ? 'drop-shadow(0 0 2px rgba(0,207,255,0.4))'
+    : prog <= 0.15
+      ? 'drop-shadow(0 0 4px rgba(255,82,82,0.6))'
+      : prog <= 0.4
+        ? 'drop-shadow(0 0 3px rgba(255,212,38,0.5))'
+        : 'drop-shadow(0 0 2px rgba(0,207,255,0.4))';
 
   const wrapStyle: CSSProperties = {
     position: 'relative',
@@ -323,13 +347,15 @@ export function PlayerAvatar({
           cy={cc}
           r={rr}
           fill="none"
-          stroke="var(--pidro-cyan)"
+          stroke={ringColor}
           strokeWidth={ringW}
           strokeDasharray={`${trackDash * prog} ${circ}`}
           strokeLinecap="round"
           style={{
-            filter: 'drop-shadow(0 0 2px rgba(0,207,255,0.4))',
-            transition: 'stroke-dasharray 600ms var(--pidro-ease)',
+            filter: ringGlow,
+            transition: isTimer
+              ? 'stroke-dasharray 220ms linear, stroke 300ms var(--pidro-ease)'
+              : 'stroke-dasharray 600ms var(--pidro-ease)',
           }}
         />
       </svg>

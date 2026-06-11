@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { lobbyApi } from '../api/lobby';
+import { getProfile, veteranProgressFraction } from '../api/profile';
 import {
   type OwnerDecisionEvent,
   pushGameAction,
@@ -152,6 +153,30 @@ export function GamePage() {
   );
 
   const viewModel = useGameViewModel();
+
+  // Decorate our own seat with progression (level + skill metal on the
+  // avatar chip; progress feeds the game-over halo). Best-effort: servers
+  // without the profile endpoint just leave the seat unranked.
+  useEffect(() => {
+    if (!youPositionAbs) return;
+    let active = true;
+    getProfile()
+      .then((p) => {
+        if (!active) return;
+        useGameStore.getState().setPlayerRank(youPositionAbs, {
+          level: p.veteran.level,
+          tier: p.skill.provisional ? 'provisional' : p.skill.tier,
+          prestige: p.veteran.prestige,
+          progress: veteranProgressFraction(p.veteran.progress),
+        });
+      })
+      .catch(() => {
+        /* no profile on this server — seat stays unranked */
+      });
+    return () => {
+      active = false;
+    };
+  }, [youPositionAbs]);
 
   // Keep the lobby feed alive while in-game: it's the only payload that
   // carries other humans' usernames. Merge them into seat meta as they land.

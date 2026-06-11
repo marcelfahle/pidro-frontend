@@ -5,6 +5,7 @@ import type {
   ActiveTurnTimer,
   ServerGameState,
   PlayerMeta,
+  PlayerRank,
   GameViewModel,
   RelativePlayerView,
   LegalAction,
@@ -60,6 +61,7 @@ interface GameState {
     connected: boolean,
   ) => void;
   setSeatStatus: (position: Position, status: SeatStatus, username?: string | null) => void;
+  setPlayerRank: (position: Position, rank: PlayerRank | null) => void;
   addReadyPlayer: (position: Position) => void;
   setChannelStatus: (joined: boolean, rejoining?: boolean) => void;
   setError: (err: string | null) => void;
@@ -247,6 +249,13 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { playerMeta: updated };
     }),
 
+  setPlayerRank: (position, rank) =>
+    set((curr) => {
+      const updated = { ...curr.playerMeta };
+      updated[position] = { ...updated[position], rank };
+      return { playerMeta: updated };
+    }),
+
   addReadyPlayer: (position) =>
     set((curr) => ({
       readyPlayers: curr.readyPlayers.includes(position)
@@ -322,6 +331,7 @@ export function useGameViewModel(): GameViewModel | null {
         isConnected: meta.isConnected,
         isCurrentTurn,
         seatStatus: meta.seatStatus,
+        rank: meta.rank ?? null,
       };
     });
 

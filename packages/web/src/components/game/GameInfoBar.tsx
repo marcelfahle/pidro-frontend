@@ -1,7 +1,6 @@
 import type { ActiveTurnTimer, Position } from '@pidro/shared';
 import { getTeamScores } from '@pidro/shared';
 import { useEffect, useRef, useState } from 'react';
-import { TurnTimerBanner } from './TurnTimerBanner';
 
 type Scores = { north_south: number; east_west: number };
 
@@ -11,7 +10,6 @@ interface GameInfoBarProps {
   viewerIsSpectator?: boolean;
   handNumber: number | null;
   roomCode: string;
-  turnTimer?: ActiveTurnTimer | null;
 }
 
 interface ScoreHistoryEntry {
@@ -42,7 +40,6 @@ export function GameInfoBar({
   viewerIsSpectator = false,
   handNumber,
   roomCode,
-  turnTimer = null,
 }: GameInfoBarProps) {
   const teamScores = scores ? getTeamScores(scores, viewerPosition) : { us: 0, them: 0 };
   const homeTeamLabel = viewerIsSpectator ? 'NS' : 'Us';
@@ -186,8 +183,6 @@ export function GameInfoBar({
           )}
         </div>
       )}
-
-      <TurnTimerBanner turnTimer={turnTimer} youPosition={viewerPosition} />
     </div>
   );
 }

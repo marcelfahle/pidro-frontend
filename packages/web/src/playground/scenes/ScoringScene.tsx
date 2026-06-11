@@ -53,13 +53,7 @@ export function ScoringScene({
           Hand 3 scored
         </div>
         <div key={mountKey} className="scale-[1.6]" style={wrapperVars}>
-          <GameInfoBar
-            scores={scores}
-            viewerPosition={VIEWER}
-            handNumber={4}
-            roomCode="LAB"
-            turnTimer={null}
-          />
+          <GameInfoBar scores={scores} viewerPosition={VIEWER} handNumber={4} roomCode="LAB" />
         </div>
         <div className="text-[12px] font-bold text-cyan-50/45">
           Us {scores.north_south} · Them {scores.east_west} — tap the score to expand hand history

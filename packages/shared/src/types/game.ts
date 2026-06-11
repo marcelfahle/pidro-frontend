@@ -102,6 +102,16 @@ export interface ActiveTurnTimer {
   eventSeq: number;
 }
 
+/** Progression shown on avatars: the number is the level (dedication), the
+ *  chip's metal is the skill tier. Tier ids match the web ranking module. */
+export interface PlayerRank {
+  level: number;
+  tier: string;
+  prestige: number;
+  /** Veteran progress toward the next level, 0–1 (profile/game-over only). */
+  progress?: number;
+}
+
 export interface PlayerMeta {
   position: Position;
   playerId: string | null;
@@ -111,6 +121,7 @@ export interface PlayerMeta {
   isOpponent: boolean;
   isConnected: boolean;
   seatStatus: SeatStatus;
+  rank?: PlayerRank | null;
 }
 
 export type RelativePosition = 'north' | 'east' | 'south' | 'west';
@@ -126,6 +137,7 @@ export interface RelativePlayerView {
   isConnected: boolean;
   isCurrentTurn: boolean;
   seatStatus: SeatStatus;
+  rank?: PlayerRank | null;
 }
 
 export interface GameViewModel {

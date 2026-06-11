@@ -3,6 +3,7 @@ import { getTeamScores, isNorthSouthTeam } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { PostGameStrip } from '../profile/PostGameStrip';
 import type { ProgressionSummary } from '../profile/postgame';
+import type { SkillTier } from '../profile/ranking';
 import { Button } from '../ui/Button';
 
 interface GameOverOverlayProps {
@@ -100,7 +101,7 @@ export function GameOverOverlay({
                   key={player.absolutePosition}
                   className="rounded-2xl border border-white/12 bg-black/10 p-3"
                 >
-                  <div className="flex justify-center">
+                  <div className={`flex justify-center ${player.rank ? 'pb-1.5 pt-1' : ''}`}>
                     <PlayerAvatar
                       initial={displayName(player)[0]?.toUpperCase() ?? '?'}
                       name={displayName(player)}
@@ -109,6 +110,10 @@ export function GameOverOverlay({
                         player.seatStatus === 'bot_substitute' ||
                         player.seatStatus === 'permanent_bot'
                       }
+                      progress={player.rank?.progress}
+                      level={player.rank?.level}
+                      prestige={player.rank?.prestige ?? 0}
+                      tier={(player.rank?.tier as SkillTier | undefined) ?? undefined}
                     />
                   </div>
                   <div className="mt-2 text-sm font-black text-white">{displayName(player)}</div>
