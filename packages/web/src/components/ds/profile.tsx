@@ -158,7 +158,9 @@ export function SkillBlock({
           }}
         >
           {m.calibrating
-            ? `Being placed · ${ratedGames || 0} of 10 rated games`
+            ? ratedGames != null
+              ? `Being placed · ${ratedGames} of 10 rated games`
+              : 'Being placed · play rated games'
             : 'Standing, not a journey'}
         </div>
       </div>
