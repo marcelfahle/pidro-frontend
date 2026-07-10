@@ -1,7 +1,9 @@
 {
   "name": "pidro",
   "private": true,
-  "workspaces": ["packages/*"],
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "mobile:start": "bun --cwd packages/mobile start",
     "mobile:ios": "bun --cwd packages/mobile ios",
@@ -10,5 +12,14 @@
     "web:build": "bun --cwd packages/web build",
     "shared:build": "bun --cwd packages/shared build",
     "shared:watch": "bun --cwd packages/shared watch"
-  }
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
+  },
+  "trustedDependencies": [
+    "@shopify/react-native-skia",
+    "pidro-mobile",
+    "unrs-resolver"
+  ]
 }

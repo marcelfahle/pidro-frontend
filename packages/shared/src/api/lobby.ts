@@ -1,6 +1,16 @@
 import type { ApiClient } from './client';
-import type { Room, CreateRoomRequest, PositionPreference } from '../types/lobby';
-import { normalizeRoom, normalizeRooms } from '../utils/rooms';
+import type {
+  LobbyCategories,
+  Room,
+  CreateRoomRequest,
+  PositionPreference,
+} from '../types/lobby';
+import {
+  flattenLobbyCategories,
+  normalizeLobbyCategories,
+  normalizeRoom,
+  normalizeRooms,
+} from '../utils/rooms';
 
 export interface ListRoomsResponse {
   data?: {
@@ -17,6 +27,11 @@ export interface ListRoomsResponse {
     online_players: number;
     active_games: number;
   };
+}
+
+export interface ListLobbyResponse {
+  data?: Partial<LobbyCategories>;
+  lobby?: Partial<LobbyCategories>;
 }
 
 export interface GetRoomResponse {
@@ -54,6 +69,17 @@ export function createLobbyApi(api: ApiClient) {
       const rooms = normalizeRooms(extractRoomsFromResponse(body));
       const meta = body?.meta ?? body?.data?.meta;
       return { rooms, meta };
+    },
+
+    listLobby: async (): Promise<{ lobby: LobbyCategories; rooms: Room[] }> => {
+      const response = await api.get<ListLobbyResponse>('/api/v1/lobby');
+      const body = response.data;
+      const rawLobby = body?.data ?? body?.lobby ?? body;
+      const lobby = normalizeLobbyCategories(rawLobby);
+      return {
+        lobby,
+        rooms: flattenLobbyCategories(lobby),
+      };
     },
 
     getRoom: async (code: string): Promise<Room> => {

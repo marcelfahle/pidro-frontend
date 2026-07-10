@@ -17,6 +17,7 @@ import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/p
 import { buildPositionsFromSeats } from '../utils/rooms';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
+const POSITION_NAMES = new Set<string>(POSITIONS);
 
 function createEmptyPlayerMeta(position: Position): PlayerMeta {
   return {
@@ -29,6 +30,21 @@ function createEmptyPlayerMeta(position: Position): PlayerMeta {
     isConnected: false,
     seatStatus: 'normal',
   };
+}
+
+function displayUsername(meta: PlayerMeta): string | null {
+  const username = meta.username?.trim() ?? '';
+  if (username && !POSITION_NAMES.has(username.toLowerCase())) {
+    return username;
+  }
+  if (meta.isYou) return 'You';
+  if (
+    meta.seatStatus === 'bot_substitute' ||
+    meta.seatStatus === 'permanent_bot'
+  ) {
+    return 'Bot';
+  }
+  return null;
 }
 
 interface GameState {
@@ -324,7 +340,7 @@ export function useGameViewModel(): GameViewModel | null {
         absolutePosition: absPos,
         relativePosition: relPos,
         playerId: meta.playerId,
-        username: meta.username,
+        username: displayUsername(meta),
         isYou: meta.isYou,
         isTeammate: meta.isTeammate,
         isOpponent: meta.isOpponent,

@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Dark theme with white text by default */
+@layer base {
+  * {
+    color: #ffffff;
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "name": "pidro-mobile",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "sync:cards": "node scripts/sync-card-assets.mjs",
+    "prestart": "node scripts/sync-card-assets.mjs",
+    "preweb": "node scripts/sync-card-assets.mjs",
+    "android": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start --android",
+    "ios": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start --ios",
+    "start": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start",
+    "prebuild": "expo prebuild",
+    "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
+    "test:smoke": "node scripts/smoke-create-game.mjs",
+    "test:ui": "node scripts/verify-ui-grammar.mjs",
+    "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
+    "web": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start --web",
+    "prepare": "husky"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^15.1.1",
+    "@pidro/shared": "workspace:*",
+    "@shopify/react-native-skia": "2.6.2",
+    "@tanstack/react-query": "^5.90.21",
+    "axios": "^1.13.5",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "expo": "~56.0.15",
+    "expo-blur": "~56.0.3",
+    "expo-font": "~56.0.7",
+    "expo-linking": "~56.0.15",
+    "expo-router": "~56.2.14",
+    "expo-secure-store": "~56.0.4",
+    "expo-splash-screen": "~56.0.12",
+    "expo-status-bar": "~56.0.4",
+    "expo-system-ui": "~56.0.5",
+    "expo-web-browser": "~56.0.5",
+    "nativewind": "^4.2.2",
+    "phoenix": "^1.8.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.85.3",
+    "react-native-gesture-handler": "~2.31.1",
+    "react-native-reanimated": "4.3.1",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "4.25.2",
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2",
+    "react-native-worklets": "0.8.3",
+    "tailwind-merge": "^3.5.0",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@tanstack/eslint-plugin-query": "^5.91.4",
+    "@types/phoenix": "^1.6.7",
+    "@types/react": "~19.2.14",
+    "eslint": "^9.39.3",
+    "eslint-config-expo": "~56.0.4",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.8.1",
+    "prettier-plugin-tailwindcss": "^0.7.2",
+    "tailwindcss": "^3.4.19",
+    "typescript": "~6.0.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,css,md}": [
+      "prettier --write"
+    ]
+  },
+  "private": true
+}

@@ -1,0 +1,8 @@
+.agents/
+.amp/
+.claude/
+.expo/
+.factory/
+dist/
+node_modules/
+skills-lock.json

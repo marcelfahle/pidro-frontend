@@ -1,4 +1,11 @@
-import type { Position, Room, RoomStatus, Seat } from '../types/lobby';
+import type {
+  LobbyCategories,
+  LobbyCategoryKey,
+  Position,
+  Room,
+  RoomStatus,
+  Seat,
+} from '../types/lobby';
 import { INDEX_TO_POSITION } from './positions';
 
 function normalizeSeat(raw: any, fallbackIndex: number): Seat {
@@ -62,24 +69,29 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
   return Object.entries(rawSeats).map(([key, value], idx) => {
     const position = (value?.position ?? key) as Position;
     const userId = value?.user_id ?? value?.player_id ?? null;
-    const isBot = typeof userId === 'string' && userId.startsWith('bot_');
+    // Bot-substituted seats carry occupant_type: 'bot' with a null user_id,
+    // so check both signals.
+    const isBot =
+      value?.occupant_type === 'bot' ||
+      (typeof userId === 'string' && userId.startsWith('bot_'));
     const username = value?.username ?? value?.player_username ?? null;
+    const playerId = userId ?? (isBot ? `bot_${String(position)}` : null);
 
     return {
       seat_index: idx,
       position,
-      status: userId ? 'occupied' : 'free',
+      status: playerId ? 'occupied' : 'free',
       player:
-        userId && (isBot || username)
+        playerId && (isBot || username)
           ? {
-              id: String(userId),
+              id: String(playerId),
               username: username ?? 'Bot',
               is_bot: isBot,
             }
           : null,
       // Only expose player_id when we have a display name — normalizeSeat
       // falls back to using the raw id as a username otherwise.
-      player_id: isBot || username ? userId : null,
+      player_id: isBot || username ? playerId : null,
     };
   });
 }
@@ -136,4 +148,47 @@ export function normalizeRoom(raw: any): Room {
 export function normalizeRooms(rawRooms: any): Room[] {
   if (!Array.isArray(rawRooms)) return [];
   return rawRooms.map((room) => normalizeRoom(room));
+}
+
+export const lobbyCategoryKeys: LobbyCategoryKey[] = [
+  'my_rejoinable',
+  'open_tables',
+  'substitute_needed',
+  'spectatable',
+];
+
+export function emptyLobbyCategories(): LobbyCategories {
+  return {
+    my_rejoinable: [],
+    open_tables: [],
+    substitute_needed: [],
+    spectatable: [],
+  };
+}
+
+export function normalizeLobbyCategories(rawLobby: any): LobbyCategories {
+  const normalized = emptyLobbyCategories();
+  lobbyCategoryKeys.forEach((key) => {
+    normalized[key] = normalizeRooms(rawLobby?.[key]);
+  });
+  return normalized;
+}
+
+export function flattenLobbyCategories(lobby: LobbyCategories): Room[] {
+  const seen = new Set<string>();
+  const rooms: Room[] = [];
+
+  lobbyCategoryKeys.forEach((key) => {
+    lobby[key].forEach((room) => {
+      if (!room.code || seen.has(room.code)) return;
+      seen.add(room.code);
+      rooms.push(room);
+    });
+  });
+
+  return rooms;
+}
+
+export function hasLobbyCategories(rawLobby: any): boolean {
+  return lobbyCategoryKeys.some((key) => Array.isArray(rawLobby?.[key]));
 }
