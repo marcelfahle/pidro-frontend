@@ -8,9 +8,9 @@ import { Platform } from 'react-native';
 import { useImage, type SkImage } from '@shopify/react-native-skia';
 import { getCardImage } from '@/utils/cardImages';
 import type { Card, Suit } from '@/types/game';
+import { cardKey, type CardKey } from './cardKey';
 
-export type CardKey = `${Suit}_${number}`;
-export const cardKey = (c: Card): CardKey => `${c.suit}_${c.rank}` as CardKey;
+export { cardKey, type CardKey } from './cardKey';
 
 const SUITS: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
 const RANKS = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14];

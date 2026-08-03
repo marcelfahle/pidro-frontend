@@ -31,12 +31,14 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
+import { gameExitPath, gameRoute, parseGameOrigin } from '@/navigation/gameRoute';
 
 type SkiaTableProps = {
   room: Room;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: (room: Room) => void;
+  backLabel?: string;
 };
 
 /**
@@ -140,7 +142,9 @@ const styles = StyleSheet.create({
  * Route: /game/{room_code}
  */
 export default function GameScreen() {
-  const { code } = useLocalSearchParams<{ code: string }>();
+  const { code, origin: originParam } = useLocalSearchParams<{ code: string; origin?: string }>();
+  const origin = parseGameOrigin(originParam);
+  const exitPath = gameExitPath(origin);
   const router = useRouter();
   const rooms = useLobbyStore((s) => s.rooms);
   const updateRoom = useLobbyStore((s) => s.updateRoom);
@@ -382,15 +386,15 @@ export default function GameScreen() {
         });
         const newCode = result?.code;
         if (newCode) {
-          router.replace(`/game/${newCode}`);
+          router.replace(gameRoute(newCode, origin));
           return;
         }
       } catch {
         console.error('[GameScreen] Failed to create a new game.');
       }
-      router.replace('/lobby');
+      router.replace(exitPath);
     },
-    [router]
+    [exitPath, origin, router]
   );
 
   const handleLeaveGame = () => {
@@ -404,7 +408,7 @@ export default function GameScreen() {
       });
     }
 
-    router.replace('/lobby');
+    router.replace(exitPath);
   };
 
   if (!room && roomLookup?.roomCode !== code) {
@@ -436,9 +440,9 @@ export default function GameScreen() {
               </PidroText>
               <View style={styles.tableLoadActions}>
                 <Button
-                  label="Back to lobby"
+                  label={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
                   variant="outline"
-                  onPress={() => router.replace('/lobby')}
+                  onPress={() => router.replace(exitPath)}
                   style={styles.tableLoadButton}
                 />
                 <Button
@@ -510,6 +514,7 @@ export default function GameScreen() {
         progressionSummary={progressionSummary}
         onLeave={handleLeaveGame}
         onPlayAgain={handlePlayAgain}
+        backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
       />
     );
   }

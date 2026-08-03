@@ -16,7 +16,7 @@ import type {
 import type { Position } from '@/types/lobby';
 import type { GameTableController } from '@/game/useGameTableController';
 import { sortCards } from '@/utils/cards';
-import { cardKey, type CardKey } from './cardTextures';
+import { cardKey, type CardKey } from './cardKey';
 
 export type TableCard = {
   key: string;
@@ -44,6 +44,7 @@ export type TableModel = {
   seats: Record<RelativePosition, TableSeat | null>;
   yourHand: TableCard[];
   yourCardCount: number | null;
+  dealerCuts: Partial<Record<RelativePosition, TableCard>>;
   currentTrick: Partial<Record<RelativePosition, TableCard>>;
   playedCards: Partial<Record<RelativePosition, TableCard[]>>;
   currentTurnRelative: RelativePosition | null;
@@ -59,6 +60,7 @@ export type TableModelInput = {
   players: RelativePlayerView[];
   yourHand: Card[] | null;
   yourCardCount: number | null;
+  dealerSelectionCuts?: Partial<Record<Position, Card>> | null;
   currentTrick: unknown;
   tricks: unknown;
   legalActions: LegalAction[];
@@ -111,6 +113,17 @@ export function buildTableModel(input: TableModelInput): TableModel {
 
   const absToRel = new Map<Position, RelativePosition>();
   for (const p of input.players) absToRel.set(p.absolutePosition, p.relativePosition);
+
+  const dealerCuts: Partial<Record<RelativePosition, TableCard>> = {};
+  if (input.phase === 'dealer_selection' && input.dealerSelectionCuts) {
+    for (const [absolutePosition, card] of Object.entries(input.dealerSelectionCuts)) {
+      if (!card) continue;
+      const rel = absToRel.get(absolutePosition as Position);
+      if (!rel) continue;
+      const textureKey = cardKey(card);
+      dealerCuts[rel] = toCard(card, `dealer-cut-${rel}-${textureKey}`);
+    }
+  }
 
   const playedCards: Partial<Record<RelativePosition, TableCard[]>> = {};
   const pushPlayedCard = (rel: RelativePosition, tableCard: TableCard) => {
@@ -168,6 +181,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
     seats,
     yourHand,
     yourCardCount: input.yourCardCount,
+    dealerCuts,
     currentTrick,
     playedCards,
     currentTurnRelative: input.currentTurnRelative,
@@ -185,6 +199,7 @@ export function useTableModel(c: GameTableController): TableModel {
         players: c.players,
         yourHand: c.yourHand,
         yourCardCount: c.yourCardCount,
+        dealerSelectionCuts: c.serverState?.dealer_selection_cuts,
         currentTrick: c.currentTrick,
         tricks: c.completedTricks,
         legalActions: c.legalActions,
@@ -198,6 +213,7 @@ export function useTableModel(c: GameTableController): TableModel {
       c.players,
       c.yourHand,
       c.yourCardCount,
+      c.serverState?.dealer_selection_cuts,
       c.currentTrick,
       c.completedTricks,
       c.legalActions,

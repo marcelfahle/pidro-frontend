@@ -17,6 +17,7 @@ interface GameOverOverlayProps {
   } | null;
   onBackToLobby: () => void;
   onPlayAgain: () => void;
+  backLabel?: string;
 }
 
 function displayName(player: RelativePlayerView): string {
@@ -32,6 +33,7 @@ export function GameOverOverlay({
   progressionSummary,
   onBackToLobby,
   onPlayAgain,
+  backLabel = 'Back to lobby',
 }: GameOverOverlayProps) {
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
@@ -151,7 +153,7 @@ export function GameOverOverlay({
 
           <View style={[styles.actions, portrait && styles.actionsPortrait]}>
             <Button
-              label="Back to lobby"
+              label={backLabel}
               variant="outline"
               onPress={onBackToLobby}
               style={styles.actionButton}

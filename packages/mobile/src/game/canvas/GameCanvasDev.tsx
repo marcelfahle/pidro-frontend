@@ -16,7 +16,15 @@ import { TableChromeBars, useTableReserves } from './TableChrome';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
 import { useHandPresentationReady } from './useHandPresentationReady';
-import type { Card, LegalAction, RelativePlayerView, RelativePosition, Suit } from '@/types/game';
+import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
+import type {
+  Card,
+  GamePhase,
+  LegalAction,
+  RelativePlayerView,
+  RelativePosition,
+  Suit,
+} from '@/types/game';
 import type { Position } from '@/types/lobby';
 
 const seat = (
@@ -69,6 +77,19 @@ const OPP_PLAYS: { player: Position; card: Card }[] = [
   { player: 'east', card: { suit: 'hearts', rank: 4 } },
 ];
 
+const DEALER_CUTS: Record<Position, Card> = {
+  north: { suit: 'clubs', rank: 9 },
+  east: { suit: 'spades', rank: 14 },
+  south: { suit: 'hearts', rank: 5 },
+  west: { suit: 'diamonds', rank: 7 },
+};
+const DEALER_CUT_STATUS = Object.fromEntries(
+  Object.entries(DEALER_CUTS).map(([position, card]) => [
+    position,
+    `Draws ${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`,
+  ])
+) as Record<RelativePosition, string>;
+
 const COUNTS: Record<string, number> = { south: 6, north: 8, east: 8, west: 7 };
 type Play = { player: Position; card: Card };
 const sameCard = (a: Card, b: Card) => a.suit === b.suit && a.rank === b.rank;
@@ -76,11 +97,13 @@ const sameCard = (a: Card, b: Card) => a.suit === b.suit && a.rank === b.rank;
 export type GameCanvasDevProps = {
   onHandPresentationReadyChange?: (ready: boolean) => void;
   autoPlay?: boolean;
+  phase?: GamePhase;
 };
 
 export default function GameCanvasDev({
   onHandPresentationReadyChange,
   autoPlay = false,
+  phase = 'playing',
 }: GameCanvasDevProps) {
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
@@ -100,11 +123,12 @@ export default function GameCanvasDev({
 
   // Deal on mount, then declare trump (glyph pop).
   useEffect(() => {
+    if (phase === 'dealer_selection') return;
     after(450, () => setHand(INITIAL_HAND));
     after(1300, () => setTrump('spades'));
     const t = timers.current;
     return () => t.forEach(clearTimeout);
-  }, [after]);
+  }, [after, phase]);
 
   // Fake server: legal = trumps (spades) + K♥ still in hand → others stay dimmed.
   const legalActions = useMemo<LegalAction[]>(
@@ -143,11 +167,12 @@ export default function GameCanvasDev({
   const model = useMemo(
     () =>
       buildTableModel({
-        phase: 'playing',
+        phase,
         trumpSuit: trump,
         players,
         yourHand: hand,
         yourCardCount: hand.length,
+        dealerSelectionCuts: phase === 'dealer_selection' ? DEALER_CUTS : null,
         currentTrick: trick,
         tricks,
         legalActions,
@@ -155,7 +180,7 @@ export default function GameCanvasDev({
         canPlay,
         getCardCountForPlayer: (abs) => (abs ? (COUNTS[abs] ?? null) : null),
       }),
-    [hand, trick, tricks, legalActions, trump, players, turn, canPlay]
+    [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay]
   );
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
 
@@ -164,9 +189,9 @@ export default function GameCanvasDev({
   }, [isHandReady, onHandPresentationReadyChange]);
 
   useEffect(() => {
-    if (!autoPlay || !isHandReady) return;
+    if (!autoPlay || phase !== 'playing' || !isHandReady) return;
     onPlayCard(INITIAL_HAND[0]);
-  }, [autoPlay, isHandReady, onPlayCard]);
+  }, [autoPlay, isHandReady, onPlayCard, phase]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -179,15 +204,14 @@ export default function GameCanvasDev({
       />
       <SeatLayer
         seats={model.seats}
-        dealerRel="south"
+        dealerRel={phase === 'dealer_selection' ? 'east' : 'south'}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
-        statusByRel={{
-          north: 'Passed',
-          east: 'Bet 6',
-          west: 'Passed',
-          south: 'Passed',
-        }}
+        statusByRel={
+          phase === 'dealer_selection'
+            ? DEALER_CUT_STATUS
+            : { north: 'Passed', east: 'Bet 6', west: 'Passed', south: 'Passed' }
+        }
       />
       <TableChromeBars reserves={reserves} />
       <Scoreboard

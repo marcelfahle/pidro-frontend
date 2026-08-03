@@ -14,6 +14,7 @@ import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tok
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { apiErrorInfo } from '@/utils/apiErrors';
+import { gameRoute } from '@/navigation/gameRoute';
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -33,7 +34,7 @@ export default function HomeScreen() {
     });
     if (!response?.code) throw new Error('No room code returned');
     if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
-    router.replace(`/game/${response.code}`);
+    router.replace(gameRoute(response.code, 'single-player'));
   };
 
   const handleSinglePlayer = async () => {

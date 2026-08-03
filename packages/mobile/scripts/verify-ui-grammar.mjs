@@ -24,6 +24,12 @@ const cases = [
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
   {
+    name: 'table-dealer-selection',
+    path: '/table-dev?phase=dealer_selection',
+    testId: 'seat-north',
+    verifyDealerCutCards: true,
+  },
+  {
     name: 'table-completed-trick',
     path: '/table-dev?phase=playing&autoplay=true',
     testId: 'seat-north',
@@ -122,6 +128,15 @@ async function assertPlayedCardPersistence(page, viewport) {
   await page.waitForTimeout(1_300);
   if ((await fourCards.count()) !== 1) {
     throw new Error(`completed trick disappeared from the table in ${viewport.name}`);
+  }
+}
+
+async function assertDealerCutCards(page, viewport) {
+  const fourCards = page.getByTestId('rendered-cut-card-count-4').first();
+  await fourCards.waitFor({ state: 'attached', timeout: 20_000 });
+
+  if ((await fourCards.count()) !== 1) {
+    throw new Error(`dealer selection did not show all four cut cards in ${viewport.name}`);
   }
 }
 
@@ -288,6 +303,9 @@ async function main() {
           }
           if (testCase.verifyPlayedCardPersistence) {
             await assertPlayedCardPersistence(page, viewport);
+          }
+          if (testCase.verifyDealerCutCards) {
+            await assertDealerCutCards(page, viewport);
           }
           await assertTargetGeometry(page, testCase, viewport);
           await page.waitForTimeout(testCase.path.startsWith('/table-dev') ? 1_200 : 150);

@@ -65,7 +65,7 @@ function Loading() {
   );
 }
 
-function SkiaDevTable({ onHandPresentationReadyChange, autoPlay }: GameCanvasDevProps) {
+function SkiaDevTable({ onHandPresentationReadyChange, autoPlay, phase }: GameCanvasDevProps) {
   const [Comp, setComp] = useState<ComponentType<GameCanvasDevProps> | null>(null);
 
   useEffect(() => {
@@ -81,7 +81,11 @@ function SkiaDevTable({ onHandPresentationReadyChange, autoPlay }: GameCanvasDev
   }, []);
 
   return Comp ? (
-    <Comp onHandPresentationReadyChange={onHandPresentationReadyChange} autoPlay={autoPlay} />
+    <Comp
+      onHandPresentationReadyChange={onHandPresentationReadyChange}
+      autoPlay={autoPlay}
+      phase={phase}
+    />
   ) : (
     <Loading />
   );
@@ -111,7 +115,11 @@ function TableDevHarness() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
       <SafeAreaProvider>
-        <SkiaDevTable onHandPresentationReadyChange={setIsHandReady} autoPlay={autoPlay} />
+        <SkiaDevTable
+          onHandPresentationReadyChange={setIsHandReady}
+          autoPlay={autoPlay}
+          phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
+        />
         <DevOverlays phase={phase} isHandReady={isHandReady} />
       </SafeAreaProvider>
     </GestureHandlerRootView>

@@ -11,6 +11,8 @@ export interface PhoenixSocketOptions {
 export class PhoenixSocket {
   private socket: Socket | null = null;
   private tokenGetter: TokenGetter | null = null;
+  private connectionRequested = false;
+  private disconnecting = false;
 
   private reconnectDelay(tries: number) {
     const schedule = [1000, 2000, 3000, 5000, 8000, 10_000];
@@ -43,6 +45,12 @@ export class PhoenixSocket {
   }
 
   connect() {
+    this.connectionRequested = true;
+    if (!this.socket || this.disconnecting) return;
+    this.openConnection();
+  }
+
+  private openConnection() {
     if (!this.socket) return;
     if (!this.socket.isConnected()) {
       // Phoenix exposes authToken at runtime but the DefinitelyTyped package
@@ -55,7 +63,14 @@ export class PhoenixSocket {
   }
 
   disconnect() {
-    this.socket?.disconnect();
+    this.connectionRequested = false;
+    if (!this.socket || this.disconnecting) return;
+
+    this.disconnecting = true;
+    this.socket.disconnect(() => {
+      this.disconnecting = false;
+      if (this.connectionRequested) this.openConnection();
+    });
   }
 
   channel(topic: string, params?: any): Channel {

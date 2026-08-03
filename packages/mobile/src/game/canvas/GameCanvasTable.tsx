@@ -35,6 +35,7 @@ type Props = {
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: (room: Room) => void;
+  backLabel?: string;
 };
 
 function cardLabel(card: Card): string {
@@ -181,7 +182,13 @@ function TimedSeatLayer({
   );
 }
 
-export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain }: Props) {
+export function GameCanvasTable({
+  room,
+  progressionSummary,
+  onLeave,
+  onPlayAgain,
+  backLabel,
+}: Props) {
   const controller = useGameTableController(room);
   const textures = useCardTextures();
   const model = useTableModel(controller);
@@ -299,6 +306,7 @@ export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain
           progressionSummary={progressionSummary}
           onBackToLobby={onLeave}
           onPlayAgain={() => onPlayAgain?.(room) ?? onLeave()}
+          backLabel={backLabel}
         />
       )}
     </GestureHandlerRootView>

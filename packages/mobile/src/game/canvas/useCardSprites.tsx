@@ -88,7 +88,7 @@ type HandTarget = {
 type SlotInfo = {
   key: string;
   textureKey: CardKey;
-  kind: 'hand' | 'played';
+  kind: 'hand' | 'cut' | 'played';
   z: number;
   legal: boolean;
   blocked: boolean;
@@ -166,7 +166,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     type Desired = {
       key: string;
       textureKey: CardKey;
-      kind: 'hand' | 'played';
+      kind: 'hand' | 'cut' | 'played';
       z: number;
       delayOrder: number;
       tx: number;
@@ -199,6 +199,28 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         oy: s.y,
         legal,
         blocked,
+        topacity: 1,
+      });
+    });
+    REL.forEach((rel) => {
+      const tc = model.dealerCuts[rel];
+      if (!tc) return;
+      const target = playedCardTarget(L, rel, 0, 1);
+      const seat = L.seats[rel];
+      desired.push({
+        key: tc.key,
+        textureKey: tc.textureKey,
+        kind: 'cut',
+        z: 90,
+        delayOrder: 0,
+        tx: target.x,
+        ty: target.y,
+        trot: target.rot,
+        tscale: target.scale,
+        ox: seat.x,
+        oy: seat.y,
+        legal: false,
+        blocked: false,
         topacity: 1,
       });
     });
@@ -285,8 +307,9 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         sl = allocate();
         if (sl < 0) continue;
         keyToSlot.current.set(d.key, sl);
-        const startX = firstLoad ? d.tx : dealCard ? deckX : d.kind === 'played' ? d.ox : d.tx;
-        const startY = firstLoad ? d.ty : dealCard ? deckY : d.kind === 'played' ? d.oy : d.ty;
+        const comesFromSeat = d.kind === 'played' || d.kind === 'cut';
+        const startX = firstLoad ? d.tx : dealCard ? deckX : comesFromSeat ? d.ox : d.tx;
+        const startY = firstLoad ? d.ty : dealCard ? deckY : comesFromSeat ? d.oy : d.ty;
         cancelAnimation(sx[sl]);
         cancelAnimation(sy[sl]);
         cancelAnimation(srot[sl]);
@@ -294,7 +317,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         sx[sl].value = startX;
         sy[sl].value = startY;
         srot[sl].value = dealCard ? 0 : d.trot;
-        sscale[sl].value = dealCard ? 0.6 : !firstLoad && d.kind === 'played' ? 1 : d.tscale;
+        sscale[sl].value = dealCard ? 0.6 : !firstLoad && comesFromSeat ? 1 : d.tscale;
         sop[sl].value = dealCard ? 0 : d.topacity;
       }
       nextSlots[sl] = {
@@ -465,12 +488,23 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     (count, slot) => count + (slot?.kind === 'played' ? 1 : 0),
     0
   );
+  const renderedCutCardCount = slots.reduce(
+    (count, slot) => count + (slot?.kind === 'cut' ? 1 : 0),
+    0
+  );
   const renderedHandCardCount = slots.reduce(
     (count, slot) => count + (slot?.kind === 'hand' ? 1 : 0),
     0
   );
 
-  return { gesture, nodes, trumpPop, renderedPlayedCardCount, renderedHandCardCount };
+  return {
+    gesture,
+    nodes,
+    trumpPop,
+    renderedCutCardCount,
+    renderedPlayedCardCount,
+    renderedHandCardCount,
+  };
 }
 
 function CardSprite({
