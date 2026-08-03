@@ -6,6 +6,7 @@
     "sync:cards": "node scripts/sync-card-assets.mjs",
     "prestart": "node scripts/sync-card-assets.mjs",
     "preweb": "node scripts/sync-card-assets.mjs",
+    "postinstall": "bun --cwd ../shared build",
     "android": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start --android",
     "ios": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start --ios",
     "ios:device": "APP_VARIANT=development EXPO_PUBLIC_API_URL=https://app.pidro.online EXPO_PUBLIC_WS_URL=wss://app.pidro.online/socket expo prebuild --clean --platform ios && APP_VARIANT=development EXPO_PUBLIC_API_URL=https://app.pidro.online EXPO_PUBLIC_WS_URL=wss://app.pidro.online/socket NODE_OPTIONS=\"--require $PWD/scripts/tailwind-v3-resolve.cjs\" expo run:ios --no-bundler --device",

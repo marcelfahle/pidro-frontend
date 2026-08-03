@@ -16,8 +16,8 @@ const mobileRequireParent = {
 // mobile, which intentionally keeps Tailwind v3.
 // NOTE: this hook only covers the Metro main process. NativeWind also forks a
 // Tailwind CLI child process, which needs the same redirect or Metro hangs
-// forever on global.css — that's scripts/tailwind-v3-resolve.cjs, injected via
-// NODE_OPTIONS in the package.json start/web/ios/android scripts.
+// forever on global.css. Pass the preload to child processes with an absolute
+// path; a relative NODE_OPTIONS path breaks package postinstall scripts on EAS.
 const originalResolveFilename = Module._resolveFilename;
 Module._resolveFilename = function resolveMobileTailwind(request, parent, isMain, options) {
   if (request === 'tailwindcss' || request.startsWith('tailwindcss/')) {
@@ -25,6 +25,13 @@ Module._resolveFilename = function resolveMobileTailwind(request, parent, isMain
   }
   return originalResolveFilename.call(this, request, parent, isMain, options);
 };
+
+const tailwindPreloadPath = path.resolve(projectRoot, 'scripts/tailwind-v3-resolve.cjs');
+if (!process.env.NODE_OPTIONS?.includes('tailwind-v3-resolve.cjs')) {
+  const preloadOption = `--require=${JSON.stringify(tailwindPreloadPath)}`;
+  process.env.NODE_OPTIONS = [process.env.NODE_OPTIONS, preloadOption].filter(Boolean).join(' ');
+}
+
 const { withNativeWind } = require('nativewind/metro');
 
 const config = getDefaultConfig(projectRoot);

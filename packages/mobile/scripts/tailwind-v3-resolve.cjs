@@ -12,7 +12,7 @@
  * process; a preload in NODE_OPTIONS is inherited by forked children
  * (Tailwind CLI child and jest-worker transformers alike).
  */
-/* global __dirname, require */
+/* global __dirname */
 const path = require('path');
 const Module = require('module');
 
@@ -24,20 +24,9 @@ const mobileRequireParent = {
 };
 
 const originalResolveFilename = Module._resolveFilename;
-Module._resolveFilename = function resolveMobileTailwind(
-  request,
-  parent,
-  isMain,
-  options,
-) {
+Module._resolveFilename = function resolveMobileTailwind(request, parent, isMain, options) {
   if (request === 'tailwindcss' || request.startsWith('tailwindcss/')) {
-    return originalResolveFilename.call(
-      this,
-      request,
-      mobileRequireParent,
-      isMain,
-      options,
-    );
+    return originalResolveFilename.call(this, request, mobileRequireParent, isMain, options);
   }
   return originalResolveFilename.call(this, request, parent, isMain, options);
 };
