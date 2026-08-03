@@ -16,7 +16,10 @@
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "env": {
+        "NODE_OPTIONS": "--require ./scripts/tailwind-v3-resolve.cjs"
+      }
     }
   },
   "submit": {
