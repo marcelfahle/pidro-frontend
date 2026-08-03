@@ -4,7 +4,11 @@
     "slug": "pidro-mobile",
     "version": "3.0.0",
     "scheme": "pidro-mobile",
-    "platforms": ["ios", "android", "web"],
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
     "web": {
       "bundler": "metro",
       "output": "static",
@@ -32,7 +36,9 @@
     "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oneapps.pidro",
@@ -53,6 +59,12 @@
         "projectId": "a3690071-f253-4f27-ba73-3120f0b17fed"
       }
     },
-    "owner": "marcelfahle"
+    "owner": "marcelfahle",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a3690071-f253-4f27-ba73-3120f0b17fed"
+    }
   }
 }

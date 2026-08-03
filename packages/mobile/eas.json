@@ -12,11 +12,13 @@
         "APP_VARIANT": "development",
         "EXPO_PUBLIC_API_URL": "https://app.pidro.online",
         "EXPO_PUBLIC_WS_URL": "wss://app.pidro.online/socket"
-      }
+      },
+      "channel": "development"
     },
     "production": {
       "autoIncrement": true,
-      "environment": "production"
+      "environment": "production",
+      "channel": "production"
     }
   },
   "submit": {

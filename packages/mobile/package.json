@@ -40,6 +40,7 @@
     "expo-splash-screen": "~56.0.14",
     "expo-status-bar": "~56.0.4",
     "expo-system-ui": "~56.0.5",
+    "expo-updates": "~56.0.23",
     "expo-web-browser": "~56.0.6",
     "nativewind": "^4.2.2",
     "phoenix": "^1.8.4",
