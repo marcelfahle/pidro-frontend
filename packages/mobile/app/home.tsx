@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
 import { Button } from '@/components/ui/Button';
-import { IconButton } from '@/components/ui/IconButton';
+import { MenuAction } from '@/components/ui/MenuAction';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
+import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { apiErrorInfo } from '@/utils/apiErrors';
@@ -44,7 +46,7 @@ export default function HomeScreen() {
       const { code, detail } = apiErrorInfo(err);
       if (code === 'ALREADY_IN_ROOM') {
         const lobbyResponse = await lobbyApi.listLobby().catch(() => null);
-        if (lobbyResponse?.rooms?.length) {
+        if (lobbyResponse?.lobby.my_rejoinable.length) {
           setError('You already have a multiplayer table. Rejoin it or leave it first.');
           router.push('/lobby');
         } else {
@@ -74,22 +76,49 @@ export default function HomeScreen() {
 
   return (
     <ScreenShell testID="home-screen" contentStyle={styles.shell}>
-      <Surface variant="plaque" style={styles.playerPlate}>
-        <Image
-          source={require('../assets/images/avatar1.png')}
-          style={styles.avatar}
-          resizeMode="cover"
-          accessibilityLabel="Your profile picture"
-        />
-        <View style={styles.playerCopy}>
-          <PidroText role="metadata" tone="gold">
-            Welcome back
-          </PidroText>
-          <PidroText role="label" numberOfLines={1}>
-            {user?.username ?? 'Player'}
-          </PidroText>
+      <View style={styles.topBar}>
+        <PressableFX
+          accessibilityRole="button"
+          accessibilityLabel="Open your profile"
+          onPress={() => router.push('/profile')}
+          style={styles.playerPlate}
+          pressedStyle={styles.playerPlatePressed}>
+          <Image
+            source={require('../assets/images/avatar1.png')}
+            style={styles.avatar}
+            resizeMode="cover"
+            accessibilityLabel="Your profile picture"
+          />
+          <View style={styles.playerCopy}>
+            <PidroText role="metadata" tone="gold">
+              Welcome back
+            </PidroText>
+            <PidroText role="label" numberOfLines={1}>
+              {user?.username ?? 'Player'}
+            </PidroText>
+          </View>
+          <Feather name="chevron-right" size={18} color={PidroColors.textMuted} />
+        </PressableFX>
+
+        <View style={styles.utilityActions} accessibilityLabel="Help and settings">
+          <Button
+            accessibilityLabel="Help"
+            variant="ghost"
+            size="icon"
+            onPress={() => router.push('/help')}
+            style={styles.utilityButton}>
+            <Feather name="help-circle" size={21} color={PidroColors.textSoft} />
+          </Button>
+          <Button
+            accessibilityLabel="Settings"
+            variant="ghost"
+            size="icon"
+            onPress={() => router.push('/settings')}
+            style={styles.utilityButton}>
+            <Feather name="settings" size={21} color={PidroColors.textSoft} />
+          </Button>
         </View>
-      </Surface>
+      </View>
 
       <View style={[styles.main, landscape && styles.mainLandscape]}>
         <View
@@ -104,7 +133,7 @@ export default function HomeScreen() {
               Choose a table
             </PidroText>
             <PidroText role="body" tone="soft" align={landscape ? 'left' : 'center'}>
-              Play a quick solo game or join friends online.
+              Start a quick game or join friends online.
             </PidroText>
           </View>
 
@@ -116,26 +145,21 @@ export default function HomeScreen() {
             </Surface>
           ) : null}
 
-          <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
-            <Button
-              label="Single player"
+          <View style={styles.playActions}>
+            <MenuAction
+              title="Single player"
+              description="Start immediately with three bots."
+              icon="play"
               onPress={handleSinglePlayer}
               loading={singlePlayerLoading}
-              size="lg"
-              style={landscape && styles.playButtonLandscape}
+              variant="primary"
             />
-            <Button
-              label="Multiplayer"
+            <MenuAction
+              title="Multiplayer"
+              description="Find a table or create one for friends."
+              icon="users"
               onPress={() => router.push('/lobby')}
-              size="lg"
-              style={landscape && styles.playButtonLandscape}
             />
-          </View>
-
-          <View style={styles.utilities} accessibilityLabel="More options">
-            <IconButton icon="settings" label="Settings" onPress={() => router.push('/settings')} />
-            <IconButton icon="help-circle" label="Help" onPress={() => router.push('/help')} />
-            <IconButton icon="user" label="Profile" onPress={() => router.push('/profile')} />
           </View>
         </View>
       </View>
@@ -145,14 +169,31 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   shell: {
-    gap: PidroSpacing.md,
+    gap: PidroSpacing.sm,
+  },
+  topBar: {
+    minHeight: PidroLayout.touchTarget,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: PidroSpacing.sm,
   },
   playerPlate: {
+    minWidth: 0,
     maxWidth: 280,
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.xs,
+    overflow: 'hidden',
+    borderRadius: PidroRadii.surface,
+    borderWidth: 1,
+    borderColor: PidroColors.borderStrong,
+    backgroundColor: PidroColors.panelStrong,
     padding: PidroSpacing.xs,
+  },
+  playerPlatePressed: {
+    backgroundColor: PidroColors.glassHover,
   },
   avatar: {
     width: 40,
@@ -164,6 +205,15 @@ const styles = StyleSheet.create({
   playerCopy: {
     minWidth: 0,
     flex: 1,
+  },
+  utilityActions: {
+    flexDirection: 'row',
+    gap: PidroSpacing.xs,
+  },
+  utilityButton: {
+    borderWidth: 1,
+    borderColor: PidroColors.border,
+    backgroundColor: PidroColors.panelStrong,
   },
   main: {
     minHeight: 0,
@@ -186,12 +236,15 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
   },
   actionPane: {
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
     gap: PidroSpacing.md,
     paddingBottom: PidroSpacing.xs,
   },
   actionPaneLandscape: {
-    width: '48%',
-    maxWidth: 440,
+    width: '46%',
+    maxWidth: 420,
   },
   intro: {
     gap: PidroSpacing.xxs,
@@ -202,16 +255,5 @@ const styles = StyleSheet.create({
   },
   playActions: {
     gap: PidroSpacing.sm,
-  },
-  playActionsLandscape: {
-    flexDirection: 'row',
-  },
-  playButtonLandscape: {
-    flex: 1,
-  },
-  utilities: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: PidroSpacing.xs,
   },
 });

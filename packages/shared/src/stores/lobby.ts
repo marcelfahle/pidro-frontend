@@ -1,10 +1,6 @@
 import { create } from 'zustand';
 import type { LobbyCategories, LobbyCategoryKey, Room } from '../types/lobby';
-import {
-  emptyLobbyCategories,
-  flattenLobbyCategories,
-  lobbyCategoryKeys,
-} from '../utils/rooms';
+import { emptyLobbyCategories, flattenLobbyCategories, lobbyCategoryKeys } from '../utils/rooms';
 
 interface LobbyStats {
   online_players: number;
@@ -61,34 +57,57 @@ export const useLobbyStore = create<LobbyState>((set) => ({
     })),
 
   updateRoom: (updatedRoom) =>
-    set((state) => ({
-      rooms: state.rooms.map((r) => {
-        const idsMatch = !!r.id && !!updatedRoom.id && r.id === updatedRoom.id;
-        const codesMatch = r.code === updatedRoom.code;
-        return idsMatch || codesMatch ? updatedRoom : r;
-      }),
-    })),
+    set((state) => {
+      const replaceRoom = (room: Room) => {
+        const idsMatch = !!room.id && !!updatedRoom.id && room.id === updatedRoom.id;
+        const codesMatch = room.code === updatedRoom.code;
+        return idsMatch || codesMatch ? updatedRoom : room;
+      };
+      const lobby = emptyLobbyCategories();
+      lobbyCategoryKeys.forEach((key) => {
+        lobby[key] = state.lobby[key].map(replaceRoom);
+      });
+      return {
+        lobby,
+        rooms: state.rooms.map(replaceRoom),
+      };
+    }),
 
   upsertLobbyRoom: (updatedRoom, category) =>
     set((state) => {
       const lobby = emptyLobbyCategories();
+      const previousCategory = lobbyCategoryKeys.find((key) =>
+        state.lobby[key].some((room) => room.code === updatedRoom.code),
+      );
+      const requestedCategory =
+        category && lobbyCategoryKeys.includes(category as LobbyCategoryKey)
+          ? (category as LobbyCategoryKey)
+          : null;
+      const targetCategory = requestedCategory ?? previousCategory ?? null;
+
       lobbyCategoryKeys.forEach((key) => {
         lobby[key] = state.lobby[key].filter((room) => room.code !== updatedRoom.code);
       });
 
-      if (category && lobbyCategoryKeys.includes(category as LobbyCategoryKey)) {
-        const key = category as LobbyCategoryKey;
-        lobby[key] = [updatedRoom, ...lobby[key]];
+      if (targetCategory) {
+        lobby[targetCategory] = [updatedRoom, ...lobby[targetCategory]];
       }
 
       const nextRooms = flattenLobbyCategories(lobby);
-      if (!nextRooms.some((room) => room.code === updatedRoom.code) && !category) {
-        return {
-          lobby,
-          rooms: state.rooms.map((room) =>
-            room.code === updatedRoom.code ? updatedRoom : room,
-          ),
-        };
+      const previouslyCategorizedCodes = new Set(
+        flattenLobbyCategories(state.lobby).map((room) => room.code),
+      );
+      state.rooms.forEach((room) => {
+        if (
+          room.code !== updatedRoom.code &&
+          !previouslyCategorizedCodes.has(room.code) &&
+          !nextRooms.some((candidate) => candidate.code === room.code)
+        ) {
+          nextRooms.push(room);
+        }
+      });
+      if (!nextRooms.some((room) => room.code === updatedRoom.code)) {
+        nextRooms.push(updatedRoom);
       }
 
       return { lobby, rooms: nextRooms };

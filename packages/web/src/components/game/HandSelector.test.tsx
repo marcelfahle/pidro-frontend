@@ -5,27 +5,31 @@ import { describe, expect, it, vi } from 'vitest';
 import { HandSelector } from './HandSelector';
 
 // Mock shared package exports used by HandSelector and Card
-vi.mock('@pidro/shared', () => ({
-  SUIT_SYMBOLS: {
-    hearts: '\u2665',
-    diamonds: '\u2666',
-    clubs: '\u2663',
-    spades: '\u2660',
-  },
-  SUIT_COLORS_RAW: {
-    hearts: '#e11d48',
-    diamonds: '#d97706',
-    clubs: '#1e293b',
-    spades: '#0f172a',
-  },
-  getRankLabel: (rank: number) => {
-    if (rank === 1 || rank === 14) return 'A';
-    if (rank === 11) return 'J';
-    if (rank === 12) return 'Q';
-    if (rank === 13) return 'K';
-    return `${rank}`;
-  },
-}));
+vi.mock('@pidro/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pidro/shared')>();
+  return {
+    ...actual,
+    SUIT_SYMBOLS: {
+      hearts: '\u2665',
+      diamonds: '\u2666',
+      clubs: '\u2663',
+      spades: '\u2660',
+    },
+    SUIT_COLORS_RAW: {
+      hearts: '#e11d48',
+      diamonds: '#d97706',
+      clubs: '#1e293b',
+      spades: '#0f172a',
+    },
+    getRankLabel: (rank: number) => {
+      if (rank === 1 || rank === 14) return 'A';
+      if (rank === 11) return 'J';
+      if (rank === 12) return 'Q';
+      if (rank === 13) return 'K';
+      return `${rank}`;
+    },
+  };
+});
 
 function makeViewModel(overrides: Partial<GameViewModel> = {}): GameViewModel {
   return {
@@ -106,7 +110,9 @@ describe('HandSelector', () => {
       />,
     );
 
-    const confirmButton = screen.getByRole('button', { name: 'Confirm Selection' });
+    const confirmButton = screen.getByRole('button', {
+      name: 'Confirm Selection',
+    });
     expect(confirmButton).toHaveProperty('disabled', true);
   });
 

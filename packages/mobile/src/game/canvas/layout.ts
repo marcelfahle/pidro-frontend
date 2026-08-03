@@ -62,14 +62,19 @@ export function computeLayout(
 
   const cx = width / 2;
   const cy = height / 2;
+  const tableTop = insets.top + topReserve;
+  const tableBottom = height - insets.bottom - bottomReserve;
+  const tableHeight = Math.max(0, tableBottom - tableTop);
 
-  // Trick zone sits above center in portrait (room for the hand), near-center in landscape.
-  const trickCy = portrait ? height * 0.43 : height * 0.49;
+  // Portrait geometry belongs to the viewport between the two docks. Landscape
+  // keeps the legacy full-felt composition with floating chrome.
+  const trickCy = portrait ? tableTop + tableHeight * 0.43 : height * 0.49;
   const trickR = clamp(shortest * (portrait ? 0.19 : 0.18), 82, 190);
 
-  // Landscape is short — lift the hand higher so the full card clears the bottom.
-  const handY = height - insets.bottom - bottomReserve - cardH * (portrait ? 0.72 : 0.72);
-  const northY = insets.top + topReserve + cardH * (portrait ? 0.48 : 0.22) + 10;
+  // Portrait lifts the fan above the centered south plaque. Landscape keeps
+  // the cards near the bottom edge because the south plaque sits beside them.
+  const handY = tableBottom - cardH * (portrait ? 1.35 : 0.56);
+  const northY = tableTop + cardH * (portrait ? 0.48 : 0.22) + 10;
 
   const seats: Record<RelativePosition, Seat> = {
     south: { x: cx, y: handY, rot: 0, hand: { x: cx, y: handY } },

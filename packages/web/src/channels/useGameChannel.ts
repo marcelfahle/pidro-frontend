@@ -1,12 +1,11 @@
-import type {
-  ActiveTurnTimer,
-  GamePhase,
-  LegalAction,
-  Position,
-  ServerGameState,
-  ServerTurnTimerPayload,
+import type { LegalAction, Position, ServerGameState } from '@pidro/shared';
+import {
+  describeGameAction,
+  extractGameState,
+  normalizeTurnTimer,
+  shouldAutoSelectDealer,
+  useGameStore,
 } from '@pidro/shared';
-import { useGameStore } from '@pidro/shared';
 import type { Channel } from 'phoenix';
 import { Presence } from 'phoenix';
 import { useEffect, useRef } from 'react';
@@ -52,98 +51,6 @@ function seatDisplayName(position: Position | null, fallback?: string | null): s
   }
 
   return useGameStore.getState().playerMeta[position].username ?? 'A player';
-}
-
-function asNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function normalizeTurnTimer(payload: unknown): ActiveTurnTimer | null {
-  if (!payload || typeof payload !== 'object') return null;
-
-  const data = payload as Partial<ServerTurnTimerPayload>;
-  const timerId = asNumber(data.timer_id);
-  const durationMs = asNumber(data.duration_ms);
-  const transitionDelayMs = asNumber(data.transition_delay_ms);
-  const eventSeq = asNumber(data.event_seq);
-
-  if (
-    timerId == null ||
-    durationMs == null ||
-    transitionDelayMs == null ||
-    eventSeq == null ||
-    (data.scope !== 'seat' && data.scope !== 'room') ||
-    typeof data.phase !== 'string'
-  ) {
-    return null;
-  }
-
-  const remainingMs = asNumber(data.remaining_ms) ?? durationMs + transitionDelayMs;
-
-  return {
-    timerId,
-    scope: data.scope,
-    position: (data.position as Position | null | undefined) ?? null,
-    phase: data.phase as GamePhase,
-    durationMs,
-    transitionDelayMs,
-    serverTime: typeof data.server_time === 'string' ? data.server_time : new Date().toISOString(),
-    remainingMs,
-    receivedAtMs: Date.now(),
-    eventSeq,
-  };
-}
-
-function describeAction(action: Record<string, unknown> | undefined): string {
-  switch (action?.type) {
-    case 'pass':
-      return 'passed';
-    case 'bid':
-      return `bid ${String(action.amount ?? '')}`.trim();
-    case 'declare_trump':
-      return `declared ${String(action.suit ?? 'trump')}`;
-    case 'play_card':
-      return 'played a card';
-    case 'select_hand':
-      return 'selected a hand';
-    case 'select_dealer':
-      return 'selected the dealer';
-    default:
-      return 'acted';
-  }
-}
-
-function extractGameState(data: Record<string, unknown> | undefined): ServerGameState | null {
-  if (!data) return null;
-
-  const candidates = [
-    data.state,
-    data.game_state,
-    (data.data as Record<string, unknown> | undefined)?.game_state,
-    (data.data as Record<string, unknown> | undefined)?.state,
-    data,
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate && typeof candidate === 'object' && 'phase' in candidate) {
-      return candidate as ServerGameState;
-    }
-  }
-
-  return null;
-}
-
-function shouldAutoSelectDealer(
-  gameState: ServerGameState,
-  legalActions: LegalAction[],
-  position: Position | null,
-): boolean {
-  return (
-    position === 'north' &&
-    gameState.phase === 'dealer_selection' &&
-    !gameState.dealer_selection_cuts &&
-    legalActions.some((action) => action.type === 'select_dealer')
-  );
 }
 
 export const useGameChannel = ({
@@ -273,6 +180,22 @@ export const useGameChannel = ({
         }
       });
 
+      channel.on('game_over', (payload: unknown) => {
+        const data = payload as Record<string, unknown> | undefined;
+        const winner =
+          data?.winner === 'north_south' || data?.winner === 'east_west' ? data.winner : null;
+        const scores = data?.scores as ServerGameState['scores'] | undefined;
+        const currentState = useGameStore.getState().serverState;
+        if (!currentState) return;
+
+        setServerState({
+          ...currentState,
+          phase: 'game_over',
+          winner,
+          ...(scores ? { scores } : {}),
+        });
+      });
+
       channel.on('turn_timer_started', (payload: unknown) => {
         setTurnTimer(normalizeTurnTimer(payload));
       });
@@ -290,7 +213,7 @@ export const useGameChannel = ({
 
         if (scope === 'room') {
           onSeatEventRef.current?.({
-            message: `Dealer selection timed out. The server ${describeAction(action)}.`,
+            message: `Dealer selection timed out. The server ${describeGameAction(action)}.`,
             variant: 'warning',
           });
           return;
@@ -298,7 +221,7 @@ export const useGameChannel = ({
 
         if (position && position === youPositionRef.current) {
           onSeatEventRef.current?.({
-            message: `Time expired. The server ${describeAction(action)} for you.`,
+            message: `Time expired. The server ${describeGameAction(action)} for you.`,
             variant: 'warning',
           });
         }
@@ -464,11 +387,12 @@ export const useGameChannel = ({
       channel.on('owner_decision_available', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
+        const ownerId = typeof data?.owner_id === 'string' ? data.owner_id : null;
         const playerName = seatDisplayName(
           position,
           ((data?.player_name as string) || (data?.username as string) || null) as string | null,
         );
-        if (position) {
+        if (position && ownerId === useGameStore.getState().youPlayerId) {
           onOwnerDecisionRef.current?.({ position, playerName });
         }
       });

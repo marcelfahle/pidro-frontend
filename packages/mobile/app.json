@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "pidro-mobile",
+    "name": "Pidro 3",
     "slug": "pidro-mobile",
-    "version": "1.0.0",
+    "version": "3.0.0",
     "scheme": "pidro-mobile",
     "platforms": ["ios", "android", "web"],
     "web": {
@@ -34,13 +34,25 @@
     "userInterfaceStyle": "light",
     "assetBundlePatterns": ["**/*"],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.oneapps.pidro",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.oneapps.pidro",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       }
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "a3690071-f253-4f27-ba73-3120f0b17fed"
+      }
+    },
+    "owner": "marcelfahle"
   }
 }

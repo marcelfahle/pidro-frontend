@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
@@ -74,8 +74,13 @@ export default function LobbyScreen() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const realtimeRevisionRef = useRef(0);
 
-  useLobbyChannel();
+  const markRealtimeUpdate = useCallback(() => {
+    realtimeRevisionRef.current += 1;
+  }, []);
+
+  useLobbyChannel(markRealtimeUpdate);
 
   const activeRooms = useMemo(
     () =>
@@ -104,29 +109,34 @@ export default function LobbyScreen() {
     () => filterByQuery(lobby.spectatable, query),
     [lobby.spectatable, query]
   );
-  const isEmptyLobby =
-    !isLoading &&
-    rejoinableTables.length === 0 &&
-    openTables.length === 0 &&
-    substituteTables.length === 0 &&
-    watchTables.length === 0;
+  const visibleTableCount =
+    rejoinableTables.length + openTables.length + substituteTables.length + watchTables.length;
+  const hasQuery = query.trim().length > 0;
+  const isEmptyLobby = !isLoading && !hasQuery && visibleTableCount === 0;
+  const hasNoResults = !isLoading && hasQuery && visibleTableCount === 0;
+  const isUnavailable = !isLoading && !!error && visibleTableCount === 0;
 
   const loadLobby = useCallback(async () => {
+    const revisionAtStart = realtimeRevisionRef.current;
     setLoading(true);
     setError(null);
     try {
       const response = await lobbyApi.listLobby();
-      setLobby(response.lobby);
-      setStats({ active_games: response.rooms.length });
-    } catch (categorizedError) {
-      console.warn('Categorized lobby unavailable, falling back to rooms:', categorizedError);
+      if (realtimeRevisionRef.current === revisionAtStart) {
+        setLobby(response.lobby);
+        setStats({ active_games: response.rooms.length });
+      }
+    } catch {
+      console.warn('[Lobby] Categorized lobby unavailable; falling back to the room list.');
       try {
         const response = await lobbyApi.listRooms();
-        setRooms(response?.rooms || []);
-        if (response?.meta) setStats(response.meta);
-      } catch (fallbackError) {
+        if (realtimeRevisionRef.current === revisionAtStart) {
+          setRooms(response?.rooms || []);
+          if (response?.meta) setStats(response.meta);
+        }
+      } catch {
         setError('We could not load the tables. Please try again.');
-        console.error('Load lobby error:', fallbackError);
+        console.error('[Lobby] Failed to load tables from either lobby endpoint.');
       }
     } finally {
       setLoading(false);
@@ -158,6 +168,16 @@ export default function LobbyScreen() {
         return;
       }
       Alert.alert('Could not join', detail || 'That table may be full or no longer available.');
+    }
+  };
+
+  const handleWatchRoom = async (code: string) => {
+    try {
+      await lobbyApi.watchRoom(code);
+      router.push(`/game/${code}`);
+    } catch (watchError: unknown) {
+      const { detail } = apiErrorInfo(watchError);
+      Alert.alert('Could not watch', detail || 'That table may no longer be available.');
     }
   };
 
@@ -226,11 +246,14 @@ export default function LobbyScreen() {
       <ScreenHeader
         title="Multiplayer"
         subtitle={`${stats.online_players} online · ${stats.active_games} active games`}
-        onBack={() => router.replace('/home')}
-        trailing={<Button label="New table" onPress={handleNewTable} size="sm" />}
+        onBack={() => {
+          if (router.canGoBack()) router.back();
+          else router.replace('/home');
+        }}
+        trailing={<Button label="Create table" onPress={handleNewTable} size="sm" />}
       />
 
-      <Surface variant="panel" style={[styles.panel, isEmptyLobby && styles.panelEmpty]} padded>
+      <View style={styles.content}>
         <View style={styles.searchRow}>
           <Input
             value={query}
@@ -250,7 +273,7 @@ export default function LobbyScreen() {
           </Button>
         </View>
 
-        {error ? (
+        {error && !isUnavailable ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger">
               {error}
@@ -265,9 +288,38 @@ export default function LobbyScreen() {
               Loading tables…
             </PidroText>
           </View>
+        ) : isUnavailable ? (
+          <LobbyEmptyState
+            icon="wifi-off"
+            title="Tables unavailable"
+            description="Check your connection, then try loading the lobby again."
+            actionLabel="Try again"
+            onAction={loadLobby}
+            quiet
+            compact={landscape}
+          />
+        ) : isEmptyLobby ? (
+          <LobbyEmptyState
+            icon="users"
+            title="No tables yet"
+            description="Create the first table and invite your friends."
+            actionLabel="Create a table"
+            onAction={handleNewTable}
+            compact={landscape}
+          />
+        ) : hasNoResults ? (
+          <LobbyEmptyState
+            icon="search"
+            title="No matching tables"
+            description="Try a table name or code, or clear your search."
+            actionLabel="Clear search"
+            onAction={() => setQuery('')}
+            quiet
+            compact={landscape}
+          />
         ) : (
           <ScrollView
-            style={[styles.roomScroll, isEmptyLobby && styles.roomScrollEmpty]}
+            style={styles.roomScroll}
             contentContainerStyle={styles.roomScrollContent}
             showsVerticalScrollIndicator={false}>
             {rejoinableTables.length > 0 ? (
@@ -285,9 +337,9 @@ export default function LobbyScreen() {
               </View>
             ) : null}
 
-            <View style={styles.section}>
-              <SectionHeader title="Open tables" count={openTables.length} />
-              {openTables.length > 0 ? (
+            {openTables.length > 0 ? (
+              <View style={styles.section}>
+                <SectionHeader title="Open tables" count={openTables.length} />
                 <View style={[styles.roomGrid, landscape && styles.roomGridLandscape]}>
                   {openTables.map((room) => (
                     <View key={room.code} style={landscape && styles.roomCellLandscape}>
@@ -296,21 +348,13 @@ export default function LobbyScreen() {
                         onJoin={handleJoinRoom}
                         currentUserId={user?.id}
                         currentUsername={user?.username}
+                        compact={landscape}
                       />
                     </View>
                   ))}
                 </View>
-              ) : (
-                <Surface variant="subtle" style={styles.empty}>
-                  <PidroText role="label" align="center">
-                    No open tables
-                  </PidroText>
-                  <PidroText role="body" tone="soft" align="center">
-                    Create a new table, or start a solo game from Home.
-                  </PidroText>
-                </Surface>
-              )}
-            </View>
+              </View>
+            ) : null}
 
             {substituteTables.length > 0 ? (
               <View style={styles.section}>
@@ -320,7 +364,7 @@ export default function LobbyScreen() {
                     key={`sub-${room.code}`}
                     room={room}
                     label="Join as substitute"
-                    onPress={() => handleJoinRoom(room.code)}
+                    onPress={() => router.push(`/game/${room.code}`)}
                   />
                 ))}
               </View>
@@ -334,14 +378,14 @@ export default function LobbyScreen() {
                     key={`watch-${room.code}`}
                     room={room}
                     label="Watch"
-                    onPress={() => router.push(`/game/${room.code}`)}
+                    onPress={() => handleWatchRoom(room.code)}
                   />
                 ))}
               </View>
             ) : null}
           </ScrollView>
         )}
-      </Surface>
+      </View>
 
       <CreateRoomModal
         isOpen={isCreateModalOpen}
@@ -355,6 +399,50 @@ export default function LobbyScreen() {
         error={createError}
       />
     </ScreenShell>
+  );
+}
+
+function LobbyEmptyState({
+  icon,
+  title,
+  description,
+  actionLabel,
+  onAction,
+  quiet = false,
+  compact = false,
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  title: string;
+  description: string;
+  actionLabel: string;
+  onAction: () => void;
+  quiet?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <Surface variant="card" style={[styles.emptyState, compact && styles.emptyStateCompact]}>
+      <View style={styles.emptyIcon}>
+        <Feather name={icon} size={24} color={PidroColors.cyanText} />
+      </View>
+      <View style={[styles.emptyCopy, compact && styles.emptyCopyCompact]}>
+        <PidroText role="title" align={compact ? 'left' : 'center'}>
+          {title}
+        </PidroText>
+        <PidroText
+          role="body"
+          tone="soft"
+          align={compact ? 'left' : 'center'}
+          style={styles.emptyDescription}>
+          {description}
+        </PidroText>
+      </View>
+      <Button
+        label={actionLabel}
+        variant={quiet ? 'outline' : 'default'}
+        onPress={onAction}
+        style={styles.emptyAction}
+      />
+    </Surface>
   );
 }
 
@@ -411,15 +499,11 @@ const styles = StyleSheet.create({
   shell: {
     gap: PidroSpacing.sm,
   },
-  panel: {
+  content: {
     minHeight: 0,
     flex: 1,
     gap: PidroSpacing.sm,
-  },
-  panelEmpty: {
-    flexBasis: 'auto',
-    flexGrow: 0,
-    flexShrink: 0,
+    paddingTop: PidroSpacing.xxs,
   },
   searchRow: {
     flexDirection: 'row',
@@ -441,14 +525,9 @@ const styles = StyleSheet.create({
     minHeight: 0,
     flex: 1,
   },
-  roomScrollEmpty: {
-    flexBasis: 'auto',
-    flexGrow: 0,
-    flexShrink: 0,
-  },
   roomScrollContent: {
     gap: PidroSpacing.lg,
-    paddingBottom: PidroSpacing.xxs,
+    paddingBottom: PidroSpacing.md,
   },
   section: {
     gap: PidroSpacing.sm,
@@ -470,10 +549,49 @@ const styles = StyleSheet.create({
   roomCellLandscape: {
     width: '49%',
   },
-  empty: {
+  emptyState: {
+    width: '100%',
+    maxWidth: 460,
+    minHeight: 260,
+    alignSelf: 'center',
     alignItems: 'center',
-    gap: PidroSpacing.xs,
-    padding: PidroSpacing.lg,
+    justifyContent: 'center',
+    gap: PidroSpacing.sm,
+    padding: PidroSpacing.xl,
+    marginTop: PidroSpacing.lg,
+  },
+  emptyStateCompact: {
+    minHeight: 0,
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    padding: PidroSpacing.md,
+    marginTop: 0,
+  },
+  emptyIcon: {
+    width: 48,
+    height: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: PidroRadii.panel,
+    borderWidth: 1,
+    borderColor: PidroColors.cyanBorder,
+    backgroundColor: PidroColors.glass,
+  },
+  emptyDescription: {
+    maxWidth: 320,
+  },
+  emptyCopy: {
+    alignItems: 'center',
+    gap: PidroSpacing.xxs,
+  },
+  emptyCopyCompact: {
+    minWidth: 0,
+    flex: 1,
+    alignItems: 'flex-start',
+  },
+  emptyAction: {
+    minWidth: 160,
+    marginTop: PidroSpacing.xs,
   },
   actionRoom: {
     minHeight: 68,

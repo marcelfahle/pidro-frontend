@@ -5,8 +5,10 @@ import { API_CONFIG } from '@/constants/config';
 class MobilePhoenixSocket extends PhoenixSocket {
   private appState: AppStateStatus = AppState.currentState;
   private appStateSub?: { remove: () => void };
+  private getToken: () => string | null = () => null;
 
   initMobile(getToken: () => string | null) {
+    this.getToken = getToken;
     const socket = this.init({
       config: API_CONFIG,
       getToken,
@@ -21,7 +23,7 @@ class MobilePhoenixSocket extends PhoenixSocket {
       if (this.appState === nextState) return;
       this.appState = nextState;
 
-      if (nextState === 'active') {
+      if (nextState === 'active' && this.getToken()) {
         this.connect();
       } else if (nextState === 'background') {
         this.disconnect();

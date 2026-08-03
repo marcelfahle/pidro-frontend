@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Channel, Presence } from 'phoenix';
 import { batchedUpdates as unstable_batchedUpdates } from '@/utils/batchedUpdates';
 import { phoenixSocket } from '../socket';
@@ -16,7 +16,7 @@ import {
 let globalChannel: Channel | null = null;
 let referenceCount = 0;
 
-export const useLobbyChannel = () => {
+export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
   // Get store functions directly from the store to avoid dependency issues
   // These are stable references that won't change between renders
   const setRooms = useLobbyStore((s) => s.setRooms);
@@ -26,12 +26,16 @@ export const useLobbyChannel = () => {
   const upsertLobbyRoom = useLobbyStore((s) => s.upsertLobbyRoom);
   const removeRoom = useLobbyStore((s) => s.removeRoom);
   const setStats = useLobbyStore((s) => s.setStats);
+  const onRealtimeUpdateRef = useRef(onRealtimeUpdate);
+
+  useEffect(() => {
+    onRealtimeUpdateRef.current = onRealtimeUpdate;
+  }, [onRealtimeUpdate]);
 
   useEffect(() => {
     initRealtime();
 
     referenceCount++;
-    console.log('[LobbyChannel] Hook mounted, refCount=', referenceCount);
 
     const connect = () => {
       if (globalChannel) return;
@@ -42,21 +46,19 @@ export const useLobbyChannel = () => {
       channel
         .join()
         .receive('ok', (response: any) => {
-          console.log('[LobbyChannel] Joined successfully', response);
+          onRealtimeUpdateRef.current?.();
           // Batch updates to avoid navigation context issues
           unstable_batchedUpdates(() => {
             const rawLobby = response?.lobby ?? response?.data?.lobby;
             if (hasLobbyCategories(rawLobby)) {
               const lobby = normalizeLobbyCategories(rawLobby);
               const rooms = flattenLobbyCategories(lobby);
-              console.log('[LobbyChannel] Initializing categorized lobby from join response');
               setLobby(lobby);
               setStats({ active_games: rooms.length });
               return;
             }
 
             const rooms = normalizeRooms(response?.rooms ?? response?.data?.rooms);
-            console.log('[LobbyChannel] Initializing rooms from join response');
             setRooms(rooms);
             setStats({ active_games: rooms.length });
           });
@@ -66,7 +68,7 @@ export const useLobbyChannel = () => {
         });
 
       channel.on('lobby_update', (payload: any) => {
-        console.log('[LobbyChannel] lobby_update received:', payload);
+        onRealtimeUpdateRef.current?.();
         unstable_batchedUpdates(() => {
           const rawLobby = payload?.lobby ?? payload?.data?.lobby;
           if (hasLobbyCategories(rawLobby)) {
@@ -84,9 +86,9 @@ export const useLobbyChannel = () => {
       });
 
       channel.on('room_created', (payload: any) => {
-        console.log('[LobbyChannel] room_created received:', payload);
         const room = payload?.room || payload?.data?.room;
         if (room) {
+          onRealtimeUpdateRef.current?.();
           unstable_batchedUpdates(() => {
             if (payload?.category) {
               upsertLobbyRoom(normalizeRoom(room), payload.category);
@@ -100,9 +102,9 @@ export const useLobbyChannel = () => {
       });
 
       channel.on('room_updated', (payload: any) => {
-        console.log('[LobbyChannel] room_updated received:', payload);
         const room = payload?.room || payload?.data?.room;
         if (room) {
+          onRealtimeUpdateRef.current?.();
           unstable_batchedUpdates(() => {
             if (payload?.category) {
               upsertLobbyRoom(normalizeRoom(room), payload.category);
@@ -116,12 +118,12 @@ export const useLobbyChannel = () => {
       });
 
       channel.on('room_closed', (payload: any) => {
-        console.log('[LobbyChannel] room_closed received:', payload);
         const code =
           payload?.code || payload?.room?.code || payload?.data?.code || payload?.room_code;
         const id = payload?.id || payload?.room?.id || payload?.data?.id;
 
         if (code || id) {
+          onRealtimeUpdateRef.current?.();
           removeRoom(code || id);
         }
       });
@@ -145,9 +147,7 @@ export const useLobbyChannel = () => {
 
     return () => {
       referenceCount--;
-      console.log('[LobbyChannel] Hook unmounting, refCount=', referenceCount);
       if (referenceCount === 0 && globalChannel) {
-        console.log('[LobbyChannel] Leaving channel (no listeners)');
         globalChannel.leave();
         globalChannel = null;
       }

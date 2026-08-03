@@ -4,7 +4,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
-import { getTeamScores, isNorthSouthTeam } from '@/utils/positions';
+import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
@@ -46,9 +46,13 @@ export function GameOverOverlay({
   const labels = spectator
     ? { first: 'North / South', second: 'East / West' }
     : { first: 'Us', second: 'Them' };
-  const tied = rawScores.north_south === rawScores.east_west;
-  const viewerWon = !spectator && relativeScores.us > relativeScores.them;
-  const northSouthWon = tied ? null : rawScores.north_south > rawScores.east_west;
+  const winningTeam = resolveWinningTeam(serverState.winner, rawScores);
+  const tied = winningTeam == null;
+  const northSouthWon = winningTeam === 'north_south';
+  const viewerWon =
+    !spectator &&
+    winningTeam != null &&
+    isNorthSouthTeam(viewModel.viewerPositionAbsolute) === northSouthWon;
 
   const outcome = tied
     ? 'The game ends in a tie'
@@ -58,7 +62,7 @@ export function GameOverOverlay({
         ? 'Your team wins!'
         : 'The other team wins';
   const winners =
-    northSouthWon == null
+    winningTeam == null
       ? []
       : viewModel.players.filter(
           (player) => isNorthSouthTeam(player.absolutePosition) === northSouthWon

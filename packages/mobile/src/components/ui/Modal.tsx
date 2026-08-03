@@ -1,4 +1,5 @@
 import { Modal as RNModal, View, ModalProps as RNModalProps, StyleSheet } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { DecisionWindow } from './DecisionWindow';
 
@@ -22,6 +23,7 @@ export function Modal({
   dismissible = true,
   ...props
 }: ModalProps) {
+  const reduceMotion = useReducedMotion();
   const handleRequestClose = () => {
     if (dismissible && onClose) {
       onClose();
@@ -32,7 +34,7 @@ export function Modal({
     <RNModal
       visible={isOpen}
       transparent={transparent}
-      animationType={animationType}
+      animationType={reduceMotion ? 'none' : animationType}
       onRequestClose={handleRequestClose}
       {...props}>
       <View style={styles.backdrop}>

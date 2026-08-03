@@ -29,8 +29,7 @@ export function IconButton({
         styles.button,
         tone === 'gold' && styles.goldButton,
         (disabled || !onPress) && styles.disabled,
-      ]}
-      pressedStyle={!disabled ? styles.pressed : undefined}>
+      ]}>
       <Feather name={icon} size={22} color={tone === 'gold' ? PidroColors.ink : PidroColors.text} />
       <PidroText
         role="metadata"
@@ -68,10 +67,6 @@ const styles = StyleSheet.create({
   },
   goldLabel: {
     color: PidroColors.ink,
-  },
-  pressed: {
-    opacity: 0.78,
-    transform: [{ scale: 0.97 }],
   },
   disabled: {
     opacity: 0.44,

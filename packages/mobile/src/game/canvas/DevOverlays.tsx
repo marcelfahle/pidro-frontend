@@ -73,6 +73,7 @@ const SCORES = { north_south: 42, east_west: 31 };
 
 const GAME_OVER_SERVER: ServerGameState = {
   phase: 'game_over',
+  winner: 'north_south',
   current_player: null,
   players: SERVER_PLAYERS,
   scores: SCORES,

@@ -15,6 +15,7 @@ import type {
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import type { GameTableController } from '@/game/useGameTableController';
+import { sortCards } from '@/utils/cards';
 import { cardKey, type CardKey } from './cardTextures';
 
 export type TableCard = {
@@ -50,22 +51,7 @@ export type TableModel = {
   canPlay: boolean;
 };
 
-const SUIT_ORDER: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
-
-// Same ordering as PlayerHand.sortCards: trump first, then suit order, rank desc.
-function sortHand(cards: Card[], trump: Suit | null): Card[] {
-  return [...cards].sort((a, b) => {
-    const aT = trump && a.suit === trump;
-    const bT = trump && b.suit === trump;
-    if (aT && !bT) return -1;
-    if (!aT && bT) return 1;
-    const ai = SUIT_ORDER.indexOf(a.suit);
-    const bi = SUIT_ORDER.indexOf(b.suit);
-    if (ai !== bi) return ai - bi;
-    return b.rank - a.rank;
-  });
-}
 
 export type TableModelInput = {
   phase: GamePhase;
@@ -119,7 +105,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
     };
   };
 
-  const yourHand = (input.yourHand ? sortHand(input.yourHand, trumpSuit) : []).map((card) =>
+  const yourHand = (input.yourHand ? sortCards(input.yourHand, trumpSuit) : []).map((card) =>
     toCard(card)
   );
 
@@ -133,20 +119,6 @@ export function buildTableModel(input: TableModelInput): TableModel {
 
   const currentTrick: Partial<Record<RelativePosition, TableCard>> = {};
   const completedTricks = normalizeCompletedTricks(input.tricks);
-  completedTricks.forEach((plays, trickIndex) => {
-    plays.forEach((play, playIndex) => {
-      const abs = (play.player ?? play.position) as Position | undefined;
-      if (!abs || !play.card) return;
-      const rel = absToRel.get(abs);
-      if (!rel) return;
-      const textureKey = cardKey(play.card);
-      pushPlayedCard(
-        rel,
-        toCard(play.card, `trick-${trickIndex}-${playIndex}-${rel}-${textureKey}`)
-      );
-    });
-  });
-
   const currentTrickIndex = completedTricks.length;
   for (const [playIndex, play] of normalizePlays(input.currentTrick).entries()) {
     const abs = (play.player ?? play.position) as Position | undefined;

@@ -46,3 +46,36 @@ jobs:
           EXPO_NO_DOTENV: '1'
           NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
         run: bunx expo export --platform web --output-dir /tmp/pidro-mobile-web
+
+      - name: Install Chromium for UI verification
+        run: bunx playwright install --with-deps chromium
+
+      - name: Verify mobile UI grammar
+        working-directory: packages/mobile
+        env:
+          CI: '1'
+          EXPO_NO_DOTENV: '1'
+          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+        run: |
+          bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
+          expo_pid=$!
+          cleanup() {
+            kill "$expo_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            cat /tmp/pidro-expo.log
+            exit 1
+          fi
+
+          bun run test:ui

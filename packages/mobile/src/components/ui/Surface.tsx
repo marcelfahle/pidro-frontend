@@ -24,8 +24,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: PidroRadii.panel,
-    borderColor: PidroColors.cyanBorder,
-    backgroundColor: PidroColors.panelSoft,
+    borderColor: PidroColors.borderStrong,
+    backgroundColor: PidroColors.panelStrong,
   },
   plaque: {
     borderRadius: PidroRadii.tight,

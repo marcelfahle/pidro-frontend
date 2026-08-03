@@ -5,31 +5,35 @@ import { describe, expect, it, vi } from 'vitest';
 import { PlayerHand } from './PlayerHand';
 
 // Mock @pidro/shared — provide display helpers used by Card.tsx (imported transitively)
-vi.mock('@pidro/shared', () => ({
-  getRankLabel: (rank: number) => {
-    const labels: Record<number, string> = {
-      1: 'A',
-      2: '2',
-      5: '5',
-      10: '10',
-      11: 'J',
-      14: 'A',
-    };
-    return labels[rank] ?? String(rank);
-  },
-  SUIT_SYMBOLS: {
-    hearts: '\u2665',
-    diamonds: '\u2666',
-    clubs: '\u2663',
-    spades: '\u2660',
-  },
-  SUIT_COLORS_RAW: {
-    hearts: '#ef4444',
-    diamonds: '#f59e0b',
-    clubs: '#1e293b',
-    spades: '#0f172a',
-  },
-}));
+vi.mock('@pidro/shared', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@pidro/shared')>();
+  return {
+    ...actual,
+    getRankLabel: (rank: number) => {
+      const labels: Record<number, string> = {
+        1: 'A',
+        2: '2',
+        5: '5',
+        10: '10',
+        11: 'J',
+        14: 'A',
+      };
+      return labels[rank] ?? String(rank);
+    },
+    SUIT_SYMBOLS: {
+      hearts: '\u2665',
+      diamonds: '\u2666',
+      clubs: '\u2663',
+      spades: '\u2660',
+    },
+    SUIT_COLORS_RAW: {
+      hearts: '#ef4444',
+      diamonds: '#f59e0b',
+      clubs: '#1e293b',
+      spades: '#0f172a',
+    },
+  };
+});
 
 const testCards: CardType[] = [
   { rank: 14, suit: 'spades' },

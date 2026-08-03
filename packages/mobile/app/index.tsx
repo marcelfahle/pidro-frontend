@@ -8,23 +8,8 @@ export default function Index() {
 
   if (!hydrated) {
     return (
-      <View
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: '#fff',
-        }}>
-        <Text
-          style={{
-            marginBottom: 16,
-            fontSize: 36,
-            fontWeight: 'bold',
-            letterSpacing: -1,
-            color: '#0f172a',
-          }}>
-          PIDRO
-        </Text>
+      <View className="flex-1 items-center justify-center bg-white">
+        <Text className="mb-4 text-4xl font-bold tracking-tighter text-slate-900">PIDRO</Text>
         <ActivityIndicator size="small" color="#0f172a" />
       </View>
     );

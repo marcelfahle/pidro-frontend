@@ -33,6 +33,25 @@ export function formatSuitLabel(suit: Suit) {
   return suit.charAt(0).toUpperCase() + suit.slice(1);
 }
 
+/** Point value for a scoring card in the active trump suit. */
+export function getPidroPoints(rank: number, suit: Suit, trumpSuit?: Suit | null): number | null {
+  if (!trumpSuit) return null;
+
+  const isTrump = suit === trumpSuit;
+  const isOffFive = rank === 5 && !isTrump && isSameColor(suit, trumpSuit);
+  if (!isTrump && !isOffFive) return null;
+
+  if (rank === 5) return 5;
+  if (rank === 1 || rank === 14 || rank === 2 || rank === 10 || rank === 11) return 1;
+  return null;
+}
+
+function isSameColor(a: Suit, b: Suit): boolean {
+  const aIsRed = a === 'hearts' || a === 'diamonds';
+  const bIsRed = b === 'hearts' || b === 'diamonds';
+  return aIsRed === bIsRed;
+}
+
 const SUIT_ORDER: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
 
 export function sortCards(cards: Card[], trumpSuit: Suit | null | undefined): Card[] {

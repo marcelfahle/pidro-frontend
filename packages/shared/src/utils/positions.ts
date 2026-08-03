@@ -55,8 +55,19 @@ export function getTeamScores(
   };
 }
 
+export type Team = 'north_south' | 'east_west';
+
+export function resolveWinningTeam(
+  winner: Team | null | undefined,
+  scores: { north_south: number; east_west: number },
+): Team | null {
+  if (winner) return winner;
+  if (scores.north_south === scores.east_west) return null;
+  return scores.north_south > scores.east_west ? 'north_south' : 'east_west';
+}
+
 export function getTeamWinnerLabel(
-  winnerTeam: 'north_south' | 'east_west',
+  winnerTeam: Team,
   youPosition: Position | null,
 ): { label: string; youWon: boolean | null } {
   if (!youPosition) {

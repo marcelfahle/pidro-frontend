@@ -9,4 +9,5 @@ export {
   isNorthSouthTeam,
   getTeamScores,
   getTeamWinnerLabel,
+  resolveWinningTeam,
 } from '@pidro/shared';

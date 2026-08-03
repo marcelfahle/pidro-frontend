@@ -22,7 +22,7 @@ import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import type { ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { useCardTextures } from './cardTextures';
-import { useTableModel } from './tableModel';
+import { useTableModel, type TableModel } from './tableModel';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer } from './SeatLayer';
@@ -106,8 +106,22 @@ function useTurnTimerProgress(
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
-    if (!turnTimer) return;
-    const id = setInterval(() => setNow(Date.now()), 200);
+    if (
+      !turnTimer ||
+      turnTimer.scope !== 'seat' ||
+      !turnTimer.position ||
+      turnTimer.durationMs <= 0 ||
+      turnTimer.remainingMs <= 0
+    ) {
+      return;
+    }
+
+    const expiresAt = turnTimer.receivedAtMs + turnTimer.remainingMs;
+    const id = setInterval(() => {
+      const nextNow = Date.now();
+      setNow(nextNow);
+      if (nextNow >= expiresAt) clearInterval(id);
+    }, 200);
     return () => clearInterval(id);
   }, [turnTimer]);
 
@@ -125,6 +139,47 @@ function useTurnTimerProgress(
   };
 }
 
+function TimedSeatLayer({
+  seats,
+  dealerRel,
+  topReserve,
+  bottomReserve,
+  statusByRel,
+  players,
+}: {
+  seats: TableModel['seats'];
+  dealerRel: RelativePosition | null;
+  topReserve: number;
+  bottomReserve: number;
+  statusByRel: Partial<Record<RelativePosition, string>> | undefined;
+  players: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'];
+}) {
+  const turnTimer = useGameStore((state) => state.turnTimer);
+  const timerProgress = useTurnTimerProgress(turnTimer);
+  const timerProgressByRel = timerProgress
+    ? players.reduce(
+        (acc, player) => {
+          if (player.absolutePosition === timerProgress.position) {
+            acc[player.relativePosition] = timerProgress.progress;
+          }
+          return acc;
+        },
+        {} as Partial<Record<RelativePosition, number>>
+      )
+    : undefined;
+
+  return (
+    <SeatLayer
+      seats={seats}
+      dealerRel={dealerRel}
+      topReserve={topReserve}
+      bottomReserve={bottomReserve}
+      statusByRel={statusByRel}
+      timerProgressByRel={timerProgressByRel}
+    />
+  );
+}
+
 export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain }: Props) {
   const controller = useGameTableController(room);
   const textures = useCardTextures();
@@ -132,8 +187,6 @@ export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
   const { topReserve, bottomReserve } = reserves;
-  const turnTimer = useGameStore((s) => s.turnTimer);
-  const timerProgress = useTurnTimerProgress(turnTimer);
 
   const {
     trumpSuit,
@@ -158,21 +211,8 @@ export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain
     },
     {} as Partial<Record<RelativePosition, string>>
   );
-  const timerProgressByRel =
-    timerProgress && viewModel
-      ? viewModel.players.reduce(
-          (acc, player) => {
-            if (player.absolutePosition === timerProgress.position) {
-              acc[player.relativePosition] = timerProgress.progress;
-            }
-            return acc;
-          },
-          {} as Partial<Record<RelativePosition, number>>
-        )
-      : undefined;
-
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: T.bgDeep }}>
+    <GestureHandlerRootView testID="game-table" style={{ flex: 1, backgroundColor: T.bgDeep }}>
       {/* The table surface */}
       <GameCanvas
         model={model}
@@ -183,13 +223,13 @@ export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain
       />
 
       {/* Seat furniture (avatars, names, dealer chip, turn rings, opponent backs) over the canvas */}
-      <SeatLayer
+      <TimedSeatLayer
         seats={model.seats}
         dealerRel={viewModel?.dealerRelative ?? null}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
         statusByRel={statusByRel}
-        timerProgressByRel={timerProgressByRel}
+        players={viewModel?.players ?? []}
       />
 
       <TableChromeBars reserves={reserves} />

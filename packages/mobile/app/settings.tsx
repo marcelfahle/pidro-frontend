@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PidroText } from '@/components/ui/PidroText';
@@ -6,9 +5,14 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { useSettingsStore } from '@/stores/settings';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const soundEnabled = useSettingsStore((state) => state.soundEnabled);
+  const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
+  const toggleSound = useSettingsStore((state) => state.toggleSound);
+  const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
 
   return (
     <ScreenShell scroll compact testID="settings-screen" contentStyle={styles.shell}>
@@ -18,12 +22,17 @@ export default function SettingsScreen() {
         onBack={() => router.back()}
       />
       <Surface variant="window" style={styles.panel} padded>
-        <SettingRow title="Sound" subtitle="Play game sound effects." initialValue />
-        <SettingRow title="Haptics" subtitle="Use touch feedback for game actions." initialValue />
         <SettingRow
-          title="Fast animations"
-          subtitle="Use shorter transitions around the table."
-          initialValue={false}
+          title="Sound"
+          subtitle="Play game sound effects."
+          value={soundEnabled}
+          onValueChange={toggleSound}
+        />
+        <SettingRow
+          title="Haptics"
+          subtitle="Use touch feedback for game actions."
+          value={hapticEnabled}
+          onValueChange={toggleHaptic}
         />
       </Surface>
     </ScreenShell>
@@ -33,14 +42,14 @@ export default function SettingsScreen() {
 function SettingRow({
   title,
   subtitle,
-  initialValue,
+  value,
+  onValueChange,
 }: {
   title: string;
   subtitle: string;
-  initialValue: boolean;
+  value: boolean;
+  onValueChange: () => void;
 }) {
-  const [enabled, setEnabled] = useState(initialValue);
-
   return (
     <Surface variant="subtle" style={styles.row}>
       <View style={styles.rowCopy}>
@@ -51,10 +60,10 @@ function SettingRow({
       </View>
       <Switch
         accessibilityLabel={title}
-        value={enabled}
-        onValueChange={setEnabled}
+        value={value}
+        onValueChange={onValueChange}
         trackColor={{ false: PidroColors.switchTrackOff, true: PidroColors.cyan }}
-        thumbColor={enabled ? PidroColors.ink : PidroColors.text}
+        thumbColor={value ? PidroColors.ink : PidroColors.text}
         style={styles.switch}
       />
     </Surface>

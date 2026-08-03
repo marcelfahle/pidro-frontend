@@ -15,6 +15,8 @@ const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const screenshotRoot = resolve(repoRoot, 'screenshots/agent-mobile-ui');
 
 const cases = [
+  { name: 'home', path: '/home', testId: 'home-screen' },
+  { name: 'lobby', path: '/lobby', testId: 'lobby-screen' },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
   { name: 'ui-components', path: '/ui-dev?state=components', testId: 'ui-foundation-panel' },
@@ -26,6 +28,7 @@ const cases = [
     path: '/table-dev?phase=bidding',
     testId: 'bidding-window',
     protectNorthSeat: true,
+    protectPlayerHand: true,
   },
   {
     name: 'table-trump',
@@ -69,11 +72,147 @@ async function assertTargetGeometry(page, testCase, viewport) {
         );
       }
     }
+
+    if (testCase.protectPlayerHand) {
+      await assertAbovePlayerHand(page, testCase.name, box, viewport);
+      await assertBidGridLayout(page, viewport);
+    }
+
+    if (testCase.name === 'table-playing') {
+      await assertSeatPlacement(page, viewport);
+    }
   } else if (testCase.text) {
     await page.getByText(testCase.text, { exact: true }).first().waitFor({ timeout: 15_000 });
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
+}
+
+async function assertAbovePlayerHand(page, name, box, viewport) {
+  const handBoundary = page.getByTestId('player-hand-top').first();
+  await handBoundary.waitFor({ state: 'attached', timeout: 20_000 });
+  const handBox = await getStableBox(handBoundary, page);
+  if (!handBox) throw new Error(`${name} player-hand boundary has no geometry`);
+  const handTop = handBox.y;
+
+  if (box.y + box.height > handTop - 8) {
+    throw new Error(
+      `${name} obscures the player hand in ${viewport.name}: window=${JSON.stringify(box)} protectedHandTop=${handTop}`
+    );
+  }
+}
+
+async function assertBidGridLayout(page, viewport) {
+  const bidButtons = await page.getByRole('button', { name: /^Bid \d+$/ }).all();
+  if (bidButtons.length !== 9) {
+    throw new Error(
+      `bidding grid has ${bidButtons.length} values instead of 9 in ${viewport.name}`
+    );
+  }
+
+  const boxes = [];
+  for (const button of bidButtons) {
+    const box = await getStableBox(button, page);
+    if (!box) throw new Error(`bidding grid has a value without geometry in ${viewport.name}`);
+    boxes.push(box);
+  }
+
+  const uniqueCoordinates = (values) => {
+    const unique = [];
+    for (const value of values.sort((a, b) => a - b)) {
+      if (!unique.some((candidate) => Math.abs(candidate - value) <= 2)) unique.push(value);
+    }
+    return unique;
+  };
+  const columns = uniqueCoordinates(boxes.map((box) => box.x));
+  const rows = uniqueCoordinates(boxes.map((box) => box.y));
+  if (columns.length !== 3 || rows.length !== 3) {
+    throw new Error(
+      `bidding values are not a 3x3 grid in ${viewport.name}: columns=${columns.length} rows=${rows.length}`
+    );
+  }
+
+  const passBox = await getStableBox(page.getByRole('button', { name: 'Pass' }), page);
+  const gridBottom = Math.max(...boxes.map((box) => box.y + box.height));
+  if (!passBox || passBox.y < gridBottom + 4) {
+    throw new Error(
+      `Pass is not below the bidding grid in ${viewport.name}: pass=${JSON.stringify(passBox)} gridBottom=${gridBottom}`
+    );
+  }
+}
+
+async function assertSeatPlacement(page, viewport) {
+  const entries = await Promise.all(
+    ['north', 'east', 'south', 'west'].map(async (position) => {
+      const locator = page.getByTestId(`seat-${position}`).first();
+      await locator.waitFor({ state: 'visible', timeout: 20_000 });
+      const box = await getStableBox(locator, page);
+      if (!box) throw new Error(`seat-${position} has no landscape geometry`);
+      return [position, box];
+    })
+  );
+  const seats = Object.fromEntries(entries);
+  const centerX = (box) => box.x + box.width / 2;
+  const horizontalCenter = viewport.width / 2;
+  const portrait = viewport.height >= viewport.width;
+
+  const centeredPositions = portrait ? ['north', 'south'] : [];
+  for (const position of centeredPositions) {
+    if (Math.abs(centerX(seats[position]) - horizontalCenter) > 2) {
+      throw new Error(
+        `seat-${position} is not horizontally centered: ${JSON.stringify(seats[position])}`
+      );
+    }
+  }
+
+  if (!portrait && seats.south.x + seats.south.width >= horizontalCenter - 8) {
+    throw new Error(
+      `seat-south is not parked left of the landscape hand: ${JSON.stringify(seats.south)}`
+    );
+  }
+
+  if (!portrait && seats.north.x <= horizontalCenter + 8) {
+    throw new Error(
+      `seat-north is not parked right of the landscape hand: ${JSON.stringify(seats.north)}`
+    );
+  }
+
+  if (portrait) {
+    const utilityDock = page.getByTestId('table-utility-dock').first();
+    await utilityDock.waitFor({ state: 'visible', timeout: 20_000 });
+    const dockBox = await getStableBox(utilityDock, page);
+    if (!dockBox) throw new Error('portrait utility dock has no geometry');
+    assertInsideViewport('portrait utility dock', dockBox, viewport);
+    if (Math.abs(dockBox.y + dockBox.height - viewport.height) > 2) {
+      throw new Error(`portrait utility dock is not bottom-anchored: ${JSON.stringify(dockBox)}`);
+    }
+    if (seats.south.y + seats.south.height > dockBox.y - 4) {
+      throw new Error(
+        `seat-south overlaps the portrait utility dock: south=${JSON.stringify(seats.south)} dock=${JSON.stringify(dockBox)}`
+      );
+    }
+  }
+
+  const maxSeatWidth = portrait ? 112 : 126;
+  for (const position of ['north', 'east', 'south', 'west']) {
+    if (seats[position].width > maxSeatWidth) {
+      throw new Error(
+        `seat-${position} exceeds the compact ${viewport.name} width: ${JSON.stringify(seats[position])}`
+      );
+    }
+  }
+
+  if (Math.abs(seats.east.y - seats.west.y) > 2 || seats.east.y <= seats.north.y + 12) {
+    throw new Error(
+      `opponent seats do not form the intended landscape triangle: north=${JSON.stringify(seats.north)} east=${JSON.stringify(seats.east)} west=${JSON.stringify(seats.west)}`
+    );
+  }
+
+  if (seats.south.y <= seats.east.y + seats.east.height) {
+    throw new Error(
+      `seat-south is not below the opponent row: south=${JSON.stringify(seats.south)}`
+    );
+  }
 }
 
 async function main() {
@@ -94,6 +233,7 @@ async function main() {
       await mkdir(screenshotDir, { recursive: true });
 
       for (const testCase of cases) {
+        if (viewport.tableOnly && !testCase.path.startsWith('/table-dev')) continue;
         const page = await context.newPage();
         const pageErrors = [];
         page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));

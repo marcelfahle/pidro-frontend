@@ -13,7 +13,6 @@
  * later diffs animate. M3 adds, all diff-triggered:
  *   • deal-in   — hand grows from empty → stagger from a deck origin w/ overshoot
  *   • collect   — trick clears after ≥2 plays → sweep cards to winner + particle pop
- *   • turn      — a pulsing halo follows the current seat (exposed via `pulse`)
  *   • trump     — null→suit pops the trump glyph (exposed via `trumpPop`)
  *   • reflow    — layout change tweens sprites to new slots (falls out of the effect)
  */
@@ -35,7 +34,6 @@ import {
   useDerivedValue,
   useSharedValue,
   withDelay,
-  withRepeat,
   withSequence,
   withSpring,
   withTiming,
@@ -53,47 +51,28 @@ const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 function playedCardTarget(L: TableLayout, rel: RelativePosition, index: number, count: number) {
   const portrait = L.profile.endsWith('portrait');
-  const pileScale = portrait ? 0.82 : 0.88;
-  const laneFactor =
-    rel === 'south'
-      ? portrait
-        ? 0.48
-        : 0.34
-      : rel === 'north'
-        ? portrait
-          ? 0.54
-          : 0.58
-        : portrait
-          ? 0.5
-          : 0.6;
-  const laneX = L.trick.cx + (L.seats[rel].x - L.trick.cx) * laneFactor;
-  const laneY = L.trick.cy + (L.seats[rel].y - L.trick.cy) * laneFactor;
+  const pileScale = portrait ? 0.82 : 0.8;
   const spacing = Math.min(L.cardW * 0.38, portrait ? 24 : 32);
   const off = index - (count - 1) / 2;
   // Side cards face their owner: the card's top edge points at the table
   // center (east top→left, west top→right), matching the seat rot in layout.ts.
   const rot = rel === 'east' ? -Math.PI / 2 : rel === 'west' ? Math.PI / 2 : 0;
 
-  if (rel === 'east' || rel === 'west') {
-    const sideClearance = Math.max(
-      L.cardW * (portrait ? 2.7 : 3.2),
-      L.width * (portrait ? 0.34 : 0.3)
-    );
-    return {
-      x: rel === 'west' ? sideClearance : L.width - sideClearance,
-      // Centered on the trick zone so lanes, ring and side stacks share one axis.
-      y: L.trick.cy + off * spacing,
-      rot,
-      scale: pileScale,
-    };
-  }
-
-  return {
-    x: laneX + off * spacing,
-    y: laneY + Math.abs(off) * 2,
-    rot,
-    scale: pileScale,
-  };
+  // Each pile center lands on a cardinal point of the trick circle. Multiple
+  // cards spread along the tangent so the ring remains the visual ruler.
+  const x =
+    rel === 'west'
+      ? L.trick.cx - L.trick.r
+      : rel === 'east'
+        ? L.trick.cx + L.trick.r
+        : L.trick.cx + off * spacing;
+  const y =
+    rel === 'north'
+      ? L.trick.cy - L.trick.r
+      : rel === 'south'
+        ? L.trick.cy + L.trick.r
+        : L.trick.cy + off * spacing;
+  return { x, y, rot, scale: pileScale };
 }
 
 function playedCardCount(model: TableModel | null | undefined): number {
@@ -110,7 +89,15 @@ function handSlotFn(L: TableLayout, n: number) {
   };
 }
 
-type HandTarget = { slot: number; key: string; x: number; y: number; w: number; h: number };
+type HandTarget = {
+  slot: number;
+  key: string;
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  scale: number;
+};
 type SlotInfo = {
   key: string;
   textureKey: CardKey;
@@ -140,6 +127,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   const [slots, setSlots] = useState<SlotInfo[]>(() => Array(MAX).fill(null));
 
   const keyToSlot = useRef<Map<string, number>>(new Map());
+  const retirementTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const prevModel = useRef<TableModel | null>(null);
   const modelRef = useRef<TableModel | undefined>(model);
   const onPlayRef = useRef(onPlayCard);
@@ -152,8 +140,15 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   const dragStartX = useSharedValue(0);
   const dragStartY = useSharedValue(0);
 
+  useEffect(
+    () => () => {
+      retirementTimers.current.forEach(clearTimeout);
+      retirementTimers.current.clear();
+    },
+    []
+  );
+
   // ── M3 shared values ──────────────────────────────────────────────
-  const pulse = useSharedValue(0); // continuous 0..1 for the turn halo
   const trumpPop = useSharedValue(0); // 0..1 flourish on trump declare
   const burst = useSharedValue(0); // 0..1 particle pop progress
   const burstX = useSharedValue(0);
@@ -168,16 +163,6 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     []
   );
 
-  useEffect(() => {
-    pulse.value = withRepeat(
-      withTiming(1, { duration: 850, easing: Easing.inOut(Easing.quad) }),
-      -1,
-      true
-    );
-    return () => cancelAnimation(pulse);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const firePop = useCallback(
     (x: number, y: number) => {
       burstX.value = x;
@@ -190,6 +175,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
 
   const cardW = L.cardW;
   const cardH = L.cardH;
+  const handScale = L.profile.endsWith('landscape') ? 0.9 : 1;
 
   useEffect(() => {
     if (!enabled || !model) return;
@@ -251,7 +237,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         tx: s.x,
         ty: legal ? s.y - Math.min(16, cardH * 0.14) : s.y,
         trot: s.rot,
-        tscale: legal ? 1.03 : blocked ? 0.98 : 1,
+        tscale: handScale * (legal ? 1.03 : blocked ? 0.98 : 1),
         ox: s.x,
         oy: s.y,
         legal,
@@ -284,11 +270,16 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     });
 
     const desiredKeys = new Set(desired.map((d) => d.key));
+    const nextSlots: SlotInfo[] = Array(MAX).fill(null);
 
     // Retire slots whose card is gone — sweep played piles away when the round clears.
     for (const [key, sl] of Array.from(keyToSlot.current.entries())) {
       if (!desiredKeys.has(key)) {
+        nextSlots[sl] = slots[sl];
+        if (retirementTimers.current.has(key)) continue;
+
         const wasPlayed = slots[sl]?.kind === 'played';
+        const duration = roundCollected && wasPlayed ? 420 : 180;
         if (roundCollected && wasPlayed) {
           cancelAnimation(sx[sl]);
           cancelAnimation(sy[sl]);
@@ -301,7 +292,21 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         } else {
           sop[sl].value = withTiming(0, { duration: 180 });
         }
-        keyToSlot.current.delete(key);
+
+        retirementTimers.current.set(
+          key,
+          setTimeout(() => {
+            retirementTimers.current.delete(key);
+            if (keyToSlot.current.get(key) !== sl) return;
+            keyToSlot.current.delete(key);
+            setSlots((current) => {
+              if (current[sl]?.key !== key) return current;
+              const released = [...current];
+              released[sl] = null;
+              return released;
+            });
+          }, duration)
+        );
       }
     }
     if (roundCollected) firePop(L.trick.cx, L.trick.cy);
@@ -316,12 +321,16 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
       return -1;
     };
 
-    const nextSlots: SlotInfo[] = Array(MAX).fill(null);
     const ht: HandTarget[] = [];
     const cfg = { duration: 320, easing: Easing.out(Easing.cubic) };
     const dealCfg = { duration: 460, easing: Easing.out(Easing.back(1.5)) };
 
     for (const d of desired) {
+      const retirementTimer = retirementTimers.current.get(d.key);
+      if (retirementTimer) {
+        clearTimeout(retirementTimer);
+        retirementTimers.current.delete(d.key);
+      }
       let sl = keyToSlot.current.get(d.key);
       const isNew = sl === undefined;
       const dealCard = isDeal && d.kind === 'hand';
@@ -373,7 +382,15 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
       }
 
       if (d.kind === 'hand' && d.legal)
-        ht.push({ slot: sl, key: d.key, x: d.tx, y: d.ty, w: cardW, h: cardH });
+        ht.push({
+          slot: sl,
+          key: d.key,
+          x: d.tx,
+          y: d.ty,
+          w: cardW * handScale,
+          h: cardH * handScale,
+          scale: d.tscale,
+        });
     }
 
     handTargets.value = ht;
@@ -411,7 +428,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         dragKey.value = t.key;
         dragStartX.value = sx[t.slot].value;
         dragStartY.value = sy[t.slot].value;
-        sscale[t.slot].value = withTiming(1.12, { duration: 120 });
+        sscale[t.slot].value = withTiming(t.scale * 1.1, { duration: 120 });
       })
       .onUpdate((e) => {
         'worklet';
@@ -439,8 +456,8 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
           if (tgt) {
             sx[sl].value = withSpring(tgt.x, { damping: 16, stiffness: 180 });
             sy[sl].value = withSpring(tgt.y, { damping: 16, stiffness: 180 });
+            sscale[sl].value = withSpring(tgt.scale);
           }
-          sscale[sl].value = withSpring(1);
         }
         dragSlot.value = -1;
       })
@@ -450,7 +467,12 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         // the reconciler doesn't skip animating this slot (which would kill the fly).
         const sl = dragSlot.value;
         if (sl >= 0) {
-          sscale[sl].value = withSpring(1);
+          const ts = handTargets.value;
+          for (let i = 0; i < ts.length; i++)
+            if (ts[i].slot === sl) {
+              sscale[sl].value = withSpring(ts[i].scale);
+              break;
+            }
           dragSlot.value = -1;
         }
       });
@@ -503,7 +525,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, textures, cardW, cardH]);
 
-  return { gesture, nodes, pulse, trumpPop };
+  return { gesture, nodes, trumpPop };
 }
 
 function CardSprite({

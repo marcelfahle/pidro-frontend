@@ -8,29 +8,13 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Card, GameViewModel, Suit } from '@/types/game';
 import { getCardImage } from '@/utils/cardImages';
-import { getRankLabel } from '@/utils/cards';
+import { getPidroPoints, getRankLabel } from '@/utils/cards';
 
 interface HandSelectorProps {
   viewModel: GameViewModel;
   cards: Card[];
   trumpSuit: Suit | null;
   onSelectHand: (cards: Card[]) => void | Promise<void>;
-}
-
-const RED_SUITS = new Set<Suit>(['hearts', 'diamonds']);
-
-function getPidroPoints(rank: number, suit: Suit, trumpSuit: Suit): number | null {
-  if (suit === trumpSuit) {
-    if (rank === 14 || rank === 2 || rank === 11) return 1;
-    if (rank === 10) return 10;
-    if (rank === 5) return 5;
-  }
-  if (rank === 5) {
-    const trumpIsRed = RED_SUITS.has(trumpSuit);
-    const cardIsRed = RED_SUITS.has(suit);
-    if (trumpIsRed !== cardIsRed) return 5;
-  }
-  return null;
 }
 
 const TARGET_COUNT = 6;

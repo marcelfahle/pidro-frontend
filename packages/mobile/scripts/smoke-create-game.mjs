@@ -12,6 +12,9 @@ const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
 const username = process.env.SMOKE_USERNAME ?? 'mf2';
 const password = process.env.SMOKE_PASSWORD ?? 'hallohallo';
 const screenshotDir = resolve(repoRoot, 'screenshots/agent-mobile-live');
+const isExpectedResponseFailure = ({ status, url }) =>
+  status === 422 ||
+  (status === 404 && /\/api\/v1\/rooms\/[A-Z0-9]+\/leave$/.test(new URL(url).pathname));
 async function captureCurrentScreen(page, name, testId) {
   const captures = [];
   for (const viewport of UI_VIEWPORTS) {
@@ -83,6 +86,27 @@ async function createHiddenCurrentRoom(token) {
   return payload?.data?.code ?? payload?.code;
 }
 
+async function createLiveGameRoom(token) {
+  const response = await fetch(`${apiBaseUrl}/api/v1/rooms`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: `Live table ${Date.now().toString().slice(-6)}`,
+      settings: { min_games: 1, time_limit: 0, private: false },
+      seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
+      bot_difficulty: 'basic',
+    }),
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(`Failed to create live game: ${response.status} ${JSON.stringify(payload)}`);
+  }
+  return payload?.data?.code ?? payload?.code;
+}
+
 async function main() {
   await mkdir(screenshotDir, { recursive: true });
   const token = await loginViaApi();
@@ -100,6 +124,7 @@ async function main() {
   const page = await context.newPage();
   const consoleErrors = [];
   const pageErrors = [];
+  const failedResponses = [];
   const captures = [];
 
   page.on('console', (message) => {
@@ -110,6 +135,11 @@ async function main() {
   });
   page.on('pageerror', (error) => {
     pageErrors.push(String(error?.message ?? error));
+  });
+  page.on('response', (response) => {
+    if (response.status() >= 400) {
+      failedResponses.push({ status: response.status(), url: response.url() });
+    }
   });
 
   try {
@@ -143,7 +173,7 @@ async function main() {
     await page.getByTestId('lobby-screen').waitFor({ timeout: 15_000 });
     captures.push(...(await captureCurrentScreen(page, 'lobby', 'lobby-screen')));
 
-    await page.getByText('New table', { exact: true }).click();
+    await page.getByRole('button', { name: 'Create table', exact: true }).first().click();
     await page.getByLabel('Table name').fill(`Smoke ${Date.now().toString().slice(-6)}`);
     await page.getByLabel('Seat 2 bot').click();
     await page.getByLabel('Seat 3 bot').click();
@@ -163,17 +193,38 @@ async function main() {
     await page.getByText('Leave').click({ timeout: 5_000 });
     await page.waitForURL(/\/lobby$/, { timeout: 10_000 });
 
-    if (consoleErrors.length || pageErrors.length) {
+    await leaveAnyCurrentRoom(token);
+    const liveRoomCode = await createLiveGameRoom(token);
+    await page.goto(`${mobileBaseUrl}/game/${liveRoomCode}`, { waitUntil: 'domcontentloaded' });
+    await page.getByTestId('game-table').waitFor({ state: 'visible', timeout: 20_000 });
+    captures.push(...(await captureCurrentScreen(page, 'game-table-live', 'game-table')));
+    await page.getByText('Leave').click({ timeout: 5_000 });
+    await page.waitForURL(/\/lobby$/, { timeout: 10_000 });
+
+    const unexpectedFailedResponses = failedResponses.filter(
+      (response) => !isExpectedResponseFailure(response)
+    );
+    const actionableConsoleErrors = consoleErrors.filter(
+      (error) =>
+        !/Failed to load resource:.*status of (404|422)/.test(error) ||
+        unexpectedFailedResponses.length > 0
+    );
+
+    if (actionableConsoleErrors.length || pageErrors.length || unexpectedFailedResponses.length) {
       throw new Error(
         [
-          `Browser errors: console=${consoleErrors.length}, page=${pageErrors.length}`,
-          ...consoleErrors.slice(0, 5).map((error) => `console: ${error}`),
+          `Browser errors: console=${actionableConsoleErrors.length}, page=${pageErrors.length}`,
+          ...actionableConsoleErrors.slice(0, 5).map((error) => `console: ${error}`),
           ...pageErrors.slice(0, 5).map((error) => `page: ${error}`),
+          ...unexpectedFailedResponses
+            .slice(0, 5)
+            .map(({ status, url }) => `response: ${status} ${url}`),
         ].join('\n')
       );
     }
 
     console.log(`smoke:create-game ok game=${gameUrl} lobby=${page.url()}`);
+    console.log(`smoke:live-game-table ok room=${liveRoomCode}`);
     console.log(`smoke:stale-room-recovery seeded=${seededRoomCode}`);
     console.log(`smoke:responsive-ui ok ${captures.length} captures`);
     captures.forEach((capture) => console.log(`  ${capture}`));

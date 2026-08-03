@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { Stack, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
@@ -8,6 +9,7 @@ import { PidroSpacing } from '@/design/tokens';
 
 export default function NotFoundScreen() {
   const router = useRouter();
+  const goHome = useCallback(() => router.replace('/home'), [router]);
 
   return (
     <>
@@ -22,7 +24,7 @@ export default function NotFoundScreen() {
               Return home and choose another table.
             </PidroText>
           </View>
-          <Button label="Go home" onPress={() => router.replace('/home')} />
+          <Button label="Go home" onPress={goHome} />
         </Surface>
       </ScreenShell>
     </>

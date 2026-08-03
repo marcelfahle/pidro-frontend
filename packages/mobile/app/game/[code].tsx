@@ -29,9 +29,7 @@ import { Background } from '@/components/ui/Background';
 import { Button } from '@/components/ui/Button';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
-import { GameTable } from '@/components/game/GameTable';
 import { PidroSpacing } from '@/design/tokens';
-import { USE_SKIA_TABLE } from '@/game/featureFlags';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 
 type SkiaTableProps = {
@@ -155,6 +153,7 @@ export default function GameScreen() {
   const setServerState = useGameStore((s) => s.setServerState);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
   const youPositionAbs = useGameStore((s) => s.youPositionAbs);
+  const role = useGameStore((s) => s.role);
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
 
   // NOTE: We don't use useLobbyChannel here - game screen relies on GameChannel for updates
@@ -173,6 +172,8 @@ export default function GameScreen() {
   } | null>(null);
   const progressionSummary =
     progressionResult?.roomCode === code ? progressionResult.summary : null;
+  const [restoreFailureCode, setRestoreFailureCode] = useState<string | null>(null);
+  const [restoreAttempt, setRestoreAttempt] = useState(0);
 
   // Hide status bar when entering game
   useEffect(() => {
@@ -216,9 +217,6 @@ export default function GameScreen() {
       })
       .catch(() => {});
   }, [serverPhase, code, authHydrated, accessToken, updateRoom]);
-
-  // Debug: track status changes
-  console.log('[GameScreen] room.status=', room?.status, 'serverPhase=', serverPhase);
 
   // Subscribe to the game channel as soon as we're seated — including while the
   // room is still 'waiting'. The server broadcasts the initial game_state on
@@ -299,12 +297,16 @@ export default function GameScreen() {
           null;
         const legalActions = payload?.data?.legal_actions ?? payload?.legal_actions ?? [];
 
-        if (restoredState) {
-          setServerState(restoredState);
-          setLegalActions(legalActions);
+        if (useGameStore.getState().serverState) return;
+        if (!restoredState) throw new Error('The server returned no game state.');
+
+        setServerState(restoredState);
+        setLegalActions(legalActions);
+      } catch {
+        if (!cancelled && !useGameStore.getState().serverState) {
+          console.warn('[GameScreen] Failed to restore game state.');
+          setRestoreFailureCode(code);
         }
-      } catch (error) {
-        console.warn('[GameScreen] Failed to restore game state:', error);
       }
     };
 
@@ -313,15 +315,19 @@ export default function GameScreen() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authHydrated, code, setLegalActions, setServerState, shouldRestoreServerState]);
+  }, [
+    accessToken,
+    authHydrated,
+    code,
+    restoreAttempt,
+    setLegalActions,
+    setServerState,
+    shouldRestoreServerState,
+  ]);
 
   // Clean up game store when leaving screen
   useEffect(() => {
-    console.log('[GameScreen] MOUNTED');
-    return () => {
-      console.log('[GameScreen] UNMOUNTING - calling resetGame');
-      resetGame();
-    };
+    return () => resetGame();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -338,9 +344,9 @@ export default function GameScreen() {
         if (cancelled) return;
         setRoomLookup({ roomCode: code, room: fetchedRoom });
         updateRoom(fetchedRoom);
-      } catch (error) {
+      } catch {
         if (!cancelled) setRoomLookup({ roomCode: code });
-        console.error('Failed to fetch room details', error);
+        console.error('[GameScreen] Failed to fetch room details.');
       }
     };
 
@@ -379,8 +385,8 @@ export default function GameScreen() {
           router.replace(`/game/${newCode}`);
           return;
         }
-      } catch (error) {
-        console.error('[GameScreen] Failed to create new game:', error);
+      } catch {
+        console.error('[GameScreen] Failed to create a new game.');
       }
       router.replace('/lobby');
     },
@@ -391,8 +397,10 @@ export default function GameScreen() {
     const roomCode = room?.code ?? code;
 
     if (roomCode) {
-      void lobbyApi.leaveRoom(roomCode).catch((error) => {
-        console.warn('Failed to leave room:', error);
+      const leaveRequest =
+        role === 'spectator' ? lobbyApi.unwatchRoom(roomCode) : lobbyApi.leaveRoom(roomCode);
+      void leaveRequest.catch(() => {
+        console.warn('[GameScreen] Failed to leave the table cleanly.');
       });
     }
 
@@ -411,6 +419,43 @@ export default function GameScreen() {
   }
 
   if (shouldRestoreServerState && authHydrated && accessToken) {
+    if (restoreFailureCode === code) {
+      return (
+        <Background>
+          <View style={styles.tableLoadState}>
+            <Surface
+              variant="window"
+              style={styles.tableLoadWindow}
+              padded
+              accessibilityRole="alert">
+              <PidroText role="title" align="center">
+                The table could not be restored
+              </PidroText>
+              <PidroText role="body" tone="soft" align="center">
+                Your game is still on the server. Check your connection, then try again.
+              </PidroText>
+              <View style={styles.tableLoadActions}>
+                <Button
+                  label="Back to lobby"
+                  variant="outline"
+                  onPress={() => router.replace('/lobby')}
+                  style={styles.tableLoadButton}
+                />
+                <Button
+                  label="Try again"
+                  onPress={() => {
+                    setRestoreFailureCode(null);
+                    setRestoreAttempt((attempt) => attempt + 1);
+                  }}
+                  style={styles.tableLoadButton}
+                />
+              </View>
+            </Surface>
+          </View>
+        </Background>
+      );
+    }
+
     return (
       <Background>
         <View className="flex-1 items-center justify-center">
@@ -459,16 +504,8 @@ export default function GameScreen() {
   const isInGamePhase = serverPhase && inGamePhases.includes(serverPhase);
 
   if (room.status === 'playing' || isInGamePhase) {
-    // Skia canvas table behind a flag (default off); legacy GameTable is the reference.
-    return USE_SKIA_TABLE ? (
+    return (
       <SkiaGameTable
-        room={room}
-        progressionSummary={progressionSummary}
-        onLeave={handleLeaveGame}
-        onPlayAgain={handlePlayAgain}
-      />
-    ) : (
-      <GameTable
         room={room}
         progressionSummary={progressionSummary}
         onLeave={handleLeaveGame}

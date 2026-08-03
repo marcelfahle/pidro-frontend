@@ -170,6 +170,32 @@ describe('useGameChannel', () => {
     unmount();
   });
 
+  it('records the authoritative game-over winner', () => {
+    const { unmount } = renderHook(() => useGameChannel({ roomCode: 'ABCD', enabled: true }));
+
+    act(() => {
+      currentChannel?.joinPush.trigger('ok', {
+        role: 'player',
+        position: 'south',
+        state: gameState('playing'),
+        legal_actions: [],
+        turn_timer: null,
+      });
+      currentChannel?.emit('game_over', {
+        winner: 'east_west',
+        scores: { north_south: 65, east_west: 62 },
+      });
+    });
+
+    expect(useGameStore.getState().serverState).toMatchObject({
+      phase: 'game_over',
+      winner: 'east_west',
+      scores: { north_south: 65, east_west: 62 },
+    });
+
+    unmount();
+  });
+
   it('auto-triggers dealer selection from the north player', () => {
     const { unmount } = renderHook(() => useGameChannel({ roomCode: 'ABCD', enabled: true }));
 
@@ -364,6 +390,30 @@ describe('useGameChannel', () => {
         message: expect.stringContaining('is back!'),
       }),
     );
+
+    unmount();
+  });
+
+  it('shows owner decisions only to the named room owner', () => {
+    useGameStore.setState({ youPlayerId: 'owner-id', playerMeta: buildPlayerMeta() });
+    const onOwnerDecision = vi.fn();
+    const { unmount } = renderHook(() =>
+      useGameChannel({ roomCode: 'ABCD', enabled: true, onOwnerDecision }),
+    );
+
+    act(() => {
+      currentChannel?.emit('owner_decision_available', {
+        position: 'east',
+        owner_id: 'someone-else',
+      });
+      currentChannel?.emit('owner_decision_available', {
+        position: 'east',
+        owner_id: 'owner-id',
+      });
+    });
+
+    expect(onOwnerDecision).toHaveBeenCalledTimes(1);
+    expect(onOwnerDecision).toHaveBeenCalledWith(expect.objectContaining({ position: 'east' }));
 
     unmount();
   });

@@ -38,7 +38,7 @@ export function Button({
     resolvedVariant === 'outline' || resolvedVariant === 'secondary' || resolvedVariant === 'ghost'
       ? PidroColors.text
       : resolvedVariant === 'default'
-        ? PidroColors.ink
+        ? PidroColors.goldLight
         : PidroColors.text;
   const content = label ?? children;
   const renderedContent =
@@ -72,7 +72,6 @@ export function Button({
         isDisabled && styles.disabled,
         style,
       ]}
-      pressedStyle={!isDisabled ? styles.pressed : undefined}
       {...props}>
       {loading ? <ActivityIndicator color={spinnerColor} /> : renderedContent}
     </PressableFX>
@@ -93,8 +92,8 @@ const styles = StyleSheet.create({
   },
   default: {
     borderWidth: 1.5,
-    borderColor: PidroColors.goldDark,
-    backgroundColor: PidroColors.gold,
+    borderColor: PidroColors.actionPrimaryBorder,
+    backgroundColor: PidroColors.actionPrimary,
   },
   secondary: {
     borderWidth: 1.5,
@@ -143,7 +142,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   defaultText: {
-    color: PidroColors.ink,
+    color: PidroColors.goldLight,
   },
   secondaryText: {
     color: PidroColors.text,
@@ -171,10 +170,6 @@ const styles = StyleSheet.create({
   },
   iconSizeText: {
     fontSize: 0,
-  },
-  pressed: {
-    opacity: 0.86,
-    transform: [{ scale: 0.98 }],
   },
   disabled: {
     opacity: 0.45,

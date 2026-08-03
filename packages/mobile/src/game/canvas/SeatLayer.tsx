@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DealerChip } from '@/components/game/DealerChip';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
-import type { Suit } from '@/types/game';
+import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { computeLayout, type RelativePosition } from './layout';
 import type { TableSeat } from './tableModel';
 import { T } from './tokens';
@@ -39,23 +39,10 @@ const BACK = webOr('/cards/cardback.png', require('~/assets/images/cardback.png'
 const avatarFor = (name: string | null) =>
   AVATARS[(name ? name.charCodeAt(0) : 0) % AVATARS.length];
 
-const RANK_LABEL: Record<number, string> = {
-  11: 'J',
-  12: 'Q',
-  13: 'K',
-  14: 'A',
-};
-const SUIT_GLYPH: Record<Suit, string> = {
-  spades: '♠',
-  hearts: '♥',
-  diamonds: '♦',
-  clubs: '♣',
-};
-
 function statusFor(data: TableSeat, override?: string): string | null {
   if (data.lastPlayedCard) {
     const c = data.lastPlayedCard.card;
-    return `Plays ${RANK_LABEL[c.rank] ?? c.rank}${SUIT_GLYPH[c.suit]}`;
+    return `Plays ${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}`;
   }
   return override ?? null;
 }
@@ -84,16 +71,15 @@ export function SeatLayer({
     () => computeLayout(width, height, { top, bottom, left, right }, topReserve, bottomReserve),
     [width, height, top, bottom, left, right, topReserve, bottomReserve]
   );
-  const cy = height / 2;
   const portrait = L.profile.endsWith('portrait');
   const tableTop = insets.top + topReserve;
   const northBackTop = tableTop - L.cardH * (portrait ? 0.3 : 0.36);
-  const northPlateTop = insets.top + topReserve + (portrait ? 28 : 24);
-  const sideTop = cy - L.cardH * (portrait ? 0.46 : 0.54);
-  // Landscape follows the original: plates live in the corners (west top-left
-  // under the scoreboard, north beside its fan, east bottom-right) and only
-  // the card columns hug the side edges.
-  const northFanHalf = clamp(L.cardW * 0.66, 31, 58) * (1 + 5 * 0.52) * 0.5;
+  const northPlateTop = tableTop + (portrait ? 34 : 28);
+  const sideBackW = clamp(L.cardW * 0.62, 30, 56);
+  const sideStackMaxHeight = sideBackW * (1 + 5 * 0.48);
+  // Both orientations form an opponent triangle: north centered below its fan,
+  // with east/west symmetrically above their side stacks.
+  const sidePlateTop = portrait ? L.trick.cy - sideStackMaxHeight / 2 - 62 : tableTop + 66;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -105,18 +91,28 @@ export function SeatLayer({
         const timerProgress = timerProgressByRel?.[rel] ?? null;
 
         if (rel === 'south') {
-          const southBottom =
-            height >= width
-              ? insets.bottom + bottomReserve + L.cardH * 1.32 + 10
-              : insets.bottom + bottomReserve + 8;
+          const southBottom = insets.bottom + bottomReserve + 8;
+          // The scoreboard divider is ~70pt from the safe-area edge. Reusing
+          // that vertical axis gives the landscape table a deliberate left rail.
+          const landscapeSouthLeft = insets.left + 70;
           return (
             <View
               key={rel}
-              style={{
-                position: 'absolute',
-                left: insets.left + 10,
-                bottom: southBottom,
-              }}>
+              style={
+                portrait
+                  ? {
+                      position: 'absolute',
+                      left: 0,
+                      right: 0,
+                      bottom: southBottom,
+                      alignItems: 'center',
+                    }
+                  : {
+                      position: 'absolute',
+                      left: landscapeSouthLeft,
+                      top: L.hand.cy - 20,
+                    }
+              }>
               <Nameplate
                 testID="seat-south"
                 data={data}
@@ -124,11 +120,16 @@ export function SeatLayer({
                 status={status}
                 timerProgress={timerProgress}
                 narrow={portrait}
+                compact={!portrait}
               />
             </View>
           );
         }
         if (rel === 'north') {
+          const northBackW = clamp(L.cardW * 0.66, 31, 58);
+          const northBackCount = clamp(data.cardCount ?? 0, 0, 6);
+          const northFanWidth =
+            northBackCount > 0 ? northBackW * (1 + (northBackCount - 1) * 0.52) : northBackW;
           return (
             <View key={rel} style={StyleSheet.absoluteFill}>
               <View
@@ -141,53 +142,45 @@ export function SeatLayer({
                 }}>
                 <BacksFan count={data.cardCount ?? 0} cardW={L.cardW} />
               </View>
-              {portrait ? (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: northPlateTop,
-                    left: insets.left + 10,
-                  }}>
-                  <Nameplate
-                    testID="seat-north"
-                    data={data}
-                    isDealer={isDealer}
-                    status={status}
-                    timerProgress={timerProgress}
-                    narrow={portrait}
-                  />
-                </View>
-              ) : (
-                <View
-                  style={{
-                    position: 'absolute',
-                    top: tableTop + 6,
-                    left: width / 2 + northFanHalf + 14,
-                  }}>
-                  <Nameplate
-                    testID="seat-north"
-                    data={data}
-                    isDealer={isDealer}
-                    status={status}
-                    timerProgress={timerProgress}
-                    narrow={portrait}
-                  />
-                </View>
-              )}
+              <View
+                style={
+                  portrait
+                    ? {
+                        position: 'absolute',
+                        top: northPlateTop,
+                        left: 0,
+                        right: 0,
+                        alignItems: 'center',
+                      }
+                    : {
+                        position: 'absolute',
+                        top: tableTop + 8,
+                        left: width / 2 + northFanWidth / 2 + PidroSpacing.sm,
+                      }
+                }>
+                <Nameplate
+                  testID="seat-north"
+                  data={data}
+                  isDealer={isDealer}
+                  status={status}
+                  timerProgress={timerProgress}
+                  narrow={portrait}
+                  compact={!portrait}
+                />
+              </View>
             </View>
           );
         }
-        // east / west: only the card-backs hug the edge. Portrait keeps plates
-        // at the side midpoints; landscape moves them to the corners like the
-        // original (west top-left under the scoreboard, east bottom-right).
+        // East / west card-backs keep hugging the edges. In landscape their
+        // nameplates sit above the stacks at matching heights.
         const edgeOffset = Math.min(L.cardW * 0.28, 18);
         const platePos = portrait
           ? rel === 'east'
-            ? { top: sideTop, right: insets.right + 8 }
-            : { top: sideTop, left: insets.left + 8 }
+            ? { top: sidePlateTop, right: insets.right + 8 }
+            : { top: sidePlateTop, left: insets.left + 8 }
           : rel === 'east'
-            ? { bottom: insets.bottom + 14, right: insets.right + 10 }
-            : { top: insets.top + 58, left: insets.left + 12 };
+            ? { top: sidePlateTop, right: insets.right + 10 }
+            : { top: sidePlateTop, left: insets.left + 12 };
         const backsEdge =
           rel === 'east'
             ? { right: insets.right - edgeOffset }
@@ -202,6 +195,7 @@ export function SeatLayer({
                 status={status}
                 timerProgress={timerProgress}
                 narrow={portrait}
+                compact={!portrait}
               />
             </View>
             <View
@@ -231,6 +225,7 @@ function Nameplate({
   status,
   timerProgress,
   narrow = false,
+  compact = false,
 }: {
   testID: string;
   data: TableSeat;
@@ -238,13 +233,19 @@ function Nameplate({
   status: string | null;
   timerProgress: number | null;
   narrow?: boolean;
+  compact?: boolean;
 }) {
   const ring = data.isCurrentTurn ? T.gold : 'rgba(255,255,255,0.20)';
   const safeProgress = timerProgress == null ? null : clamp(timerProgress, 0, 1);
   return (
     <View
       testID={testID}
-      style={[styles.pill, narrow && styles.pillNarrow, data.isCurrentTurn && styles.pillTurn]}>
+      style={[
+        styles.pill,
+        narrow && styles.pillNarrow,
+        compact && styles.pillCompact,
+        data.isCurrentTurn && styles.pillTurn,
+      ]}>
       <View style={[styles.avatar, { borderColor: ring }]}>
         <Image source={avatarFor(data.username)} style={styles.avatarImg} resizeMode="cover" />
       </View>
@@ -353,7 +354,12 @@ const styles = StyleSheet.create({
     borderColor: PidroColors.border,
   },
   pillNarrow: {
-    width: 122,
+    width: 110,
+    minHeight: 40,
+  },
+  pillCompact: {
+    width: 124,
+    minHeight: 40,
   },
   pillTurn: {
     backgroundColor: PidroColors.glassHover,

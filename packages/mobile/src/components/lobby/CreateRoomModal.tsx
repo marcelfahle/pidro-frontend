@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, Switch, useWindowDimensions, View } from 'react-native';
+import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { BotDifficulty, CreateRoomRequest, SeatType } from '@/types/lobby';
 import { Button } from '@/components/ui/Button';
@@ -36,6 +37,7 @@ export function CreateRoomModal({
   error,
 }: CreateRoomModalProps) {
   const { width, height } = useWindowDimensions();
+  const reduceMotion = useReducedMotion();
   const landscape = width > height;
   const [name, setName] = useState('');
   const [isPrivate, setIsPrivate] = useState(false);
@@ -102,7 +104,7 @@ export function CreateRoomModal({
     <Modal
       visible={isOpen}
       transparent
-      animationType="fade"
+      animationType={reduceMotion ? 'none' : 'fade'}
       onRequestClose={() => {
         if (!isLoading) onClose();
       }}>
@@ -372,6 +374,8 @@ const styles = StyleSheet.create({
   },
   seatRowCompact: {
     width: '48.8%',
+    minHeight: PidroLayout.touchTarget,
+    paddingVertical: PidroSpacing.xxs,
   },
   seatNumber: {
     width: 28,

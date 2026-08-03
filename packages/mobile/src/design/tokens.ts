@@ -19,6 +19,9 @@ export const PidroColors = {
   goldLight: '#f1d078',
   goldDark: '#a86b17',
   goldSoft: 'rgba(225, 173, 58, 0.18)',
+  actionPrimary: '#6f3d16',
+  actionPrimaryPressed: '#82501f',
+  actionPrimaryBorder: '#c38725',
   woodTop: '#8a6030',
   woodMid: '#5a3515',
   woodBottom: '#1e0e04',
@@ -61,10 +64,10 @@ export const PidroType = {
   },
   title: {
     fontFamily: PidroFonts.ui,
-    fontSize: 21,
+    fontSize: 22,
     lineHeight: 27,
     fontWeight: '800' as const,
-    letterSpacing: -0.15,
+    letterSpacing: -0.25,
   },
   label: {
     fontFamily: PidroFonts.ui,

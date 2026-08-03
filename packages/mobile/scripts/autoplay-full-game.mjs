@@ -60,7 +60,7 @@ async function main() {
     log(
       joined.ok
         ? `took a seat in ${roomCode}`
-        : `seat join skipped (${JSON.stringify(joined.payload)?.slice(0, 120) ?? joined.status})`,
+        : `seat join skipped (${JSON.stringify(joined.payload)?.slice(0, 120) ?? joined.status})`
     );
   }
   if (!roomCode) {
@@ -71,15 +71,14 @@ async function main() {
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
       bot_difficulty: 'basic',
     });
-    if (!created.ok)
-      throw new Error(`create room failed: ${JSON.stringify(created.payload)}`);
+    if (!created.ok) throw new Error(`create room failed: ${JSON.stringify(created.payload)}`);
     roomCode = created.payload?.data?.code ?? created.payload?.code;
   }
   log(`room ${roomCode}`);
 
   const socket = new Socket(wsBaseUrl, {
     transport: WebSocket,
-    params: { token },
+    authToken: token,
   });
   socket.connect();
 
@@ -88,22 +87,21 @@ async function main() {
   let lastScores = '';
   let acting = false;
   let finished = false;
+  let progressionReceived = false;
+  let progressionDeadline = null;
 
   function chooseAction(actions, state) {
     const first = (type) => actions.find((a) => a.type === type);
     // Occasionally take the bid on the first hand so both outcomes exercise;
     // otherwise pass when possible, else minimum bid.
-    const bidActions = actions
-      .filter((a) => a.type === 'bid')
-      .sort((a, b) => a.amount - b.amount);
+    const bidActions = actions.filter((a) => a.type === 'bid').sort((a, b) => a.amount - b.amount);
     if (first('select_dealer')) return ['select_dealer', {}];
     if (first('declare_trump')) {
       // pick the suit we hold most of
       const hand = state?.hands?.[state?.your_position] ?? state?.your_hand ?? [];
       const counts = {};
       for (const c of hand) counts[c.suit] = (counts[c.suit] ?? 0) + 1;
-      const best =
-        Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'hearts';
+      const best = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'hearts';
       return ['declare_trump', { suit: best }];
     }
     if (first('select_hand')) {
@@ -127,16 +125,21 @@ async function main() {
     const scores = JSON.stringify(state.scores ?? null);
     if (state.phase !== lastPhase || scores !== lastScores) {
       log(
-        `phase=${state.phase} hand=${state.hand_number ?? '?'} scores=${scores} legal=${actions.length}`,
+        `phase=${state.phase} hand=${state.hand_number ?? '?'} scores=${scores} legal=${actions.length}`
       );
       lastPhase = state.phase;
       lastScores = scores;
     }
 
     if (state.phase === 'game_over' || state.phase === 'complete') {
+      if (finished) return;
       log('GAME OVER', scores);
       finished = true;
-      setTimeout(() => process.exit(0), 8000); // wait for progression_summary
+      if (progressionReceived) process.exit(0);
+      progressionDeadline = setTimeout(() => {
+        console.error('game finished without the required progression_summary event');
+        process.exit(3);
+      }, 8000);
       return;
     }
 
@@ -163,8 +166,12 @@ async function main() {
 
   channel.on('game_state', handleState);
   channel.on('progression_summary', (payload) => {
+    progressionReceived = true;
     log('PROGRESSION_SUMMARY', JSON.stringify(payload));
-    if (finished) process.exit(0);
+    if (finished) {
+      if (progressionDeadline) clearTimeout(progressionDeadline);
+      process.exit(0);
+    }
   });
 
   channel

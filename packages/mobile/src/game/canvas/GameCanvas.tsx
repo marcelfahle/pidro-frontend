@@ -1,14 +1,11 @@
 /**
  * Skia table scene.
- * - With `model` + `textures`: the real table. Felt, trick ring and opponent
- *   back-stacks are static; the hand + trick cards are animated, draggable sprites
- *   driven by useCardSprites (M2 play/fly + M3 deal/collect/particles). A pulsing
- *   halo follows the current seat; the trump glyph pops when trump is declared.
- * - Without: the M0 placeholder shell (kept as a safe fallback).
+ * Felt, trick ring and opponent back-stacks are static; the hand + trick cards
+ * are animated, draggable sprites driven by useCardSprites.
  * Self-contained for window/insets; web callers load CanvasKit before import.
  */
 import { useMemo } from 'react';
-import { useWindowDimensions } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import {
@@ -20,23 +17,22 @@ import {
   Image,
   Path,
   RadialGradient,
-  RoundedRect,
   Skia,
   vec,
   type SkImage,
 } from '@shopify/react-native-skia';
 import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
 import type { Card } from '@/types/game';
-import { computeLayout, type RelativePosition, type TableLayout } from './layout';
+import { computeLayout } from './layout';
 import { T } from './tokens';
 import type { CardTextures } from './cardTextures';
 import type { TableModel } from './tableModel';
 import { useCardSprites } from './useCardSprites';
 
 type Props = {
-  model?: TableModel;
-  textures?: CardTextures;
-  onPlayCard?: (card: Card) => void;
+  model: TableModel;
+  textures: CardTextures;
+  onPlayCard: (card: Card) => void;
   topReserve?: number;
   bottomReserve?: number;
 };
@@ -47,7 +43,7 @@ export default function GameCanvas({
   onPlayCard,
   topReserve = 0,
   bottomReserve = 0,
-}: Props = {}) {
+}: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { top, bottom, left, right } = insets;
@@ -56,13 +52,12 @@ export default function GameCanvas({
     [width, height, top, bottom, left, right, topReserve, bottomReserve]
   );
 
-  const interactive = !!(model && textures);
   const { gesture, nodes, trumpPop } = useCardSprites({
     model,
     textures,
     L,
     onPlayCard,
-    enabled: interactive,
+    enabled: true,
   });
 
   const canvas = (
@@ -94,30 +89,42 @@ export default function GameCanvas({
         strokeWidth={1.4}
         color={T.ring}
       />
-      {!(interactive && model.trumpSuit) && (
-        <Circle c={vec(L.trick.cx, L.trick.cy)} r={3} color={T.ringDot} />
-      )}
+      {!model.trumpSuit && <Circle c={vec(L.trick.cx, L.trick.cy)} r={3} color={T.ringDot} />}
 
-      {interactive ? (
-        <>
-          {model.trumpSuit && (
-            <SuitGlyph
-              img={textures.suit(model.trumpSuit)}
-              x={L.trick.cx}
-              y={L.trick.cy}
-              size={L.cardW * 0.7}
-              pop={trumpPop}
-            />
-          )}
-          {nodes}
-        </>
-      ) : (
-        <PlaceholderShell L={L} />
+      {model.trumpSuit && (
+        <SuitGlyph
+          img={textures.suit(model.trumpSuit)}
+          x={L.trick.cx}
+          y={L.trick.cy}
+          size={L.cardW * 0.7}
+          pop={trumpPop}
+        />
       )}
+      {nodes}
     </Canvas>
   );
 
-  return interactive ? <GestureDetector gesture={gesture}>{canvas}</GestureDetector> : canvas;
+  const renderedHandHeight = L.cardH * (L.profile.endsWith('landscape') ? 0.9 : 1);
+
+  return (
+    <GestureDetector gesture={gesture}>
+      <View style={{ flex: 1 }}>
+        {canvas}
+        <View
+          testID="player-hand-top"
+          pointerEvents="none"
+          accessible={false}
+          style={{
+            position: 'absolute',
+            top: L.hand.cy - renderedHandHeight / 2,
+            left: 0,
+            width: 1,
+            height: 1,
+          }}
+        />
+      </View>
+    </GestureDetector>
+  );
 }
 
 // Subtle diamond weave over the felt, like the original's patterned cloth.
@@ -172,70 +179,6 @@ function SuitGlyph({
         <BlurMask blur={10} style="normal" />
       </Circle>
       <Image image={img} x={-size / 2} y={-size / 2} width={size} height={size} fit="contain" />
-    </Group>
-  );
-}
-
-// M0 fallback: placeholder slots + fan, no real data.
-function PlaceholderShell({ L }: { L: TableLayout }) {
-  const fan = Array.from({ length: 6 }, (_, i) => {
-    const off = i - 2.5;
-    return {
-      x: L.hand.cx + off * (L.cardW * 0.62),
-      y: L.hand.cy + Math.abs(off) * 6,
-      rot: off * 0.06,
-    };
-  });
-  const opponents: RelativePosition[] = ['north', 'east', 'west'];
-  const allSeats: RelativePosition[] = ['north', 'east', 'south', 'west'];
-  return (
-    <>
-      {opponents.map((pos) => {
-        const s = L.seats[pos];
-        return (
-          <Slot key={pos} x={s.x} y={s.y} rot={s.rot} w={L.cardW} h={L.cardH} color={T.slot} />
-        );
-      })}
-      {fan.map((c, i) => (
-        <Slot key={`h${i}`} x={c.x} y={c.y} rot={c.rot} w={L.cardW} h={L.cardH} color={T.slotYou} />
-      ))}
-      {allSeats.map((pos) => {
-        const s = L.seats[pos];
-        return <Circle key={`d${pos}`} c={vec(s.x, s.y)} r={4} color={T.seatDot} />;
-      })}
-    </>
-  );
-}
-
-function Slot({
-  x,
-  y,
-  rot,
-  w,
-  h,
-  color,
-}: {
-  x: number;
-  y: number;
-  rot: number;
-  w: number;
-  h: number;
-  color: string;
-}) {
-  const r = Math.min(10, w * 0.12);
-  return (
-    <Group transform={[{ translateX: x }, { translateY: y }, { rotate: rot }]}>
-      <RoundedRect x={-w / 2} y={-h / 2} width={w} height={h} r={r} color={color} />
-      <RoundedRect
-        x={-w / 2}
-        y={-h / 2}
-        width={w}
-        height={h}
-        r={r}
-        color={T.slotStroke}
-        style="stroke"
-        strokeWidth={1}
-      />
     </Group>
   );
 }

@@ -1,16 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { Channel, Presence } from 'phoenix';
+import {
+  describeGameAction,
+  extractGameState,
+  normalizeTurnTimer,
+  shouldAutoSelectDealer,
+} from '@pidro/shared';
 import { batchedUpdates as unstable_batchedUpdates } from '@/utils/batchedUpdates';
 import { phoenixSocket } from '../socket';
 import { initRealtime } from '@/bootstrap/realtime';
 import { useGameStore } from '@/stores/game';
-import type {
-  ActiveTurnTimer,
-  GamePhase,
-  LegalAction,
-  ServerGameState,
-  ServerTurnTimerPayload,
-} from '@/types/game';
+import type { LegalAction, ServerGameState } from '@/types/game';
 import type { Position } from '@/types/lobby';
 
 let globalGameChannel: Channel | null = null;
@@ -62,103 +62,11 @@ function seatDisplayName(position: Position | null, fallback?: string | null): s
   return useGameStore.getState().playerMeta[position].username ?? 'A player';
 }
 
-function asNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-function normalizeTurnTimer(payload: unknown): ActiveTurnTimer | null {
-  if (!payload || typeof payload !== 'object') return null;
-
-  const data = payload as Partial<ServerTurnTimerPayload>;
-  const timerId = asNumber(data.timer_id);
-  const durationMs = asNumber(data.duration_ms);
-  const transitionDelayMs = asNumber(data.transition_delay_ms);
-  const eventSeq = asNumber(data.event_seq);
-
-  if (
-    timerId == null ||
-    durationMs == null ||
-    transitionDelayMs == null ||
-    eventSeq == null ||
-    (data.scope !== 'seat' && data.scope !== 'room') ||
-    typeof data.phase !== 'string'
-  ) {
-    return null;
-  }
-
-  const remainingMs = asNumber(data.remaining_ms) ?? durationMs + transitionDelayMs;
-
-  return {
-    timerId,
-    scope: data.scope,
-    position: (data.position as Position | null | undefined) ?? null,
-    phase: data.phase as GamePhase,
-    durationMs,
-    transitionDelayMs,
-    serverTime: typeof data.server_time === 'string' ? data.server_time : new Date().toISOString(),
-    remainingMs,
-    receivedAtMs: Date.now(),
-    eventSeq,
-  };
-}
-
-function describeAction(action: Record<string, unknown> | undefined): string {
-  switch (action?.type) {
-    case 'pass':
-      return 'passed';
-    case 'bid':
-      return `bid ${String(action.amount ?? '')}`.trim();
-    case 'declare_trump':
-      return `declared ${String(action.suit ?? 'trump')}`;
-    case 'play_card':
-      return 'played a card';
-    case 'select_hand':
-      return 'selected a hand';
-    case 'select_dealer':
-      return 'selected the dealer';
-    default:
-      return 'acted';
-  }
-}
-
 function parseProgressionSummary(payload: unknown): ProgressionSummary | null {
   if (!payload || typeof payload !== 'object') return null;
   const data = payload as Record<string, unknown>;
   if (typeof data.veteran_level !== 'number' || typeof data.xp_earned !== 'number') return null;
   return data as unknown as ProgressionSummary;
-}
-
-function extractGameState(data: Record<string, unknown> | undefined): ServerGameState | null {
-  if (!data) return null;
-
-  const candidates = [
-    data.state,
-    data.game_state,
-    (data.data as Record<string, unknown> | undefined)?.game_state,
-    (data.data as Record<string, unknown> | undefined)?.state,
-    data,
-  ];
-
-  for (const candidate of candidates) {
-    if (candidate && typeof candidate === 'object' && 'phase' in candidate) {
-      return candidate as ServerGameState;
-    }
-  }
-
-  return null;
-}
-
-function shouldAutoSelectDealer(
-  gameState: ServerGameState,
-  legalActions: LegalAction[],
-  position: Position | null
-): boolean {
-  return (
-    position === 'north' &&
-    gameState.phase === 'dealer_selection' &&
-    !gameState.dealer_selection_cuts &&
-    legalActions.some((action) => action.type === 'select_dealer')
-  );
 }
 
 export const useGameChannel = ({
@@ -205,6 +113,8 @@ export const useGameChannel = ({
     gameRefCount++;
 
     const topic = `game:${roomCode}`;
+    let disposed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       if (globalGameChannel && currentTopic && currentTopic !== topic) {
@@ -218,6 +128,11 @@ export const useGameChannel = ({
       currentTopic = topic;
       let presences: Record<string, unknown> = {};
       let dealerSelectionRequestKey: string | null = null;
+      const isCurrentChannel = () => !disposed && globalGameChannel === channel;
+      const onCurrent = <Payload>(event: string, handler: (payload: Payload) => void) =>
+        channel.on(event, (payload) => {
+          if (isCurrentChannel()) handler(payload as Payload);
+        });
 
       const maybeAutoSelectDealer = (
         gameState: ServerGameState,
@@ -232,15 +147,13 @@ export const useGameChannel = ({
         if (dealerSelectionRequestKey === key) return;
 
         dealerSelectionRequestKey = key;
-        channel.push('select_dealer', {}).receive('error', (error: unknown) => {
-          console.debug('[GameChannel] Auto dealer selection skipped', error);
-        });
+        channel.push('select_dealer', {});
       };
 
       channel
         .join()
         .receive('ok', (resp: unknown) => {
-          console.log('[GameChannel] Joined', topic, resp);
+          if (disposed || globalGameChannel !== channel) return;
           const response = resp as Record<string, unknown> | undefined;
 
           // Batch all state updates to avoid navigation context issues
@@ -250,7 +163,6 @@ export const useGameChannel = ({
 
             const position = response?.position as Position | undefined;
             if (position) {
-              console.log('[GameChannel] Setting position from join:', position);
               youPositionRef.current = position;
               setYouPosition(position);
             } else {
@@ -261,17 +173,11 @@ export const useGameChannel = ({
             setRole(role ?? null);
 
             const gameState = extractGameState(response);
-            console.log(
-              '[GameChannel] Extracted game state from join:',
-              gameState ? 'success' : 'null'
-            );
             if (gameState) {
-              console.log('[GameChannel] Setting server state, phase:', gameState.phase);
               setServerState(gameState);
             }
 
             const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
-            console.log('[GameChannel] Legal actions from join:', legalActions.length);
             setLegalActions(legalActions);
             setTurnTimer(normalizeTurnTimer(response?.turn_timer));
 
@@ -281,27 +187,23 @@ export const useGameChannel = ({
           });
         })
         .receive('error', (resp) => {
+          if (disposed || globalGameChannel !== channel) return;
           console.error('[GameChannel] Unable to join', topic, resp);
-          if (globalGameChannel === channel) {
-            globalGameChannel = null;
-            currentTopic = null;
-          }
-          channel.leave();
-          setChannelStatus(false);
+          // Phoenix marks the channel errored and schedules its own bounded
+          // rejoin. Keep this channel alive so a transient rejection recovers.
+          setChannelStatus(false, true);
           clearTurnTimer();
           const reason =
             (resp as { reason?: string } | undefined)?.reason || 'Unable to join game room.';
           setError(reason);
         });
 
-      channel.on('game_state', (payload: unknown) => {
-        console.log('[GameChannel] game_state event received:', payload);
+      onCurrent('game_state', (payload: unknown) => {
+        if (disposed || globalGameChannel !== channel) return;
         const data = payload as Record<string, unknown> | undefined;
         const gameState = extractGameState(data);
         if (gameState) {
-          console.log('[GameChannel] Setting server state from event, phase:', gameState.phase);
           const legalActions = (data?.legal_actions as LegalAction[] | undefined) ?? [];
-          console.log('[GameChannel] Legal actions from event:', legalActions.length);
           unstable_batchedUpdates(() => {
             setServerState(gameState);
             setLegalActions(legalActions);
@@ -312,16 +214,33 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('turn_timer_started', (payload: unknown) => {
+      onCurrent('game_over', (payload: unknown) => {
+        if (disposed || globalGameChannel !== channel) return;
+        const data = payload as Record<string, unknown> | undefined;
+        const winner =
+          data?.winner === 'north_south' || data?.winner === 'east_west' ? data.winner : null;
+        const scores = data?.scores as ServerGameState['scores'] | undefined;
+        const currentState = useGameStore.getState().serverState;
+        if (!currentState) return;
+
+        setServerState({
+          ...currentState,
+          phase: 'game_over',
+          winner,
+          ...(scores ? { scores } : {}),
+        });
+      });
+
+      onCurrent('turn_timer_started', (payload: unknown) => {
         setTurnTimer(normalizeTurnTimer(payload));
       });
 
-      channel.on('turn_timer_cancelled', (payload: unknown) => {
+      onCurrent('turn_timer_cancelled', (payload: unknown) => {
         const data = payload as { timer_id?: number } | undefined;
         clearTurnTimer(data?.timer_id ?? null);
       });
 
-      channel.on('turn_auto_played', (payload: unknown) => {
+      onCurrent('turn_auto_played', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const scope = data?.scope;
         const position = (data?.position as Position | null | undefined) ?? null;
@@ -329,7 +248,7 @@ export const useGameChannel = ({
 
         if (scope === 'room') {
           onSeatEventRef.current?.({
-            message: `Dealer selection timed out. The server ${describeAction(action)}.`,
+            message: `Dealer selection timed out. The server ${describeGameAction(action)}.`,
             variant: 'warning',
           });
           return;
@@ -337,13 +256,13 @@ export const useGameChannel = ({
 
         if (position && position === youPositionRef.current) {
           onSeatEventRef.current?.({
-            message: `Time expired. The server ${describeAction(action)} for you.`,
+            message: `Time expired. The server ${describeGameAction(action)} for you.`,
             variant: 'warning',
           });
         }
       });
 
-      channel.on('force_disconnect', () => {
+      onCurrent('force_disconnect', () => {
         clearTurnTimer();
         setRole(null);
         setChannelStatus(false, false);
@@ -352,7 +271,7 @@ export const useGameChannel = ({
         );
       });
 
-      channel.on('turn_changed', (payload: unknown) => {
+      onCurrent('turn_changed', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const pos: Position | null =
           (data?.position as Position) ||
@@ -362,7 +281,7 @@ export const useGameChannel = ({
         updateCurrentTurn(pos);
       });
 
-      channel.on('presence_state', (state) => {
+      onCurrent('presence_state', (state: object) => {
         presences = Presence.syncState(presences, state);
         const entries = Presence.list(presences, (id, { metas }) => ({
           id,
@@ -371,7 +290,7 @@ export const useGameChannel = ({
         entries.forEach(({ id, position }) => setPlayerConnected(id, position, true));
       });
 
-      channel.on('presence_diff', (diff) => {
+      onCurrent('presence_diff', (diff: { joins: object; leaves: object }) => {
         presences = Presence.syncDiff(presences, diff);
 
         const diffTyped = diff as {
@@ -390,14 +309,14 @@ export const useGameChannel = ({
         });
       });
 
-      channel.on('player_disconnected', (payload: unknown) => {
+      onCurrent('player_disconnected', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const playerId = (data?.user_id as string) || null;
         const position = (data?.position as Position) || null;
         setPlayerConnected(playerId, position, false);
       });
 
-      channel.on('player_reconnected', (payload: unknown) => {
+      onCurrent('player_reconnected', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const playerId = (data?.user_id as string) || null;
         const position = (data?.position as Position) || null;
@@ -407,7 +326,7 @@ export const useGameChannel = ({
         setPlayerConnected(playerId, position, true);
       });
 
-      channel.on('player_ready', (payload: unknown) => {
+      onCurrent('player_ready', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = data?.position as Position | undefined;
         if (position) {
@@ -415,7 +334,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('player_reconnecting', (payload: unknown) => {
+      onCurrent('player_reconnecting', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -424,7 +343,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('bot_substitute_active', (payload: unknown) => {
+      onCurrent('bot_substitute_active', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
@@ -438,7 +357,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('player_reclaimed_seat', (payload: unknown) => {
+      onCurrent('player_reclaimed_seat', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
@@ -452,7 +371,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('seat_permanently_botted', (payload: unknown) => {
+      onCurrent('seat_permanently_botted', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -461,7 +380,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('substitute_available', (payload: unknown) => {
+      onCurrent('substitute_available', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -470,7 +389,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('substitute_seat_closed', (payload: unknown) => {
+      onCurrent('substitute_seat_closed', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -479,7 +398,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('substitute_joined', (payload: unknown) => {
+      onCurrent('substitute_joined', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
@@ -493,44 +412,44 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('progression_summary', (payload: unknown) => {
+      onCurrent('progression_summary', (payload: unknown) => {
         const summary = parseProgressionSummary(payload);
         if (summary) onProgressionSummaryRef.current?.(summary);
       });
 
-      channel.on('owner_decision_available', (payload: unknown) => {
+      onCurrent('owner_decision_available', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
+        const ownerId = typeof data?.owner_id === 'string' ? data.owner_id : null;
         const playerName = seatDisplayName(
           position,
           ((data?.player_name as string) || (data?.username as string) || null) as string | null
         );
-        if (position) {
+        if (position && ownerId === useGameStore.getState().youPlayerId) {
           onOwnerDecisionRef.current?.({ position, playerName });
         }
       });
 
       channel.onError((reason) => {
+        if (disposed || globalGameChannel !== channel) return;
         console.warn('[GameChannel] Error', reason);
         setChannelStatus(false, true);
       });
 
       channel.onClose(() => {
-        console.log('[GameChannel] Closed', topic);
         const wasActive = globalGameChannel === channel;
-        if (wasActive) {
-          globalGameChannel = null;
-          currentTopic = null;
-        }
+        if (disposed || !wasActive) return;
+        globalGameChannel = null;
+        currentTopic = null;
         setChannelStatus(false, false);
         setRole(null);
         // An unexpected close (socket drop, server restart) leaves no channel
         // behind and nothing re-runs the effect — reconnect ourselves while a
         // screen still needs this topic. Intentional leave() sets refCount 0.
-        if (wasActive && gameRefCount > 0) {
-          setTimeout(() => {
-            if (gameRefCount > 0 && !globalGameChannel) {
-              console.log('[GameChannel] Reconnecting after close', topic);
+        if (gameRefCount > 0) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            if (!disposed && gameRefCount > 0 && !globalGameChannel) {
               connect();
             }
           }, 1200);
@@ -543,9 +462,10 @@ export const useGameChannel = ({
     connect();
 
     return () => {
+      disposed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       gameRefCount--;
       if (gameRefCount === 0 && globalGameChannel) {
-        console.log('[GameChannel] Leaving', currentTopic);
         globalGameChannel.leave();
         globalGameChannel = null;
         currentTopic = null;

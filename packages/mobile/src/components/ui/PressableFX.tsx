@@ -14,6 +14,28 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import Animated, {
+  Easing,
+  interpolate,
+  ReduceMotion,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+const PRESS_IN = {
+  duration: 110,
+  easing: Easing.out(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+} as const;
+
+const PRESS_OUT = {
+  duration: 140,
+  easing: Easing.out(Easing.cubic),
+  reduceMotion: ReduceMotion.System,
+} as const;
 
 type Props = Omit<PressableProps, 'style'> & {
   style?: StyleProp<ViewStyle>;
@@ -29,29 +51,35 @@ export function PressableFX({
   ...rest
 }: Props) {
   const [pressed, setPressed] = useState(false);
+  const pressProgress = useSharedValue(0);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: interpolate(pressProgress.value, [0, 1], [1, 0.97]) }],
+  }));
 
   const handlePressIn = useCallback(
     (event: GestureResponderEvent) => {
-      setPressed(true);
+      if (pressedStyle) setPressed(true);
+      pressProgress.set(withTiming(1, PRESS_IN));
       onPressIn?.(event);
     },
-    [onPressIn]
+    [onPressIn, pressProgress, pressedStyle]
   );
   const handlePressOut = useCallback(
     (event: GestureResponderEvent) => {
-      setPressed(false);
+      if (pressedStyle) setPressed(false);
+      pressProgress.set(withTiming(0, PRESS_OUT));
       onPressOut?.(event);
     },
-    [onPressOut]
+    [onPressOut, pressProgress, pressedStyle]
   );
 
   return (
-    <Pressable
+    <AnimatedPressable
       {...rest}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      style={[style, pressed && pressedStyle]}>
+      style={[style, pressed && pressedStyle, animatedStyle]}>
       {children}
-    </Pressable>
+    </AnimatedPressable>
   );
 }

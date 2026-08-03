@@ -21,11 +21,9 @@ export class PhoenixSocket {
     if (this.socket) return this.socket;
     this.tokenGetter = getToken;
 
+    const token = getToken();
     this.socket = new Socket(config.wsURL, {
-      params: () => {
-        const token = this.tokenGetter?.();
-        return token ? { token } : {};
-      },
+      ...(token ? { authToken: token } : {}),
       heartbeatIntervalMs: 15_000,
       reconnectAfterMs: (tries: number) => this.reconnectDelay(tries),
     });
@@ -47,6 +45,11 @@ export class PhoenixSocket {
   connect() {
     if (!this.socket) return;
     if (!this.socket.isConnected()) {
+      // Phoenix exposes authToken at runtime but the DefinitelyTyped package
+      // does not declare the public field. Refresh it before every connection
+      // so sign-out/sign-in never reuses the previous account's JWT.
+      (this.socket as Socket & { authToken?: string }).authToken =
+        this.tokenGetter?.() ?? undefined;
       this.socket.connect();
     }
   }
