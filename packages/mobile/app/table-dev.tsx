@@ -12,6 +12,7 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
+import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Room } from '@/types/lobby';
 
 const WAITING_ROOM: Room = {
@@ -64,8 +65,8 @@ function Loading() {
   );
 }
 
-function SkiaDevTable() {
-  const [Comp, setComp] = useState<ComponentType | null>(null);
+function SkiaDevTable({ onHandPresentationReadyChange, autoPlay }: GameCanvasDevProps) {
+  const [Comp, setComp] = useState<ComponentType<GameCanvasDevProps> | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -79,7 +80,11 @@ function SkiaDevTable() {
     };
   }, []);
 
-  return Comp ? <Comp /> : <Loading />;
+  return Comp ? (
+    <Comp onHandPresentationReadyChange={onHandPresentationReadyChange} autoPlay={autoPlay} />
+  ) : (
+    <Loading />
+  );
 }
 
 export default function TableDevRoute() {
@@ -88,8 +93,10 @@ export default function TableDevRoute() {
 }
 
 function TableDevHarness() {
-  const params = useLocalSearchParams<{ phase?: string }>();
+  const params = useLocalSearchParams<{ phase?: string; autoplay?: string }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
+  const autoPlay = params.autoplay === 'true';
+  const [isHandReady, setIsHandReady] = useState(false);
 
   if (phase === 'waiting') {
     return (
@@ -104,8 +111,8 @@ function TableDevHarness() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
       <SafeAreaProvider>
-        <SkiaDevTable />
-        <DevOverlays phase={phase} />
+        <SkiaDevTable onHandPresentationReadyChange={setIsHandReady} autoPlay={autoPlay} />
+        <DevOverlays phase={phase} isHandReady={isHandReady} />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

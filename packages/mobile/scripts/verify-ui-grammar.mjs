@@ -24,6 +24,12 @@ const cases = [
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
   {
+    name: 'table-completed-trick',
+    path: '/table-dev?phase=playing&autoplay=true',
+    testId: 'seat-north',
+    verifyPlayedCardPersistence: true,
+  },
+  {
     name: 'table-bidding',
     path: '/table-dev?phase=bidding',
     testId: 'bidding-window',
@@ -86,6 +92,37 @@ async function assertTargetGeometry(page, testCase, viewport) {
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
+}
+
+async function assertBiddingRevealSequence(page, viewport) {
+  const biddingWindow = page.getByTestId('bidding-window').first();
+
+  // The bidding controls must not race ahead of the deal animation. A player
+  // should see and be able to read the complete hand before being asked to act.
+  await page.waitForTimeout(250);
+  if (await biddingWindow.isVisible()) {
+    throw new Error(`bidding controls appeared before the hand in ${viewport.name}`);
+  }
+
+  await page.getByTestId('rendered-hand-card-count-6').first().waitFor({ state: 'attached' });
+  await page.waitForTimeout(350);
+  if (await biddingWindow.isVisible()) {
+    throw new Error(`bidding controls appeared while the hand was still dealing in ${viewport.name}`);
+  }
+
+  await biddingWindow.waitFor({ state: 'visible', timeout: 20_000 });
+}
+
+async function assertPlayedCardPersistence(page, viewport) {
+  const fourCards = page.getByTestId('rendered-played-card-count-4').first();
+  await fourCards.waitFor({ state: 'attached', timeout: 20_000 });
+
+  // The fake server promotes the current trick into completed history after
+  // 800ms. The same four sprites must still be present after that transition.
+  await page.waitForTimeout(1_300);
+  if ((await fourCards.count()) !== 1) {
+    throw new Error(`completed trick disappeared from the table in ${viewport.name}`);
+  }
 }
 
 async function assertAbovePlayerHand(page, name, box, viewport) {
@@ -245,6 +282,12 @@ async function main() {
           });
           if (!response?.ok()) {
             throw new Error(`${testCase.path} returned ${response?.status() ?? 'no response'}`);
+          }
+          if (testCase.name === 'table-bidding') {
+            await assertBiddingRevealSequence(page, viewport);
+          }
+          if (testCase.verifyPlayedCardPersistence) {
+            await assertPlayedCardPersistence(page, viewport);
           }
           await assertTargetGeometry(page, testCase, viewport);
           await page.waitForTimeout(testCase.path.startsWith('/table-dev') ? 1_200 : 150);

@@ -115,7 +115,7 @@ const HAND12: Card[] = [
   { suit: 'clubs', rank: 3 },
 ];
 
-export function DevOverlays({ phase }: { phase: string }) {
+export function DevOverlays({ phase, isHandReady }: { phase: string; isHandReady: boolean }) {
   const insets = useSafeAreaInsets();
 
   // Seed the store so the store-driven BiddingActions shows in dev (no Phoenix).
@@ -143,7 +143,7 @@ export function DevOverlays({ phase }: { phase: string }) {
         <ConnectionBanner isConnected />
       </View>
 
-      {phase === 'bidding' && <BiddingActions isYourTurn />}
+      {phase === 'bidding' && <BiddingActions isYourTurn isHandReady={isHandReady} />}
 
       {phase === 'declaring' && (
         <TrumpSelectionModal isOpen onSelectTrump={async () => {}} cards={HAND6} />

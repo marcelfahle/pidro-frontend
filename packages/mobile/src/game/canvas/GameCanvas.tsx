@@ -52,13 +52,14 @@ export default function GameCanvas({
     [width, height, top, bottom, left, right, topReserve, bottomReserve]
   );
 
-  const { gesture, nodes, trumpPop } = useCardSprites({
-    model,
-    textures,
-    L,
-    onPlayCard,
-    enabled: true,
-  });
+  const { gesture, nodes, trumpPop, renderedPlayedCardCount, renderedHandCardCount } =
+    useCardSprites({
+      model,
+      textures,
+      L,
+      onPlayCard,
+      enabled: true,
+    });
 
   const canvas = (
     <Canvas style={{ flex: 1 }}>
@@ -122,6 +123,22 @@ export default function GameCanvas({
             height: 1,
           }}
         />
+        {__DEV__ ? (
+          <>
+            <View
+              testID={`rendered-hand-card-count-${renderedHandCardCount}`}
+              pointerEvents="none"
+              accessible={false}
+              className="absolute h-px w-px opacity-0"
+            />
+            <View
+              testID={`rendered-played-card-count-${renderedPlayedCardCount}`}
+              pointerEvents="none"
+              accessible={false}
+              className="absolute h-px w-px opacity-0"
+            />
+          </>
+        ) : null}
       </View>
     </GestureDetector>
   );

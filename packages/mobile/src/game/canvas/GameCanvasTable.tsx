@@ -23,6 +23,7 @@ import type { ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { useCardTextures } from './cardTextures';
 import { useTableModel, type TableModel } from './tableModel';
+import { useHandPresentationReady } from './useHandPresentationReady';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer } from './SeatLayer';
@@ -184,6 +185,8 @@ export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain
   const controller = useGameTableController(room);
   const textures = useCardTextures();
   const model = useTableModel(controller);
+  const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
+  const isHandReady = useHandPresentationReady(model.yourHand, textures, isBiddingTurn);
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
   const { topReserve, bottomReserve } = reserves;
@@ -279,7 +282,7 @@ export function GameCanvasTable({ room, progressionSummary, onLeave, onPlayAgain
       )}
 
       {/* Bidding + trump selection (PartialModal floats from the bottom) */}
-      <BiddingActions isYourTurn={isYourTurn} />
+      <BiddingActions isYourTurn={isYourTurn} isHandReady={isHandReady} />
       <TrumpSelectionModal
         isOpen={showTrumpSelection}
         onSelectTrump={async (s: Suit) => {

@@ -1,10 +1,9 @@
 /**
  * DEV harness — renders the Skia table with a mock model + real card textures and
- * a LOCAL fake server so M2/M3 are provable on web without Phoenix. It runs a loop
- * that exercises every animation:
+ * a LOCAL fake server so M2/M3 are provable on web without Phoenix. It exercises:
  *   mount → deal-in (stagger) → trump declared (glyph pop) → you play (fly to trick)
- *   → opponents follow (fly from seats) → trick completes → collect (sweep to winner)
- *   + particle pop → re-deal. The turn halo pulses on the active seat throughout.
+ *   → opponents follow (fly from seats) → trick completes and remains on the table.
+ * The turn halo pulses on the active seat throughout.
  * Throwaway scaffold.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -16,6 +15,7 @@ import { Scoreboard } from './Scoreboard';
 import { TableChromeBars, useTableReserves } from './TableChrome';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
+import { useHandPresentationReady } from './useHandPresentationReady';
 import type { Card, LegalAction, RelativePlayerView, RelativePosition, Suit } from '@/types/game';
 import type { Position } from '@/types/lobby';
 
@@ -73,7 +73,15 @@ const COUNTS: Record<string, number> = { south: 6, north: 8, east: 8, west: 7 };
 type Play = { player: Position; card: Card };
 const sameCard = (a: Card, b: Card) => a.suit === b.suit && a.rank === b.rank;
 
-export default function GameCanvasDev() {
+export type GameCanvasDevProps = {
+  onHandPresentationReadyChange?: (ready: boolean) => void;
+  autoPlay?: boolean;
+};
+
+export default function GameCanvasDev({
+  onHandPresentationReadyChange,
+  autoPlay = false,
+}: GameCanvasDevProps) {
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
@@ -119,19 +127,11 @@ export default function GameCanvasDev() {
       after(550, () => setTrick(trickCards.slice(0, 2)));
       after(1100, () => setTrick(trickCards.slice(0, 3)));
       after(1650, () => setTrick(trickCards));
-      // trick completes → cards stay on table as round history
+      // Trick completes → cards stay on table as round history.
       after(2450, () => {
         setTricks((t) => [...t, trickCards]);
         setTrick([]);
         setTurn('north');
-      });
-      // reset → re-deal so the loop is repeatable
-      after(3250, () => setHand([]));
-      after(3550, () => {
-        setTricks([]);
-        setHand(INITIAL_HAND);
-        setTurn('south');
-        playing.current = false;
       });
     },
     [after]
@@ -157,6 +157,16 @@ export default function GameCanvasDev() {
       }),
     [hand, trick, tricks, legalActions, trump, players, turn, canPlay]
   );
+  const isHandReady = useHandPresentationReady(model.yourHand, textures);
+
+  useEffect(() => {
+    onHandPresentationReadyChange?.(isHandReady);
+  }, [isHandReady, onHandPresentationReadyChange]);
+
+  useEffect(() => {
+    if (!autoPlay || !isHandReady) return;
+    onPlayCard(INITIAL_HAND[0]);
+  }, [autoPlay, isHandReady, onPlayCard]);
 
   return (
     <View style={{ flex: 1 }}>

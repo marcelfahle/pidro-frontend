@@ -114,26 +114,34 @@ export function buildTableModel(input: TableModelInput): TableModel {
 
   const playedCards: Partial<Record<RelativePosition, TableCard[]>> = {};
   const pushPlayedCard = (rel: RelativePosition, tableCard: TableCard) => {
-    playedCards[rel] = [...(playedCards[rel] ?? []), tableCard];
+    const cards = playedCards[rel] ?? [];
+    cards.push(tableCard);
+    playedCards[rel] = cards;
   };
 
   const currentTrick: Partial<Record<RelativePosition, TableCard>> = {};
   const completedTricks = normalizeCompletedTricks(input.tricks);
+  const addPlayedCards = (plays: RawPlay[], trickIndex: number, isCurrentTrick: boolean) => {
+    plays.forEach((play, playIndex) => {
+      const abs = (play.player ?? play.position) as Position | undefined;
+      if (!abs || !play.card) return;
+      const rel = absToRel.get(abs);
+      if (!rel) return;
+      const textureKey = cardKey(play.card);
+      const tableCard = toCard(
+        play.card,
+        `trick-${trickIndex}-${playIndex}-${rel}-${textureKey}`,
+        isCurrentTrick
+      );
+      pushPlayedCard(rel, tableCard);
+      if (isCurrentTrick) currentTrick[rel] = tableCard;
+    });
+  };
+
+  completedTricks.forEach((plays, trickIndex) => addPlayedCards(plays, trickIndex, false));
+
   const currentTrickIndex = completedTricks.length;
-  for (const [playIndex, play] of normalizePlays(input.currentTrick).entries()) {
-    const abs = (play.player ?? play.position) as Position | undefined;
-    if (!abs || !play.card) continue;
-    const rel = absToRel.get(abs);
-    if (!rel) continue;
-    const textureKey = cardKey(play.card);
-    const tableCard = toCard(
-      play.card,
-      `trick-${currentTrickIndex}-${playIndex}-${rel}-${textureKey}`,
-      true
-    );
-    currentTrick[rel] = tableCard;
-    pushPlayedCard(rel, tableCard);
-  }
+  addPlayedCards(normalizePlays(input.currentTrick), currentTrickIndex, true);
 
   const seats = {} as Record<RelativePosition, TableSeat | null>;
   for (const rel of REL) {

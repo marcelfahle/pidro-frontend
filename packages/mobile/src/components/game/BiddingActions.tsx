@@ -14,7 +14,13 @@ const ALL_BID_VALUES = [6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
 const CARD_RATIO = 110 / 78;
 const PORTRAIT_UTILITY_RESERVE = 72;
 
-export function BiddingActions({ isYourTurn }: { isYourTurn: boolean }) {
+export function BiddingActions({
+  isYourTurn,
+  isHandReady,
+}: {
+  isYourTurn: boolean;
+  isHandReady: boolean;
+}) {
   const serverState = useGameStore((state) => state.serverState);
   const legalActions = useGameStore((state) => state.legalActions);
   const viewModel = useGameViewModel();
@@ -47,7 +53,7 @@ export function BiddingActions({ isYourTurn }: { isYourTurn: boolean }) {
     : 'No bid has been placed yet.';
 
   const showBiddingPanel = serverState?.phase === 'bidding';
-  const canAct = isYourTurn && (bidOptions.length > 0 || canPass);
+  const canAct = isYourTurn && isHandReady && (bidOptions.length > 0 || canPass);
 
   const sendAction = async (event: 'bid' | 'pass', payload: Record<string, unknown>) => {
     setIsSubmitting(true);

@@ -12,21 +12,13 @@
  * plan §5.6 — with the cold-load rule: the first model snaps into place, only
  * later diffs animate. M3 adds, all diff-triggered:
  *   • deal-in   — hand grows from empty → stagger from a deck origin w/ overshoot
- *   • collect   — trick clears after ≥2 plays → sweep cards to winner + particle pop
+ *   • history   — completed tricks keep stable sprites on the table for the full hand
  *   • trump     — null→suit pops the trump glyph (exposed via `trumpPop`)
  *   • reflow    — layout change tweens sprites to new slots (falls out of the effect)
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
-import {
-  BlurMask,
-  Circle,
-  Group,
-  Image,
-  RoundedRect,
-  vec,
-  type SkImage,
-} from '@shopify/react-native-skia';
+import { BlurMask, Group, Image, RoundedRect, type SkImage } from '@shopify/react-native-skia';
 import {
   Easing,
   cancelAnimation,
@@ -43,10 +35,10 @@ import type { Card } from '@/types/game';
 import type { RelativePosition, TableLayout } from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
+import { DEAL_CARD_STAGGER_MS, DEAL_CARD_TRAVEL_MS } from './animationTiming';
 import { T } from './tokens';
 
 const MAX = 36;
-const PARTICLES = 16;
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 function playedCardTarget(L: TableLayout, rel: RelativePosition, index: number, count: number) {
@@ -73,11 +65,6 @@ function playedCardTarget(L: TableLayout, rel: RelativePosition, index: number, 
         ? L.trick.cy + L.trick.r
         : L.trick.cy + off * spacing;
   return { x, y, rot, scale: pileScale };
-}
-
-function playedCardCount(model: TableModel | null | undefined): number {
-  if (!model) return 0;
-  return REL.reduce((total, rel) => total + (model.playedCards[rel]?.length ?? 0), 0);
 }
 
 function handSlotFn(L: TableLayout, n: number) {
@@ -150,29 +137,6 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
 
   // ── M3 shared values ──────────────────────────────────────────────
   const trumpPop = useSharedValue(0); // 0..1 flourish on trump declare
-  const burst = useSharedValue(0); // 0..1 particle pop progress
-  const burstX = useSharedValue(0);
-  const burstY = useSharedValue(0);
-  const dirs = useMemo(
-    () =>
-      Array.from({ length: PARTICLES }, (_, i) => ({
-        a: (i / PARTICLES) * Math.PI * 2 + Math.random() * 0.4,
-        reach: 70 + Math.random() * 70,
-        color: i % 2 ? T.cyan : T.gold,
-      })),
-    []
-  );
-
-  const firePop = useCallback(
-    (x: number, y: number) => {
-      burstX.value = x;
-      burstY.value = y;
-      burst.value = 0;
-      burst.value = withTiming(1, { duration: 680, easing: Easing.out(Easing.cubic) });
-    },
-    [burst, burstX, burstY]
-  );
-
   const cardW = L.cardW;
   const cardH = L.cardH;
   const handScale = L.profile.endsWith('landscape') ? 0.9 : 1;
@@ -187,13 +151,6 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     // ── M3 diff triggers ────────────────────────────────────────────
     const prevHandLen = prev?.yourHand.length ?? 0;
     const isDeal = !firstLoad && prevHandLen === 0 && n > 0;
-
-    const prevPlayedCount = playedCardCount(prev);
-    const curPlayedCount = playedCardCount(model);
-    const roundCollected = !firstLoad && prevPlayedCount >= 2 && curPlayedCount === 0;
-    const winSeat = model.currentTurnRelative ? L.seats[model.currentTurnRelative] : null;
-    const sweepX = winSeat ? winSeat.x : L.trick.cx;
-    const sweepY = winSeat ? winSeat.y : L.trick.cy;
 
     if (!firstLoad && !prev?.trumpSuit && model.trumpSuit) {
       trumpPop.value = 0;
@@ -272,26 +229,15 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     const desiredKeys = new Set(desired.map((d) => d.key));
     const nextSlots: SlotInfo[] = Array(MAX).fill(null);
 
-    // Retire slots whose card is gone — sweep played piles away when the round clears.
+    // Retire slots only when cards leave the server's round history. Completed
+    // tricks remain in `playedCards`, so they stay visible for the full hand.
     for (const [key, sl] of Array.from(keyToSlot.current.entries())) {
       if (!desiredKeys.has(key)) {
         nextSlots[sl] = slots[sl];
         if (retirementTimers.current.has(key)) continue;
 
-        const wasPlayed = slots[sl]?.kind === 'played';
-        const duration = roundCollected && wasPlayed ? 420 : 180;
-        if (roundCollected && wasPlayed) {
-          cancelAnimation(sx[sl]);
-          cancelAnimation(sy[sl]);
-          const sweepCfg = { duration: 360, easing: Easing.in(Easing.cubic) };
-          sx[sl].value = withTiming(sweepX, sweepCfg);
-          sy[sl].value = withTiming(sweepY, sweepCfg);
-          srot[sl].value = withTiming(0, sweepCfg);
-          sscale[sl].value = withTiming(0.45, sweepCfg);
-          sop[sl].value = withDelay(240, withTiming(0, { duration: 160 }));
-        } else {
-          sop[sl].value = withTiming(0, { duration: 180 });
-        }
+        const duration = 180;
+        sop[sl].value = withTiming(0, { duration });
 
         retirementTimers.current.set(
           key,
@@ -309,8 +255,6 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         );
       }
     }
-    if (roundCollected) firePop(L.trick.cx, L.trick.cy);
-
     const used = new Set(keyToSlot.current.values());
     const allocate = () => {
       for (let i = 0; i < MAX; i++)
@@ -323,7 +267,10 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
 
     const ht: HandTarget[] = [];
     const cfg = { duration: 320, easing: Easing.out(Easing.cubic) };
-    const dealCfg = { duration: 460, easing: Easing.out(Easing.back(1.5)) };
+    const dealCfg = {
+      duration: DEAL_CARD_TRAVEL_MS,
+      easing: Easing.out(Easing.back(1.5)),
+    };
 
     for (const d of desired) {
       const retirementTimer = retirementTimers.current.get(d.key);
@@ -367,7 +314,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         sscale[sl].value = d.tscale;
         sop[sl].value = d.topacity;
       } else if (isNew && dealCard) {
-        const delay = d.delayOrder * 70;
+        const delay = d.delayOrder * DEAL_CARD_STAGGER_MS;
         sx[sl].value = withDelay(delay, withTiming(d.tx, dealCfg));
         sy[sl].value = withDelay(delay, withTiming(d.ty, dealCfg));
         srot[sl].value = withDelay(delay, withTiming(d.trot, dealCfg));
@@ -509,23 +456,21 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
             dimmed={s.blocked}
           />
         ))}
-        {dirs.map((d, i) => (
-          <Particle
-            key={`p${i}`}
-            burst={burst}
-            bx={burstX}
-            by={burstY}
-            a={d.a}
-            reach={d.reach}
-            color={d.color}
-          />
-        ))}
       </>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, textures, cardW, cardH]);
 
-  return { gesture, nodes, trumpPop };
+  const renderedPlayedCardCount = slots.reduce(
+    (count, slot) => count + (slot?.kind === 'played' ? 1 : 0),
+    0
+  );
+  const renderedHandCardCount = slots.reduce(
+    (count, slot) => count + (slot?.kind === 'hand' ? 1 : 0),
+    0
+  );
+
+  return { gesture, nodes, trumpPop, renderedPlayedCardCount, renderedHandCardCount };
 }
 
 function CardSprite({
@@ -586,27 +531,4 @@ function CardSprite({
       )}
     </Group>
   );
-}
-
-function Particle({
-  burst,
-  bx,
-  by,
-  a,
-  reach,
-  color,
-}: {
-  burst: SharedValue<number>;
-  bx: SharedValue<number>;
-  by: SharedValue<number>;
-  a: number;
-  reach: number;
-  color: string;
-}) {
-  const c = useDerivedValue(() =>
-    vec(bx.value + Math.cos(a) * reach * burst.value, by.value + Math.sin(a) * reach * burst.value)
-  );
-  const r = useDerivedValue(() => (burst.value > 0 && burst.value < 1 ? 4 * (1 - burst.value) : 0));
-  const opacity = useDerivedValue(() => (burst.value > 0 && burst.value < 1 ? 1 - burst.value : 0));
-  return <Circle c={c} r={r} color={color} opacity={opacity} />;
 }
