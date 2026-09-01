@@ -18,13 +18,15 @@ export function assertInsideViewport(name, box, viewport) {
   }
 }
 
-// Expo's dev-mode LogBox toast (e.g. a failed lobby fetch when no backend is
+// Expo's dev-mode error toast (e.g. a failed lobby fetch when no backend is
 // running, as in CI) renders real <button> elements that the touch-target and
-// geometry assertions would otherwise flag. It is tooling, not app UI — hide
-// it for the whole page lifetime so late-arriving toasts stay hidden too.
+// geometry assertions would otherwise flag — Playwright role queries pierce
+// its shadow root. It is tooling, not app UI: hide its #error-toast host
+// (display:none on the host hides the whole shadow tree, including toasts
+// that arrive later).
 export async function suppressDevOverlays(page) {
   await page.addStyleTag({
-    content: '[class*="_toast"], [class*="_logBox"] { display: none !important; }',
+    content: '#error-toast { display: none !important; }',
   });
 }
 
