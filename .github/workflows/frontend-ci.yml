@@ -130,7 +130,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ui-grammar-screenshots
-          path: screenshots/agent-mobile-ui/
+          # verify-ui-grammar.mjs resolves its screenshot root one directory
+          # above the repository checkout.
+          path: ../screenshots/agent-mobile-ui/
           if-no-files-found: ignore
           retention-days: 14
 
