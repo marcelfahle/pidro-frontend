@@ -49,3 +49,47 @@ API_BASE_URL=http://127.0.0.1:4000 \
 WS_BASE_URL=ws://127.0.0.1:4000/socket \
 bun scripts/autoplay-full-game.mjs --user skiatest2
 ```
+
+## Full-game e2e (the CI gate)
+
+`scripts/ci-game-e2e.mjs` plays two complete games against a real backend and
+fails if either one doesn't reach game over:
+
+1. **Solo protocol game** — registers a throwaway account, creates a 3-bot
+   room, and plays first-legal-action to `game_over` (including the
+   `progression_summary` check).
+2. **Multiplayer UI game** — a second account creates a room with one open
+   seat, logs in through the real UI in headless Chromium, and sits at the
+   table while the autoplayer takes the open seat. The server's turn timers
+   auto-play the UI seat, so a full game runs in the actual client — recorded
+   as `game.webm` with milestone screenshots.
+
+CI runs this in the `Game e2e` job (`.github/workflows/frontend-ci.yml`): it
+checks out `marcelfahle/pidro-backend`, boots Phoenix against a Postgres
+service with fast pacing (`LIFECYCLE_BOT_DELAY_MS=60`,
+`LIFECYCLE_TURN_TIMER_BID_MS=1200`, …), starts Expo web, and uploads the video
+and screenshots as the `game-e2e-artifacts` artifact.
+
+To run it locally without touching your daily backend on :4000, boot a second
+instance with CI pacing and point everything at it:
+
+```bash
+# Terminal 1, from pidro_backend
+PORT=4100 \
+LIFECYCLE_TURN_TIMER_BID_MS=1200 LIFECYCLE_TURN_TIMER_PLAY_MS=900 \
+LIFECYCLE_BOT_DELAY_MS=60 LIFECYCLE_BOT_DELAY_VARIANCE_MS=40 \
+LIFECYCLE_BOT_MIN_DELAY_MS=20 LIFECYCLE_TRICK_TRANSITION_DELAY_MS=80 \
+LIFECYCLE_HAND_TRANSITION_DELAY_MS=120 mix phx.server
+
+# Terminal 2, from packages/mobile
+EXPO_NO_DOTENV=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
+EXPO_PUBLIC_WS_URL=ws://127.0.0.1:4100/socket bun run web
+
+# Terminal 3, from packages/mobile
+API_BASE_URL=http://127.0.0.1:4100 WS_BASE_URL=ws://127.0.0.1:4100/socket \
+node scripts/ci-game-e2e.mjs
+```
+
+Artifacts land in `screenshots/agent-game-e2e/` (override with
+`E2E_ARTIFACT_DIR`). Expect roughly 35s for the solo game and 2–3 minutes for
+the multiplayer UI game at CI pacing.
