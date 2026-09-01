@@ -18,6 +18,16 @@ export function assertInsideViewport(name, box, viewport) {
   }
 }
 
+// Expo's dev-mode LogBox toast (e.g. a failed lobby fetch when no backend is
+// running, as in CI) renders real <button> elements that the touch-target and
+// geometry assertions would otherwise flag. It is tooling, not app UI — hide
+// it for the whole page lifetime so late-arriving toasts stay hidden too.
+export async function suppressDevOverlays(page) {
+  await page.addStyleTag({
+    content: '[class*="_toast"], [class*="_logBox"] { display: none !important; }',
+  });
+}
+
 export async function getStableBox(locator, page) {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const box = await locator.boundingBox();

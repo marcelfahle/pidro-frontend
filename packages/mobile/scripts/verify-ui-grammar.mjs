@@ -6,6 +6,7 @@ import {
   assertInsideViewport,
   assertMinimumTouchTargets,
   getStableBox,
+  suppressDevOverlays,
   UI_VIEWPORTS,
 } from './ui-test-utils.mjs';
 
@@ -298,6 +299,7 @@ async function main() {
           if (!response?.ok()) {
             throw new Error(`${testCase.path} returned ${response?.status() ?? 'no response'}`);
           }
+          await suppressDevOverlays(page);
           if (testCase.name === 'table-bidding') {
             await assertBiddingRevealSequence(page, viewport);
           }
