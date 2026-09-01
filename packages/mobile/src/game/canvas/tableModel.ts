@@ -1,0 +1,226 @@
+/**
+ * Pure adapter: controller state → canvas render model (plan §5.2).
+ * Deterministic for a given snapshot — no side effects, never throws on
+ * malformed state (renders empty slots instead). Seat ownership comes from the
+ * view model's relativePosition; canvas code never computes it.
+ */
+import { useMemo } from 'react';
+import type {
+  Card,
+  GamePhase,
+  LegalAction,
+  RelativePlayerView,
+  RelativePosition,
+  Suit,
+} from '@/types/game';
+import type { Position } from '@/types/lobby';
+import type { GameTableController } from '@/game/useGameTableController';
+import { sortCards } from '@/utils/cards';
+import { cardKey, type CardKey } from './cardKey';
+
+export type TableCard = {
+  key: string;
+  textureKey: CardKey;
+  card: Card;
+  isTrump: boolean;
+  isLegalPlay: boolean;
+  isCurrentTrick: boolean;
+};
+export type TableSeat = {
+  absolutePosition: Position;
+  relativePosition: RelativePosition;
+  username: string | null;
+  isYou: boolean;
+  isTeammate: boolean;
+  isOpponent: boolean;
+  isConnected: boolean;
+  isCurrentTurn: boolean;
+  cardCount: number | null;
+  lastPlayedCard: TableCard | null;
+};
+export type TableModel = {
+  phase: GamePhase;
+  trumpSuit: Suit | null;
+  seats: Record<RelativePosition, TableSeat | null>;
+  yourHand: TableCard[];
+  yourCardCount: number | null;
+  dealerCuts: Partial<Record<RelativePosition, TableCard>>;
+  currentTrick: Partial<Record<RelativePosition, TableCard>>;
+  playedCards: Partial<Record<RelativePosition, TableCard[]>>;
+  currentTurnRelative: RelativePosition | null;
+  legalPlayKeys: Set<CardKey>;
+  canPlay: boolean;
+};
+
+const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
+
+export type TableModelInput = {
+  phase: GamePhase;
+  trumpSuit: Suit | null;
+  players: RelativePlayerView[];
+  yourHand: Card[] | null;
+  yourCardCount: number | null;
+  dealerSelectionCuts?: Partial<Record<Position, Card>> | null;
+  currentTrick: unknown;
+  tricks: unknown;
+  legalActions: LegalAction[];
+  currentTurnRelative: RelativePosition | null;
+  canPlay: boolean;
+  getCardCountForPlayer: (absPosition: Position | null) => number | null;
+};
+
+type RawPlay = { player?: Position; position?: Position; card?: Card };
+
+function normalizePlays(trick: unknown): RawPlay[] {
+  const plays = Array.isArray(trick)
+    ? trick
+    : trick && typeof trick === 'object' && 'plays' in trick
+      ? (trick as { plays: unknown }).plays
+      : trick && typeof trick === 'object' && 'cards' in trick
+        ? (trick as { cards: unknown }).cards
+        : null;
+  return Array.isArray(plays) ? (plays as RawPlay[]) : [];
+}
+
+function normalizeCompletedTricks(tricks: unknown): RawPlay[][] {
+  if (!Array.isArray(tricks)) return [];
+  return tricks.map(normalizePlays).filter((plays) => plays.length > 0);
+}
+
+export function buildTableModel(input: TableModelInput): TableModel {
+  const { trumpSuit } = input;
+
+  const legalPlayKeys = new Set<CardKey>();
+  for (const a of input.legalActions) {
+    if (a.type === 'play_card' && a.card) legalPlayKeys.add(cardKey(a.card));
+  }
+
+  const toCard = (c: Card, key: string = cardKey(c), isCurrentTrick = false): TableCard => {
+    const textureKey = cardKey(c);
+    return {
+      key,
+      textureKey,
+      card: c,
+      isTrump: !!trumpSuit && c.suit === trumpSuit,
+      isLegalPlay: legalPlayKeys.has(textureKey),
+      isCurrentTrick,
+    };
+  };
+
+  const yourHand = (input.yourHand ? sortCards(input.yourHand, trumpSuit) : []).map((card) =>
+    toCard(card)
+  );
+
+  const absToRel = new Map<Position, RelativePosition>();
+  for (const p of input.players) absToRel.set(p.absolutePosition, p.relativePosition);
+
+  const dealerCuts: Partial<Record<RelativePosition, TableCard>> = {};
+  if (input.phase === 'dealer_selection' && input.dealerSelectionCuts) {
+    for (const [absolutePosition, card] of Object.entries(input.dealerSelectionCuts)) {
+      if (!card) continue;
+      const rel = absToRel.get(absolutePosition as Position);
+      if (!rel) continue;
+      const textureKey = cardKey(card);
+      dealerCuts[rel] = toCard(card, `dealer-cut-${rel}-${textureKey}`);
+    }
+  }
+
+  const playedCards: Partial<Record<RelativePosition, TableCard[]>> = {};
+  const pushPlayedCard = (rel: RelativePosition, tableCard: TableCard) => {
+    const cards = playedCards[rel] ?? [];
+    cards.push(tableCard);
+    playedCards[rel] = cards;
+  };
+
+  const currentTrick: Partial<Record<RelativePosition, TableCard>> = {};
+  const completedTricks = normalizeCompletedTricks(input.tricks);
+  const addPlayedCards = (plays: RawPlay[], trickIndex: number, isCurrentTrick: boolean) => {
+    plays.forEach((play, playIndex) => {
+      const abs = (play.player ?? play.position) as Position | undefined;
+      if (!abs || !play.card) return;
+      const rel = absToRel.get(abs);
+      if (!rel) return;
+      const textureKey = cardKey(play.card);
+      const tableCard = toCard(
+        play.card,
+        `trick-${trickIndex}-${playIndex}-${rel}-${textureKey}`,
+        isCurrentTrick
+      );
+      pushPlayedCard(rel, tableCard);
+      if (isCurrentTrick) currentTrick[rel] = tableCard;
+    });
+  };
+
+  completedTricks.forEach((plays, trickIndex) => addPlayedCards(plays, trickIndex, false));
+
+  const currentTrickIndex = completedTricks.length;
+  addPlayedCards(normalizePlays(input.currentTrick), currentTrickIndex, true);
+
+  const seats = {} as Record<RelativePosition, TableSeat | null>;
+  for (const rel of REL) {
+    const p = input.players.find((pp) => pp.relativePosition === rel) ?? null;
+    seats[rel] = p
+      ? {
+          absolutePosition: p.absolutePosition,
+          relativePosition: rel,
+          username: p.username,
+          isYou: p.isYou,
+          isTeammate: p.isTeammate,
+          isOpponent: p.isOpponent,
+          isConnected: p.isConnected,
+          isCurrentTurn: p.isCurrentTurn,
+          cardCount: input.getCardCountForPlayer(p.absolutePosition),
+          lastPlayedCard: currentTrick[rel] ?? null,
+        }
+      : null;
+  }
+
+  return {
+    phase: input.phase,
+    trumpSuit,
+    seats,
+    yourHand,
+    yourCardCount: input.yourCardCount,
+    dealerCuts,
+    currentTrick,
+    playedCards,
+    currentTurnRelative: input.currentTurnRelative,
+    legalPlayKeys,
+    canPlay: input.canPlay,
+  };
+}
+
+export function useTableModel(c: GameTableController): TableModel {
+  return useMemo(
+    () =>
+      buildTableModel({
+        phase: c.phase,
+        trumpSuit: c.trumpSuit,
+        players: c.players,
+        yourHand: c.yourHand,
+        yourCardCount: c.yourCardCount,
+        dealerSelectionCuts: c.serverState?.dealer_selection_cuts,
+        currentTrick: c.currentTrick,
+        tricks: c.completedTricks,
+        legalActions: c.legalActions,
+        currentTurnRelative: c.currentTurnRelative,
+        canPlay: c.isPlayingTurn && !c.isPlayingCard,
+        getCardCountForPlayer: c.getCardCountForPlayer,
+      }),
+    [
+      c.phase,
+      c.trumpSuit,
+      c.players,
+      c.yourHand,
+      c.yourCardCount,
+      c.serverState?.dealer_selection_cuts,
+      c.currentTrick,
+      c.completedTricks,
+      c.legalActions,
+      c.currentTurnRelative,
+      c.isPlayingTurn,
+      c.isPlayingCard,
+      c.getCardCountForPlayer,
+    ]
+  );
+}

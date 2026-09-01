@@ -43,6 +43,7 @@ export interface ServerTrick {
 
 export interface ServerGameState {
   phase: GamePhase;
+  winner?: 'north_south' | 'east_west' | null;
   hand_number?: number | null;
   current_player: Position | null;
   players: Record<Position, ServerPlayerView>;

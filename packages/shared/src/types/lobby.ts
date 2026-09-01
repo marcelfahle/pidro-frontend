@@ -52,6 +52,19 @@ export interface Room {
   available_positions?: Position[];
 }
 
+export type LobbyCategoryKey =
+  | 'my_rejoinable'
+  | 'open_tables'
+  | 'substitute_needed'
+  | 'spectatable';
+
+export interface LobbyCategories {
+  my_rejoinable: Room[];
+  open_tables: Room[];
+  substitute_needed: Room[];
+  spectatable: Room[];
+}
+
 export interface CreateRoomRequest {
   name: string;
   settings: RoomSettings & { password?: string };

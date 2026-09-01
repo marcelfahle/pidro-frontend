@@ -1,5 +1,5 @@
 import type { GameViewModel, ServerGameState } from '@pidro/shared';
-import { getTeamScores, isNorthSouthTeam } from '@pidro/shared';
+import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { PostGameStrip } from '../profile/PostGameStrip';
 import type { ProgressionSummary } from '../profile/postgame';
@@ -26,19 +26,22 @@ export function GameOverOverlay({
   const viewerPosition = viewModel.viewerPositionAbsolute;
   const viewerIsSpectator = !youPlayer;
   const teamScores = getTeamScores(rawScores, viewerPosition);
-  const homeTeamWon = teamScores.us > teamScores.them;
+  const winningTeam = resolveWinningTeam(serverState.winner, rawScores);
+  const winnersAreNorthSouth = winningTeam === 'north_south';
+  const homeTeamWon =
+    winningTeam != null && isNorthSouthTeam(viewerPosition) === winnersAreNorthSouth;
 
   let winnerLabel: string;
   let youWon: boolean | null = null;
 
-  if (rawScores.north_south > rawScores.east_west) {
+  if (winningTeam === 'north_south') {
     winnerLabel = viewerIsSpectator
       ? 'North / South win!'
       : homeTeamWon
         ? 'Your team wins!'
         : 'Opponents win!';
     youWon = viewerIsSpectator ? null : homeTeamWon;
-  } else if (rawScores.east_west > rawScores.north_south) {
+  } else if (winningTeam === 'east_west') {
     winnerLabel = viewerIsSpectator
       ? 'East / West win!'
       : homeTeamWon
@@ -50,13 +53,8 @@ export function GameOverOverlay({
     youWon = null;
   }
 
-  const winnersAreNorthSouth =
-    rawScores.north_south === rawScores.east_west
-      ? null
-      : rawScores.north_south > rawScores.east_west;
-
   const winners = viewModel.players.filter((player) => {
-    if (winnersAreNorthSouth == null) return true;
+    if (winningTeam == null) return true;
     return isNorthSouthTeam(player.absolutePosition) === winnersAreNorthSouth;
   });
   const runnersUp = viewModel.players.filter((player) => !winners.includes(player));

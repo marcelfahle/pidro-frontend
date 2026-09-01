@@ -1,0 +1,84 @@
+name: Frontend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile:
+    name: Mobile quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        run: bun run shared:build
+
+      - name: Run unit tests
+        run: bun run test:unit
+
+      - name: Check mobile source
+        working-directory: packages/mobile
+        run: |
+          bun run lint
+          bunx tsc --noEmit
+          bunx expo install --check
+
+      - name: Export production web bundle
+        working-directory: packages/mobile
+        env:
+          EXPO_NO_DOTENV: '1'
+          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+        run: bunx expo export --platform web --output-dir /tmp/pidro-mobile-web
+
+      - name: Install Chromium for UI verification
+        run: bunx playwright install --with-deps chromium
+
+      - name: Verify mobile UI grammar
+        working-directory: packages/mobile
+        env:
+          CI: '1'
+          EXPO_NO_DOTENV: '1'
+          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+        run: |
+          bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
+          expo_pid=$!
+          cleanup() {
+            kill "$expo_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            cat /tmp/pidro-expo.log
+            exit 1
+          fi
+
+          bun run test:ui

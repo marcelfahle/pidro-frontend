@@ -52,26 +52,7 @@ const SIZE_CLASSES: Record<CardSize, SizeStyles> = {
   },
 };
 
-/** Point values for Pidro scoring cards. Rank 5 (pidro) = 5 pts, Ace = 1, etc. */
-export function getPidroPoints(rank: number, suit: Suit, trumpSuit?: Suit | null): number | null {
-  if (!trumpSuit) return null;
-  const isTrump = suit === trumpSuit;
-  const isOffFive = rank === 5 && !isTrump && isSameColor(suit, trumpSuit);
-
-  if (!isTrump && !isOffFive) return null;
-
-  if (rank === 5) return 5; // Pidro (and off-five)
-  if (rank === 1 || rank === 14) return 1; // Ace (high)
-  if (rank === 2) return 1; // Two (low)
-  if (rank === 11) return 1; // Jack
-  if (rank === 10) return 1; // Ten
-  return null;
-}
-
-function isSameColor(a: Suit, b: Suit): boolean {
-  const red: Suit[] = ['hearts', 'diamonds'];
-  return (red.includes(a) && red.includes(b)) || (!red.includes(a) && !red.includes(b));
-}
+export { getPidroPoints } from '@pidro/shared';
 
 /* ── SVG suit paths ── */
 

@@ -51,12 +51,16 @@ const emptyPlayers: ServerGameState['players'] = {
   west: {},
 };
 
-function makeServerState(scores: { north_south: number; east_west: number }): ServerGameState {
+function makeServerState(
+  scores: { north_south: number; east_west: number },
+  winner?: ServerGameState['winner'],
+): ServerGameState {
   return {
     phase: 'game_over',
     current_player: null,
     players: emptyPlayers,
     scores,
+    winner,
   };
 }
 
@@ -82,6 +86,20 @@ describe('GameOverOverlay', () => {
       <GameOverOverlay
         viewModel={makeViewModel()}
         serverState={makeServerState({ north_south: 30, east_west: 62 })}
+        onBackToLobby={vi.fn()}
+        onPlayAgain={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('You lose')).toBeTruthy();
+    expect(screen.getByText('Opponents win!')).toBeTruthy();
+  });
+
+  it('uses the server winner when both teams pass the target score', () => {
+    render(
+      <GameOverOverlay
+        viewModel={makeViewModel()}
+        serverState={makeServerState({ north_south: 65, east_west: 62 }, 'east_west')}
         onBackToLobby={vi.fn()}
         onPlayAgain={vi.fn()}
       />,

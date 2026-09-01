@@ -11,6 +11,8 @@ export interface PhoenixSocketOptions {
 export class PhoenixSocket {
   private socket: Socket | null = null;
   private tokenGetter: TokenGetter | null = null;
+  private connectionRequested = false;
+  private disconnecting = false;
 
   private reconnectDelay(tries: number) {
     const schedule = [1000, 2000, 3000, 5000, 8000, 10_000];
@@ -21,11 +23,9 @@ export class PhoenixSocket {
     if (this.socket) return this.socket;
     this.tokenGetter = getToken;
 
+    const token = getToken();
     this.socket = new Socket(config.wsURL, {
-      params: () => {
-        const token = this.tokenGetter?.();
-        return token ? { token } : {};
-      },
+      ...(token ? { authToken: token } : {}),
       heartbeatIntervalMs: 15_000,
       reconnectAfterMs: (tries: number) => this.reconnectDelay(tries),
     });
@@ -45,14 +45,32 @@ export class PhoenixSocket {
   }
 
   connect() {
+    this.connectionRequested = true;
+    if (!this.socket || this.disconnecting) return;
+    this.openConnection();
+  }
+
+  private openConnection() {
     if (!this.socket) return;
     if (!this.socket.isConnected()) {
+      // Phoenix exposes authToken at runtime but the DefinitelyTyped package
+      // does not declare the public field. Refresh it before every connection
+      // so sign-out/sign-in never reuses the previous account's JWT.
+      (this.socket as Socket & { authToken?: string }).authToken =
+        this.tokenGetter?.() ?? undefined;
       this.socket.connect();
     }
   }
 
   disconnect() {
-    this.socket?.disconnect();
+    this.connectionRequested = false;
+    if (!this.socket || this.disconnecting) return;
+
+    this.disconnecting = true;
+    this.socket.disconnect(() => {
+      this.disconnecting = false;
+      if (this.connectionRequested) this.openConnection();
+    });
   }
 
   channel(topic: string, params?: any): Channel {

@@ -31,6 +31,16 @@ function createEmptyPlayerMeta(position: Position): PlayerMeta {
   };
 }
 
+function displayUsername(meta: PlayerMeta): string | null {
+  const username = meta.username?.trim() ?? '';
+  if (username) return username;
+  if (meta.isYou) return 'You';
+  if (meta.seatStatus === 'bot_substitute' || meta.seatStatus === 'permanent_bot') {
+    return 'Bot';
+  }
+  return null;
+}
+
 interface GameState {
   roomCode: string | null;
   youPlayerId: string | null;
@@ -89,56 +99,65 @@ export const useGameStore = create<GameState>((set, get) => ({
   isRejoining: false,
   lastError: null,
 
-  initFromRoom: ({ room, youPlayerId }) => {
-    let youPos: Position | null = null;
+  initFromRoom: ({ room, youPlayerId }) =>
+    set((current) => {
+      const sameSession = current.roomCode === room.code && current.youPlayerId === youPlayerId;
+      const positions = room.positions ?? buildPositionsFromSeats(room.seats);
+      let youPos: Position | null = null;
 
-    const positions = room.positions ?? buildPositionsFromSeats(room.seats);
-    POSITIONS.forEach((pos) => {
-      if (positions?.[pos] === youPlayerId) youPos = pos;
-    });
-
-    const baseMeta: Record<Position, PlayerMeta> = {
-      north: createEmptyPlayerMeta('north'),
-      east: createEmptyPlayerMeta('east'),
-      south: createEmptyPlayerMeta('south'),
-      west: createEmptyPlayerMeta('west'),
-    };
-
-    POSITIONS.forEach((pos) => {
-      const playerId = positions?.[pos] ?? null;
-      const seat = room.seats?.find(
-        (s) =>
-          s.player?.id === playerId ||
-          s.position === pos ||
-          s.seat_index === POSITION_TO_INDEX[pos],
-      );
-      baseMeta[pos] = {
-        position: pos,
-        playerId,
-        username: seat?.player?.username ?? null,
-        isYou: playerId === youPlayerId,
-        isTeammate: false,
-        isOpponent: false,
-        isConnected: true,
-        seatStatus: seat?.player?.is_bot ? 'bot_substitute' : 'normal',
-      };
-    });
-
-    if (youPos) {
       POSITIONS.forEach((pos) => {
-        const teammate = isTeammate(youPos!, pos);
-        baseMeta[pos].isTeammate = teammate && !baseMeta[pos].isYou;
-        baseMeta[pos].isOpponent = !teammate && !baseMeta[pos].isYou;
+        if (positions?.[pos] === youPlayerId) youPos = pos;
       });
-    }
+      if (!youPos && sameSession) youPos = current.youPositionAbs;
 
-    set({
-      roomCode: room.code,
-      youPlayerId,
-      youPositionAbs: youPos,
-      playerMeta: baseMeta,
-    });
-  },
+      const baseMeta: Record<Position, PlayerMeta> = {
+        north: createEmptyPlayerMeta('north'),
+        east: createEmptyPlayerMeta('east'),
+        south: createEmptyPlayerMeta('south'),
+        west: createEmptyPlayerMeta('west'),
+      };
+
+      POSITIONS.forEach((pos) => {
+        const previous = current.playerMeta[pos];
+        const playerId = positions?.[pos] ?? (sameSession ? previous.playerId : null);
+        const sameOccupant = sameSession && playerId != null && previous.playerId === playerId;
+        const seat = room.seats?.find(
+          (candidate) =>
+            candidate.player?.id === playerId ||
+            candidate.position === pos ||
+            candidate.seat_index === POSITION_TO_INDEX[pos],
+        );
+        baseMeta[pos] = {
+          position: pos,
+          playerId,
+          username: seat?.player?.username ?? (sameOccupant ? previous.username : null),
+          isYou: playerId === youPlayerId,
+          isTeammate: false,
+          isOpponent: false,
+          isConnected: sameOccupant ? previous.isConnected : true,
+          seatStatus: seat?.player?.is_bot
+            ? 'bot_substitute'
+            : sameOccupant
+              ? previous.seatStatus
+              : 'normal',
+        };
+      });
+
+      if (youPos) {
+        POSITIONS.forEach((pos) => {
+          const teammate = isTeammate(youPos!, pos);
+          baseMeta[pos].isTeammate = teammate && !baseMeta[pos].isYou;
+          baseMeta[pos].isOpponent = !teammate && !baseMeta[pos].isYou;
+        });
+      }
+
+      return {
+        roomCode: room.code,
+        youPlayerId,
+        youPositionAbs: youPos,
+        playerMeta: baseMeta,
+      };
+    }),
 
   setServerState: (state) =>
     set(() => {
@@ -324,7 +343,7 @@ export function useGameViewModel(): GameViewModel | null {
         absolutePosition: absPos,
         relativePosition: relPos,
         playerId: meta.playerId,
-        username: meta.username,
+        username: displayUsername(meta),
         isYou: meta.isYou,
         isTeammate: meta.isTeammate,
         isOpponent: meta.isOpponent,
