@@ -101,6 +101,7 @@ jobs:
           CI: '1'
           EXPO_NO_DOTENV: '1'
           NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+          UI_SHOT_DIR: /tmp/ui-grammar-screens
         run: |
           bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
           expo_pid=$!
@@ -130,9 +131,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ui-grammar-screenshots
-          # verify-ui-grammar.mjs resolves its screenshot root one directory
-          # above the repository checkout.
-          path: ../screenshots/agent-mobile-ui/
+          path: /tmp/ui-grammar-screens/
           if-no-files-found: ignore
           retention-days: 14
 

@@ -13,7 +13,8 @@ import {
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(mobileRoot, '../../..');
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
-const screenshotRoot = resolve(repoRoot, 'screenshots/agent-mobile-ui');
+const screenshotRoot =
+  process.env.UI_SHOT_DIR ?? resolve(repoRoot, 'screenshots/agent-mobile-ui');
 
 const cases = [
   { name: 'home', path: '/home', testId: 'home-screen' },
