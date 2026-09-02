@@ -137,10 +137,7 @@ async function captureMilestones(page, seen) {
 async function stageOneSoloGame() {
   log(`stage 1: solo full game as ${soloUser}`);
   await registerOrLogin(soloUser);
-  await runAutoplayer(
-    ['--user', soloUser, '--password', password, '--max-minutes', '8'],
-    'solo'
-  );
+  await runAutoplayer(['--user', soloUser, '--password', password, '--max-minutes', '8'], 'solo');
   log('stage 1 passed: solo game reached game_over with progression summary');
 }
 

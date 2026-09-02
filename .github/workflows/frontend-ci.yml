@@ -13,13 +13,14 @@ concurrency:
   cancel-in-progress: true
 
 # Faster runners: install the Blacksmith GitHub app (blacksmith.sh) on this
-# repo, then swap every `runs-on: ubuntu-latest` for e.g.
-# `runs-on: blacksmith-4vcpu-ubuntu-2404`. Nothing else needs to change.
+# repo, then flip every job with a single repo variable — no commit needed:
+#   gh variable set CI_RUNNER --body blacksmith-4vcpu-ubuntu-2404
+# Unset the variable to fall back to GitHub-hosted runners.
 
 jobs:
   quality:
     name: Mobile quality
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
 
     steps:
@@ -62,7 +63,7 @@ jobs:
 
   ui-grammar:
     name: UI grammar
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
 
     steps:
@@ -126,6 +127,12 @@ jobs:
 
           bun run test:ui
 
+      - name: Compare against visual baselines
+        working-directory: packages/mobile
+        env:
+          UI_SHOT_DIR: /tmp/ui-grammar-screens
+        run: bun run test:ui:diff
+
       - name: Upload UI grammar screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -137,7 +144,7 @@ jobs:
 
   game-e2e:
     name: Game e2e
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 25
 
     services:

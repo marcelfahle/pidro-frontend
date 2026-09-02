@@ -18,6 +18,11 @@
     "lint": "eslint \"**/*.{js,jsx,ts,tsx}\" && prettier -c \"**/*.{js,jsx,ts,tsx,json}\"",
     "test:smoke": "node scripts/smoke-create-game.mjs",
     "test:ui": "node scripts/verify-ui-grammar.mjs",
+    "test:ui:diff": "node scripts/compare-ui-baselines.mjs",
+    "test:e2e": "node scripts/ci-game-e2e.mjs",
+    "ui:baselines": "node scripts/update-ui-baselines.mjs",
+    "ship:ota": "node scripts/ship.mjs ota --wait",
+    "ship:build": "node scripts/ship.mjs build --wait",
     "format": "eslint \"**/*.{js,jsx,ts,tsx}\" --fix && prettier \"**/*.{js,jsx,ts,tsx,json}\" --write",
     "web": "NODE_OPTIONS=\"--require ./scripts/tailwind-v3-resolve.cjs\" expo start --web",
     "prepare": "husky"
@@ -25,6 +30,7 @@
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
     "@pidro/shared": "workspace:*",
+    "@sentry/react-native": "~7.11.0",
     "@shopify/react-native-skia": "2.6.2",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.5",
@@ -69,6 +75,8 @@
     "eslint-import-resolver-typescript": "^4.4.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^3.4.19",

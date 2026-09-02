@@ -6,6 +6,9 @@ import { Stack } from 'expo-router';
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { initRealtime } from '../src/bootstrap/realtime';
+import { initSentry } from '../src/bootstrap/sentry';
+
+initSentry();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
