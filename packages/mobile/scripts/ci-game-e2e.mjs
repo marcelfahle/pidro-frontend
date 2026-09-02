@@ -174,9 +174,23 @@ async function stageTwoMultiplayerVideo() {
     await page.goto(`${mobileBaseUrl}/(auth)/login`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByPlaceholder('Enter your username').fill(viewUser);
-    await page.getByPlaceholder('Enter your password').fill(password);
-    await page.getByRole('button', { name: 'Sign in' }).click();
+
+    // A fill that lands before React hydrates is silently lost (seen in CI:
+    // username empty, password kept). Re-fill until the submit button —
+    // which enables only when both fields hold values — actually enables.
+    const userField = page.getByPlaceholder('Enter your username');
+    const passField = page.getByPlaceholder('Enter your password');
+    const signIn = page.getByRole('button', { name: 'Sign in' });
+    await userField.waitFor({ timeout: 30_000 });
+    let formReady = false;
+    for (let attempt = 0; attempt < 6 && !formReady; attempt += 1) {
+      await userField.fill(viewUser);
+      await passField.fill(password);
+      await page.waitForTimeout(500);
+      formReady = await signIn.isEnabled();
+    }
+    if (!formReady) throw new Error('Sign in never enabled — login form did not accept input');
+    await signIn.click();
     await page.waitForURL(/\/home$/, { timeout: 20_000 });
     log('UI login ok');
 
