@@ -34,6 +34,8 @@
   "invite.error.sessionExpired": "Your session expired. Enter a display name to continue.",
   "invite.notice.seatChanged": "Your preferred seat was unavailable, so the server chose another open seat.",
   "invite.manual.title": "Enter an invite code",
+  "invite.manual.entry": "Have a code?",
+  "invite.manual.entryAction": "Enter invite code",
   "invite.manual.subtitle": "Use the code a friend shared with you.",
   "invite.manual.heading": "Join your friend’s table",
   "invite.manual.help": "Invite codes contain 8 characters. Dashes and letter case do not matter.",

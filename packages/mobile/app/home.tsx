@@ -11,6 +11,7 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { apiErrorInfo } from '@/utils/apiErrors';
@@ -162,7 +163,7 @@ export default function HomeScreen() {
               onPress={() => router.push('/lobby')}
             />
             <Button
-              label="Have an invite code?"
+              label={t('invite.manual.entry')}
               variant="outline"
               onPress={() => router.push('/join-code' as Href)}
             />

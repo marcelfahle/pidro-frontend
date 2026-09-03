@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
+import { t } from '@/i18n';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -36,10 +37,10 @@ export default function LoginScreen() {
             Create an account
           </Link>
           <PidroText role="metadata" tone="soft">
-            Have an invite?
+            {t('invite.manual.entry')}
           </PidroText>
           <Link href={'/join-code' as Href} style={styles.link}>
-            Enter its code
+            {t('invite.manual.entryAction')}
           </Link>
         </>
       }>

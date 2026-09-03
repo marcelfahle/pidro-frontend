@@ -14,7 +14,6 @@ export const API_CONFIG = {
 
 export const STORAGE_KEYS = {
   auth: 'auth-storage',
-  deferredInstallAttempt: 'deferred-install-attempted:v1',
   installId: 'install-id:v1',
   pendingInvite: 'pending-invite-storage',
 } as const;
