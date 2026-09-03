@@ -22,6 +22,7 @@ export interface CreateGuestRequest {
   display_name: string;
   invite_code: string;
   platform?: 'ios' | 'android' | 'web';
+  install_id?: string;
 }
 
 interface GuestResponseEnvelope extends AuthResponseEnvelope {

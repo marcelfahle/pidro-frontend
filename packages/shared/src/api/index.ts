@@ -19,6 +19,9 @@ export {
 } from './lobby';
 export {
   createInvitesApi,
+  type DeferredInviteFingerprint,
+  type DeferredInviteRequest,
+  type DeferredScreenClass,
   type Invite,
   type InvitePlatform,
   type InvitePreview,

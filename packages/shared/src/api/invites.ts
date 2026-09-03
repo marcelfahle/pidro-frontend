@@ -1,6 +1,7 @@
 import type { ApiClient } from './client';
 import type { Position, PositionPreference, Room } from '../types/lobby';
-import type { InviteSource } from '../utils/inviteLink';
+import type { InviteArrivalSource } from '../utils/inviteLink';
+import { normalizeInviteCode } from '../utils/inviteLink';
 import { normalizeRoom } from '../utils/rooms';
 
 export type InvitePlatform = 'ios' | 'android' | 'web';
@@ -45,8 +46,23 @@ export interface MintInviteRequest {
 
 export interface RedeemInviteRequest {
   platform?: InvitePlatform;
-  source?: InviteSource;
+  source?: InviteArrivalSource;
   position?: Position;
+}
+
+export type DeferredScreenClass = 'compact' | 'medium' | 'large';
+
+export interface DeferredInviteFingerprint {
+  os_major: string;
+  screen_class: DeferredScreenClass;
+  locale: string;
+  timezone: string;
+}
+
+export interface DeferredInviteRequest extends Partial<DeferredInviteFingerprint> {
+  platform: Exclude<InvitePlatform, 'web'>;
+  install_id: string;
+  referrer?: string;
 }
 
 export interface RedeemInviteResponse {
@@ -63,11 +79,25 @@ interface RedeemEnvelope {
   data: RedeemInviteResponse;
 }
 
+interface DeferredInviteEnvelope {
+  data: { invite: { code: string } | null };
+}
+
 export function createInvitesApi(api: ApiClient) {
   return {
     preview: async (code: string): Promise<InvitePreview> => {
       const response = await api.get<InviteEnvelope<InvitePreview>>(`/api/v1/invites/${code}`);
       return response.data.data.invite;
+    },
+
+    resolveDeferred: async (
+      request: DeferredInviteRequest,
+      signal?: AbortSignal,
+    ): Promise<string | null> => {
+      const response = await api.post<DeferredInviteEnvelope>('/api/v1/invites/deferred', request, {
+        signal,
+      });
+      return normalizeInviteCode(response.data.data.invite?.code ?? '');
     },
 
     mint: async (roomCode: string, request: MintInviteRequest): Promise<Invite> => {

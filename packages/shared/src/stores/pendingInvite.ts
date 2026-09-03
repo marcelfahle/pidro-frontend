@@ -1,19 +1,19 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import type { PersistStorage } from "../platform/types";
-import type { InviteSource } from "../utils/inviteLink";
-import { isInviteSource, normalizeInviteCode } from "../utils/inviteLink";
+import type { InviteArrivalSource } from "../utils/inviteLink";
+import { isInviteArrivalSource, normalizeInviteCode } from "../utils/inviteLink";
 
 export interface PendingInvite {
   code: string;
-  source?: InviteSource;
+  source?: InviteArrivalSource;
   receivedAt: number;
 }
 
 export interface PendingInviteState {
   pendingInvite: PendingInvite | null;
   hydrated: boolean;
-  setPendingInvite: (code: string, source?: InviteSource) => void;
+  setPendingInvite: (code: string, source?: InviteArrivalSource) => void;
   clearPendingInvite: () => void;
   setHydrated: (hydrated: boolean) => void;
 }
@@ -33,7 +33,7 @@ function sanitizePendingInvite(value: unknown): PendingInvite | null {
 
   return {
     code,
-    ...(typeof persisted.source === "string" && isInviteSource(persisted.source)
+    ...(typeof persisted.source === "string" && isInviteArrivalSource(persisted.source)
       ? { source: persisted.source }
       : {}),
     receivedAt:

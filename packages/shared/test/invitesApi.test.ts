@@ -60,13 +60,19 @@ describe('invite APIs', () => {
       display_name: 'Anna',
       invite_code: '7KQ4M2XB',
       platform: 'ios',
+      install_id: 'install-1',
     });
 
     expect(calls).toEqual([
       {
         method: 'post',
         path: '/api/v1/auth/guest',
-        body: { display_name: 'Anna', invite_code: '7KQ4M2XB', platform: 'ios' },
+        body: {
+          display_name: 'Anna',
+          invite_code: '7KQ4M2XB',
+          platform: 'ios',
+          install_id: 'install-1',
+        },
       },
     ]);
     expect(result.user).toEqual(guest);
@@ -125,6 +131,29 @@ describe('invite APIs', () => {
         path: '/api/v1/invites/7KQ4M2XB/redeem',
         body: { platform: 'ios', source: 'im' },
       },
+    ]);
+  });
+
+  it('resolves a deferred first-install request with an empty-or-code envelope', async () => {
+    const request = {
+      platform: 'ios' as const,
+      install_id: 'install-1',
+      os_major: '18',
+      screen_class: 'compact' as const,
+      locale: 'en-US',
+      timezone: 'Europe/Madrid',
+    };
+    const { api, calls } = recordingApi([
+      { data: { invite: { code: '7KQ4M2XB' } } },
+      { data: { invite: null } },
+    ]);
+    const invites = createInvitesApi(api);
+
+    expect(await invites.resolveDeferred(request)).toBe('7KQ4M2XB');
+    expect(await invites.resolveDeferred(request)).toBeNull();
+    expect(calls).toEqual([
+      { method: 'post', path: '/api/v1/invites/deferred', body: request },
+      { method: 'post', path: '/api/v1/invites/deferred', body: request },
     ]);
   });
 

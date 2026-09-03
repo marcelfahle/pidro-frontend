@@ -2,6 +2,9 @@ import { createInvitesApi } from '@pidro/shared';
 import { api } from './client';
 
 export type {
+  DeferredInviteFingerprint,
+  DeferredInviteRequest,
+  DeferredScreenClass,
   Invite,
   InvitePlatform,
   InvitePreview,

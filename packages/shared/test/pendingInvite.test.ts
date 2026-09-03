@@ -50,6 +50,25 @@ describe("pending invite store", () => {
     expect(store.getState().pendingInvite).toBeNull();
   });
 
+  it("persists internal deferred and typed arrival sources", async () => {
+    const storage = memoryStorage();
+    const first = createPendingInviteStore({
+      storage,
+      storageKey: "internal-source-test",
+    });
+    first.getState().setPendingInvite("7KQ4M2XB", "deferred");
+
+    const second = createPendingInviteStore({
+      storage,
+      storageKey: "internal-source-test",
+    });
+    await second.persist.rehydrate();
+    expect(second.getState().pendingInvite?.source).toBe("deferred");
+
+    second.getState().setPendingInvite("N4RT8VW2", "typed");
+    expect(second.getState().pendingInvite?.source).toBe("typed");
+  });
+
   it("does not persist an invalid code", () => {
     const store = createPendingInviteStore({ storage: memoryStorage() });
     store.getState().setPendingInvite("invalid");
@@ -80,9 +99,7 @@ describe("pending invite store", () => {
 
     expect(store.getState().pendingInvite?.code).toBe("7KQ4M2XB");
     expect(store.getState().pendingInvite?.source).toBeUndefined();
-    expect(Number.isFinite(store.getState().pendingInvite?.receivedAt)).toBe(
-      true,
-    );
+    expect(Number.isFinite(store.getState().pendingInvite?.receivedAt)).toBe(true);
   });
 
   it("drops a malformed persisted invite", async () => {
