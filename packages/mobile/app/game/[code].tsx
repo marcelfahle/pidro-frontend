@@ -191,12 +191,33 @@ export default function GameScreen() {
   const joiningNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waitingRoomExitRef = useRef(false);
   const activeRoomCodeRef = useRef(code);
+  const roomRequestGenerationRef = useRef(0);
   const refreshSchedulerRef = useRef<ReturnType<typeof createCoalescedCallback> | null>(null);
 
   useEffect(() => {
     waitingRoomExitRef.current = false;
     activeRoomCodeRef.current = code;
+    roomRequestGenerationRef.current += 1;
+    return () => {
+      waitingRoomExitRef.current = true;
+      roomRequestGenerationRef.current += 1;
+    };
   }, [code]);
+
+  const applyRoomSnapshot = useCallback(
+    (requestedCode: string, generation: number, fetchedRoom: Room) => {
+      if (
+        waitingRoomExitRef.current ||
+        activeRoomCodeRef.current !== requestedCode ||
+        roomRequestGenerationRef.current !== generation
+      ) {
+        return;
+      }
+      setRoomLookup({ roomCode: requestedCode, room: fetchedRoom });
+      updateRoom(fetchedRoom);
+    },
+    [updateRoom]
+  );
 
   // Hide status bar when entering game
   useEffect(() => {
@@ -232,14 +253,14 @@ export default function GameScreen() {
     if (!serverPhase || !code || !authHydrated || !accessToken) return;
     if (refreshedForGameRef.current === code) return;
     refreshedForGameRef.current = code;
+    const generation = ++roomRequestGenerationRef.current;
     lobbyApi
       .getRoom(code)
       .then((fetchedRoom) => {
-        setRoomLookup({ roomCode: code, room: fetchedRoom });
-        updateRoom(fetchedRoom);
+        applyRoomSnapshot(code, generation, fetchedRoom);
       })
       .catch(() => {});
-  }, [serverPhase, code, authHydrated, accessToken, updateRoom]);
+  }, [serverPhase, code, authHydrated, accessToken, applyRoomSnapshot]);
 
   // Subscribe to the game channel as soon as we're seated — including while the
   // room is still 'waiting'. The server broadcasts the initial game_state on
@@ -284,15 +305,16 @@ export default function GameScreen() {
 
   const refreshWaitingRoom = useCallback(async () => {
     if (!code || waitingRoomExitRef.current) return;
+    const generation = ++roomRequestGenerationRef.current;
     try {
       const fetchedRoom = await lobbyApi.getRoom(code);
-      if (waitingRoomExitRef.current || activeRoomCodeRef.current !== code) return;
-      setRoomLookup({ roomCode: code, room: fetchedRoom });
-      updateRoom(fetchedRoom);
+      applyRoomSnapshot(code, generation, fetchedRoom);
     } catch {
-      console.warn('[GameScreen] Waiting-room refresh failed.');
+      if (roomRequestGenerationRef.current === generation && !waitingRoomExitRef.current) {
+        console.warn('[GameScreen] Waiting-room refresh failed.');
+      }
     }
-  }, [code, updateRoom]);
+  }, [applyRoomSnapshot, code]);
 
   useEffect(() => {
     const scheduler = createCoalescedCallback(() => void refreshWaitingRoom());
@@ -410,15 +432,17 @@ export default function GameScreen() {
 
     const fetchRoom = async () => {
       if (!code || !authHydrated || !accessToken) return;
+      const generation = ++roomRequestGenerationRef.current;
 
       try {
         const fetchedRoom = await lobbyApi.getRoom(code);
         if (cancelled) return;
-        setRoomLookup({ roomCode: code, room: fetchedRoom });
-        updateRoom(fetchedRoom);
+        applyRoomSnapshot(code, generation, fetchedRoom);
       } catch {
-        if (!cancelled) setRoomLookup({ roomCode: code });
-        console.error('[GameScreen] Failed to fetch room details.');
+        if (!cancelled && roomRequestGenerationRef.current === generation) {
+          setRoomLookup({ roomCode: code });
+          console.error('[GameScreen] Failed to fetch room details.');
+        }
       }
     };
 
@@ -427,7 +451,7 @@ export default function GameScreen() {
     return () => {
       cancelled = true;
     };
-  }, [accessToken, authHydrated, code, updateRoom]);
+  }, [accessToken, applyRoomSnapshot, authHydrated, code]);
 
   const handlePlayAgain = useCallback(
     async (oldRoom: Room) => {
@@ -484,10 +508,12 @@ export default function GameScreen() {
       if (controlsBusyRef.current) return;
       controlsBusyRef.current = true;
       setControlsBusy(true);
+      const requestedCode = activeRoomCodeRef.current;
+      roomRequestGenerationRef.current += 1;
       try {
         const updated = await action();
-        setRoomLookup({ roomCode: updated.code, room: updated });
-        updateRoom(updated);
+        const generation = ++roomRequestGenerationRef.current;
+        if (requestedCode) applyRoomSnapshot(requestedCode, generation, updated);
       } catch (caught) {
         const detail = (caught as { response?: { data?: { errors?: { detail?: string }[] } } })
           ?.response?.data?.errors?.[0]?.detail;
@@ -497,7 +523,7 @@ export default function GameScreen() {
         setControlsBusy(false);
       }
     },
-    [updateRoom]
+    [applyRoomSnapshot]
   );
 
   const handleToggleLock = useCallback(() => {

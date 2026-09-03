@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 import { createRequire } from 'node:module';
+import { createPendingInviteStore } from '../../../shared/src/stores/pendingInvite.ts';
 import { redirectSystemPath } from '../../app/+native-intent.tsx';
 import { initialRoute } from '../../src/navigation/initialRoute.ts';
 
@@ -59,6 +60,26 @@ describe('initial route', () => {
     expect(initialRoute(true, true, 'authenticated', null)).toBe('/home');
     expect(initialRoute(true, true, 'unauthenticated', null)).toBe('/(auth)/login');
   });
+
+  it('settles startup routing when pending-invite storage cannot be read', async () => {
+    const store = createPendingInviteStore({
+      storage: {
+        getItem: async () => {
+          throw new Error('storage unavailable');
+        },
+        setItem: async () => {},
+        removeItem: async () => {},
+      },
+      storageKey: 'rejecting-pending-invite-test',
+    });
+
+    await store.persist.rehydrate();
+
+    expect(store.getState().hydrated).toBe(true);
+    expect(initialRoute(true, store.getState().hydrated, 'unauthenticated', null)).toBe(
+      '/(auth)/login'
+    );
+  });
 });
 
 describe('resolved variant configuration', () => {
@@ -85,6 +106,12 @@ describe('resolved variant configuration', () => {
           action: 'VIEW',
           autoVerify: true,
           data: [{ scheme: 'https', host: 'www.pidro.online', pathPrefix: '/j/' }],
+          category: ['BROWSABLE', 'DEFAULT'],
+        },
+        {
+          action: 'VIEW',
+          autoVerify: true,
+          data: [{ scheme: 'https', host: 'pidro.online', pathPrefix: '/j/' }],
           category: ['BROWSABLE', 'DEFAULT'],
         },
       ]);

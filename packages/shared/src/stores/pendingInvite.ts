@@ -74,7 +74,8 @@ export function createPendingInviteStore({
               ?.pendingInvite,
           ),
         }),
-        onRehydrateStorage: () => (state) => state?.setHydrated(true),
+        onRehydrateStorage: (initialState) => () =>
+          initialState.setHydrated(true),
       },
     ),
   );

@@ -63,6 +63,10 @@
   "table.managePlayer": "Manage %{name}",
   "table.manageDescription": "Move this player to an open seat or remove them from the table.",
   "table.moveTo": "Move to %{position}",
+  "table.position.north": "north",
+  "table.position.east": "east",
+  "table.position.south": "south",
+  "table.position.west": "west",
   "table.kick": "Remove from table",
   "table.actionErrorTitle": "Table action failed",
   "table.actionError": "The server did not accept that change. Refresh and try again."

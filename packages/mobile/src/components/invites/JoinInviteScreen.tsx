@@ -261,10 +261,11 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
   }, [redeem]);
 
   const exit = useCallback(() => {
+    if (submitting || guestCreatingRef.current || redeemingRef.current) return;
     routeActiveRef.current = false;
     clearPendingInvite();
     router.replace((user ? '/home' : '/(auth)/login') as Href);
-  }, [clearPendingInvite, router, user]);
+  }, [clearPendingInvite, router, submitting, user]);
 
   const availability = movedCode ? 'moved' : preview ? classifyInviteState(preview.state) : null;
   const flowLoading = loading || !storesHydrated;

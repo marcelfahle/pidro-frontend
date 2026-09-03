@@ -47,6 +47,18 @@ module.exports = ({ config }) => {
                 ],
                 category: ['BROWSABLE', 'DEFAULT'],
               },
+              {
+                action: 'VIEW',
+                autoVerify: true,
+                data: [
+                  {
+                    scheme: 'https',
+                    host: 'pidro.online',
+                    pathPrefix: '/j/',
+                  },
+                ],
+                category: ['BROWSABLE', 'DEFAULT'],
+              },
             ],
           }
         : { intentFilters: [] }),

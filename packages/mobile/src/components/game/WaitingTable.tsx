@@ -80,7 +80,7 @@ function SeatPlate({
         },
         portrait && isSideSeat && styles.sideSeatPortrait,
       ]}
-      pointerEvents={onManage ? 'auto' : 'none'}>
+      pointerEvents={onManage ? 'box-none' : 'none'}>
       <Surface variant="plaque" style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
         {seat.occupied ? (
           <Image
@@ -233,7 +233,7 @@ export function WaitingTable({
           {moveTargets.map((position) => (
             <Button
               key={position}
-              label={t('table.moveTo', { position })}
+              label={t('table.moveTo', { position: t(`table.position.${position}`) })}
               variant="secondary"
               disabled={controlsBusy}
               onPress={() => {

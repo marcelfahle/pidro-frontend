@@ -192,7 +192,11 @@ export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
               <Button
                 label={t('invite.host.change')}
                 variant="outline"
-                onPress={() => setConfiguring(true)}
+                onPress={() => {
+                  setSeatHint(invite.seat_hint);
+                  setLabel(invite.label ?? '');
+                  setConfiguring(true);
+                }}
                 disabled={busy}
               />
               <View style={styles.row}>
