@@ -22,6 +22,7 @@ function normalizeSeat(raw: any, fallbackIndex: number): Seat {
       ? {
           id: String(raw.player_id),
           username: String(raw.player_username ?? raw.player_id),
+          display_name: raw.player_display_name ?? null,
           is_bot: raw.player_is_bot ?? false,
           avatar_url: raw.player_avatar_url ?? null,
         }
@@ -75,6 +76,7 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
       value?.occupant_type === 'bot' ||
       (typeof userId === 'string' && userId.startsWith('bot_'));
     const username = value?.username ?? value?.player_username ?? null;
+    const displayName = value?.display_name ?? value?.player_display_name ?? null;
     const playerId = userId ?? (isBot ? `bot_${String(position)}` : null);
 
     return {
@@ -82,16 +84,17 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
       position,
       status: playerId ? 'occupied' : 'free',
       player:
-        playerId && (isBot || username)
+        playerId && (isBot || username || displayName)
           ? {
               id: String(playerId),
-              username: username ?? 'Bot',
+              username: username ?? displayName ?? 'Bot',
+              display_name: displayName,
               is_bot: isBot,
             }
           : null,
-      // Only expose player_id when we have a display name — normalizeSeat
-      // falls back to using the raw id as a username otherwise.
-      player_id: isBot || username ? playerId : null,
+      // Only expose player_id when we can render a useful identity —
+      // normalizeSeat falls back to showing the raw id otherwise.
+      player_id: isBot || username || displayName ? playerId : null,
     };
   });
 }
@@ -133,6 +136,7 @@ export function normalizeRoom(raw: any): Room {
     name,
     metadata: raw?.metadata,
     host_id: raw?.host_id ?? raw?.hostId ?? raw?.host?.id ?? null,
+    locked: raw?.locked ?? false,
     status,
     player_count: playerCount,
     players_count: playerCount,

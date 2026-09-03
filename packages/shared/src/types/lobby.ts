@@ -13,6 +13,7 @@ export interface RoomSettings {
 export interface Player {
   id: string;
   username: string;
+  display_name?: string | null;
   avatar_url?: string | null;
   is_bot?: boolean;
 }
@@ -34,6 +35,7 @@ export interface Room {
     [key: string]: unknown;
   };
   host_id?: string | null;
+  locked?: boolean;
   status: RoomStatus;
   player_count?: number;
   players_count?: number;

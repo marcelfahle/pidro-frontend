@@ -15,6 +15,10 @@ const variants = {
 
 module.exports = ({ config }) => {
   const selectedVariant = variants[variant];
+  const isProduction = variant === 'production';
+  if (!isProduction && !selectedVariant) {
+    throw new Error(`Unsupported APP_VARIANT: ${JSON.stringify(variant)}`);
+  }
 
   return {
     ...config,
@@ -23,10 +27,29 @@ module.exports = ({ config }) => {
     ios: {
       ...config.ios,
       bundleIdentifier: selectedVariant?.bundleIdentifier ?? config.ios.bundleIdentifier,
+      associatedDomains: ['applinks:www.pidro.online', 'applinks:pidro.online'],
     },
     android: {
       ...config.android,
       ...(selectedVariant ? { package: selectedVariant.bundleIdentifier } : {}),
+      ...(isProduction
+        ? {
+            intentFilters: [
+              {
+                action: 'VIEW',
+                autoVerify: true,
+                data: [
+                  {
+                    scheme: 'https',
+                    host: 'www.pidro.online',
+                    pathPrefix: '/j/',
+                  },
+                ],
+                category: ['BROWSABLE', 'DEFAULT'],
+              },
+            ],
+          }
+        : { intentFilters: [] }),
     },
   };
 };

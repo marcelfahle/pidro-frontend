@@ -1,5 +1,7 @@
 export {
   type AuthApi,
+  type CreateGuestRequest,
+  type CreateGuestResponse,
   createAuthApi,
   type LoginResponse,
   type PasswordResetRequestResponse,
@@ -15,3 +17,15 @@ export {
   type ListRoomsResponse,
   type LobbyApi,
 } from './lobby';
+export {
+  createInvitesApi,
+  type Invite,
+  type InvitePlatform,
+  type InvitePreview,
+  type InvitesApi,
+  type InviteSeatHint,
+  type InviteState,
+  type MintInviteRequest,
+  type RedeemInviteRequest,
+  type RedeemInviteResponse,
+} from './invites';

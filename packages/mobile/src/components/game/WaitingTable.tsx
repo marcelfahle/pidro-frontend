@@ -1,11 +1,15 @@
 import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Background } from '@/components/ui/Background';
 import { Button } from '@/components/ui/Button';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
+import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostControls';
+import { t } from '@/i18n';
 import { Scoreboard } from '@/game/canvas/Scoreboard';
 import type { Position, Room } from '@/types/lobby';
 
@@ -13,8 +17,10 @@ const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 type RelPosition = 'top' | 'right' | 'bottom' | 'left';
 
 interface SeatInfo {
+  absolute: Position;
   rel: RelPosition;
   name: string;
+  playerId: string | null;
   isYou: boolean;
   isBot: boolean;
   occupied: boolean;
@@ -34,9 +40,9 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
     const seat = playerId ? seatByPlayerId.get(playerId) : undefined;
     const isYou = !!playerId && playerId === youPlayerId;
     const isBot = !!seat?.player?.is_bot;
-    const name = isYou ? 'You' : isBot ? 'Bot' : (seat?.player?.username ?? 'Open seat');
+    const name = isYou ? 'You' : isBot ? 'Bot' : seatDisplayName(seat?.player) || 'Open seat';
     const rel = relatives[(absoluteIndex - youIdx + 4) % 4];
-    return { rel, name, isYou, isBot, occupied: !!playerId };
+    return { absolute, rel, name, playerId, isYou, isBot, occupied: !!playerId };
   });
 }
 
@@ -50,7 +56,15 @@ const SEAT_ANCHORS: Record<
   right: { right: '3%', top: '43%' },
 };
 
-function SeatPlate({ seat, portrait }: { seat: SeatInfo; portrait: boolean }) {
+function SeatPlate({
+  seat,
+  portrait,
+  onManage,
+}: {
+  seat: SeatInfo;
+  portrait: boolean;
+  onManage?: () => void;
+}) {
   const anchor = SEAT_ANCHORS[seat.rel];
   const isSideSeat = seat.rel === 'left' || seat.rel === 'right';
   return (
@@ -66,7 +80,7 @@ function SeatPlate({ seat, portrait }: { seat: SeatInfo; portrait: boolean }) {
         },
         portrait && isSideSeat && styles.sideSeatPortrait,
       ]}
-      pointerEvents="none">
+      pointerEvents={onManage ? 'auto' : 'none'}>
       <Surface variant="plaque" style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
         {seat.occupied ? (
           <Image
@@ -87,6 +101,15 @@ function SeatPlate({ seat, portrait }: { seat: SeatInfo; portrait: boolean }) {
             {seat.occupied ? 'Waiting' : 'Available'}
           </PidroText>
         </View>
+        {onManage ? (
+          <Button
+            accessibilityLabel={t('table.managePlayer', { name: seat.name })}
+            variant="ghost"
+            size="icon"
+            onPress={onManage}>
+            <Feather name="more-horizontal" size={20} color={PidroColors.text} />
+          </Button>
+        ) : null}
       </Surface>
     </View>
   );
@@ -96,16 +119,40 @@ interface Props {
   room: Room;
   youPlayerId: string;
   onLeave: () => void;
+  canManage?: boolean;
+  joiningName?: string | null;
+  controlsBusy?: boolean;
+  onOpenInvite?: () => void;
+  onToggleLock?: () => void;
+  onMovePlayer?: (userId: string, position: Position) => void;
+  onKickPlayer?: (position: Position) => void;
 }
 
-export function WaitingTable({ room, youPlayerId, onLeave }: Props) {
+export function WaitingTable({
+  room,
+  youPlayerId,
+  onLeave,
+  canManage = false,
+  joiningName,
+  controlsBusy = false,
+  onOpenInvite,
+  onToggleLock,
+  onMovePlayer,
+  onKickPlayer,
+}: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
+  const compactLandscape = !portrait && width < 720;
   const seats = buildSeats(room, youPlayerId);
   const openSeats = seats.filter((seat) => !seat.occupied).length;
   const youPosition =
     POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null;
+  const [selectedSeat, setSelectedSeat] = useState<SeatInfo | null>(null);
+  const selectedSeatIsCurrent =
+    !!selectedSeat && room.positions?.[selectedSeat.absolute] === selectedSeat.playerId;
+  const moveTargets =
+    selectedSeat && selectedSeatIsCurrent ? availableMoveTargets(room, selectedSeat.absolute) : [];
 
   return (
     <Background>
@@ -126,22 +173,96 @@ export function WaitingTable({ room, youPlayerId, onLeave }: Props) {
         />
 
         {seats.map((seat) => (
-          <SeatPlate key={seat.rel} seat={seat} portrait={portrait} />
+          <SeatPlate
+            key={seat.rel}
+            seat={seat}
+            portrait={portrait}
+            onManage={
+              canManage && seat.occupied && !seat.isYou && !seat.isBot && seat.playerId
+                ? () => setSelectedSeat(seat)
+                : undefined
+            }
+          />
         ))}
 
-        <View style={styles.centerWrap} pointerEvents="none">
-          <Surface variant="window" style={styles.statusWindow}>
+        <View style={styles.centerWrap} pointerEvents="box-none">
+          <Surface
+            variant="window"
+            style={[
+              styles.statusWindow,
+              compactLandscape && canManage && styles.statusWindowCompact,
+            ]}>
             <PidroText role="title" align="center">
-              {openSeats > 0
-                ? `Waiting for ${openSeats} more ${openSeats === 1 ? 'player' : 'players'}…`
-                : 'Starting the game…'}
+              {joiningName
+                ? t('table.joining', { name: joiningName })
+                : openSeats > 0
+                  ? `Waiting for ${openSeats} more ${openSeats === 1 ? 'player' : 'players'}…`
+                  : 'Starting the game…'}
             </PidroText>
             <PidroText role="metadata" tone="soft" align="center">
               Table {room.code} · The game starts automatically when every seat is filled.
             </PidroText>
+            {canManage ? (
+              <View style={styles.hostActions}>
+                <Button
+                  label={t('table.invite')}
+                  size="sm"
+                  onPress={onOpenInvite}
+                  disabled={controlsBusy}
+                  style={styles.hostAction}
+                />
+                <Button
+                  label={room.locked ? t('table.unlock') : t('table.lock')}
+                  variant="outline"
+                  size="sm"
+                  onPress={onToggleLock}
+                  loading={controlsBusy}
+                  style={styles.hostAction}
+                />
+              </View>
+            ) : null}
           </Surface>
         </View>
       </View>
+      <Modal
+        isOpen={canManage && selectedSeatIsCurrent}
+        title={selectedSeat ? t('table.managePlayer', { name: selectedSeat.name }) : undefined}
+        description={t('table.manageDescription')}
+        onClose={() => setSelectedSeat(null)}>
+        <View style={styles.manageActions}>
+          {moveTargets.map((position) => (
+            <Button
+              key={position}
+              label={t('table.moveTo', { position })}
+              variant="secondary"
+              disabled={controlsBusy}
+              onPress={() => {
+                if (selectedSeat?.playerId && selectedSeatIsCurrent) {
+                  onMovePlayer?.(selectedSeat.playerId, position);
+                }
+                setSelectedSeat(null);
+              }}
+            />
+          ))}
+          {selectedSeat ? (
+            <Button
+              label={t('table.kick')}
+              variant="destructive"
+              disabled={controlsBusy}
+              onPress={() => {
+                if (selectedSeatIsCurrent) onKickPlayer?.(selectedSeat.absolute);
+                setSelectedSeat(null);
+              }}
+            />
+          ) : null}
+          <Button
+            label={t('common.cancel')}
+            variant="outline"
+            disabled={controlsBusy}
+            onPress={() => setSelectedSeat(null)}
+          />
+        </View>
+      </Modal>
     </Background>
   );
 }
@@ -205,5 +326,23 @@ const styles = StyleSheet.create({
     gap: PidroSpacing.xs,
     paddingHorizontal: PidroSpacing.lg,
     paddingVertical: PidroSpacing.md,
+  },
+  statusWindowCompact: {
+    maxWidth: 300,
+    paddingHorizontal: PidroSpacing.sm,
+    paddingVertical: PidroSpacing.sm,
+  },
+  hostActions: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: PidroSpacing.xs,
+  },
+  hostAction: {
+    minWidth: 120,
+    flex: 1,
+  },
+  manageActions: {
+    gap: PidroSpacing.sm,
   },
 });

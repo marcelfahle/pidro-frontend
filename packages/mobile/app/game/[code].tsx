@@ -5,6 +5,8 @@ import {
   type ProgressionSummary,
   type SeatEvent,
 } from '@/channels/hooks/useGameChannel';
+import type { WaitingRoomEvent } from '@/channels/gameRoomEvents';
+import { createCoalescedCallback } from '@/channels/gameRoomEvents';
 import {
   View,
   Text,
@@ -14,7 +16,7 @@ import {
   StatusBar,
   StyleSheet,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/stores/lobby';
 import { useGameStore } from '@/stores/game';
@@ -22,9 +24,10 @@ import { useAuthStore } from '@/stores/auth';
 import { lobbyApi } from '@/api/lobby';
 import { api } from '@/api/client';
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
-import type { Room, SeatType } from '@/types/lobby';
+import type { Position, Room, SeatType } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { WaitingTable } from '@/components/game/WaitingTable';
+import { InviteModal } from '@/components/invites/InviteModal';
 import { Background } from '@/components/ui/Background';
 import { Button } from '@/components/ui/Button';
 import { PidroText } from '@/components/ui/PidroText';
@@ -32,6 +35,8 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, gameRoute, parseGameOrigin } from '@/navigation/gameRoute';
+import { canManageRoom } from '@/features/invites/hostControls';
+import { t } from '@/i18n';
 
 type SkiaTableProps = {
   room: Room;
@@ -148,6 +153,7 @@ export default function GameScreen() {
   const router = useRouter();
   const rooms = useLobbyStore((s) => s.rooms);
   const updateRoom = useLobbyStore((s) => s.updateRoom);
+  const removeRoom = useLobbyStore((s) => s.removeRoom);
   const youPlayerId = useAuthStore((s) => s.user?.id ?? '');
   const youUsername = useAuthStore((s) => s.user?.username ?? null);
   const authHydrated = useAuthStore((s) => s.hydrated);
@@ -178,6 +184,19 @@ export default function GameScreen() {
     progressionResult?.roomCode === code ? progressionResult.summary : null;
   const [restoreFailureCode, setRestoreFailureCode] = useState<string | null>(null);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [controlsBusy, setControlsBusy] = useState(false);
+  const controlsBusyRef = useRef(false);
+  const [joiningName, setJoiningName] = useState<string | null>(null);
+  const joiningNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waitingRoomExitRef = useRef(false);
+  const activeRoomCodeRef = useRef(code);
+  const refreshSchedulerRef = useRef<ReturnType<typeof createCoalescedCallback> | null>(null);
+
+  useEffect(() => {
+    waitingRoomExitRef.current = false;
+    activeRoomCodeRef.current = code;
+  }, [code]);
 
   // Hide status bar when entering game
   useEffect(() => {
@@ -263,13 +282,62 @@ export default function GameScreen() {
     [code]
   );
 
+  const refreshWaitingRoom = useCallback(async () => {
+    if (!code || waitingRoomExitRef.current) return;
+    try {
+      const fetchedRoom = await lobbyApi.getRoom(code);
+      if (waitingRoomExitRef.current || activeRoomCodeRef.current !== code) return;
+      setRoomLookup({ roomCode: code, room: fetchedRoom });
+      updateRoom(fetchedRoom);
+    } catch {
+      console.warn('[GameScreen] Waiting-room refresh failed.');
+    }
+  }, [code, updateRoom]);
+
+  useEffect(() => {
+    const scheduler = createCoalescedCallback(() => void refreshWaitingRoom());
+    refreshSchedulerRef.current = scheduler;
+    return () => {
+      scheduler.dispose();
+      if (refreshSchedulerRef.current === scheduler) refreshSchedulerRef.current = null;
+    };
+  }, [refreshWaitingRoom]);
+  useEffect(
+    () => () => {
+      if (joiningNoticeTimerRef.current) clearTimeout(joiningNoticeTimerRef.current);
+    },
+    []
+  );
+
+  const handleWaitingRoomEvent = useCallback(
+    (event: WaitingRoomEvent) => {
+      if (event.kind === 'kicked') {
+        waitingRoomExitRef.current = true;
+        refreshSchedulerRef.current?.dispose();
+        if (code) removeRoom(code);
+        router.replace('/lobby');
+        return;
+      }
+      if (event.joiningName) {
+        setJoiningName(event.joiningName);
+        if (joiningNoticeTimerRef.current) clearTimeout(joiningNoticeTimerRef.current);
+        joiningNoticeTimerRef.current = setTimeout(() => setJoiningName(null), 2500);
+      }
+      refreshSchedulerRef.current?.trigger();
+    },
+    [code, removeRoom, router]
+  );
+
   useGameChannel({
     roomCode: code ?? '',
     enabled: canJoinGameChannel,
     onSeatEvent: handleSeatEvent,
     onOwnerDecision: handleOwnerDecision,
     onProgressionSummary: handleProgressionSummary,
+    onWaitingRoomEvent: handleWaitingRoomEvent,
   });
+
+  const canManage = room ? canManageRoom(room, youPlayerId) : false;
 
   useEffect(() => {
     if (!code || !authHydrated || !accessToken || !shouldRestoreServerState) {
@@ -411,6 +479,52 @@ export default function GameScreen() {
     router.replace(exitPath);
   };
 
+  const runRoomControl = useCallback(
+    async (action: () => Promise<Room>) => {
+      if (controlsBusyRef.current) return;
+      controlsBusyRef.current = true;
+      setControlsBusy(true);
+      try {
+        const updated = await action();
+        setRoomLookup({ roomCode: updated.code, room: updated });
+        updateRoom(updated);
+      } catch (caught) {
+        const detail = (caught as { response?: { data?: { errors?: { detail?: string }[] } } })
+          ?.response?.data?.errors?.[0]?.detail;
+        Alert.alert(t('table.actionErrorTitle'), detail ?? t('table.actionError'));
+      } finally {
+        controlsBusyRef.current = false;
+        setControlsBusy(false);
+      }
+    },
+    [updateRoom]
+  );
+
+  const handleToggleLock = useCallback(() => {
+    if (!room || !canManage) return;
+    void runRoomControl(() => lobbyApi.setRoomLocked(room.code, !room.locked));
+  }, [canManage, room, runRoomControl]);
+
+  const handleMovePlayer = useCallback(
+    (userId: string, position: Position) => {
+      if (!room || !canManage) return;
+      void runRoomControl(() => lobbyApi.movePlayer(room.code, position, userId));
+    },
+    [canManage, room, runRoomControl]
+  );
+
+  const handleKickPlayer = useCallback(
+    (position: Position) => {
+      if (!room || !canManage) return;
+      void runRoomControl(() => lobbyApi.kickPlayer(room.code, position));
+    },
+    [canManage, room, runRoomControl]
+  );
+
+  if (authHydrated && !accessToken) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   if (!room && roomLookup?.roomCode !== code) {
     return (
       <Background>
@@ -519,5 +633,28 @@ export default function GameScreen() {
     );
   }
 
-  return <WaitingTable room={room} youPlayerId={youPlayerId} onLeave={handleLeaveGame} />;
+  return (
+    <>
+      <WaitingTable
+        room={room}
+        youPlayerId={youPlayerId}
+        onLeave={handleLeaveGame}
+        canManage={canManage}
+        joiningName={joiningName}
+        controlsBusy={controlsBusy}
+        onOpenInvite={() => setInviteOpen(true)}
+        onToggleLock={handleToggleLock}
+        onMovePlayer={handleMovePlayer}
+        onKickPlayer={handleKickPlayer}
+      />
+      {canManage ? (
+        <InviteModal
+          key={room.code}
+          isOpen={inviteOpen}
+          roomCode={room.code}
+          onClose={() => setInviteOpen(false)}
+        />
+      ) : null}
+    </>
+  );
 }

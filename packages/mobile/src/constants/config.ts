@@ -14,6 +14,7 @@ export const API_CONFIG = {
 
 export const STORAGE_KEYS = {
   auth: 'auth-storage',
+  pendingInvite: 'pending-invite-storage',
 } as const;
 
 export const APP_CONFIG = {
