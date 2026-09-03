@@ -13,17 +13,31 @@ import {
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(mobileRoot, '../../..');
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
-const screenshotRoot =
-  process.env.UI_SHOT_DIR ?? resolve(repoRoot, 'screenshots/agent-mobile-ui');
+const screenshotRoot = process.env.UI_SHOT_DIR ?? resolve(repoRoot, 'screenshots/agent-mobile-ui');
 
 const cases = [
   { name: 'home', path: '/home', testId: 'home-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen' },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
+  {
+    name: 'join-invite',
+    path: '/join/7KQ4M2XB?source=copy&fixture=open',
+    testId: 'join-invite-window',
+  },
   { name: 'ui-components', path: '/ui-dev?state=components', testId: 'ui-foundation-panel' },
   { name: 'create-table', path: '/ui-dev?state=create', testId: 'create-room-window' },
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
+  {
+    name: 'table-host-controls',
+    path: '/table-dev?phase=waiting-host',
+    testId: 'waiting-table',
+  },
+  {
+    name: 'table-invite',
+    path: '/table-dev?phase=waiting-host&invite=true',
+    testId: 'invite-window',
+  },
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
   {
     name: 'table-dealer-selection',
@@ -115,7 +129,9 @@ async function assertBiddingRevealSequence(page, viewport) {
   await page.getByTestId('rendered-hand-card-count-6').first().waitFor({ state: 'attached' });
   await page.waitForTimeout(350);
   if (await biddingWindow.isVisible()) {
-    throw new Error(`bidding controls appeared while the hand was still dealing in ${viewport.name}`);
+    throw new Error(
+      `bidding controls appeared while the hand was still dealing in ${viewport.name}`
+    );
   }
 
   await biddingWindow.waitFor({ state: 'visible', timeout: 20_000 });
@@ -287,7 +303,12 @@ async function main() {
       await mkdir(screenshotDir, { recursive: true });
 
       for (const testCase of cases) {
-        if (viewport.tableOnly && !testCase.path.startsWith('/table-dev')) continue;
+        if (
+          viewport.tableOnly &&
+          !testCase.path.startsWith('/table-dev') &&
+          testCase.name !== 'join-invite'
+        )
+          continue;
         const page = await context.newPage();
         const pageErrors = [];
         page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));

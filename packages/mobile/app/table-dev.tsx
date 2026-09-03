@@ -10,10 +10,12 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
+import { InviteModal } from '@/components/invites/InviteModal';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Room } from '@/types/lobby';
+import type { Invite } from '@pidro/shared';
 
 const WAITING_ROOM: Room = {
   code: 'DEV01',
@@ -49,6 +51,16 @@ const WAITING_ROOM: Room = {
     },
     { seat_index: 4, status: 'free', player: null, position: 'east' },
   ],
+};
+
+const INVITE_FIXTURE: Invite = {
+  code: '7KQ4M2XB',
+  state: 'open',
+  url: 'https://www.pidro.online/j/7KQ4M2XB',
+  share_text: 'Come play Pidro with me 🃏 https://www.pidro.online/j/7KQ4M2XB — code 7KQ4-M2XB',
+  seat_hint: 'partner',
+  label: 'Friday game',
+  expires_at: '2099-09-03T15:30:00Z',
 };
 
 function Loading() {
@@ -97,16 +109,34 @@ export default function TableDevRoute() {
 }
 
 function TableDevHarness() {
-  const params = useLocalSearchParams<{ phase?: string; autoplay?: string }>();
+  const params = useLocalSearchParams<{ phase?: string; autoplay?: string; invite?: string }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
   const [isHandReady, setIsHandReady] = useState(false);
 
-  if (phase === 'waiting') {
+  if (phase === 'waiting' || phase === 'waiting-host') {
+    const hostControls = phase === 'waiting-host';
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
-          <WaitingTable room={WAITING_ROOM} youPlayerId="p-south" onLeave={() => {}} />
+          <WaitingTable
+            room={WAITING_ROOM}
+            youPlayerId="p-south"
+            onLeave={() => {}}
+            canManage={hostControls}
+            onOpenInvite={() => {}}
+            onToggleLock={() => {}}
+            onMovePlayer={() => {}}
+            onKickPlayer={() => {}}
+          />
+          {hostControls ? (
+            <InviteModal
+              isOpen={params.invite === 'true'}
+              roomCode={WAITING_ROOM.code}
+              onClose={() => {}}
+              fixture={INVITE_FIXTURE}
+            />
+          ) : null}
         </SafeAreaProvider>
       </GestureHandlerRootView>
     );

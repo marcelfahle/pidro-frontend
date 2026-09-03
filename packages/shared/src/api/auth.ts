@@ -2,8 +2,10 @@ import type { ApiClient } from './client';
 
 export type User = {
   id: string;
-  email: string;
+  email: string | null;
   username: string;
+  display_name?: string | null;
+  guest?: boolean;
 };
 
 interface AuthResponseEnvelope {
@@ -15,6 +17,18 @@ interface AuthResponseEnvelope {
 
 export type LoginResponse = AuthResponseEnvelope['data'];
 export type RegisterResponse = AuthResponseEnvelope['data'];
+
+export interface CreateGuestRequest {
+  display_name: string;
+  invite_code: string;
+  platform?: 'ios' | 'android' | 'web';
+}
+
+interface GuestResponseEnvelope extends AuthResponseEnvelope {
+  data: AuthResponseEnvelope['data'] & { state: string };
+}
+
+export type CreateGuestResponse = GuestResponseEnvelope['data'];
 
 interface PasswordResetRequestEnvelope {
   data: {
@@ -44,6 +58,11 @@ export function createAuthApi(api: ApiClient) {
       const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/register', {
         user: { username, email, password },
       });
+      return response.data.data;
+    },
+
+    createGuest: async (request: CreateGuestRequest): Promise<CreateGuestResponse> => {
+      const response = await api.post<GuestResponseEnvelope>('/api/v1/auth/guest', request);
       return response.data.data;
     },
 

@@ -3,6 +3,7 @@ import type {
   LobbyCategories,
   Room,
   CreateRoomRequest,
+  Position,
   PositionPreference,
 } from '../types/lobby';
 import {
@@ -122,6 +123,22 @@ export function createLobbyApi(api: ApiClient) {
 
     unwatchRoom: async (code: string): Promise<void> => {
       await api.delete(`/api/v1/rooms/${code}/unwatch`);
+    },
+
+    setRoomLocked: async (code: string, locked: boolean): Promise<Room> => {
+      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/lock`, { locked });
+      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
+    },
+
+    movePlayer: async (code: string, position: Position, userId?: string): Promise<Room> => {
+      const body = userId ? { position, user_id: userId } : { position };
+      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/seat`, body);
+      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
+    },
+
+    kickPlayer: async (code: string, position: Position): Promise<Room> => {
+      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/kick`, { position });
+      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
     },
   };
 }

@@ -12,6 +12,7 @@ import { initRealtime } from '@/bootstrap/realtime';
 import { useGameStore } from '@/stores/game';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import type { Position } from '@/types/lobby';
+import { waitingRoomEvent, type WaitingRoomEvent } from '../gameRoomEvents';
 
 let globalGameChannel: Channel | null = null;
 let gameRefCount = 0;
@@ -23,6 +24,7 @@ interface UseGameChannelOptions {
   onSeatEvent?: (event: SeatEvent) => void;
   onOwnerDecision?: (event: OwnerDecisionEvent) => void;
   onProgressionSummary?: (summary: ProgressionSummary) => void;
+  onWaitingRoomEvent?: (event: WaitingRoomEvent) => void;
 }
 
 export interface SeatEvent {
@@ -75,6 +77,7 @@ export const useGameChannel = ({
   onSeatEvent,
   onOwnerDecision,
   onProgressionSummary,
+  onWaitingRoomEvent,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
@@ -93,14 +96,16 @@ export const useGameChannel = ({
   const onSeatEventRef = useRef(onSeatEvent);
   const onOwnerDecisionRef = useRef(onOwnerDecision);
   const onProgressionSummaryRef = useRef(onProgressionSummary);
+  const onWaitingRoomEventRef = useRef(onWaitingRoomEvent);
   const youPositionRef = useRef(youPosition);
 
   useEffect(() => {
     onSeatEventRef.current = onSeatEvent;
     onOwnerDecisionRef.current = onOwnerDecision;
     onProgressionSummaryRef.current = onProgressionSummary;
+    onWaitingRoomEventRef.current = onWaitingRoomEvent;
     youPositionRef.current = youPosition;
-  }, [onOwnerDecision, onProgressionSummary, onSeatEvent, youPosition]);
+  }, [onOwnerDecision, onProgressionSummary, onSeatEvent, onWaitingRoomEvent, youPosition]);
 
   useEffect(() => {
     initRealtime();
@@ -411,6 +416,19 @@ export const useGameChannel = ({
           });
         }
       });
+
+      for (const event of [
+        'invite_redeemed',
+        'player_kicked',
+        'seat_moved',
+        'owner_changed',
+        'kicked',
+      ]) {
+        onCurrent(event, (payload: Record<string, unknown>) => {
+          const mapped = waitingRoomEvent(event, payload);
+          if (mapped) onWaitingRoomEventRef.current?.(mapped);
+        });
+      }
 
       onCurrent('progression_summary', (payload: unknown) => {
         const summary = parseProgressionSummary(payload);

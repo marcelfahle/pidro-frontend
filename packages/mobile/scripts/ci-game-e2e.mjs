@@ -6,12 +6,11 @@
  * exercises room creation, the game channel, legal_actions and progression
  * against the live server with zero UI variables.
  *
- * Stage 2 — multiplayer video: a second account creates a 2-human room
- * (seat_3 open, seats 2/4 bots), logs in through the real UI in Chromium,
- * and sits at the table while the autoplayer takes the open seat. The
- * server's turn timers auto-play the UI seat (the backend must run with
- * short LIFECYCLE_TURN_TIMER_*_MS values), so a complete game plays out in
- * the actual client — recorded on video with milestone screenshots.
+ * Stage 2 — invite guest video: a registered host creates a room and invite.
+ * The registered host first signs in through the real UI. A clean Chromium
+ * profile then opens the join route, creates a guest, redeems the invite, and
+ * sits at the table. The host's protocol client and server turn timers finish
+ * the game while the guest watches in the client, recorded on video.
  *
  * Requires a running backend (API_BASE_URL/WS_BASE_URL) and Expo web
  * (MOBILE_BASE_URL). Artifacts land in E2E_ARTIFACT_DIR.
@@ -37,7 +36,7 @@ const globalTimeoutMs = Number(process.env.E2E_TIMEOUT_MINUTES ?? '12') * 60_000
 
 const suffix = Date.now().toString(36).slice(-6);
 const soloUser = `ci_${suffix}a`;
-const viewUser = `ci_${suffix}b`;
+const hostUser = `ci_${suffix}b`;
 const password = 'ci-hallohallo';
 
 function log(...parts) {
@@ -134,6 +133,35 @@ async function captureMilestones(page, seen) {
   }
 }
 
+async function verifyUiLogin(browser, username) {
+  const context = await browser.newContext({ viewport: { width: 844, height: 390 } });
+  const page = await context.newPage();
+
+  try {
+    await page.goto(`${mobileBaseUrl}/(auth)/login`, { waitUntil: 'domcontentloaded' });
+    await page.evaluate(() => localStorage.clear());
+    await page.reload({ waitUntil: 'domcontentloaded' });
+
+    const userField = page.getByPlaceholder('Enter your username');
+    const passField = page.getByPlaceholder('Enter your password');
+    const signIn = page.getByRole('button', { name: 'Sign in' });
+    await userField.waitFor({ timeout: 30_000 });
+    let formReady = false;
+    for (let attempt = 0; attempt < 6 && !formReady; attempt += 1) {
+      await userField.fill(username);
+      await passField.fill(password);
+      await page.waitForTimeout(500);
+      formReady = await signIn.isEnabled();
+    }
+    if (!formReady) throw new Error('Sign in never enabled — login form did not accept input');
+    await signIn.click();
+    await page.waitForURL(/\/home$/, { timeout: 20_000 });
+    log('returning-user UI login ok');
+  } finally {
+    await context.close();
+  }
+}
+
 async function stageOneSoloGame() {
   log(`stage 1: solo full game as ${soloUser}`);
   await registerOrLogin(soloUser);
@@ -142,10 +170,10 @@ async function stageOneSoloGame() {
 }
 
 async function stageTwoMultiplayerVideo() {
-  log(`stage 2: multiplayer game with UI client as ${viewUser}`);
-  const viewToken = await registerOrLogin(viewUser);
-  await api('/api/v1/rooms/current/leave', 'DELETE', viewToken).catch(() => {});
-  const created = await api('/api/v1/rooms', 'POST', viewToken, {
+  log(`stage 2: invite guest joins a room hosted by ${hostUser}`);
+  const hostToken = await registerOrLogin(hostUser);
+  await api('/api/v1/rooms/current/leave', 'DELETE', hostToken).catch(() => {});
+  const created = await api('/api/v1/rooms', 'POST', hostToken, {
     name: `CI e2e ${suffix}`,
     settings: { min_games: 1, time_limit: 0, private: false },
     seats: { seat_2: 'ai', seat_4: 'ai' },
@@ -155,7 +183,19 @@ async function stageTwoMultiplayerVideo() {
     throw new Error(`create multiplayer room failed: ${JSON.stringify(created.payload)}`);
   }
   const roomCode = created.payload?.data?.code ?? created.payload?.code;
-  log(`room ${roomCode} created (seat_3 open for the autoplayer)`);
+  log(`room ${roomCode} created (seat_3 open for the invite guest)`);
+
+  const minted = await api(`/api/v1/rooms/${roomCode}/invites`, 'POST', hostToken, {
+    seat_hint: null,
+    label: 'CI guest',
+    platform: 'web',
+  });
+  if (!minted.ok) {
+    throw new Error(`mint invite failed: ${JSON.stringify(minted.payload)}`);
+  }
+  const inviteCode = minted.payload?.data?.invite?.code;
+  if (!inviteCode) throw new Error('mint invite response had no invite code');
+  log(`invite ${inviteCode} minted`);
 
   const browser = await chromium.launch({
     headless: true,
@@ -171,35 +211,35 @@ async function stageTwoMultiplayerVideo() {
   page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
   try {
-    await page.goto(`${mobileBaseUrl}/(auth)/login`, { waitUntil: 'domcontentloaded' });
+    await verifyUiLogin(browser, hostUser);
+    await page.goto(`${mobileBaseUrl}/join/${inviteCode}?source=copy`, {
+      waitUntil: 'domcontentloaded',
+    });
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    // A fill that lands before React hydrates is silently lost (seen in CI:
-    // username empty, password kept). Re-fill until the submit button —
-    // which enables only when both fields hold values — actually enables.
-    const userField = page.getByPlaceholder('Enter your username');
-    const passField = page.getByPlaceholder('Enter your password');
-    const signIn = page.getByRole('button', { name: 'Sign in' });
-    await userField.waitFor({ timeout: 30_000 });
+    // A fill that lands before React hydrates can be lost. Re-fill until the
+    // submit button, which enables only with a non-empty name, is ready.
+    const displayName = `Guest ${suffix}`;
+    const nameField = page.getByPlaceholder('Enter the name players will see');
+    const joinTable = page.getByRole('button', { name: 'Join table' });
+    await nameField.waitFor({ timeout: 30_000 });
     let formReady = false;
     for (let attempt = 0; attempt < 6 && !formReady; attempt += 1) {
-      await userField.fill(viewUser);
-      await passField.fill(password);
+      await nameField.fill(displayName);
       await page.waitForTimeout(500);
-      formReady = await signIn.isEnabled();
+      formReady = await joinTable.isEnabled();
     }
-    if (!formReady) throw new Error('Sign in never enabled — login form did not accept input');
-    await signIn.click();
-    await page.waitForURL(/\/home$/, { timeout: 20_000 });
-    log('UI login ok');
+    if (!formReady) throw new Error('Join never enabled — guest name input did not hydrate');
+    await joinTable.click();
+    await page.waitForURL(new RegExp(`/game/${roomCode}$`), { timeout: 30_000 });
+    log(`guest ${displayName} created and invite redeemed through the UI`);
 
-    await page.goto(`${mobileBaseUrl}/game/${roomCode}`, { waitUntil: 'domcontentloaded' });
     const seen = new Set();
     await captureMilestones(page, seen);
 
     const autoplayDone = runAutoplayer(
-      ['--room', roomCode, '--user', soloUser, '--password', password, '--max-minutes', '10'],
+      ['--room', roomCode, '--user', hostUser, '--password', password, '--max-minutes', '10'],
       'multi'
     );
 
@@ -250,7 +290,7 @@ function writeStepSummary(result, elapsedSeconds) {
   const lines = [
     '## Game e2e',
     '',
-    `Full solo game (protocol) and full multiplayer game (real UI, room \`${result.roomCode}\`) both reached game over in ${elapsedSeconds}s.`,
+    `Full solo game (protocol) and invite-to-guest multiplayer game (real UI, room \`${result.roomCode}\`) both reached game over in ${elapsedSeconds}s.`,
     '',
     `- UI milestones captured: ${result.milestones.join(', ')}`,
     `- Page errors during the UI game: ${result.pageErrors}`,
