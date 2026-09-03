@@ -147,7 +147,7 @@ export default function HomeScreen() {
             </Surface>
           ) : null}
 
-          <View style={styles.playActions}>
+          <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
             <MenuAction
               title="Single player"
               description="Start immediately with three bots."
@@ -262,5 +262,8 @@ const styles = StyleSheet.create({
   },
   playActions: {
     gap: PidroSpacing.sm,
+  },
+  playActionsLandscape: {
+    gap: PidroSpacing.xs,
   },
 });
