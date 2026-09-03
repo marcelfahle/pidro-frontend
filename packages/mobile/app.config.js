@@ -31,6 +31,7 @@ module.exports = ({ config }) => {
     },
     android: {
       ...config.android,
+      allowBackup: false,
       ...(selectedVariant ? { package: selectedVariant.bundleIdentifier } : {}),
       ...(isProduction
         ? {
