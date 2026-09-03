@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useRouter, type Href } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -26,6 +26,12 @@ export default function JoinCodeScreen() {
   const [submitting, setSubmitting] = useState(false);
   const code = parseManualInviteCode(value);
   const error = touched && value.length > 0 && !code ? t('invite.manual.invalid') : undefined;
+
+  useFocusEffect(
+    useCallback(() => {
+      setSubmitting(false);
+    }, [])
+  );
 
   const goBack = () => {
     if (router.canGoBack()) router.back();

@@ -124,10 +124,11 @@ export async function resolveDeferredInstall({
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), Math.max(0, remaining()));
     try {
-      const code = await resolve(request, controller.signal);
+      const code = await beforeDeadline(resolve(request, controller.signal), remaining());
       return normalizeInviteCode(code ?? '');
     } finally {
       clearTimeout(timer);
+      controller.abort();
     }
   } catch {
     return null;

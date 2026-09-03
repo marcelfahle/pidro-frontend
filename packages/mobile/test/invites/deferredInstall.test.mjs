@@ -131,10 +131,9 @@ describe('deferred install orchestration', () => {
     const { deps, storage } = dependencies({
       timeoutMs: 10,
       resolve: (_request, signal) =>
-        new Promise((_resolve, reject) => {
+        new Promise(() => {
           signal.addEventListener('abort', () => {
             aborted = true;
-            reject(new Error('aborted'));
           });
         }),
     });
