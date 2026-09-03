@@ -34,6 +34,7 @@ export default function RootLayout() {
           animation: 'none', // Instant transitions for game feel
         }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="join-code" />
         <Stack.Screen name="join/[code]" />
         <Stack.Screen name="home" />
         <Stack.Screen name="(auth)" />

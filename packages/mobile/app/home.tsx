@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
 import { Button } from '@/components/ui/Button';
 import { MenuAction } from '@/components/ui/MenuAction';
@@ -160,6 +160,11 @@ export default function HomeScreen() {
               description="Find a table or create one for friends."
               icon="users"
               onPress={() => router.push('/lobby')}
+            />
+            <Button
+              label="Have an invite code?"
+              variant="outline"
+              onPress={() => router.push('/join-code' as Href)}
             />
           </View>
         </View>

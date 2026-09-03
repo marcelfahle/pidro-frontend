@@ -20,6 +20,7 @@ const cases = [
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen' },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
+  { name: 'join-code', path: '/join-code', testId: 'join-code-window' },
   {
     name: 'join-invite',
     path: '/join/7KQ4M2XB?source=copy&fixture=open',
