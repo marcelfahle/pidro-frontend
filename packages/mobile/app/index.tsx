@@ -3,13 +3,17 @@ import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import { ActivityIndicator, View, Text } from 'react-native';
 import { initialRoute } from '@/navigation/initialRoute';
+import { useDeferredInviteBootstrap } from '@/features/invites/useDeferredInviteBootstrap';
 
 export default function Index() {
   const status = useAuthStore((s) => s.status);
   const hydrated = useAuthStore((s) => s.hydrated);
   const inviteHydrated = usePendingInviteStore((s) => s.hydrated);
   const pendingInvite = usePendingInviteStore((s) => s.pendingInvite);
-  const route = initialRoute(hydrated, inviteHydrated, status, pendingInvite);
+  const deferredBootstrapComplete = useDeferredInviteBootstrap();
+  const route = deferredBootstrapComplete
+    ? initialRoute(hydrated, inviteHydrated, status, pendingInvite)
+    : null;
 
   if (!route) {
     return (

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
-import type { InvitePreview, InviteSource } from '@pidro/shared';
+import type { InviteArrivalSource, InvitePreview } from '@pidro/shared';
 import { normalizeInviteCode } from '@pidro/shared';
 import { createGuest } from '@/api/auth';
 import { invitesApi } from '@/api/invites';
@@ -19,6 +19,7 @@ import {
   validateDisplayName,
 } from '@/features/invites/joinFlow';
 import { invitePlatform } from '@/features/invites/platform';
+import { getInstallId } from '@/features/invites/installId';
 import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -26,7 +27,7 @@ import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 interface Props {
   code: string;
-  source?: InviteSource;
+  source?: InviteArrivalSource;
   fixture?: InvitePreview | null;
 }
 
@@ -212,10 +213,12 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
     setError(null);
     setSubmitting(true);
     try {
+      const installId = await getInstallId().catch(() => undefined);
       const session = await createGuest({
         display_name: validation.value,
         invite_code: code,
         platform: invitePlatform(),
+        ...(installId ? { install_id: installId } : {}),
       });
       if (!routeActiveRef.current) return;
       autoRedeemedCodeRef.current = code;

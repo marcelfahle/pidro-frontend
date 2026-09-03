@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
 import { Button } from '@/components/ui/Button';
 import { MenuAction } from '@/components/ui/MenuAction';
@@ -11,6 +11,7 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { apiErrorInfo } from '@/utils/apiErrors';
@@ -146,7 +147,7 @@ export default function HomeScreen() {
             </Surface>
           ) : null}
 
-          <View style={styles.playActions}>
+          <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
             <MenuAction
               title="Single player"
               description="Start immediately with three bots."
@@ -160,6 +161,11 @@ export default function HomeScreen() {
               description="Find a table or create one for friends."
               icon="users"
               onPress={() => router.push('/lobby')}
+            />
+            <Button
+              label={t('invite.manual.entry')}
+              variant="outline"
+              onPress={() => router.push('/join-code' as Href)}
             />
           </View>
         </View>
@@ -256,5 +262,8 @@ const styles = StyleSheet.create({
   },
   playActions: {
     gap: PidroSpacing.sm,
+  },
+  playActionsLandscape: {
+    gap: PidroSpacing.xs,
   },
 });

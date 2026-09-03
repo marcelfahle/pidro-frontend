@@ -38,7 +38,15 @@ describe('parseInviteLink', () => {
   });
 
   it('drops unsupported attribution sources', () => {
-    expect(parseInviteLink('/j/7KQ4M2XB?source=email')).toEqual({ code: '7KQ4M2XB' });
+    expect(parseInviteLink('/j/7KQ4M2XB?source=email')).toEqual({
+      code: '7KQ4M2XB',
+    });
+    expect(parseInviteLink('/j/7KQ4M2XB?source=deferred')).toEqual({
+      code: '7KQ4M2XB',
+    });
+    expect(parseInviteLink('/j/7KQ4M2XB?source=typed')).toEqual({
+      code: '7KQ4M2XB',
+    });
   });
 
   it('accepts the internal source alias and gives the public parameter precedence', () => {

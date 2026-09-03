@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useRouter } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { Button } from '@/components/ui/Button';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
+import { t } from '@/i18n';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
@@ -34,6 +35,12 @@ export default function LoginScreen() {
           </PidroText>
           <Link href="/(auth)/register" style={styles.link}>
             Create an account
+          </Link>
+          <PidroText role="metadata" tone="soft">
+            {t('invite.manual.entry')}
+          </PidroText>
+          <Link href={'/join-code' as Href} style={styles.link}>
+            {t('invite.manual.entryAction')}
           </Link>
         </>
       }>

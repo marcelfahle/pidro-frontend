@@ -100,6 +100,7 @@ describe('resolved variant configuration', () => {
       'applinks:pidro.online',
     ]);
     expect(config.android.package).toBe(identifier);
+    expect(config.android.allowBackup).toBe(false);
     if (verifiedAndroid) {
       expect(config.android.intentFilters).toEqual([
         {

@@ -93,3 +93,45 @@ node scripts/ci-game-e2e.mjs
 Artifacts land in `screenshots/agent-game-e2e/` (override with
 `E2E_ARTIFACT_DIR`). Expect roughly 35s for the solo game and 2–3 minutes for
 the multiplayer UI game at CI pacing.
+
+## Deferred invite first-install proof
+
+Test generated native projects in a disposable worktree; `ios/` and `android/`
+are intentionally not committed. Use the development app variant so the test
+cannot replace a store build:
+
+```bash
+bun install --frozen-lockfile
+cd packages/mobile
+APP_VARIANT=development bunx expo prebuild --clean --platform android
+(cd android && ./gradlew :app:assembleDebug)
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+
+APP_VARIANT=development bunx expo prebuild --clean --platform ios
+xcodebuild -workspace ios/Pidro3Dev.xcworkspace -scheme Pidro3Dev \
+  -configuration Debug -sdk iphonesimulator build
+```
+
+A fresh Android sideload should have no Play referrer. It must still reach the
+normal login screen without a native-module error, and subsequent launches
+must not repeat the resolver. The debug app's AsyncStorage database should
+contain both `deferred-install-attempted:v1` and one stable `install-id:v1` UUID.
+Also exercise **Have a code?** with the keyboard open in portrait and landscape.
+
+The deterministic Android path requires an authenticated Google Play internal
+test track. Open an invite's generated Play URL, verify its `referrer` contains
+exactly `invite=<code>`, install that track build, and confirm first launch opens
+the existing invite preview. A sideload cannot prove Install Referrer delivery.
+
+For iOS, uninstall the development build from a simulator or device, tap the
+matching App Store button from a fresh invite, reinstall, and open the app
+within 30 minutes on the same network. Confirm either the existing invite
+preview or the safe normal-login fallback, then confirm no second resolution
+attempt occurs. A physical App Store/TestFlight reinstall is the meaningful
+coarse-match proof; a simulator can verify native linkage and the no-match path
+but cannot reproduce App Store installation matching.
+
+Record the device/runtime, store track or sideload method, whether a referrer
+was available, and which path won. Never enable production matching until the
+privacy addendum is live and Phoenix is running as the documented single app
+replica.

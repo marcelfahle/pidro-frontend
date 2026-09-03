@@ -1,5 +1,5 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
-import { isInviteSource, normalizeInviteCode, type InvitePreview } from '@pidro/shared';
+import { isInviteArrivalSource, normalizeInviteCode, type InvitePreview } from '@pidro/shared';
 import { JoinInviteScreen } from '@/components/invites/JoinInviteScreen';
 
 const OPEN_FIXTURE: InvitePreview = {
@@ -16,7 +16,7 @@ const OPEN_FIXTURE: InvitePreview = {
 export default function JoinInviteRoute() {
   const params = useLocalSearchParams<{ code?: string; source?: string; fixture?: string }>();
   const code = normalizeInviteCode(typeof params.code === 'string' ? params.code : '');
-  const source = isInviteSource(params.source) ? params.source : undefined;
+  const source = isInviteArrivalSource(params.source) ? params.source : undefined;
   const fixture =
     __DEV__ && params.fixture === 'open' ? { ...OPEN_FIXTURE, code: code ?? '' } : null;
 

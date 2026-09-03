@@ -14,6 +14,7 @@ export const API_CONFIG = {
 
 export const STORAGE_KEYS = {
   auth: 'auth-storage',
+  installId: 'install-id:v1',
   pendingInvite: 'pending-invite-storage',
 } as const;
 

@@ -1,5 +1,7 @@
 export const INVITE_SOURCES = ['wa', 'im', 'sms', 'qr', 'copy'] as const;
 export type InviteSource = (typeof INVITE_SOURCES)[number];
+export const INVITE_ARRIVAL_SOURCES = [...INVITE_SOURCES, 'deferred', 'typed'] as const;
+export type InviteArrivalSource = (typeof INVITE_ARRIVAL_SOURCES)[number];
 
 const INVITE_HOSTS = new Set(['www.pidro.online', 'pidro.online']);
 const INVITE_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-preview:']);
@@ -21,6 +23,12 @@ export function normalizeInviteCode(value: string): string | null {
 
 export function isInviteSource(value: string | null | undefined): value is InviteSource {
   return INVITE_SOURCES.includes(value as InviteSource);
+}
+
+export function isInviteArrivalSource(
+  value: string | null | undefined,
+): value is InviteArrivalSource {
+  return INVITE_ARRIVAL_SOURCES.includes(value as InviteArrivalSource);
 }
 
 export function parseInviteLink(value: string): ParsedInviteLink | null {
