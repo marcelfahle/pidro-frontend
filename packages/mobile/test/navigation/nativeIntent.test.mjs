@@ -109,6 +109,11 @@ describe('resolved variant configuration', () => {
     expect(config.android.package).toBe(identifier);
     expect(config.android.allowBackup).toBe(false);
     if (verifiedAndroid) {
+      expect(config.android.blockedPermissions).toEqual([
+        'android.permission.READ_EXTERNAL_STORAGE',
+        'android.permission.SYSTEM_ALERT_WINDOW',
+        'android.permission.WRITE_EXTERNAL_STORAGE',
+      ]);
       expect(config.android.intentFilters).toEqual([
         {
           action: 'VIEW',
@@ -124,6 +129,7 @@ describe('resolved variant configuration', () => {
         },
       ]);
     } else {
+      expect(config.android.blockedPermissions).toEqual([]);
       expect(config.android.intentFilters).toEqual([]);
     }
   });
