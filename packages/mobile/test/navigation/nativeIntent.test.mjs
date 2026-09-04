@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { createRequire } from 'node:module';
 import { createPendingInviteStore } from '../../../shared/src/stores/pendingInvite.ts';
 import { redirectSystemPath } from '../../app/+native-intent.tsx';
-import { initialRoute } from '../../src/navigation/initialRoute.ts';
+import { canAccessProtectedRoutes, initialRoute } from '../../src/navigation/initialRoute.ts';
 
 const require = createRequire(import.meta.url);
 const configPath = require.resolve('../../app.config.js');
@@ -59,6 +59,13 @@ describe('initial route', () => {
   it('otherwise follows the existing auth entry behavior', () => {
     expect(initialRoute(true, true, 'authenticated', null)).toBe('/home');
     expect(initialRoute(true, true, 'unauthenticated', null)).toBe('/(auth)/login');
+  });
+
+  it('removes protected-route access when an active session is cleared', () => {
+    expect(canAccessProtectedRoutes(false, 'authenticated')).toBe(false);
+    expect(canAccessProtectedRoutes(true, 'checking')).toBe(false);
+    expect(canAccessProtectedRoutes(true, 'authenticated')).toBe(true);
+    expect(canAccessProtectedRoutes(true, 'unauthenticated')).toBe(false);
   });
 
   it('settles startup routing when pending-invite storage cannot be read', async () => {

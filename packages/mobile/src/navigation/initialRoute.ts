@@ -1,5 +1,9 @@
 import type { AuthStatus, PendingInvite } from '@pidro/shared';
 
+export function canAccessProtectedRoutes(authHydrated: boolean, authStatus: AuthStatus): boolean {
+  return authHydrated && authStatus === 'authenticated';
+}
+
 export function initialRoute(
   authHydrated: boolean,
   inviteHydrated: boolean,
@@ -11,5 +15,5 @@ export function initialRoute(
     const source = pendingInvite.source ? `?source=${pendingInvite.source}` : '';
     return `/join/${pendingInvite.code}${source}`;
   }
-  return authStatus === 'authenticated' ? '/home' : '/(auth)/login';
+  return canAccessProtectedRoutes(authHydrated, authStatus) ? '/home' : '/(auth)/login';
 }
