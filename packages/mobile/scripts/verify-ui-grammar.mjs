@@ -14,6 +14,14 @@ const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(mobileRoot, '../../..');
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const screenshotRoot = process.env.UI_SHOT_DIR ?? resolve(repoRoot, 'screenshots/agent-mobile-ui');
+const authFixture = JSON.stringify({
+  state: {
+    accessToken: 'ui-grammar-token',
+    refreshToken: null,
+    user: { id: 'ui-grammar-user', username: 'UI Tester' },
+  },
+  version: 0,
+});
 
 const cases = [
   { name: 'home', path: '/home', testId: 'home-screen' },
@@ -300,6 +308,9 @@ async function main() {
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
       });
+      await context.addInitScript((fixture) => {
+        globalThis.localStorage.setItem('auth-storage', fixture);
+      }, authFixture);
       const screenshotDir = resolve(screenshotRoot, viewport.name);
       await mkdir(screenshotDir, { recursive: true });
 
