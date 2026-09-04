@@ -18,14 +18,14 @@ const authFixture = JSON.stringify({
   state: {
     accessToken: 'ui-grammar-token',
     refreshToken: null,
-    user: { id: 'ui-grammar-user', username: 'UI Tester' },
+    user: { id: 'ui-grammar-user', username: 'Player' },
   },
   version: 0,
 });
 
 const cases = [
-  { name: 'home', path: '/home', testId: 'home-screen' },
-  { name: 'lobby', path: '/lobby', testId: 'lobby-screen' },
+  { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
   { name: 'join-code', path: '/join-code', testId: 'join-code-window' },
@@ -308,9 +308,6 @@ async function main() {
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
       });
-      await context.addInitScript((fixture) => {
-        globalThis.localStorage.setItem('auth-storage', fixture);
-      }, authFixture);
       const screenshotDir = resolve(screenshotRoot, viewport.name);
       await mkdir(screenshotDir, { recursive: true });
 
@@ -322,6 +319,13 @@ async function main() {
         )
           continue;
         const page = await context.newPage();
+        await page.addInitScript(
+          ({ authenticated, fixture }) => {
+            if (authenticated) globalThis.localStorage.setItem('auth-storage', fixture);
+            else globalThis.localStorage.removeItem('auth-storage');
+          },
+          { authenticated: testCase.authenticated === true, fixture: authFixture }
+        );
         const pageErrors = [];
         page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
