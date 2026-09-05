@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Dependencies and browsers survive in the snapshot. No authentication or
+# reconnect work is required for the frontend; start dev servers on demand
+# with amp orb service start, never reinstall dependencies on wake.
+printf 'Frontend orb ready; dependencies are restored from the snapshot.\n'

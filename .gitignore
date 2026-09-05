@@ -7,3 +7,6 @@ dist/
 # local screenshot scratch
 /screenshots/
 packages/mobile/screenshots/
+
+# Generated orb portal metadata
+.amp/portals/*
