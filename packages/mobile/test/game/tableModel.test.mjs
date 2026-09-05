@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { normalizeRoom, useGameStore } from '@pidro/shared';
 import { buildTableModel } from '../../src/game/canvas/tableModel.ts';
 
 const player = (absolutePosition, relativePosition) => ({
@@ -76,5 +77,37 @@ describe('dealer selection table model', () => {
 
     expect(model.dealerCuts.north).toBeUndefined();
     expect(Object.keys(model.dealerCuts)).toHaveLength(3);
+  });
+});
+
+describe('table seat identities', () => {
+  it('shows four distinct names for the iPad arrangement after a shuffled REST room snapshot', () => {
+    useGameStore.getState().reset();
+    try {
+      useGameStore.getState().initFromRoom({
+        room: normalizeRoom({
+          code: 'D9MK',
+          status: 'playing',
+          seats: {
+            east: { user_id: 'android1', username: 'mfand1' },
+            north: { user_id: 'ios1', username: 'mfios1' },
+            south: { user_id: 'ios2', username: 'mfios2' },
+            west: { user_id: 'web1', username: 'mfweb1' },
+          },
+        }),
+        youPlayerId: 'ios2',
+      });
+      const { playerMeta } = useGameStore.getState();
+      const players = Object.entries(playerMeta).map(([position, meta]) => ({
+        ...player(position, position),
+        ...meta,
+      }));
+      const model = build({ phase: 'bidding', players });
+      expect(
+        Object.fromEntries(Object.entries(model.seats).map(([pos, seat]) => [pos, seat.username]))
+      ).toEqual({ north: 'mfios1', east: 'mfand1', south: 'mfios2', west: 'mfweb1' });
+    } finally {
+      useGameStore.getState().reset();
+    }
   });
 });
