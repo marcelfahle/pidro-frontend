@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter } from 'expo-router';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Keyboard, Platform, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -8,36 +8,91 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 
+type RegisterField = 'username' | 'email' | 'password';
+
 export default function RegisterScreen() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const { signUp, isLoading, error: authError } = useAuth();
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<Partial<Record<RegisterField, string>>>(
+    {}
+  );
+  const usernameRef = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const { signUp, isLoading, error: authError, clearError } = useAuth();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
 
-  const handleRegister = async () => {
-    setValidationError(null);
-    if (!username || !email || !password || !confirmPassword) {
-      setValidationError('Please complete every field.');
+  const clearValidationError = useCallback(
+    (field: RegisterField) => {
+      setValidationErrors((current) => {
+        if (!current[field]) return current;
+        return { ...current, [field]: undefined };
+      });
+      clearError();
+    },
+    [clearError]
+  );
+  const handleUsernameChange = useCallback(
+    (next: string) => {
+      setUsername(next);
+      clearValidationError('username');
+    },
+    [clearValidationError]
+  );
+  const handleEmailChange = useCallback(
+    (next: string) => {
+      setEmail(next);
+      clearValidationError('email');
+    },
+    [clearValidationError]
+  );
+  const handlePasswordChange = useCallback(
+    (next: string) => {
+      setPassword(next);
+      clearValidationError('password');
+    },
+    [clearValidationError]
+  );
+  const focusEmail = useCallback(() => emailRef.current?.focus(), []);
+  const focusPassword = useCallback(() => passwordRef.current?.focus(), []);
+
+  const handleRegister = useCallback(async () => {
+    if (isLoading) return;
+
+    const normalizedUsername = username.trim();
+    const normalizedEmail = email.trim();
+    const nextErrors: Partial<Record<RegisterField, string>> = {};
+    if (!normalizedUsername) nextErrors.username = 'Enter a username.';
+    if (!normalizedEmail) nextErrors.email = 'Enter an email address.';
+    if (!password) nextErrors.password = 'Enter a password.';
+
+    setValidationErrors(nextErrors);
+    const firstInvalidField = (['username', 'email', 'password'] as const).find(
+      (field) => nextErrors[field]
+    );
+    if (firstInvalidField) {
+      const refs = {
+        username: usernameRef,
+        email: emailRef,
+        password: passwordRef,
+      };
+      refs[firstInvalidField].current?.focus();
       return;
     }
-    if (password !== confirmPassword) {
-      setValidationError('The passwords do not match.');
-      return;
-    }
-    const success = await signUp(username, email, password);
+
+    Keyboard.dismiss();
+    const success = await signUp(normalizedUsername, normalizedEmail, password);
     if (success) router.replace('/home');
-  };
+  }, [email, isLoading, password, router, signUp, username]);
 
   return (
     <AuthScreenFrame
       title="Create your account"
       subtitle="Choose your name and claim a seat at the table."
-      error={validationError || authError}
+      error={authError}
       footer={
         <>
           <PidroText role="metadata" tone="soft">
@@ -51,60 +106,67 @@ export default function RegisterScreen() {
       <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
         <View style={landscape && styles.fieldLandscape}>
           <Input
+            ref={usernameRef}
             label="Username"
             placeholder="Choose a username"
             value={username}
-            onChangeText={setUsername}
+            onChangeText={handleUsernameChange}
+            error={validationErrors.username}
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete={Platform.OS === 'android' ? 'username-new' : 'username'}
+            clearButtonMode="while-editing"
+            editable={!isLoading}
+            keyboardAppearance="dark"
             returnKeyType="next"
-            textContentType="username"
+            submitBehavior="submit"
+            onSubmitEditing={focusEmail}
           />
         </View>
         <View style={landscape && styles.fieldLandscape}>
           <Input
+            ref={emailRef}
             label="Email"
             placeholder="Enter your email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={handleEmailChange}
+            error={validationErrors.email}
             autoCapitalize="none"
+            autoComplete="email"
             autoCorrect={false}
+            clearButtonMode="while-editing"
+            editable={!isLoading}
+            keyboardAppearance="dark"
             keyboardType="email-address"
             returnKeyType="next"
-            textContentType="emailAddress"
+            submitBehavior="submit"
+            onSubmitEditing={focusPassword}
           />
         </View>
-        <View style={landscape && styles.fieldLandscape}>
+        <View className={landscape ? 'w-full' : undefined}>
           <Input
+            ref={passwordRef}
             label="Password"
             placeholder="Choose a password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={handlePasswordChange}
+            error={validationErrors.password}
+            autoCapitalize="none"
+            autoComplete="new-password"
+            autoCorrect={false}
+            editable={!isLoading}
+            enablesReturnKeyAutomatically
+            keyboardAppearance="dark"
+            revealPassword
             secureTextEntry
-            returnKeyType="next"
-            textContentType="newPassword"
-          />
-        </View>
-        <View style={landscape && styles.fieldLandscape}>
-          <Input
-            label="Confirm password"
-            placeholder="Enter the password again"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
+            spellCheck={false}
             returnKeyType="go"
-            textContentType="newPassword"
+            submitBehavior="blurAndSubmit"
             onSubmitEditing={handleRegister}
           />
         </View>
       </View>
-      <Button
-        label="Create account"
-        onPress={handleRegister}
-        loading={isLoading}
-        disabled={!username || !email || !password || !confirmPassword}
-        size="lg"
-      />
+      <Button label="Create account" onPress={handleRegister} loading={isLoading} size="lg" />
     </AuthScreenFrame>
   );
 }

@@ -1,5 +1,13 @@
 import type { ReactNode } from 'react';
-import { ScrollView, StyleSheet, useWindowDimensions, View, type ViewStyle } from 'react-native';
+import {
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { Background } from './Background';
@@ -21,6 +29,8 @@ export function ScreenShell({
 }: ScreenShellProps) {
   const { width, height } = useWindowDimensions();
   const isLandscape = width > height;
+  const keyboardAvoidingKey =
+    Platform.OS === 'android' ? `android-${isLandscape ? 'landscape' : 'portrait'}` : 'native';
   const horizontalPadding = isLandscape ? PidroSpacing.lg : PidroSpacing.md;
   const maxWidth = compact ? PidroLayout.contentMaxWidth : PidroLayout.wideContentMaxWidth;
   const sharedStyle = [
@@ -33,19 +43,25 @@ export function ScreenShell({
     <Background>
       <View style={styles.scrim}>
         <SafeAreaView style={styles.safe} edges={['top', 'right', 'bottom', 'left']}>
-          {scroll ? (
-            <ScrollView
-              testID={testID}
-              contentContainerStyle={sharedStyle}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}>
-              {children}
-            </ScrollView>
-          ) : (
-            <View testID={testID} style={sharedStyle}>
-              {children}
-            </View>
-          )}
+          <KeyboardAvoidingView
+            key={keyboardAvoidingKey}
+            className="flex-1"
+            behavior={Platform.OS === 'ios' || Platform.OS === 'android' ? 'padding' : undefined}>
+            {scroll ? (
+              <ScrollView
+                testID={testID}
+                contentContainerStyle={sharedStyle}
+                keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}>
+                {children}
+              </ScrollView>
+            ) : (
+              <View testID={testID} style={sharedStyle}>
+                {children}
+              </View>
+            )}
+          </KeyboardAvoidingView>
         </SafeAreaView>
       </View>
     </Background>
