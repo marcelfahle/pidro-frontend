@@ -5,7 +5,7 @@
  * Frontend CI check runs for HEAD (including the full-game e2e) are green —
  * then hands off to EAS:
  *
- *   node scripts/ship.mjs ota     # eas update  --channel production
+ *   node scripts/ship.mjs ota     # eas update  --channel production --environment production
  *   node scripts/ship.mjs build   # eas build   --platform ios --profile production
  *
  * Flags: --wait (poll up to 15 min for in-progress checks), --dry-run (run
@@ -20,7 +20,7 @@ const skipGate = process.argv.includes('--skip-gate');
 const dryRun = process.argv.includes('--dry-run');
 
 if (!['ota', 'build'].includes(mode)) {
-  console.error('usage: node scripts/ship.mjs <ota|build> [--wait] [--skip-gate]');
+  console.error('usage: node scripts/ship.mjs <ota|build> [--wait] [--skip-gate] [--dry-run]');
   process.exit(1);
 }
 
@@ -91,7 +91,18 @@ if (skipGate) {
 const subject = sh('git log -1 --format=%s');
 const command =
   mode === 'ota'
-    ? ['eas', ['update', '--channel', 'production', '--message', subject]]
+    ? [
+        'eas',
+        [
+          'update',
+          '--channel',
+          'production',
+          '--message',
+          subject,
+          '--environment',
+          'production',
+        ],
+      ]
     : ['eas', ['build', '--platform', 'ios', '--profile', 'production']];
 
 console.log(`→ ${command[0]} ${command[1].join(' ')}`);

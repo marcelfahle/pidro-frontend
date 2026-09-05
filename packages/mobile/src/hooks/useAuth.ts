@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import * as authApi from '@/api/auth';
@@ -35,9 +35,13 @@ export function useAuth() {
   const { status, user, setSession, clearSession, hydrated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const requestInFlight = useRef(false);
 
   const signIn = useCallback(
     async (username: string, password: string) => {
+      if (requestInFlight.current) return false;
+      requestInFlight.current = true;
+
       try {
         setIsLoading(true);
         setError(null);
@@ -57,6 +61,7 @@ export function useAuth() {
         setError(message);
         return false;
       } finally {
+        requestInFlight.current = false;
         setIsLoading(false);
       }
     },
@@ -65,6 +70,9 @@ export function useAuth() {
 
   const signUp = useCallback(
     async (username: string, email: string, password: string) => {
+      if (requestInFlight.current) return false;
+      requestInFlight.current = true;
+
       try {
         setIsLoading(true);
         setError(null);
@@ -84,6 +92,7 @@ export function useAuth() {
         setError(message);
         return false;
       } finally {
+        requestInFlight.current = false;
         setIsLoading(false);
       }
     },
@@ -93,6 +102,10 @@ export function useAuth() {
   const signOut = useCallback(() => {
     clearSession();
   }, [clearSession]);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   return {
     user,
@@ -104,5 +117,6 @@ export function useAuth() {
     signIn,
     signUp,
     signOut,
+    clearError,
   };
 }

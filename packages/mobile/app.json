@@ -43,6 +43,7 @@
     },
     "android": {
       "package": "com.oneapps.pidro",
+      "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

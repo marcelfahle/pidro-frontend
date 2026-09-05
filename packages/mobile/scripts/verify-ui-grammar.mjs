@@ -14,6 +14,12 @@ const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(mobileRoot, '../../..');
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const screenshotRoot = process.env.UI_SHOT_DIR ?? resolve(repoRoot, 'screenshots/agent-mobile-ui');
+const requestedCases = new Set(
+  (process.env.UI_CASES ?? '')
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean)
+);
 const authFixture = JSON.stringify({
   state: {
     accessToken: 'ui-grammar-token',
@@ -23,7 +29,7 @@ const authFixture = JSON.stringify({
   version: 0,
 });
 
-const cases = [
+const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
@@ -82,6 +88,20 @@ const cases = [
   { name: 'table-game-over', path: '/table-dev?phase=game_over', testId: 'game-over-window' },
 ];
 
+function selectCases() {
+  if (requestedCases.size === 0) return allCases;
+
+  const knownCases = new Set(allCases.map(({ name }) => name));
+  const unknownCases = [...requestedCases].filter((name) => !knownCases.has(name));
+  if (unknownCases.length) {
+    throw new Error(
+      `Unknown UI_CASES: ${unknownCases.join(', ')}. Choose from: ${[...knownCases].join(', ')}`
+    );
+  }
+
+  return allCases.filter(({ name }) => requestedCases.has(name));
+}
+
 function boxesOverlap(a, b) {
   return !(
     a.x + a.width <= b.x ||
@@ -123,6 +143,146 @@ async function assertTargetGeometry(page, testCase, viewport) {
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
+}
+
+async function assertAuthFormInteractions(page, name, viewport) {
+  const password = page.getByPlaceholder(
+    name === 'login' ? 'Enter your password' : 'Choose a password'
+  );
+
+  if (name === 'login') {
+    const username = page.getByPlaceholder('Enter your username');
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await page.getByText('Enter a username.', { exact: true }).waitFor();
+    await page.getByText('Enter a password.', { exact: true }).waitFor();
+    if (!(await username.evaluate((input) => input === document.activeElement))) {
+      throw new Error(`login validation did not focus username in ${viewport.name}`);
+    }
+
+    await username.fill('Player');
+    if ((await page.getByText('Enter a username.', { exact: true }).count()) !== 0) {
+      throw new Error(`login username error did not clear after editing in ${viewport.name}`);
+    }
+    await username.press('Enter');
+    if (!(await password.evaluate((input) => input === document.activeElement))) {
+      throw new Error(`login Next key did not focus password in ${viewport.name}`);
+    }
+  } else if (name === 'register') {
+    const username = page.getByPlaceholder('Choose a username');
+    const email = page.getByPlaceholder('Enter your email');
+    await password.fill('correct horse battery staple');
+    await page.getByRole('button', { name: 'Create account' }).click();
+    await page.getByText('Enter a username.', { exact: true }).waitFor();
+    await page.getByText('Enter an email address.', { exact: true }).waitFor();
+    if (!(await username.evaluate((input) => input === document.activeElement))) {
+      throw new Error(`register validation did not focus username in ${viewport.name}`);
+    }
+
+    await username.fill('Player');
+    if ((await page.getByText('Enter a username.', { exact: true }).count()) !== 0) {
+      throw new Error(`register username error did not clear after editing in ${viewport.name}`);
+    }
+    await username.press('Enter');
+    if (!(await email.evaluate((input) => input === document.activeElement))) {
+      throw new Error(`register username Next key did not focus email in ${viewport.name}`);
+    }
+
+    await email.fill('player@example.com');
+    if ((await page.getByText('Enter an email address.', { exact: true }).count()) !== 0) {
+      throw new Error(`register email error did not clear after editing in ${viewport.name}`);
+    }
+    await email.press('Enter');
+    if (!(await password.evaluate((input) => input === document.activeElement))) {
+      throw new Error(`register email Next key did not focus password in ${viewport.name}`);
+    }
+
+    if ((await page.getByPlaceholder('Enter the password again').count()) !== 0) {
+      throw new Error(`register still asks users to re-enter their password in ${viewport.name}`);
+    }
+  } else {
+    return;
+  }
+
+  const passwordValue = 'correct horse battery staple';
+  await password.fill(passwordValue);
+  await page.getByRole('button', { name: 'Show password' }).click();
+  if ((await password.evaluate((input) => input.type)) !== 'text') {
+    throw new Error(`${name} password was not revealed in ${viewport.name}`);
+  }
+  if ((await password.inputValue()) !== passwordValue) {
+    throw new Error(`${name} password changed while being revealed in ${viewport.name}`);
+  }
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  if ((await password.evaluate((input) => input.type)) !== 'password') {
+    throw new Error(`${name} password was not hidden again in ${viewport.name}`);
+  }
+  if ((await password.inputValue()) !== passwordValue) {
+    throw new Error(`${name} password changed while being hidden in ${viewport.name}`);
+  }
+
+  const endpoint = `/api/v1/auth/${name === 'login' ? 'login' : 'register'}`;
+  const expectedPayload =
+    name === 'login'
+      ? { username: 'Player', password: passwordValue }
+      : {
+          user: {
+            username: 'Player',
+            email: 'player@example.com',
+            password: passwordValue,
+          },
+        };
+  let requestCount = 0;
+  let releaseResponse;
+  const responseGate = new Promise((resolveGate) => {
+    releaseResponse = resolveGate;
+  });
+  await page.route(`**${endpoint}`, async (route) => {
+    requestCount += 1;
+    await responseGate;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          token: 'ui-auth-submit-token',
+          user: {
+            id: 'ui-auth-submit-user',
+            username: 'Player',
+            email: name === 'register' ? 'player@example.com' : null,
+          },
+        },
+      }),
+    });
+  });
+  const requestPromise = page.waitForRequest(
+    (request) => request.method() === 'POST' && request.url().endsWith(endpoint)
+  );
+  await password.evaluate((input) => {
+    const enter = () =>
+      new KeyboardEvent('keydown', {
+        key: 'Enter',
+        code: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      });
+    input.dispatchEvent(enter());
+    input.dispatchEvent(enter());
+  });
+  const request = await requestPromise;
+  await page.waitForTimeout(100);
+  releaseResponse();
+  if (requestCount !== 1) {
+    throw new Error(
+      `${name} submitted ${requestCount} auth requests while loading in ${viewport.name}`
+    );
+  }
+  const actualPayload = request.postDataJSON();
+  if (JSON.stringify(actualPayload) !== JSON.stringify(expectedPayload)) {
+    throw new Error(
+      `${name} submitted an unexpected auth payload in ${viewport.name}: ${JSON.stringify(actualPayload)}`
+    );
+  }
+  await page.waitForURL((url) => url.pathname.endsWith('/home'), { timeout: 10_000 });
 }
 
 async function assertBiddingRevealSequence(page, viewport) {
@@ -295,6 +455,7 @@ async function assertSeatPlacement(page, viewport) {
 }
 
 async function main() {
+  const cases = selectCases();
   await mkdir(screenshotRoot, { recursive: true });
   const browser = await chromium.launch({
     headless: true,
@@ -356,6 +517,10 @@ async function main() {
             path: resolve(screenshotDir, `${testCase.name}.png`),
             fullPage: false,
           });
+          await assertAuthFormInteractions(page, testCase.name, viewport);
+          if (pageErrors.length) {
+            throw new Error(`${testCase.name} interaction errors: ${pageErrors.join(' | ')}`);
+          }
           results.push(`${viewport.name}/${testCase.name}`);
         } finally {
           await page.close();
