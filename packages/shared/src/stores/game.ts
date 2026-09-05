@@ -119,7 +119,13 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       POSITIONS.forEach((pos) => {
         const previous = current.playerMeta[pos];
-        const playerId = positions?.[pos] ?? (sameSession ? previous.playerId : null);
+        const snapshotPlayerId = positions?.[pos];
+        const playerId =
+          snapshotPlayerId !== undefined
+            ? snapshotPlayerId
+            : sameSession
+              ? previous.playerId
+              : null;
         const sameOccupant = sameSession && playerId != null && previous.playerId === playerId;
         // Match identity before position; a fallback index must not override either.
         const seat =

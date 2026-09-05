@@ -235,6 +235,26 @@ describe('shared store regressions', () => {
     expect(useGameStore.getState().playerMeta.north.username).toBe('mfios1');
   });
 
+  it.each([
+    'REST',
+    'positions',
+  ])('clears departed identities when a %s snapshot marks a seat vacant', (source) => {
+    initializeGame(roomWithSeats(roomPlayers));
+    act(() => useGameStore.getState().setSeatStatus('north', 'reconnecting'));
+
+    const vacantRoom = roomWithSeats({ ...roomPlayers, north: null });
+    initializeGame(source === 'REST' ? vacantRoom : { ...vacantRoom, seats: [] });
+
+    expect(useGameStore.getState().playerMeta.north).toMatchObject({
+      playerId: null,
+      username: null,
+      seatStatus: 'normal',
+    });
+    expect(
+      positions.slice(1).map((pos) => useGameStore.getState().playerMeta[pos].username),
+    ).toEqual(expectedNames.slice(1));
+  });
+
   it('keeps other identities stable through departure, bot takeover, reclaim, and substitute snapshots', () => {
     const order: Position[] = ['east', 'north', 'south', 'west'];
     const occupants = [
