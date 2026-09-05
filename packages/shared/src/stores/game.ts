@@ -121,12 +121,18 @@ export const useGameStore = create<GameState>((set, get) => ({
         const previous = current.playerMeta[pos];
         const playerId = positions?.[pos] ?? (sameSession ? previous.playerId : null);
         const sameOccupant = sameSession && playerId != null && previous.playerId === playerId;
-        const seat = room.seats?.find(
-          (candidate) =>
-            candidate.player?.id === playerId ||
-            candidate.position === pos ||
-            candidate.seat_index === POSITION_TO_INDEX[pos],
-        );
+        // Match identity before position; a fallback index must not override either.
+        const seat =
+          (playerId != null
+            ? room.seats?.find((candidate) => candidate.player?.id === playerId)
+            : undefined) ??
+          room.seats?.find((candidate) => candidate.position === pos) ??
+          room.seats?.find(
+            (candidate) =>
+              candidate.position == null &&
+              candidate.seat_index === POSITION_TO_INDEX[pos] &&
+              (playerId == null || candidate.player?.id == null),
+          );
         baseMeta[pos] = {
           position: pos,
           playerId,

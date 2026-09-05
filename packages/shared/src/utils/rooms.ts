@@ -6,7 +6,7 @@ import type {
   RoomStatus,
   Seat,
 } from '../types/lobby';
-import { INDEX_TO_POSITION } from './positions';
+import { INDEX_TO_POSITION, POSITION_TO_INDEX } from './positions';
 
 function normalizeSeat(raw: any, fallbackIndex: number): Seat {
   const seatIndex =
@@ -67,7 +67,7 @@ export function buildPositionsFromSeats(
  * `occupant_type` is unreliable in this payload.
  */
 function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
-  return Object.entries(rawSeats).map(([key, value], idx) => {
+  return Object.entries(rawSeats).map(([key, value]) => {
     const position = (value?.position ?? key) as Position;
     const userId = value?.user_id ?? value?.player_id ?? null;
     // Bot-substituted seats carry occupant_type: 'bot' with a null user_id,
@@ -80,7 +80,7 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
     const playerId = userId ?? (isBot ? `bot_${String(position)}` : null);
 
     return {
-      seat_index: idx,
+      seat_index: POSITION_TO_INDEX[position],
       position,
       status: playerId ? 'occupied' : 'free',
       player:
