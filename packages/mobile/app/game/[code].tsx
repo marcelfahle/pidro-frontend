@@ -19,6 +19,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/stores/lobby';
 import { useGameStore } from '@/stores/game';
+import { roomWithReadiness } from '@pidro/shared';
 import { useAuthStore } from '@/stores/auth';
 import { lobbyApi } from '@/api/lobby';
 import { api } from '@/api/client';
@@ -166,6 +167,17 @@ export default function GameScreen() {
   const setLegalActions = useGameStore((s) => s.setLegalActions);
   const youPositionAbs = useGameStore((s) => s.youPositionAbs);
   const role = useGameStore((s) => s.role);
+  const readiness = useGameStore((s) => s.readiness);
+  const isChannelJoined = useGameStore((s) => s.isChannelJoined);
+  const handleReady = useCallback(() => {
+    if (!readiness || !isChannelJoined || role !== 'player') {
+      return Promise.reject(new Error('Reconnect before confirming readiness.'));
+    }
+    return pushGameAction('ready', {
+      room_id: readiness.room_id,
+      ready_epoch: readiness.ready_epoch,
+    });
+  }, [readiness, isChannelJoined, role]);
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
 
   // NOTE: We don't use useLobbyChannel here - game screen relies on GameChannel for updates
@@ -650,8 +662,11 @@ export default function GameScreen() {
   return (
     <>
       <WaitingTable
-        room={room}
+        room={readiness ? roomWithReadiness(room, readiness) : room}
         youPlayerId={youPlayerId}
+        readyPlayers={readiness?.ready_players}
+        readyDisabled={!isChannelJoined || !readiness}
+        onReady={role === 'player' && youPositionAbs ? handleReady : undefined}
         onLeave={handleLeaveGame}
         canManage={canManage}
         joiningName={joiningName}

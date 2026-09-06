@@ -117,6 +117,7 @@ export function GamePage() {
     serverState,
     playerMeta,
     readyPlayers,
+    readiness,
     youPositionAbs,
     role,
     isChannelJoined,
@@ -129,6 +130,7 @@ export function GamePage() {
       serverState: s.serverState,
       playerMeta: s.playerMeta,
       readyPlayers: s.readyPlayers,
+      readiness: s.readiness,
       youPositionAbs: s.youPositionAbs,
       role: s.role,
       isChannelJoined: s.isChannelJoined,
@@ -370,8 +372,9 @@ export function GamePage() {
   }, [navigate]);
 
   const handleReady = useCallback(() => {
-    pushAction('ready', {});
-  }, [pushAction]);
+    if (!readiness || !isChannelJoined || role !== 'player') return;
+    pushAction('ready', { room_id: readiness.room_id, ready_epoch: readiness.ready_epoch });
+  }, [pushAction, readiness, isChannelJoined, role]);
 
   const handleWatchAsSpectator = useCallback(async () => {
     if (!code || !userId) {
@@ -594,7 +597,8 @@ export function GamePage() {
           playerMeta={playerMeta}
           readyPlayers={readyPlayers}
           youPosition={youPositionAbs}
-          onReady={handleReady}
+          onReady={role === 'player' && youPositionAbs ? handleReady : undefined}
+          readyDisabled={!isChannelJoined || !readiness}
           onLeave={handleLeave}
         />
       </div>

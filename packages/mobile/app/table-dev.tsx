@@ -14,7 +14,7 @@ import { InviteModal } from '@/components/invites/InviteModal';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
-import type { Room } from '@/types/lobby';
+import type { Position, Room } from '@/types/lobby';
 import type { Invite, SeatStatus } from '@pidro/shared';
 import { TableFeedback } from '@/components/game/TableFeedback';
 
@@ -133,14 +133,39 @@ function TableDevHarness() {
   const [feedbackHeight, setFeedbackHeight] = useState(0);
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
+  const [readyPlayers, setReadyPlayers] = useState<Position[]>(['north', 'west']);
 
-  if (phase === 'waiting' || phase === 'waiting-host') {
-    const hostControls = phase === 'waiting-host';
+  if (
+    phase === 'waiting' ||
+    phase === 'waiting-host' ||
+    phase === 'ready' ||
+    phase === 'ready-host'
+  ) {
+    const hostControls = phase === 'waiting-host' || phase === 'ready-host';
+    const full = phase.startsWith('ready');
+    const waitingRoom: Room = full
+      ? {
+          ...WAITING_ROOM,
+          positions: { ...WAITING_ROOM.positions!, east: 'p-east' },
+          seats: WAITING_ROOM.seats!.map((seat) =>
+            seat.position === 'east'
+              ? {
+                  ...seat,
+                  status: 'occupied',
+                  player: { id: 'p-east', username: 'Erin' },
+                }
+              : seat
+          ),
+        }
+      : WAITING_ROOM;
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
           <WaitingTable
-            room={WAITING_ROOM}
+            room={waitingRoom}
+            readyPlayers={full ? readyPlayers : ['north']}
+            readyDisabled={false}
+            onReady={async () => setReadyPlayers((current) => [...current, 'south'])}
             youPlayerId="p-south"
             onLeave={() => {}}
             canManage={hostControls}

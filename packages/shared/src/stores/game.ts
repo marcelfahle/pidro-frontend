@@ -13,7 +13,7 @@ import type {
   SeatStatus,
   SeatLifecycleSnapshot,
 } from '../types/game';
-import type { Position, Room } from '../types/lobby';
+import type { Position, ReadinessSnapshot, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
 import { lifecycleFromReply } from '../utils/seatLifecycle';
@@ -53,6 +53,8 @@ interface GameState {
   legalActions: LegalAction[];
   playerMeta: Record<Position, PlayerMeta>;
   readyPlayers: Position[];
+  readiness: ReadinessSnapshot | null;
+  setReadiness: (snapshot: ReadinessSnapshot) => void;
   turnTimer: ActiveTurnTimer | null;
   lifecycle: SeatLifecycleSnapshot | null;
   dismissedDecisions: string[];
@@ -78,7 +80,6 @@ interface GameState {
   ) => void;
   setSeatStatus: (position: Position, status: SeatStatus, username?: string | null) => void;
   setPlayerRank: (position: Position, rank: PlayerRank | null) => void;
-  addReadyPlayer: (position: Position) => void;
   setChannelStatus: (joined: boolean, rejoining?: boolean) => void;
   setError: (err: string | null) => void;
   reset: () => void;
@@ -100,6 +101,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   legalActions: [],
   playerMeta: { ...initialPlayerMeta },
   readyPlayers: [],
+  readiness: null,
   turnTimer: null,
   lifecycle: null,
   dismissedDecisions: [],
@@ -151,13 +153,21 @@ export const useGameStore = create<GameState>((set, get) => ({
       const sameSession = current.roomCode === room.code && current.youPlayerId === youPlayerId;
       // Once joined, only the channel's versioned snapshot owns seat identity/status.
       if (sameSession && current.lifecycle) return {};
+      // Unversioned HTTP/lobby data can enrich names, never replace the channel roster.
+      if (
+        sameSession &&
+        current.readiness &&
+        ['waiting', 'ready'].includes(current.readiness.status)
+      ) {
+        room = roomWithReadiness(room, current.readiness);
+      }
       const positions = room.positions ?? buildPositionsFromSeats(room.seats);
       let youPos: Position | null = null;
 
       POSITIONS.forEach((pos) => {
         if (positions?.[pos] === youPlayerId) youPos = pos;
       });
-      if (!youPos && sameSession) youPos = current.youPositionAbs;
+      if (!youPos && sameSession && !current.readiness) youPos = current.youPositionAbs;
 
       const baseMeta: Record<Position, PlayerMeta> = {
         north: createEmptyPlayerMeta('north'),
@@ -218,6 +228,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPositionAbs: youPos,
         playerMeta: baseMeta,
         ...(!sameSession ? { lifecycle: null, dismissedDecisions: [] } : {}),
+        ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
     }),
 
@@ -339,12 +350,54 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { playerMeta: updated };
     }),
 
-  addReadyPlayer: (position) =>
-    set((curr) => ({
-      readyPlayers: curr.readyPlayers.includes(position)
-        ? curr.readyPlayers
-        : [...curr.readyPlayers, position],
-    })),
+  setReadiness: (snapshot) =>
+    set((current) => {
+      if (
+        !snapshot ||
+        (current.readiness &&
+          (snapshot.room_id !== current.readiness.room_id ||
+            snapshot.snapshot_revision <= current.readiness.snapshot_revision))
+      )
+        return {};
+      // In-game seat lifecycle/rank hydration remains owned by its existing events.
+      if (snapshot.status === 'playing' || snapshot.status === 'finished') {
+        return { readiness: snapshot, readyPlayers: snapshot.ready_players };
+      }
+      const youPosition =
+        POSITIONS.find((pos) => snapshot.positions[pos] === current.youPlayerId) ?? null;
+      const playerMeta = { ...current.playerMeta };
+      for (const pos of POSITIONS) {
+        const playerId = snapshot.positions[pos];
+        const seat = snapshot.seats[pos];
+        const previous = Object.values(current.playerMeta).find(
+          (meta) => meta.playerId === playerId,
+        );
+        playerMeta[pos] = {
+          ...createEmptyPlayerMeta(pos),
+          playerId,
+          username:
+            seat.username ??
+            previous?.username ??
+            (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
+          isYou: playerId != null && playerId === current.youPlayerId,
+          isTeammate: !!youPosition && pos !== youPosition && isTeammate(youPosition, pos),
+          isOpponent: !!youPosition && !isTeammate(youPosition, pos),
+          isConnected: seat.occupant_type === 'bot' || seat.status === 'connected',
+          seatStatus:
+            seat.occupant_type === 'bot'
+              ? 'bot_substitute'
+              : seat.status === 'connected'
+                ? 'normal'
+                : 'reconnecting',
+        };
+      }
+      return {
+        readiness: snapshot,
+        readyPlayers: snapshot.ready_players,
+        playerMeta,
+        youPositionAbs: youPosition,
+      };
+    }),
 
   setChannelStatus: (joined, rejoining = false) =>
     set({ isChannelJoined: joined, isRejoining: rejoining }),
@@ -369,11 +422,39 @@ export const useGameStore = create<GameState>((set, get) => ({
         west: createEmptyPlayerMeta('west'),
       },
       readyPlayers: [],
+      readiness: null,
       isChannelJoined: false,
       isRejoining: false,
       lastError: null,
     }),
 }));
+
+/** Keep display metadata, but take every seat identity from the authoritative snapshot. */
+export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room {
+  return {
+    ...room,
+    id: snapshot.room_id,
+    status: snapshot.status,
+    positions: snapshot.positions,
+    seats: POSITIONS.map((position, seat_index) => {
+      const id = snapshot.positions[position];
+      const known = room.seats?.find((seat) => seat.player?.id === id)?.player;
+      return {
+        position,
+        seat_index,
+        status: id ? 'occupied' : 'free',
+        player: id
+          ? {
+              ...known,
+              id,
+              username: snapshot.seats[position].username ?? known?.username ?? 'Player',
+              is_bot: snapshot.seats[position].occupant_type === 'bot',
+            }
+          : null,
+      };
+    }),
+  };
+}
 
 export function useGameViewModel(): GameViewModel | null {
   const { serverState, playerMeta, youPositionAbs, roomCode } = useGameStore(
