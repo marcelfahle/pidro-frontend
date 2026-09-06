@@ -3,6 +3,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
 import { assertInsideViewport, assertMinimumTouchTargets, UI_VIEWPORTS } from './ui-test-utils.mjs';
+import { confirmInitialTable } from './readiness-e2e.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(root, '../../..');
@@ -196,6 +197,13 @@ async function main() {
     await leaveAnyCurrentRoom(token);
     const liveRoomCode = await createLiveGameRoom(token);
     await page.goto(`${mobileBaseUrl}/game/${liveRoomCode}`, { waitUntil: 'domcontentloaded' });
+    await confirmInitialTable([page], '[data-testid="game-table"]', {
+      onWaiting: async () => {
+        captures.push(
+          ...(await captureCurrentScreen(page, 'full-table-not-ready', 'waiting-table'))
+        );
+      },
+    });
     await page.getByTestId('game-table').waitFor({ state: 'visible', timeout: 20_000 });
     captures.push(...(await captureCurrentScreen(page, 'game-table-live', 'game-table')));
     await page.getByText('Leave').click({ timeout: 5_000 });

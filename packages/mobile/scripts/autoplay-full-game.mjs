@@ -55,7 +55,7 @@ async function main() {
   let roomCode = fixedRoom;
   if (roomCode) {
     // Take a seat if we don't have one yet (fresh joiner into a waiting room).
-    await api('/api/v1/rooms/current/leave', 'DELETE', token).catch(() => {});
+    // Preserve an existing seat: leaving would invalidate the full roster's readiness.
     const joined = await api(`/api/v1/rooms/${roomCode}/join`, 'POST', token, {});
     log(
       joined.ok
@@ -89,6 +89,41 @@ async function main() {
   let finished = false;
   let progressionReceived = false;
   let progressionDeadline = null;
+  let joined = false;
+  let readiness = null;
+  let confirmedEpoch = null;
+  let readinessDeadline = null;
+
+  function handleReadiness(snapshot) {
+    if (!snapshot) return; // Older backends start immediately and send no snapshot.
+    if (readiness && snapshot.snapshot_revision <= readiness.snapshot_revision) return;
+    readiness = snapshot;
+    if (confirmedEpoch !== null && snapshot.ready_epoch !== confirmedEpoch) {
+      console.error('Readiness epoch reset after confirmation; refusing to confirm a new roster');
+      process.exit(1);
+    }
+    if (!joined || confirmedEpoch !== null || snapshot.status !== 'waiting') return;
+    if (!['north', 'east', 'south', 'west'].every((position) => snapshot.positions?.[position]))
+      return;
+    confirmedEpoch = snapshot.ready_epoch;
+    readinessDeadline = setTimeout(() => {
+      console.error(
+        'Initial readiness did not start the game within 30s; another human may not be ready'
+      );
+      process.exit(1);
+    }, 30_000);
+    channel
+      .push('ready', { room_id: snapshot.room_id, ready_epoch: confirmedEpoch })
+      .receive('ok', () => log(`confirmed initial readiness epoch=${confirmedEpoch}`))
+      .receive('error', (error) => {
+        console.error('Initial ready rejected; no automatic retry', error);
+        process.exit(1);
+      })
+      .receive('timeout', () => {
+        console.error('Initial ready timed out; no automatic retry');
+        process.exit(1);
+      });
+  }
 
   function chooseAction(actions, state) {
     const first = (type) => actions.find((a) => a.type === type);
@@ -120,6 +155,7 @@ async function main() {
   function handleState(payload) {
     const state = payload?.state ?? payload?.game_state ?? payload;
     if (!state || typeof state !== 'object' || !('phase' in state)) return;
+    if (state.phase && readinessDeadline) clearTimeout(readinessDeadline);
     const actions = payload?.legal_actions ?? [];
 
     const scores = JSON.stringify(state.scores ?? null);
@@ -165,6 +201,7 @@ async function main() {
   }
 
   channel.on('game_state', handleState);
+  channel.on('readiness_updated', handleReadiness);
   channel.on('progression_summary', (payload) => {
     progressionReceived = true;
     log('PROGRESSION_SUMMARY', JSON.stringify(payload));
@@ -178,6 +215,18 @@ async function main() {
     .join()
     .receive('ok', (resp) => {
       log(`joined game:${roomCode} as ${resp?.position ?? '?'}`);
+      if (resp?.readiness && !resp.position) {
+        console.error('Autoplay must join as a seated actor before confirming readiness');
+        process.exit(1);
+      }
+      joined = true;
+      // Reconcile any event received before the join ack, then confirm only once.
+      const snapshot =
+        readiness && readiness.snapshot_revision > resp?.readiness?.snapshot_revision
+          ? readiness
+          : (resp?.readiness ?? readiness);
+      readiness = null;
+      handleReadiness(snapshot);
       handleState(resp);
     })
     .receive('error', (err) => {
