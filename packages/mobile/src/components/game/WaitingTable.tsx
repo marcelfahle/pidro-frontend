@@ -98,13 +98,18 @@ function SeatPlate({
       pointerEvents="box-none">
       <Surface variant="plaque" style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
         {seat.occupied ? (
-          <PressableFX
-            disabled={!onProfile}
-            accessibilityRole="button"
-            accessibilityLabel={seat.isYou ? 'View your profile' : `View ${seat.name}'s profile`}
-            onPress={onProfile}>
+          onProfile ? (
+            <PressableFX
+              accessibilityRole="button"
+              accessibilityLabel={seat.isYou ? 'View your profile' : `View ${seat.name}'s profile`}
+              onPress={onProfile}>
+              <View className="h-11 w-11 items-center justify-center">
+                <Avatar uri={seat.avatarUrl} style={styles.avatar} resizeMode="cover" />
+              </View>
+            </PressableFX>
+          ) : (
             <Avatar uri={seat.avatarUrl} style={styles.avatar} resizeMode="cover" />
-          </PressableFX>
+          )
         ) : (
           <View style={styles.openAvatar}>
             <Feather name="user-plus" size={17} color={PidroColors.textMuted} />

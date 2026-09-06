@@ -211,6 +211,16 @@ try {
   await button('Sign out').click();
   await visible(page.getByText('Sign out?', { exact: true }));
   await button('Cancel').click();
+  await button('Add bio').click();
+  await input.fill('Unsaved sign-out draft.');
+  await button('Sign out').click();
+  await visible(page.getByText('Your unsaved changes will be discarded.', { exact: true }));
+  await button('Cancel').last().click();
+  assert.equal(await input.inputValue(), 'Unsaved sign-out draft.');
+  await button('Sign out').click();
+  await button('Sign out').last().click();
+  await page.waitForURL(/\/login$/);
+  assert.equal(await page.evaluate(() => localStorage.getItem('auth-storage')), null);
   assert.deepEqual(errors, []);
   console.log(
     'Profile UI passed: phone portrait/landscape, compact landscape, iPad portrait/landscape/Pro/split view, preserved drafts, bounded columns, 44pt targets, validation, retry, navigation guards and confirmations.'

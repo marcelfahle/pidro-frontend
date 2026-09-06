@@ -142,6 +142,13 @@ async function assertTargetGeometry(page, testCase, viewport) {
     await page.getByText(testCase.text, { exact: true }).first().waitFor({ timeout: 15_000 });
   }
 
+  if (testCase.name === 'table-waiting' || testCase.name === 'table-host-controls') {
+    if (await page.getByRole('button', { name: "View Bot's profile" }).count()) {
+      throw new Error(`${testCase.name} exposes a bot profile action in ${viewport.name}`);
+    }
+    await page.getByRole('button', { name: 'View your profile', exact: true }).waitFor();
+  }
+
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
 }
 

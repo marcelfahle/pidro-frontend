@@ -55,7 +55,7 @@ async function main() {
   let roomCode = fixedRoom;
   if (roomCode) {
     // Take a seat if we don't have one yet (fresh joiner into a waiting room).
-    await api('/api/v1/rooms/current/leave', 'DELETE', token).catch(() => {});
+    // Never leave first: this user may already host the requested active game.
     const joined = await api(`/api/v1/rooms/${roomCode}/join`, 'POST', token, {});
     log(
       joined.ok
