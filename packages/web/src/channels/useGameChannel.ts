@@ -1,4 +1,5 @@
-import type { LegalAction, Position, ReadinessSnapshot, ServerGameState } from '@pidro/shared';
+import { lifecycleFromReply } from '@pidro/shared';
+import type { LegalAction, Position, ReadinessSnapshot, SeatLifecycleSnapshot, ServerGameState } from '@pidro/shared';
 import {
   describeGameAction,
   extractGameState,
@@ -17,12 +18,8 @@ export interface SeatEvent {
   variant: 'warning' | 'success' | 'error';
 }
 
-export interface OwnerDecisionEvent {
-  position: Position;
-  playerName: string;
-}
-
 let globalGameChannel: Channel | null = null;
+let notifySeatEvent: ((event: SeatEvent) => void) | undefined;
 let gameRefCount = 0;
 let currentTopic: string | null = null;
 let isPageUnloading = false;
@@ -37,7 +34,6 @@ interface UseGameChannelOptions {
   roomCode: string;
   enabled?: boolean;
   onSeatEvent?: (event: SeatEvent) => void;
-  onOwnerDecision?: (event: OwnerDecisionEvent) => void;
   onProgressionSummary?: (summary: ProgressionSummary) => void;
 }
 
@@ -53,11 +49,41 @@ function seatDisplayName(position: Position | null, fallback?: string | null): s
   return useGameStore.getState().playerMeta[position].username ?? 'A player';
 }
 
+
+function applyLifecycle(
+  snapshot: SeatLifecycleSnapshot,
+  notify: boolean,
+  onSeatEvent?: (event: SeatEvent) => void,
+) {
+  const before = useGameStore.getState().lifecycle;
+  useGameStore.getState().applySeatLifecycle(snapshot);
+  if (!notify || useGameStore.getState().lifecycle !== snapshot) return;
+  for (const position of ['north', 'east', 'south', 'west'] as Position[]) {
+    const previous = before?.seats[position];
+    const next = snapshot.seats[position];
+    if (!previous || (previous.status === next.status && previous.player_id === next.player_id))
+      continue;
+    const wasBot = previous.status === 'bot_substitute' || previous.status === 'permanent_bot';
+    const isBot = next.status === 'bot_substitute' || next.status === 'permanent_bot';
+    const name = isBot
+      ? (next.decision?.player_name ?? previous.username ?? 'A player')
+      : (next.username ?? 'A player');
+    if (isBot && !wasBot && previous.status !== 'vacant')
+      onSeatEvent?.({
+        message: `${name} (${position}) disconnected. Bot is filling in.`,
+        variant: 'warning',
+      });
+    else if (next.status === 'normal') {
+      const action = previous.player_id === next.player_id ? 'is back!' : 'joined the table.';
+      onSeatEvent?.({ message: `${name} (${position}) ${action}`, variant: 'success' });
+    }
+  }
+}
+
 export const useGameChannel = ({
   roomCode,
   enabled = true,
   onSeatEvent,
-  onOwnerDecision,
   onProgressionSummary,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
@@ -77,9 +103,6 @@ export const useGameChannel = ({
   const onSeatEventRef = useRef(onSeatEvent);
   onSeatEventRef.current = onSeatEvent;
 
-  const onOwnerDecisionRef = useRef(onOwnerDecision);
-  onOwnerDecisionRef.current = onOwnerDecision;
-
   const onProgressionSummaryRef = useRef(onProgressionSummary);
   onProgressionSummaryRef.current = onProgressionSummary;
 
@@ -94,6 +117,7 @@ export const useGameChannel = ({
     gameRefCount++;
 
     const topic = `game:${roomCode}`;
+    let disposed = false;
 
     const connect = () => {
       if (globalGameChannel && currentTopic && currentTopic !== topic) {
@@ -107,6 +131,11 @@ export const useGameChannel = ({
       currentTopic = topic;
       let presences: Record<string, unknown> = {};
       let dealerSelectionRequestKey: string | null = null;
+      const isCurrentChannel = () => !disposed && globalGameChannel === channel;
+      const onCurrent = <Payload>(event: string, handler: (payload: Payload) => void) =>
+        channel.on(event, (payload) => {
+          if (isCurrentChannel()) handler(payload as Payload);
+        });
 
       const maybeAutoSelectDealer = (
         gameState: ServerGameState,
@@ -129,11 +158,13 @@ export const useGameChannel = ({
       channel
         .join()
         .receive('ok', (resp: unknown) => {
-          if (globalGameChannel !== channel) return;
+          if (!isCurrentChannel()) return;
           const response = resp as Record<string, unknown> | undefined;
 
           setChannelStatus(true, Boolean(response?.reconnected));
           setError(null);
+          const lifecycle = lifecycleFromReply(response);
+          if (lifecycle) applyLifecycle(lifecycle, false);
 
           const position = response?.position as Position | undefined;
           if (position) {
@@ -158,6 +189,7 @@ export const useGameChannel = ({
           }
         })
         .receive('error', (resp) => {
+          if (!isCurrentChannel()) return;
           console.error('[GameChannel] Unable to join', topic, resp);
           if (globalGameChannel === channel) {
             globalGameChannel = null;
@@ -171,7 +203,7 @@ export const useGameChannel = ({
           setError(reason);
         });
 
-      channel.on('game_state', (payload: unknown) => {
+      onCurrent('game_state', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const gameState = extractGameState(data);
         if (gameState) {
@@ -182,7 +214,12 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('game_over', (payload: unknown) => {
+      onCurrent('seat_lifecycle', (payload: unknown) => {
+        const snapshot = lifecycleFromReply(payload);
+        if (snapshot) applyLifecycle(snapshot, true, onSeatEventRef.current);
+      });
+
+      onCurrent('game_over', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const winner =
           data?.winner === 'north_south' || data?.winner === 'east_west' ? data.winner : null;
@@ -198,16 +235,16 @@ export const useGameChannel = ({
         });
       });
 
-      channel.on('turn_timer_started', (payload: unknown) => {
+      onCurrent('turn_timer_started', (payload: unknown) => {
         setTurnTimer(normalizeTurnTimer(payload));
       });
 
-      channel.on('turn_timer_cancelled', (payload: unknown) => {
+      onCurrent('turn_timer_cancelled', (payload: unknown) => {
         const data = payload as { timer_id?: number } | undefined;
         clearTurnTimer(data?.timer_id ?? null);
       });
 
-      channel.on('turn_auto_played', (payload: unknown) => {
+      onCurrent('turn_auto_played', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const scope = data?.scope;
         const position = (data?.position as Position | null | undefined) ?? null;
@@ -229,7 +266,7 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('force_disconnect', () => {
+      onCurrent('force_disconnect', () => {
         clearTurnTimer();
         setRole(null);
         setChannelStatus(false, false);
@@ -238,7 +275,7 @@ export const useGameChannel = ({
         );
       });
 
-      channel.on('turn_changed', (payload: unknown) => {
+      onCurrent('turn_changed', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
         const pos: Position | null =
           (data?.position as Position) ||
@@ -248,7 +285,8 @@ export const useGameChannel = ({
         updateCurrentTurn(pos);
       });
 
-      channel.on('presence_state', (state) => {
+      onCurrent('presence_state', (state: object) => {
+        if (useGameStore.getState().lifecycle) return;
         presences = Presence.syncState(presences, state);
         const entries = Presence.list(presences, (id, { metas }) => ({
           id,
@@ -259,7 +297,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('presence_diff', (diff) => {
+      onCurrent('presence_diff', (diff: { joins: object; leaves: object }) => {
+        if (useGameStore.getState().lifecycle) return;
         presences = Presence.syncDiff(presences, diff);
 
         const diffTyped = diff as {
@@ -278,14 +317,16 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('player_disconnected', (payload: unknown) => {
+      onCurrent('player_disconnected', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const playerId = (data?.user_id as string) || null;
         const position = (data?.position as Position) || null;
         setPlayerConnected(playerId, position, false);
       });
 
-      channel.on('player_reconnected', (payload: unknown) => {
+      onCurrent('player_reconnected', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const playerId = (data?.user_id as string) || null;
         const position = (data?.position as Position) || null;
@@ -295,11 +336,12 @@ export const useGameChannel = ({
         setPlayerConnected(playerId, position, true);
       });
 
-      channel.on('readiness_updated', (snapshot: ReadinessSnapshot) => {
+      onCurrent('readiness_updated', (snapshot: ReadinessSnapshot) => {
         if (globalGameChannel === channel) setReadiness(snapshot);
       });
 
-      channel.on('player_reconnecting', (payload: unknown) => {
+      onCurrent('player_reconnecting', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -308,7 +350,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('bot_substitute_active', (payload: unknown) => {
+      onCurrent('bot_substitute_active', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
@@ -322,7 +365,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('player_reclaimed_seat', (payload: unknown) => {
+      onCurrent('player_reclaimed_seat', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
@@ -336,7 +380,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('seat_permanently_botted', (payload: unknown) => {
+      onCurrent('seat_permanently_botted', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -345,7 +390,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('substitute_available', (payload: unknown) => {
+      onCurrent('substitute_available', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -354,7 +400,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('substitute_seat_closed', (payload: unknown) => {
+      onCurrent('substitute_seat_closed', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         if (position) {
@@ -363,7 +410,8 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('substitute_joined', (payload: unknown) => {
+      onCurrent('substitute_joined', (payload: unknown) => {
+        if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
         const username = (data?.username as string) || (data?.player_name as string) || null;
@@ -377,29 +425,18 @@ export const useGameChannel = ({
         }
       });
 
-      channel.on('progression_summary', (payload: unknown) => {
+      onCurrent('progression_summary', (payload: unknown) => {
         const summary = parseProgressionSummary(payload);
         if (summary) onProgressionSummaryRef.current?.(summary);
       });
 
-      channel.on('owner_decision_available', (payload: unknown) => {
-        const data = payload as Record<string, unknown> | undefined;
-        const position = (data?.position as Position) || null;
-        const ownerId = typeof data?.owner_id === 'string' ? data.owner_id : null;
-        const playerName = seatDisplayName(
-          position,
-          ((data?.player_name as string) || (data?.username as string) || null) as string | null,
-        );
-        if (position && ownerId === useGameStore.getState().youPlayerId) {
-          onOwnerDecisionRef.current?.({ position, playerName });
-        }
-      });
-
       channel.onError(() => {
+        if (!isCurrentChannel()) return;
         setChannelStatus(false, true);
       });
 
       channel.onClose(() => {
+        if (!isCurrentChannel()) return;
         if (globalGameChannel === channel) {
           globalGameChannel = null;
           currentTopic = null;
@@ -409,11 +446,13 @@ export const useGameChannel = ({
       });
 
       globalGameChannel = channel;
+      notifySeatEvent = (event) => onSeatEventRef.current?.(event);
     };
 
     connect();
 
     return () => {
+      disposed = true;
       gameRefCount--;
       if (gameRefCount === 0 && globalGameChannel) {
         // During page refresh/unload, don't explicitly leave — let the socket
@@ -423,6 +462,7 @@ export const useGameChannel = ({
           globalGameChannel.leave();
         }
         globalGameChannel = null;
+        notifySeatEvent = undefined;
         currentTopic = null;
       }
     };
@@ -454,15 +494,25 @@ export function pushGameAction(event: string, payload: object) {
     channel
       .push(event, payload)
       .receive('ok', (response: { readiness?: ReadinessSnapshot }) => {
+        const snapshot = lifecycleFromReply(response);
+        if (snapshot && globalGameChannel === channel)
+          applyLifecycle(snapshot, true, notifySeatEvent);
         if (globalGameChannel === channel && response?.readiness)
           useGameStore.getState().setReadiness(response.readiness);
         resolve();
       })
       .receive('error', (error: { readiness?: ReadinessSnapshot }) => {
+        const snapshot = lifecycleFromReply(error);
+        if (snapshot && globalGameChannel === channel)
+          applyLifecycle(snapshot, true, notifySeatEvent);
         if (globalGameChannel === channel && error?.readiness)
           useGameStore.getState().setReadiness(error.readiness);
         reject(error);
       })
       .receive('timeout', () => reject(new Error('Request timed out')));
   });
+}
+
+export function refreshSeatLifecycle(): Promise<void> {
+  return pushGameAction('get_seat_lifecycle', {});
 }

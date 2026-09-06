@@ -47,6 +47,18 @@ const build = (overrides = {}) =>
   });
 
 describe('dealer selection table model', () => {
+  it('carries authoritative lifecycle status through seat rotation', () => {
+    const players = rotatedPlayers.map((p, index) => ({
+      ...p,
+      seatStatus: ['reconnecting', 'bot_substitute', 'permanent_bot', 'vacant'][index],
+    }));
+    const model = build({ players });
+    expect(model.seats.east.seatStatus).toBe('reconnecting');
+    expect(model.seats.south.seatStatus).toBe('bot_substitute');
+    expect(model.seats.west.seatStatus).toBe('permanent_bot');
+    expect(model.seats.north.seatStatus).toBe('vacant');
+  });
+
   it('maps absolute server seats to viewer-relative cut cards', () => {
     const model = build();
 

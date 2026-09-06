@@ -1,5 +1,6 @@
 export * from './types';
 export * from './stores';
+export * from './stores/seatDecisions';
 export * from './utils';
 export * from './api';
 export {

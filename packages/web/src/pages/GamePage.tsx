@@ -1,13 +1,13 @@
-import type { ActiveTurnTimer, Card, Position, Room, SeatType, Suit } from '@pidro/shared';
-import { useGameStore, useGameViewModel, useLobbyStore } from '@pidro/shared';
+import type { Card, Room, SeatType, Suit } from '@pidro/shared';
+import { useGameStore, useGameViewModel, useLobbyStore, useSeatDecisions } from '@pidro/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
 import { lobbyApi } from '../api/lobby';
 import { getProfile, veteranProgressFraction } from '../api/profile';
 import {
-  type OwnerDecisionEvent,
   pushGameAction,
+  refreshSeatLifecycle,
   type SeatEvent,
   useGameChannel,
 } from '../channels/useGameChannel';
@@ -78,17 +78,6 @@ function enrichRoomWithKnownNames(room: Room, you: { id: string; username: strin
   };
 }
 
-function hasActiveTurnWindow(turnTimer: ActiveTurnTimer | null): boolean {
-  if (!turnTimer || turnTimer.scope !== 'seat') {
-    return false;
-  }
-
-  const elapsedMs = Date.now() - turnTimer.receivedAtMs;
-  const remainingMs = Math.max(0, turnTimer.remainingMs - elapsedMs);
-  const transitionRemainingMs = Math.max(0, remainingMs - turnTimer.durationMs);
-  return transitionRemainingMs <= 0 && remainingMs > 0;
-}
-
 function ShellMessage({
   title,
   children,
@@ -131,7 +120,6 @@ export function GamePage() {
     readiness,
     youPositionAbs,
     role,
-    turnTimer,
     isChannelJoined,
     lastError,
     initFromRoom,
@@ -145,7 +133,6 @@ export function GamePage() {
       readiness: s.readiness,
       youPositionAbs: s.youPositionAbs,
       role: s.role,
-      turnTimer: s.turnTimer,
       isChannelJoined: s.isChannelJoined,
       lastError: s.lastError,
       initFromRoom: s.initFromRoom,
@@ -216,9 +203,8 @@ export function GamePage() {
 
   const { messages: toastMessages, addToast, dismissToast } = useToast();
 
-  const [ownerDecisionQueue, setOwnerDecisionQueue] = useState<OwnerDecisionEvent[]>([]);
+  const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
   const [progressionSummary, setProgressionSummary] = useState<ProgressionSummary | null>(null);
-  const dismissedSeatsRef = useRef<Set<Position>>(new Set());
 
   const fetchRoom = useCallback(
     async (roomCode: string, playerId: string) => {
@@ -246,6 +232,7 @@ export function GamePage() {
           // server (e.g. after a browser refresh where the REST cache is stale).
           // Attempt a direct WebSocket channel join which will either reconnect
           // us or give a definitive error.
+          initFromRoom({ room: { code: roomCode, status: 'waiting' }, youPlayerId: playerId });
           setChannelEnabled(true);
           setRoomLoading(false);
           return;
@@ -276,40 +263,6 @@ export function GamePage() {
     [addToast],
   );
 
-  const handleOwnerDecision = useCallback(
-    (event: OwnerDecisionEvent) => {
-      const isOwner = roomConfigRef.current?.hostId === userId;
-      if (!isOwner) return;
-      if (dismissedSeatsRef.current.has(event.position)) return;
-
-      setOwnerDecisionQueue((prev) => {
-        if (prev.some((e) => e.position === event.position)) return prev;
-        return [...prev, event];
-      });
-    },
-    [userId],
-  );
-
-  const handleOpenSeat = useCallback(
-    (position: Position) => {
-      dismissedSeatsRef.current.add(position);
-      setOwnerDecisionQueue((prev) => prev.filter((e) => e.position !== position));
-      pushGameAction('open_seat', { position }).catch((err: unknown) => {
-        const message =
-          typeof err === 'object' && err !== null && 'reason' in err
-            ? String((err as { reason: string }).reason)
-            : 'Failed to open seat';
-        addToast(message, 'error');
-      });
-    },
-    [addToast],
-  );
-
-  const handleKeepBot = useCallback((position: Position) => {
-    dismissedSeatsRef.current.add(position);
-    setOwnerDecisionQueue((prev) => prev.filter((e) => e.position !== position));
-  }, []);
-
   useEffect(() => {
     if (!code || !userId) return;
     fetchRoom(code, userId);
@@ -319,7 +272,6 @@ export function GamePage() {
     roomCode: code ?? '',
     enabled: channelEnabled,
     onSeatEvent: handleSeatEvent,
-    onOwnerDecision: handleOwnerDecision,
     onProgressionSummary: setProgressionSummary,
   });
 
@@ -587,11 +539,7 @@ export function GamePage() {
     );
   }
 
-  const isMyTurn = viewModel?.currentTurnAbsolute === youPositionAbs;
-  const visibleDecision =
-    ownerDecisionQueue.length > 0 && !hasActiveTurnWindow(turnTimer) && !isMyTurn
-      ? ownerDecisionQueue[0]
-      : null;
+  const visibleDecision = decisions.decision;
 
   if (hasGameStarted && viewModel) {
     return (
@@ -604,8 +552,11 @@ export function GamePage() {
               <OwnerDecisionBanner
                 playerName={visibleDecision.playerName}
                 position={visibleDecision.position}
-                onOpenSeat={handleOpenSeat}
-                onKeepBot={handleKeepBot}
+                onOpenSeat={decisions.openSeat}
+                onKeepBot={decisions.keepBot}
+                busy={decisions.busy}
+                error={decisions.error}
+                pendingCount={decisions.pendingCount}
               />
             )}
 

@@ -11,10 +11,12 @@ import type {
   LegalAction,
   Suit,
   SeatStatus,
+  SeatLifecycleSnapshot,
 } from '../types/game';
 import type { Position, ReadinessSnapshot, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
+import { lifecycleFromReply } from '../utils/seatLifecycle';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
@@ -54,6 +56,10 @@ interface GameState {
   readiness: ReadinessSnapshot | null;
   setReadiness: (snapshot: ReadinessSnapshot) => void;
   turnTimer: ActiveTurnTimer | null;
+  lifecycle: SeatLifecycleSnapshot | null;
+  dismissedDecisions: string[];
+  applySeatLifecycle: (snapshot: SeatLifecycleSnapshot) => void;
+  dismissDecision: (key: string) => void;
 
   isChannelJoined: boolean;
   isRejoining: boolean;
@@ -97,6 +103,47 @@ export const useGameStore = create<GameState>((set, get) => ({
   readyPlayers: [],
   readiness: null,
   turnTimer: null,
+  lifecycle: null,
+  dismissedDecisions: [],
+  dismissDecision: (key) => set((s) => ({ dismissedDecisions: [...s.dismissedDecisions, key] })),
+  applySeatLifecycle: (snapshot) =>
+    set((current) => {
+      if (!lifecycleFromReply(snapshot)) return {};
+      if (current.roomCode !== snapshot.room_code) return {};
+      if (
+        current.lifecycle &&
+        (current.lifecycle.room_id !== snapshot.room_id ||
+          current.lifecycle.revision >= snapshot.revision)
+      )
+        return {};
+      const playerMeta = { ...current.playerMeta };
+      const youPositionAbs =
+        POSITIONS.find(
+          (position) =>
+            snapshot.seats[position].player_id === current.youPlayerId &&
+            current.youPlayerId != null,
+        ) ?? current.youPositionAbs;
+      for (const position of POSITIONS) {
+        const seat = snapshot.seats[position];
+        const isYou = seat.player_id != null && seat.player_id === current.youPlayerId;
+        const teammate = youPositionAbs != null && isTeammate(youPositionAbs, position);
+        playerMeta[position] = {
+          ...playerMeta[position],
+          playerId: seat.player_id,
+          username: seat.username,
+          seatStatus: seat.status,
+          isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
+          isYou,
+          isTeammate: teammate && !isYou,
+          isOpponent: youPositionAbs != null && !teammate && !isYou,
+          rank:
+            seat.player_id === current.playerMeta[position].playerId
+              ? current.playerMeta[position].rank
+              : null,
+        };
+      }
+      return { lifecycle: snapshot, playerMeta, youPositionAbs };
+    }),
   isChannelJoined: false,
   isRejoining: false,
   lastError: null,
@@ -104,6 +151,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   initFromRoom: ({ room, youPlayerId }) =>
     set((current) => {
       const sameSession = current.roomCode === room.code && current.youPlayerId === youPlayerId;
+      // Once joined, only the channel's versioned snapshot owns seat identity/status.
+      if (sameSession && current.lifecycle) return {};
       // Unversioned HTTP/lobby data can enrich names, never replace the channel roster.
       if (
         sameSession &&
@@ -178,6 +227,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPlayerId,
         youPositionAbs: youPos,
         playerMeta: baseMeta,
+        ...(!sameSession ? { lifecycle: null, dismissedDecisions: [] } : {}),
         ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
     }),
@@ -271,6 +321,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setPlayerConnected: (playerId, position, connected) =>
     set((curr) => {
+      if (curr.lifecycle) return {};
       const updated = { ...curr.playerMeta };
       POSITIONS.forEach((pos) => {
         if (updated[pos].playerId === playerId || pos === position) {
@@ -282,6 +333,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setSeatStatus: (position, status, username) =>
     set((curr) => {
+      if (curr.lifecycle) return {};
       const updated = { ...curr.playerMeta };
       updated[position] = {
         ...updated[position],
@@ -361,6 +413,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       serverState: null,
       legalActions: [],
       turnTimer: null,
+      lifecycle: null,
+      dismissedDecisions: [],
       playerMeta: {
         north: createEmptyPlayerMeta('north'),
         east: createEmptyPlayerMeta('east'),

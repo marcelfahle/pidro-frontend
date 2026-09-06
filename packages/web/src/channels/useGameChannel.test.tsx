@@ -1,7 +1,7 @@
-import { type ReadinessSnapshot, useGameStore } from '@pidro/shared';
+import { type SeatLifecycleSnapshot, type ReadinessSnapshot, useGameStore } from '@pidro/shared';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { pushGameAction, useGameChannel } from './useGameChannel';
+import { refreshSeatLifecycle, pushGameAction, useGameChannel } from './useGameChannel';
 
 class MockPush {
   private callbacks = new Map<string, (payload: unknown) => void>();
@@ -129,6 +129,81 @@ afterEach(() => {
 });
 
 describe('useGameChannel', () => {
+  it('hydrates missed lifecycle state, deduplicates live takeover notices, and ignores legacy regression', async () => {
+    useGameStore.setState({ roomCode: 'ABCD', youPlayerId: 'south-id' });
+    const initial: SeatLifecycleSnapshot = {
+      room_id: 'room1',
+      room_code: 'ABCD',
+      revision: 1,
+      owner_id: 'south-id',
+      room_status: 'playing',
+      seats: {
+        north: { status: 'reconnecting', player_id: 'north-id', username: 'Nora', decision: null },
+        east: { status: 'normal', player_id: 'east-id', username: 'Eli', decision: null },
+        south: { status: 'normal', player_id: 'south-id', username: 'You', decision: null },
+        west: { status: 'vacant', player_id: null, username: null, decision: null },
+      },
+    };
+    const onSeatEvent = vi.fn();
+    const { unmount } = renderHook(() => useGameChannel({ roomCode: 'ABCD', onSeatEvent }));
+    act(() =>
+      currentChannel?.joinPush.trigger('ok', {
+        seat_lifecycle: initial,
+        position: 'south',
+        role: 'player',
+      }),
+    );
+    expect(useGameStore.getState().playerMeta.north.seatStatus).toBe('reconnecting');
+    expect(useGameStore.getState().playerMeta.west.seatStatus).toBe('vacant');
+    expect(onSeatEvent).not.toHaveBeenCalled();
+    const takeover = structuredClone(initial);
+    takeover.revision = 2;
+    takeover.seats.north.status = 'bot_substitute';
+    takeover.seats.east = {
+      status: 'permanent_bot',
+      player_id: null,
+      username: 'Bot',
+      decision: { id: 'e1', player_name: 'Eli' },
+    };
+    act(() => {
+      currentChannel?.emit('seat_lifecycle', takeover);
+      currentChannel?.emit('seat_lifecycle', structuredClone(takeover));
+      currentChannel?.emit('seat_lifecycle', initial);
+      currentChannel?.emit('player_reconnected', { position: 'east', user_id: 'east-id' });
+      currentChannel?.emit('bot_substitute_active', { position: 'north' });
+    });
+    expect(onSeatEvent).toHaveBeenCalledTimes(2);
+    expect(onSeatEvent.mock.calls[1][0].message).toContain('Eli (east)');
+    expect(useGameStore.getState().playerMeta.east.seatStatus).toBe('permanent_bot');
+    const reclaimed = structuredClone(takeover);
+    reclaimed.revision = 3;
+    reclaimed.seats.north.status = 'normal';
+    act(() => currentChannel?.emit('seat_lifecycle', reclaimed));
+    expect(onSeatEvent).toHaveBeenCalledTimes(3);
+    expect(useGameStore.getState().playerMeta.north).toMatchObject({
+      playerId: 'north-id',
+      username: 'Nora',
+      seatStatus: 'normal',
+    });
+    // An action reply can overtake the corresponding broadcast. It must not
+    // swallow the notice, nor let the later duplicate produce a second one.
+    const next = structuredClone(reclaimed);
+    next.revision = 4;
+    next.seats.north.status = 'bot_substitute';
+    await act(async () => {
+      const refresh = refreshSeatLifecycle();
+      const replies = currentChannel?.push.mock.results ?? [];
+      replies[replies.length - 1]?.value.trigger('ok', { seat_lifecycle: next });
+      await refresh;
+      currentChannel?.emit('seat_lifecycle', structuredClone(next));
+    });
+    expect(onSeatEvent).toHaveBeenCalledTimes(4);
+    const oldChannel = currentChannel;
+    unmount();
+    act(() => oldChannel?.emit('seat_lifecycle', { ...initial, revision: 100 }));
+    expect(useGameStore.getState().lifecycle?.revision).toBe(4);
+  });
+
   function readiness(
     revision: number,
     ready: ReadinessSnapshot['ready_players'] = [],
@@ -466,30 +541,6 @@ describe('useGameChannel', () => {
         message: expect.stringContaining('is back!'),
       }),
     );
-
-    unmount();
-  });
-
-  it('shows owner decisions only to the named room owner', () => {
-    useGameStore.setState({ youPlayerId: 'owner-id', playerMeta: buildPlayerMeta() });
-    const onOwnerDecision = vi.fn();
-    const { unmount } = renderHook(() =>
-      useGameChannel({ roomCode: 'ABCD', enabled: true, onOwnerDecision }),
-    );
-
-    act(() => {
-      currentChannel?.emit('owner_decision_available', {
-        position: 'east',
-        owner_id: 'someone-else',
-      });
-      currentChannel?.emit('owner_decision_available', {
-        position: 'east',
-        owner_id: 'owner-id',
-      });
-    });
-
-    expect(onOwnerDecision).toHaveBeenCalledTimes(1);
-    expect(onOwnerDecision).toHaveBeenCalledWith(expect.objectContaining({ position: 'east' }));
 
     unmount();
   });

@@ -55,7 +55,8 @@ async function main() {
   let roomCode = fixedRoom;
   if (roomCode) {
     // Take a seat if we don't have one yet (fresh joiner into a waiting room).
-    // Preserve an existing seat: leaving would invalidate the full roster's readiness.
+    // Never leave here: an existing player may be resuming an active game,
+    // and explicit leave permanently hands that player's seat to a bot.
     const joined = await api(`/api/v1/rooms/${roomCode}/join`, 'POST', token, {});
     log(
       joined.ok
