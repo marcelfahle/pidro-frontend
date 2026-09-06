@@ -16,6 +16,7 @@ import type {
 import type { Position, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
+import { lifecycleFromReply } from '../utils/seatLifecycle';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
@@ -105,10 +106,12 @@ export const useGameStore = create<GameState>((set, get) => ({
   dismissDecision: (key) => set((s) => ({ dismissedDecisions: [...s.dismissedDecisions, key] })),
   applySeatLifecycle: (snapshot) =>
     set((current) => {
+      if (!lifecycleFromReply(snapshot)) return {};
       if (current.roomCode !== snapshot.room_code) return {};
       if (
-        current.lifecycle?.room_id === snapshot.room_id &&
-        current.lifecycle.revision >= snapshot.revision
+        current.lifecycle &&
+        (current.lifecycle.room_id !== snapshot.room_id ||
+          current.lifecycle.revision >= snapshot.revision)
       )
         return {};
       const playerMeta = { ...current.playerMeta };

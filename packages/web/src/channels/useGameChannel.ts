@@ -1,3 +1,4 @@
+import { lifecycleFromReply } from '@pidro/shared';
 import type { LegalAction, Position, SeatLifecycleSnapshot, ServerGameState } from '@pidro/shared';
 import {
   describeGameAction,
@@ -48,17 +49,6 @@ function seatDisplayName(position: Position | null, fallback?: string | null): s
   return useGameStore.getState().playerMeta[position].username ?? 'A player';
 }
 
-function lifecycleFromReply(payload: unknown): SeatLifecycleSnapshot | null {
-  if (!payload || typeof payload !== 'object') return null;
-  const response = payload as Record<string, unknown>;
-  const candidate = (response.seat_lifecycle ?? response) as Partial<SeatLifecycleSnapshot>;
-  return typeof candidate.room_code === 'string' &&
-    typeof candidate.room_id === 'string' &&
-    typeof candidate.revision === 'number' &&
-    candidate.seats != null
-    ? (candidate as SeatLifecycleSnapshot)
-    : null;
-}
 
 function applyLifecycle(
   snapshot: SeatLifecycleSnapshot,
