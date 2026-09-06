@@ -1,4 +1,5 @@
 export type {
+  SeatStatus,
   GamePhase,
   Suit,
   Card,

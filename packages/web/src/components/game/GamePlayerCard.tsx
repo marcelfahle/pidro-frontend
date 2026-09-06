@@ -60,8 +60,20 @@ export function GamePlayerCard({
   const isVacant = seatStatus === 'vacant';
   const dimmed = !isVacant && (!isConnected || isReconnecting);
 
-  const resolvedName = isVacant ? 'Open seat' : isBot ? 'Bot' : displayName;
-  const resolvedStatus = isVacant ? 'Waiting...' : isReconnecting ? 'Reconnecting...' : statusText;
+  const resolvedName = isVacant
+    ? 'Open seat'
+    : seatStatus === 'permanent_bot'
+      ? 'Bot'
+      : displayName;
+  const resolvedStatus = isVacant
+    ? 'Open for player'
+    : isReconnecting
+      ? 'Reconnecting...'
+      : seatStatus === 'bot_substitute'
+        ? 'Bot · can return'
+        : seatStatus === 'permanent_bot'
+          ? 'Permanent bot'
+          : statusText;
 
   const onRight = imagePosition === 'right';
   const avatarSize = compact ? 40 : 50;

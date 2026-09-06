@@ -11,7 +11,7 @@ describe('GamePlayerCard', () => {
     expect(screen.getByText('Bet 9')).toBeTruthy();
   });
 
-  it('labels bot seats as Bot', () => {
+  it('keeps the reclaimable human name and labels the temporary bot', () => {
     render(
       <GamePlayerCard
         displayName="whatever"
@@ -20,7 +20,8 @@ describe('GamePlayerCard', () => {
         seatStatus="bot_substitute"
       />,
     );
-    expect(screen.getByText('Bot')).toBeTruthy();
+    expect(screen.getByText('whatever')).toBeTruthy();
+    expect(screen.getByText('Bot · can return')).toBeTruthy();
   });
 
   it('wears the level chip when rank is provided', () => {

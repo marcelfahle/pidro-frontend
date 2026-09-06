@@ -11,6 +11,7 @@ import type {
   LegalAction,
   Suit,
   SeatStatus,
+  SeatLifecycleSnapshot,
 } from '../types/game';
 import type { Position, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
@@ -52,6 +53,10 @@ interface GameState {
   playerMeta: Record<Position, PlayerMeta>;
   readyPlayers: Position[];
   turnTimer: ActiveTurnTimer | null;
+  lifecycle: SeatLifecycleSnapshot | null;
+  dismissedDecisions: string[];
+  applySeatLifecycle: (snapshot: SeatLifecycleSnapshot) => void;
+  dismissDecision: (key: string) => void;
 
   isChannelJoined: boolean;
   isRejoining: boolean;
@@ -95,6 +100,45 @@ export const useGameStore = create<GameState>((set, get) => ({
   playerMeta: { ...initialPlayerMeta },
   readyPlayers: [],
   turnTimer: null,
+  lifecycle: null,
+  dismissedDecisions: [],
+  dismissDecision: (key) => set((s) => ({ dismissedDecisions: [...s.dismissedDecisions, key] })),
+  applySeatLifecycle: (snapshot) =>
+    set((current) => {
+      if (current.roomCode !== snapshot.room_code) return {};
+      if (
+        current.lifecycle?.room_id === snapshot.room_id &&
+        current.lifecycle.revision >= snapshot.revision
+      )
+        return {};
+      const playerMeta = { ...current.playerMeta };
+      const youPositionAbs =
+        POSITIONS.find(
+          (position) =>
+            snapshot.seats[position].player_id === current.youPlayerId &&
+            current.youPlayerId != null,
+        ) ?? current.youPositionAbs;
+      for (const position of POSITIONS) {
+        const seat = snapshot.seats[position];
+        const isYou = seat.player_id != null && seat.player_id === current.youPlayerId;
+        const teammate = youPositionAbs != null && isTeammate(youPositionAbs, position);
+        playerMeta[position] = {
+          ...playerMeta[position],
+          playerId: seat.player_id,
+          username: seat.username,
+          seatStatus: seat.status,
+          isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
+          isYou,
+          isTeammate: teammate && !isYou,
+          isOpponent: youPositionAbs != null && !teammate && !isYou,
+          rank:
+            seat.player_id === current.playerMeta[position].playerId
+              ? current.playerMeta[position].rank
+              : null,
+        };
+      }
+      return { lifecycle: snapshot, playerMeta, youPositionAbs };
+    }),
   isChannelJoined: false,
   isRejoining: false,
   lastError: null,
@@ -102,6 +146,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   initFromRoom: ({ room, youPlayerId }) =>
     set((current) => {
       const sameSession = current.roomCode === room.code && current.youPlayerId === youPlayerId;
+      // Once joined, only the channel's versioned snapshot owns seat identity/status.
+      if (sameSession && current.lifecycle) return {};
       const positions = room.positions ?? buildPositionsFromSeats(room.seats);
       let youPos: Position | null = null;
 
@@ -168,6 +214,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPlayerId,
         youPositionAbs: youPos,
         playerMeta: baseMeta,
+        ...(!sameSession ? { lifecycle: null, dismissedDecisions: [] } : {}),
       };
     }),
 
@@ -260,6 +307,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setPlayerConnected: (playerId, position, connected) =>
     set((curr) => {
+      if (curr.lifecycle) return {};
       const updated = { ...curr.playerMeta };
       POSITIONS.forEach((pos) => {
         if (updated[pos].playerId === playerId || pos === position) {
@@ -271,6 +319,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setSeatStatus: (position, status, username) =>
     set((curr) => {
+      if (curr.lifecycle) return {};
       const updated = { ...curr.playerMeta };
       updated[position] = {
         ...updated[position],
@@ -308,6 +357,8 @@ export const useGameStore = create<GameState>((set, get) => ({
       serverState: null,
       legalActions: [],
       turnTimer: null,
+      lifecycle: null,
+      dismissedDecisions: [],
       playerMeta: {
         north: createEmptyPlayerMeta('north'),
         east: createEmptyPlayerMeta('east'),

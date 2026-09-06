@@ -35,6 +35,7 @@ const mockUseGameChannel = vi.fn();
 vi.mock('../channels/useGameChannel', () => ({
   useGameChannel: (opts: Record<string, unknown>) => mockUseGameChannel(opts),
   pushGameAction: vi.fn(),
+  refreshSeatLifecycle: vi.fn(),
 }));
 
 // Mock lobby channel (GamePage keeps it alive for username sync)

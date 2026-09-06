@@ -24,6 +24,7 @@ import type {
   RelativePlayerView,
   RelativePosition,
   Suit,
+  SeatStatus,
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
 
@@ -98,17 +99,22 @@ export type GameCanvasDevProps = {
   onHandPresentationReadyChange?: (ready: boolean) => void;
   autoPlay?: boolean;
   phase?: GamePhase;
+  lifecycle?: SeatStatus;
+  feedbackHeight?: number;
 };
 
 export default function GameCanvasDev({
   onHandPresentationReadyChange,
   autoPlay = false,
   phase = 'playing',
+  lifecycle,
+  feedbackHeight = 0,
 }: GameCanvasDevProps) {
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
-  const { topReserve, bottomReserve } = reserves;
+  const { bottomReserve } = reserves;
+  const topReserve = reserves.topReserve + feedbackHeight;
   const [hand, setHand] = useState<Card[]>([]);
   const [trick, setTrick] = useState<Play[]>([]);
   const [tricks, setTricks] = useState<Play[][]>([]);
@@ -161,7 +167,24 @@ export default function GameCanvasDev({
     [after]
   );
 
-  const players = useMemo(() => basePlayers(turn), [turn]);
+  const players = useMemo(
+    () =>
+      basePlayers(turn).map((player) =>
+        lifecycle && !player.isYou
+          ? {
+              ...player,
+              seatStatus: lifecycle,
+              username:
+                lifecycle === 'permanent_bot'
+                  ? 'Bot'
+                  : lifecycle === 'vacant'
+                    ? 'Open seat'
+                    : player.username,
+            }
+          : player
+      ),
+    [turn, lifecycle]
+  );
   const canPlay = turn === 'south' && hand.length > 0 && !trick.some((p) => p.player === 'south');
 
   const model = useMemo(

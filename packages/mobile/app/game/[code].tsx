@@ -1,9 +1,8 @@
 import {
   pushGameAction,
+  refreshSeatLifecycle,
   useGameChannel,
-  type OwnerDecisionEvent,
   type ProgressionSummary,
-  type SeatEvent,
 } from '@/channels/hooks/useGameChannel';
 import type { WaitingRoomEvent } from '@/channels/gameRoomEvents';
 import { createCoalescedCallback } from '@/channels/gameRoomEvents';
@@ -37,9 +36,12 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, gameRoute, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
+import { useSeatDecisions } from '@pidro/shared';
+import { TableFeedback, useTableNotices } from '@/components/game/TableFeedback';
 
 type SkiaTableProps = {
   room: Room;
+  feedbackHeight?: number;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: (room: Room) => void;
@@ -270,31 +272,9 @@ export default function GameScreen() {
   const hasGameState = !!serverPhase;
   const canJoinGameChannel =
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
-  const handleSeatEvent = useCallback((event: SeatEvent) => {
-    Alert.alert(event.variant === 'error' ? 'Table Error' : 'Table Update', event.message);
-  }, []);
-
-  const handleOwnerDecision = useCallback((event: OwnerDecisionEvent) => {
-    Alert.alert(
-      'Seat Filled by Bot',
-      `${event.playerName} did not return. Open the seat for a substitute?`,
-      [
-        { text: 'Keep Bot', style: 'cancel' },
-        {
-          text: 'Open Seat',
-          onPress: () => {
-            pushGameAction('open_seat', { position: event.position }).catch((error: unknown) => {
-              const message =
-                typeof error === 'object' && error !== null && 'reason' in error
-                  ? String((error as { reason: string }).reason)
-                  : 'Failed to open seat';
-              Alert.alert('Action Failed', message);
-            });
-          },
-        },
-      ]
-    );
-  }, []);
+  const { notice, addNotice: handleSeatEvent, dismissNotice } = useTableNotices(code);
+  const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
+  const [feedbackHeight, setFeedbackHeight] = useState(0);
 
   const handleProgressionSummary = useCallback(
     (summary: ProgressionSummary) => {
@@ -354,7 +334,6 @@ export default function GameScreen() {
     roomCode: code ?? '',
     enabled: canJoinGameChannel,
     onSeatEvent: handleSeatEvent,
-    onOwnerDecision: handleOwnerDecision,
     onProgressionSummary: handleProgressionSummary,
     onWaitingRoomEvent: handleWaitingRoomEvent,
   });
@@ -649,13 +628,22 @@ export default function GameScreen() {
 
   if (room.status === 'playing' || isInGamePhase) {
     return (
-      <SkiaGameTable
-        room={room}
-        progressionSummary={progressionSummary}
-        onLeave={handleLeaveGame}
-        onPlayAgain={handlePlayAgain}
-        backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
-      />
+      <View className="flex-1">
+        <SkiaGameTable
+          room={room}
+          feedbackHeight={feedbackHeight}
+          progressionSummary={progressionSummary}
+          onLeave={handleLeaveGame}
+          onPlayAgain={handlePlayAgain}
+          backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
+        />
+        <View
+          pointerEvents="box-none"
+          className="absolute inset-x-0 top-0"
+          onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
+          <TableFeedback decisions={decisions} notice={notice} dismissNotice={dismissNotice} />
+        </View>
+      </View>
     );
   }
 
