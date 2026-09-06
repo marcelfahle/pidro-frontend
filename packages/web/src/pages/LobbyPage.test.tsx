@@ -97,7 +97,7 @@ beforeEach(() => {
 });
 
 describe('LobbyPage', () => {
-  it('renders floating header and bottom action buttons', () => {
+  it('renders the header and labeled navigation actions', () => {
     setupMocks();
     renderLobby();
 
@@ -114,11 +114,56 @@ describe('LobbyPage', () => {
     expect(mockUseLobbyChannel).toHaveBeenCalled();
   });
 
-  it('shows empty state when no waiting rooms exist', () => {
+  it('shows empty state when no actionable rooms exist', () => {
     setupMocks();
     renderLobby();
 
     expect(screen.getByText('No games available. Create one!')).toBeTruthy();
+  });
+
+  it('does not show an empty Open Tables section when there are games to watch', () => {
+    setupMocks({}, { lobby: { spectatable: [{ code: 'WATCH', name: 'Watch table' }] } });
+    renderLobby();
+    expect(screen.queryByText('Open Tables')).toBeNull();
+    expect(screen.queryByText('No games available. Create one!')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Watch' })).toBeTruthy();
+  });
+
+  it('clears a search with no matches and restores the room actions', async () => {
+    setupMocks({}, { lobby: { open_tables: [{ code: 'OPEN', name: 'Friendly table' }] } });
+    renderLobby();
+    await userEvent.type(screen.getByRole('searchbox'), 'missing');
+    expect(screen.getByText('No matching tables')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Join' })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(screen.getByRole('button', { name: 'Join' })).toBeTruthy();
+  });
+
+  it('prevents competing room actions during Watch and exposes a retryable error', async () => {
+    setupMocks(
+      {},
+      {
+        lobby: {
+          open_tables: [{ code: 'OPEN', name: 'Friendly table' }],
+          spectatable: [{ code: 'WATCH', name: 'Watch table' }],
+        },
+      },
+    );
+    let rejectWatch!: (error: Error) => void;
+    mockWatchRoom.mockReturnValue(
+      new Promise((_, reject) => {
+        rejectWatch = reject;
+      }),
+    );
+    renderLobby();
+    await userEvent.click(screen.getByRole('button', { name: 'Watch' }));
+    expect(screen.getByRole('button', { name: /Watch$/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled();
+    rejectWatch(new Error('Network unavailable'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Failed to watch game.');
+    expect(screen.getByRole('button', { name: 'Watch' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Join' })).toBeEnabled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   it('shows room table when waiting rooms exist', () => {
