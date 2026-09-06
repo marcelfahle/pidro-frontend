@@ -27,12 +27,14 @@ vi.mock('../channels/useLobbyChannel', () => ({
 // Mock lobby API
 const mockCreateRoom = vi.fn();
 const mockJoinRoom = vi.fn();
+const mockWatchRoom = vi.fn();
 vi.mock('../api/profile', () => ({ profileApi: { getPlayer: vi.fn() } }));
 vi.mock('../api/lobby', () => ({
   lobbyApi: {
     listRooms: vi.fn().mockResolvedValue({ rooms: [] }),
     createRoom: (...args: unknown[]) => mockCreateRoom(...args),
     joinRoom: (...args: unknown[]) => mockJoinRoom(...args),
+    watchRoom: (...args: unknown[]) => mockWatchRoom(...args),
   },
 }));
 
@@ -54,6 +56,12 @@ const defaultAuthState = {
 
 const emptyLobbyState = {
   rooms: [],
+  lobby: {
+    my_rejoinable: [],
+    open_tables: [],
+    substitute_needed: [],
+    spectatable: [],
+  },
   stats: { online_players: 0, active_games: 0 },
 };
 
@@ -62,7 +70,11 @@ function setupMocks(
   lobbyOverrides: Record<string, unknown> = {},
 ) {
   const authState = { ...defaultAuthState, ...authOverrides };
-  const lobbyState = { ...emptyLobbyState, ...lobbyOverrides };
+  const lobbyState = {
+    ...emptyLobbyState,
+    ...lobbyOverrides,
+    lobby: { ...emptyLobbyState.lobby, ...(lobbyOverrides.lobby as object) },
+  };
 
   mockUseAuthStore.mockImplementation((selector: (state: Record<string, unknown>) => unknown) =>
     selector(authState),
@@ -113,16 +125,18 @@ describe('LobbyPage', () => {
     setupMocks(
       {},
       {
-        rooms: [
-          {
-            code: 'ABC123',
-            name: "Alice's game",
-            status: 'waiting',
-            player_count: 2,
-            max_players: 4,
-            available_positions: ['east', 'west'],
-          },
-        ],
+        lobby: {
+          open_tables: [
+            {
+              code: 'ABC123',
+              name: "Alice's game",
+              status: 'waiting',
+              player_count: 2,
+              max_players: 4,
+              available_positions: ['east', 'west'],
+            },
+          ],
+        },
       },
     );
     renderLobby();
@@ -171,16 +185,18 @@ describe('LobbyPage', () => {
     setupMocks(
       {},
       {
-        rooms: [
-          {
-            code: 'JOIN1',
-            name: 'Test Room',
-            status: 'waiting',
-            player_count: 1,
-            max_players: 4,
-            available_positions: ['east', 'south', 'west'],
-          },
-        ],
+        lobby: {
+          open_tables: [
+            {
+              code: 'JOIN1',
+              name: 'Test Room',
+              status: 'waiting',
+              player_count: 1,
+              max_players: 4,
+              available_positions: ['east', 'south', 'west'],
+            },
+          ],
+        },
       },
     );
     mockJoinRoom.mockResolvedValue({ room: {}, assigned_position: 'east' });
@@ -214,16 +230,18 @@ describe('LobbyPage', () => {
     setupMocks(
       {},
       {
-        rooms: [
-          {
-            code: 'REJOIN1',
-            name: 'My Game',
-            status: 'playing',
-            player_ids: ['1'],
-            player_count: 4,
-            max_players: 4,
-          },
-        ],
+        lobby: {
+          my_rejoinable: [
+            {
+              code: 'REJOIN1',
+              name: 'My Game',
+              status: 'playing',
+              player_ids: ['1'],
+              player_count: 4,
+              max_players: 4,
+            },
+          ],
+        },
       },
     );
     renderLobby();
@@ -233,20 +251,36 @@ describe('LobbyPage', () => {
     expect(screen.getByRole('button', { name: 'Rejoin' })).toBeTruthy();
   });
 
+  it('renders the backend category even when room status and seats suggest another action', () => {
+    const room = {
+      code: 'AUTH1',
+      name: 'Authoritative Rejoin',
+      status: 'waiting',
+      available_positions: ['east'],
+    };
+    setupMocks({}, { lobby: { ...emptyLobbyState.lobby, my_rejoinable: [room] } });
+    renderLobby();
+
+    expect(screen.getByRole('button', { name: 'Rejoin' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Join' })).toBeNull();
+  });
+
   it('navigates directly to game on Rejoin click', async () => {
     setupMocks(
       {},
       {
-        rooms: [
-          {
-            code: 'REJOIN2',
-            name: 'Rejoin Game',
-            status: 'playing',
-            player_ids: ['1'],
-            player_count: 4,
-            max_players: 4,
-          },
-        ],
+        lobby: {
+          my_rejoinable: [
+            {
+              code: 'REJOIN2',
+              name: 'Rejoin Game',
+              status: 'playing',
+              player_ids: ['1'],
+              player_count: 4,
+              max_players: 4,
+            },
+          ],
+        },
       },
     );
     renderLobby();
@@ -261,22 +295,28 @@ describe('LobbyPage', () => {
     setupMocks(
       {},
       {
-        rooms: [
-          {
-            code: 'SUB1',
-            name: 'Needs Help',
-            status: 'playing',
-            player_ids: ['other-user'],
-            player_count: 3,
-            max_players: 4,
-            seats: [
-              { seat_index: 0, status: 'occupied', player: { id: 'other-user', username: 'Bob' } },
-              { seat_index: 1, status: 'occupied', player: { id: 'p2', username: 'Eve' } },
-              { seat_index: 2, status: 'occupied', player: { id: 'p3', username: 'Dan' } },
-              { seat_index: 3, status: 'free', player: null },
-            ],
-          },
-        ],
+        lobby: {
+          substitute_needed: [
+            {
+              code: 'SUB1',
+              name: 'Needs Help',
+              status: 'playing',
+              player_ids: ['other-user'],
+              player_count: 3,
+              max_players: 4,
+              seats: [
+                {
+                  seat_index: 0,
+                  status: 'occupied',
+                  player: { id: 'other-user', username: 'Bob' },
+                },
+                { seat_index: 1, status: 'occupied', player: { id: 'p2', username: 'Eve' } },
+                { seat_index: 2, status: 'occupied', player: { id: 'p3', username: 'Dan' } },
+                { seat_index: 3, status: 'free', player: null },
+              ],
+            },
+          ],
+        },
       },
     );
     renderLobby();
@@ -286,26 +326,58 @@ describe('LobbyPage', () => {
     expect(screen.getByRole('button', { name: 'Substitute' })).toBeTruthy();
   });
 
+  it('admits a substitute before navigating to the game', async () => {
+    setupMocks(
+      {},
+      {
+        lobby: {
+          substitute_needed: [
+            {
+              code: 'SUB2',
+              name: 'Needs Substitute',
+              status: 'playing',
+              player_ids: ['other-user'],
+              available_positions: ['west'],
+              seats: [{ seat_index: 3, status: 'free', player: null }],
+            },
+          ],
+        },
+      },
+    );
+    let resolveJoin!: () => void;
+    mockJoinRoom.mockReturnValue(new Promise<void>((resolve) => (resolveJoin = resolve)));
+    renderLobby();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Substitute' }));
+    expect(mockJoinRoom).toHaveBeenCalledWith('SUB2');
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    resolveJoin();
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/game/SUB2'));
+  });
+
   it('shows Watch section for spectatable games', () => {
     setupMocks(
       {},
       {
-        rooms: [
-          {
-            code: 'WATCH1',
-            name: 'Full Game',
-            status: 'playing',
-            player_ids: ['other1', 'other2', 'other3', 'other4'],
-            player_count: 4,
-            max_players: 4,
-            seats: [
-              { seat_index: 0, status: 'occupied', player: { id: 'other1', username: 'A' } },
-              { seat_index: 1, status: 'occupied', player: { id: 'other2', username: 'B' } },
-              { seat_index: 2, status: 'occupied', player: { id: 'other3', username: 'C' } },
-              { seat_index: 3, status: 'occupied', player: { id: 'other4', username: 'D' } },
-            ],
-          },
-        ],
+        lobby: {
+          spectatable: [
+            {
+              code: 'WATCH1',
+              name: 'Full Game',
+              status: 'playing',
+              player_ids: ['other1', 'other2', 'other3', 'other4'],
+              player_count: 4,
+              max_players: 4,
+              seats: [
+                { seat_index: 0, status: 'occupied', player: { id: 'other1', username: 'A' } },
+                { seat_index: 1, status: 'occupied', player: { id: 'other2', username: 'B' } },
+                { seat_index: 2, status: 'occupied', player: { id: 'other3', username: 'C' } },
+                { seat_index: 3, status: 'occupied', player: { id: 'other4', username: 'D' } },
+              ],
+            },
+          ],
+        },
       },
     );
     renderLobby();
@@ -313,5 +385,35 @@ describe('LobbyPage', () => {
     expect(screen.getByRole('heading', { level: 3, name: /Watch/ })).toBeTruthy();
     expect(screen.getByText('Full Game')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Watch' })).toBeTruthy();
+  });
+
+  it('registers Watch before navigating to the game', async () => {
+    setupMocks(
+      {},
+      {
+        lobby: {
+          spectatable: [
+            {
+              code: 'WATCH2',
+              name: 'Watch Me',
+              status: 'playing',
+              player_ids: ['other1'],
+              available_positions: [],
+              seats: [{ seat_index: 0, status: 'occupied', player: { id: 'other1' } }],
+            },
+          ],
+        },
+      },
+    );
+    let resolveWatch!: () => void;
+    mockWatchRoom.mockReturnValue(new Promise<void>((resolve) => (resolveWatch = resolve)));
+    renderLobby();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Watch' }));
+    expect(mockWatchRoom).toHaveBeenCalledWith('WATCH2');
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    resolveWatch();
+    await vi.waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/game/WATCH2'));
   });
 });

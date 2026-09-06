@@ -38,49 +38,8 @@ interface CategorizedRooms {
   spectatable: Room[];
 }
 
-function categorizeRooms(rooms: Room[], userId: string | undefined): CategorizedRooms {
-  const result: CategorizedRooms = {
-    myRejoinable: [],
-    openTables: [],
-    substituteNeeded: [],
-    spectatable: [],
-  };
-
-  for (const room of rooms) {
-    if (room.status === 'waiting') {
-      result.openTables.push(room);
-    } else if (room.status === 'playing') {
-      const isMyRoom =
-        userId &&
-        (room.player_ids?.includes(userId) ||
-          room.seats?.some((s) => s.player_id === userId || s.player?.id === userId));
-
-      if (isMyRoom) {
-        result.myRejoinable.push(room);
-      } else {
-        const hasVacantSeat = room.seats?.some((s) => s.status === 'free' && !s.player) ?? false;
-        if (hasVacantSeat) {
-          result.substituteNeeded.push(room);
-        } else {
-          result.spectatable.push(room);
-        }
-      }
-    }
-  }
-
-  // Sort open tables newest first
-  result.openTables.sort((a, b) => {
-    if (a.created_at && b.created_at) {
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-    }
-    return 0;
-  });
-
-  return result;
-}
-
 export function LobbyPage() {
-  const rooms = useLobbyStore((s) => s.rooms);
+  const lobby = useLobbyStore((s) => s.lobby);
   const stats = useLobbyStore((s) => s.stats);
   const lobbyLoading = useLobbyStore((s) => s.isLoading);
   const lobbyError = useLobbyStore((s) => s.error);
@@ -95,7 +54,7 @@ export function LobbyPage() {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Action state (join/substitute)
+  // Action state (join/substitute/watch)
   const [actionLoadingCode, setActionLoadingCode] = useState<string | null>(null);
   const [actionError, setActionError] = useState<{
     code: string;
@@ -103,18 +62,28 @@ export function LobbyPage() {
   } | null>(null);
   const [query, setQuery] = useState('');
 
-  // Filter rooms by search query, then categorize
+  // Filter the authoritative categories without inferring roles or admission locally.
   const categories = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-    const filtered = normalizedQuery
-      ? rooms.filter((room) => {
-          const haystack = `${room.name ?? ''} ${room.code}`.toLowerCase();
-          return haystack.includes(normalizedQuery);
-        })
-      : rooms;
+    const filter = (rooms: Room[]) =>
+      normalizedQuery
+        ? rooms.filter((room) => {
+            const haystack = `${room.name ?? ''} ${room.code}`.toLowerCase();
+            return haystack.includes(normalizedQuery);
+          })
+        : rooms;
 
-    return categorizeRooms(filtered, user?.id);
-  }, [rooms, query, user?.id]);
+    return {
+      myRejoinable: filter(lobby.my_rejoinable),
+      openTables: [...filter(lobby.open_tables)].sort((a, b) =>
+        a.created_at && b.created_at
+          ? new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          : 0,
+      ),
+      substituteNeeded: filter(lobby.substitute_needed),
+      spectatable: filter(lobby.spectatable),
+    } satisfies CategorizedRooms;
+  }, [lobby, query]);
 
   const handleCreateGame = useCallback(
     async (config: {
@@ -188,8 +157,16 @@ export function LobbyPage() {
   );
 
   const handleWatch = useCallback(
-    (code: string) => {
-      navigate(`/game/${code}`);
+    async (code: string) => {
+      setActionLoadingCode(code);
+      setActionError(null);
+      try {
+        await lobbyApi.watchRoom(code);
+        navigate(`/game/${code}`);
+      } catch {
+        setActionError({ code, message: 'Failed to watch game.' });
+        setActionLoadingCode(null);
+      }
     },
     [navigate],
   );
@@ -357,10 +334,16 @@ export function LobbyPage() {
                               size="xs"
                               variant="secondary"
                               className="mt-2 w-full"
+                              loading={actionLoadingCode === room.code}
                               onClick={() => handleWatch(room.code)}
                             >
                               Watch
                             </Button>
+                            {actionError?.code === room.code && (
+                              <p className="mt-2 text-xs font-black uppercase tracking-[0.08em] text-red-200">
+                                {actionError.message}
+                              </p>
+                            )}
                           </div>
                         );
                       })}
