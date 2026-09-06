@@ -17,6 +17,7 @@ export interface ReadinessSnapshot {
       status: string;
       user_id: string | null;
       username?: string | null;
+      avatar_url?: string | null;
     }
   >;
   ready_players: Position[];

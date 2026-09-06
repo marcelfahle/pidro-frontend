@@ -14,6 +14,7 @@ export interface MiniProfile {
 
 interface PlayerMiniCardProps {
   username: string | null | undefined;
+  avatarUrl?: string | null;
   subtitle?: string;
   /** When present, the avatar wears the level chip (tier metal = skill). */
   profile?: MiniProfile;
@@ -27,6 +28,7 @@ interface PlayerMiniCardProps {
  */
 export function PlayerMiniCard({
   username,
+  avatarUrl,
   subtitle = 'Signed In',
   profile,
   className = '',
@@ -48,6 +50,7 @@ export function PlayerMiniCard({
         <PlayerAvatar
           initial={initial}
           name={displayName}
+          src={avatarUrl ?? undefined}
           size={46}
           online="online"
           level={profile?.level}

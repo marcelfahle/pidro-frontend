@@ -133,6 +133,7 @@ export interface PlayerMeta {
   position: Position;
   playerId: string | null;
   username: string | null;
+  avatar_url?: string | null;
   isYou: boolean;
   isTeammate: boolean;
   isOpponent: boolean;
@@ -148,6 +149,7 @@ export interface RelativePlayerView {
   relativePosition: RelativePosition;
   playerId: string | null;
   username: string | null;
+  avatar_url?: string | null;
   isYou: boolean;
   isTeammate: boolean;
   isOpponent: boolean;

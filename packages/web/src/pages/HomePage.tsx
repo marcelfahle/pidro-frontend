@@ -26,6 +26,10 @@ export function HomePage() {
     getProfile()
       .then((p) => {
         if (!active) return;
+        const current = useAuthStore.getState();
+        if (current.user?.id === p.user_id) {
+          useAuthStore.setState({ user: { ...current.user, avatar_url: p.avatar_url } });
+        }
         setProfile({
           level: p.veteran.level,
           progress: veteranProgressFraction(p.veteran.progress),
@@ -104,7 +108,11 @@ export function HomePage() {
           </div>
 
           <div className="relative z-10 flex items-start justify-between gap-3">
-            <PlayerMiniCard username={user?.username} profile={profile} />
+            <PlayerMiniCard
+              username={user?.username}
+              avatarUrl={user?.avatar_url}
+              profile={profile}
+            />
           </div>
 
           <section className="relative z-10 mx-auto flex w-full max-w-[460px] flex-1 flex-col items-center justify-center gap-6 px-1 pb-8 pt-[168px] max-md:gap-5 max-md:pt-[202px]">

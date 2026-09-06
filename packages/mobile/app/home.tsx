@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
 import { Button } from '@/components/ui/Button';
 import { MenuAction } from '@/components/ui/MenuAction';
@@ -16,6 +16,8 @@ import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { gameRoute } from '@/navigation/gameRoute';
+import { Avatar } from '@/components/ui/Avatar';
+import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -25,6 +27,13 @@ export default function HomeScreen() {
   const router = useRouter();
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const refreshIdentity = useProfileIdentity();
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshIdentity().catch(() => undefined);
+    }, [refreshIdentity])
+  );
 
   const createSinglePlayerRoom = async () => {
     const response = await lobbyApi.createRoom({
@@ -85,8 +94,8 @@ export default function HomeScreen() {
           onPress={() => router.push('/profile')}
           style={styles.playerPlate}
           pressedStyle={styles.playerPlatePressed}>
-          <Image
-            source={require('../assets/images/avatar1.png')}
+          <Avatar
+            uri={user?.avatar_url}
             style={styles.avatar}
             resizeMode="cover"
             accessibilityLabel="Your profile picture"

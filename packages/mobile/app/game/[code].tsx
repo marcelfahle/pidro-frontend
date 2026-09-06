@@ -5,6 +5,7 @@ import {
   type ProgressionSummary,
 } from '@/channels/hooks/useGameChannel';
 import type { WaitingRoomEvent } from '@/channels/gameRoomEvents';
+import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { createCoalescedCallback } from '@/channels/gameRoomEvents';
 import {
   View,
@@ -180,8 +181,8 @@ export default function GameScreen() {
   }, [readiness, isChannelJoined, role]);
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
 
-  // NOTE: We don't use useLobbyChannel here - game screen relies on GameChannel for updates
-  // Lobby channel stays connected in the background via lobby.tsx in the navigation stack
+  // Identity snapshots also update direct-link games without a lobby in the stack.
+  useLobbyChannel();
 
   const [roomLookup, setRoomLookup] = useState<{
     roomCode: string;
@@ -190,6 +191,11 @@ export default function GameScreen() {
   const room =
     rooms.find((candidate) => candidate.code === code) ??
     (roomLookup?.roomCode === code ? roomLookup.room : undefined);
+
+  useEffect(() => {
+    if (!room) return;
+    useGameStore.getState().refreshPlayerIdentities(room);
+  }, [room]);
   const [progressionResult, setProgressionResult] = useState<{
     roomCode: string;
     summary: ProgressionSummary;

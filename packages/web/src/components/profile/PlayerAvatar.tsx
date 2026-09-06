@@ -1,5 +1,5 @@
 import { Bot } from 'lucide-react';
-import type { CSSProperties } from 'react';
+import { type CSSProperties, useState } from 'react';
 import { SKILL_MATERIALS, type SkillTier } from './ranking';
 
 /**
@@ -155,6 +155,8 @@ export function PlayerAvatar({
   tier,
   className = '',
 }: PlayerAvatarProps) {
+  const [failedSrc, setFailedSrc] = useState<string>();
+  const photo = src && src !== failedSrc ? src : undefined;
   const isActive = state === 'active';
   const isDimmed = state === 'dimmed';
   const tone = avatarTone(name || initial);
@@ -214,8 +216,13 @@ export function PlayerAvatar({
           style={{ width: size * 0.5, height: size * 0.5, color: 'rgba(210,232,248,0.85)' }}
           strokeWidth={2.2}
         />
-      ) : src ? (
-        <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : photo ? (
+        <img
+          src={photo}
+          alt=""
+          onError={() => setFailedSrc(photo)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
       ) : (
         initial.toUpperCase()
       )}

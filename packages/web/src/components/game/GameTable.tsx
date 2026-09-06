@@ -70,6 +70,8 @@ export function GameTable({
     const name = player.username ?? (player.isYou ? 'You' : 'Player');
     return {
       displayName: name,
+      avatarUrl: player.avatar_url,
+      playerId: player.playerId,
       statusText: playerStatusText(player.absolutePosition, viewModel, serverState),
       initial: name[0]?.toUpperCase() ?? '?',
       isDealer:

@@ -103,6 +103,7 @@ export function GameOverOverlay({
                     <PlayerAvatar
                       initial={displayName(player)[0]?.toUpperCase() ?? '?'}
                       name={displayName(player)}
+                      src={player.avatar_url ?? undefined}
                       size={48}
                       isBot={
                         player.seatStatus === 'bot_substitute' ||

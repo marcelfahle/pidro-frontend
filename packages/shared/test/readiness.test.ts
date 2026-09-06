@@ -36,6 +36,20 @@ beforeEach(() => {
 });
 
 describe('authoritative readiness snapshots', () => {
+  test('keeps avatars through ready updates and applies explicit avatar removal', () => {
+    const ready = snapshot(5);
+    ready.seats.north.avatar_url = 'avatar-v1';
+    useGameStore.getState().setReadiness(ready);
+    expect(useGameStore.getState().playerMeta.north.avatar_url).toBe('avatar-v1');
+    useGameStore.getState().setReadiness(snapshot(6, ['north']));
+    expect(useGameStore.getState().playerMeta.north.avatar_url).toBe('avatar-v1');
+    const removed = snapshot(7);
+    removed.seats.north.avatar_url = null;
+    useGameStore.getState().setReadiness(removed);
+    expect(useGameStore.getState().playerMeta.north.avatar_url).toBeNull();
+    expect(roomWithReadiness(room, ready).seats?.[0].player?.avatar_url).toBe('avatar-v1');
+  });
+
   test('in-game hydration does not overwrite seat lifecycle metadata', () => {
     useGameStore.getState().setSeatStatus('east', 'permanent_bot', 'Substitute');
     useGameStore.getState().setReadiness({ ...snapshot(10), status: 'playing' });

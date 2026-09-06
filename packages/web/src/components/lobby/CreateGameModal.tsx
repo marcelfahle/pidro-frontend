@@ -1,5 +1,6 @@
 import type { SeatType } from '@pidro/shared';
 import { useState } from 'react';
+import { useAuthStore } from '../../stores/auth';
 import { GlassButton, PidroButton } from '../ds';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { Modal } from '../ui/Modal';
@@ -73,6 +74,7 @@ export function CreateGameModal({
   loading = false,
   error = null,
 }: CreateGameModalProps) {
+  const avatarUrl = useAuthStore((state) => state.user?.avatar_url);
   const [name, setName] = useState('');
   const [seat2, setSeat2] = useState<SeatToggle>('open');
   const [seat3, setSeat3] = useState<SeatToggle>('open');
@@ -146,6 +148,7 @@ export function CreateGameModal({
               <PlayerAvatar
                 initial={(username[0] ?? 'Y').toUpperCase()}
                 name={username}
+                src={avatarUrl ?? undefined}
                 size={40}
                 online="online"
               />

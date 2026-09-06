@@ -28,6 +28,26 @@ function snapshot(roomId = "room-1", revision = 1): SeatLifecycleSnapshot {
 afterEach(() => useGameStore.getState().reset());
 
 describe("seat lifecycle boundary", () => {
+  test('moves avatars with their player and clears them when another player takes the seat', () => {
+    useGameStore.setState({ roomCode: 'ABCD' });
+    const first = snapshot();
+    first.seats.north = { status: 'normal', player_id: 'anna', username: 'Anna', decision: null };
+    useGameStore.getState().applySeatLifecycle(first);
+    useGameStore.getState().refreshPlayerIdentities({
+      code: 'ABCD', status: 'playing',
+      seats: [{ seat_index: 0, status: 'occupied', player: { id: 'anna', username: 'Anna', avatar_url: 'anna.jpg' } }],
+    });
+    const moved = snapshot('room-1', 2);
+    moved.seats.east = first.seats.north;
+    useGameStore.getState().applySeatLifecycle(moved);
+    expect(useGameStore.getState().playerMeta.east.avatar_url).toBe('anna.jpg');
+    expect(useGameStore.getState().playerMeta.north.avatar_url).toBeNull();
+    const replaced = snapshot('room-1', 3);
+    replaced.seats.east = { status: 'normal', player_id: 'bob', username: 'Bob', decision: null };
+    useGameStore.getState().applySeatLifecycle(replaced);
+    expect(useGameStore.getState().playerMeta.east.avatar_url).toBeNull();
+  });
+
   test("accepts complete events and replies, rejecting incomplete or invalid seats", () => {
     const valid = snapshot();
     expect(lifecycleFromReply(valid)).toBe(valid);

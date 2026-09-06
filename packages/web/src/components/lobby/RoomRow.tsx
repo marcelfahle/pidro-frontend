@@ -1,5 +1,6 @@
 import type { Room } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
+import { PlayerProfileButton } from '../profile/PlayerProfileButton';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 
@@ -26,13 +27,19 @@ function SeatCluster({ room }: { room: Room }) {
           key={`${room.code}-seat-${i.toString()}`}
           style={{ marginLeft: i === 0 ? 0 : -10, zIndex: seats.length - i }}
         >
-          <PlayerAvatar
-            initial={player?.username?.[0]?.toUpperCase() ?? '?'}
-            name={player?.username}
-            size={30}
-            isBot={player?.is_bot ?? false}
-            isVacant={!player}
-          />
+          <PlayerProfileButton
+            playerId={player?.is_bot ? null : player?.id}
+            name={player?.username ?? 'Player'}
+          >
+            <PlayerAvatar
+              initial={player?.username?.[0]?.toUpperCase() ?? '?'}
+              name={player?.username}
+              src={player?.avatar_url ?? undefined}
+              size={30}
+              isBot={player?.is_bot ?? false}
+              isVacant={!player}
+            />
+          </PlayerProfileButton>
         </div>
       ))}
     </div>

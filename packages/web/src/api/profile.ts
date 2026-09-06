@@ -1,14 +1,15 @@
+import { createProfileApi, type ProfileIdentity } from '@pidro/shared';
 import type { SkillTier } from '../components/profile/ranking';
 import { api } from './client';
+
+export const profileApi = createProfileApi(api);
 
 /**
  * Player profile screen — mirrors `Profiles.public_profile/1` on the server
  * (the fail-closed allowlist; raw μ/σ never ship). One read feeds the whole
  * profile/identity surface.
  */
-export interface PlayerProfile {
-  user_id: string;
-
+export interface PlayerProfile extends ProfileIdentity {
   games_played: number;
   wins: number;
   losses: number;

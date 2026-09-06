@@ -66,6 +66,7 @@ interface GameState {
   lastError: string | null;
 
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
+  refreshPlayerIdentities: (room: Room) => void;
   setServerState: (state: ServerGameState | Record<string, any>) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setTurnTimer: (timer: ActiveTurnTimer | null) => void;
@@ -131,6 +132,10 @@ export const useGameStore = create<GameState>((set, get) => ({
           ...playerMeta[position],
           playerId: seat.player_id,
           username: seat.username,
+          avatar_url:
+            Object.values(current.playerMeta).find(
+              (meta) => seat.player_id != null && meta.playerId === seat.player_id,
+            )?.avatar_url ?? null,
           seatStatus: seat.status,
           isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
           isYou,
@@ -202,6 +207,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           position: pos,
           playerId,
           username: seat?.player?.username ?? (sameOccupant ? previous.username : null),
+          avatar_url:
+            seat?.player?.avatar_url !== undefined
+              ? seat.player.avatar_url
+              : sameOccupant
+                ? previous.avatar_url
+                : null,
           isYou: playerId === youPlayerId,
           isTeammate: false,
           isOpponent: false,
@@ -230,6 +241,23 @@ export const useGameStore = create<GameState>((set, get) => ({
         ...(!sameSession ? { lifecycle: null, dismissedDecisions: [] } : {}),
         ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
+    }),
+
+  refreshPlayerIdentities: (room) =>
+    set((current) => {
+      if (room.code !== current.roomCode) return current;
+      const playerMeta = { ...current.playerMeta };
+      for (const position of POSITIONS) {
+        const meta = playerMeta[position];
+        const player = room.seats?.find((seat) => seat.player?.id === meta.playerId)?.player;
+        if (!player || player.is_bot) continue;
+        playerMeta[position] = {
+          ...meta,
+          username: player.username,
+          ...(player.avatar_url !== undefined ? { avatar_url: player.avatar_url } : {}),
+        };
+      }
+      return { playerMeta };
     }),
 
   setServerState: (state) =>
@@ -379,6 +407,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             seat.username ??
             previous?.username ??
             (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
+          avatar_url: seat.avatar_url !== undefined ? seat.avatar_url : previous?.avatar_url ?? null,
           isYou: playerId != null && playerId === current.youPlayerId,
           isTeammate: !!youPosition && pos !== youPosition && isTeammate(youPosition, pos),
           isOpponent: !!youPosition && !isTeammate(youPosition, pos),
@@ -448,6 +477,10 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
               ...known,
               id,
               username: snapshot.seats[position].username ?? known?.username ?? 'Player',
+              avatar_url:
+                snapshot.seats[position].avatar_url !== undefined
+                  ? snapshot.seats[position].avatar_url
+                  : known?.avatar_url,
               is_bot: snapshot.seats[position].occupant_type === 'bot',
             }
           : null,
@@ -491,6 +524,7 @@ export function useGameViewModel(): GameViewModel | null {
         relativePosition: relPos,
         playerId: meta.playerId,
         username: displayUsername(meta),
+        avatar_url: meta.avatar_url ?? null,
         isYou: meta.isYou,
         isTeammate: meta.isTeammate,
         isOpponent: meta.isOpponent,

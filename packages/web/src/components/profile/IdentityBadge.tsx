@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { type SkillTier, veteranTitle } from './ranking';
 import { SkillEmblem } from './SkillEmblem';
 
@@ -25,6 +26,7 @@ function deriveInitials(name: string | undefined): string {
 }
 
 function AvatarInner({ src, dim, name }: { src?: string; dim: number; name?: string }) {
+  const [failedSrc, setFailedSrc] = useState<string>();
   return (
     <div
       style={{
@@ -46,8 +48,13 @@ function AvatarInner({ src, dim, name }: { src?: string; dim: number; name?: str
         boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.5)',
       }}
     >
-      {src ? (
-        <img src={src} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      {src && src !== failedSrc ? (
+        <img
+          src={src}
+          alt=""
+          onError={() => setFailedSrc(src)}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+        />
       ) : (
         deriveInitials(name)
       )}
