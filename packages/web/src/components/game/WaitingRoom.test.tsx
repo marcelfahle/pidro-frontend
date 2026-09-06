@@ -171,10 +171,11 @@ describe('WaitingRoom', () => {
     expect(onLeave).toHaveBeenCalled();
   });
 
-  it('shows Game starting message when all 4 seats are filled', () => {
+  it('waits for confirmations when all 4 seats are filled', () => {
     render(<WaitingRoom roomCode="XYZ" playerMeta={makeFilledMeta()} onLeave={vi.fn()} />);
 
-    expect(screen.getByText('Game starting...')).toBeTruthy();
+    expect(screen.getByText(/0\/4 ready/)).toBeTruthy();
+    expect(screen.queryByText('Game starting...')).toBeNull();
   });
 
   it('shows Ready button when room is full and onReady is provided', () => {
@@ -189,7 +190,7 @@ describe('WaitingRoom', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: 'Ready' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: "I'm ready" })).toBeTruthy();
   });
 
   it('calls onReady when Ready button is clicked', async () => {
@@ -205,7 +206,7 @@ describe('WaitingRoom', () => {
       />,
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Ready' }));
+    await userEvent.click(screen.getByRole('button', { name: "I'm ready" }));
     expect(onReady).toHaveBeenCalled();
   });
 
@@ -221,7 +222,7 @@ describe('WaitingRoom', () => {
       />,
     );
 
-    const readyButton = screen.getByRole('button', { name: 'Ready!' });
+    const readyButton = screen.getByRole('button', { name: "You're ready" });
     expect(readyButton).toBeTruthy();
     expect((readyButton as HTMLButtonElement).disabled).toBe(true);
   });
@@ -239,8 +240,8 @@ describe('WaitingRoom', () => {
     );
 
     const readyElements = screen.getAllByText('Ready');
-    // Should have at least 2: the badge and the button
-    expect(readyElements.length).toBeGreaterThanOrEqual(2);
+    expect(readyElements.length).toBe(1);
+    expect(screen.getAllByText('Pending')).toHaveLength(3);
   });
 
   it('does not show Ready button when room is not full', () => {
@@ -255,6 +256,21 @@ describe('WaitingRoom', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: 'Ready' })).toBeNull();
+    expect(screen.queryByRole('button', { name: "I'm ready" })).toBeNull();
+  });
+
+  it('does not submit while channel hydration or reconnect is pending', async () => {
+    const onReady = vi.fn();
+    render(
+      <WaitingRoom
+        roomCode="XYZ"
+        playerMeta={makeFilledMeta()}
+        onReady={onReady}
+        readyDisabled
+        onLeave={vi.fn()}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: "I'm ready" }));
+    expect(onReady).not.toHaveBeenCalled();
   });
 });

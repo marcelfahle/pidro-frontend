@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Channel, Presence } from 'phoenix';
+import type { ReadinessSnapshot } from '@pidro/shared';
 import {
   describeGameAction,
   extractGameState,
@@ -89,7 +90,7 @@ export const useGameChannel = ({
   const updateCurrentTurn = useGameStore((s) => s.updateCurrentTurn);
   const setPlayerConnected = useGameStore((s) => s.setPlayerConnected);
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
-  const addReadyPlayer = useGameStore((s) => s.addReadyPlayer);
+  const setReadiness = useGameStore((s) => s.setReadiness);
   const setChannelStatus = useGameStore((s) => s.setChannelStatus);
   const setError = useGameStore((s) => s.setError);
 
@@ -176,6 +177,7 @@ export const useGameChannel = ({
 
             const role = response?.role as 'player' | 'spectator' | undefined;
             setRole(role ?? null);
+            if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
 
             const gameState = extractGameState(response);
             if (gameState) {
@@ -331,13 +333,7 @@ export const useGameChannel = ({
         setPlayerConnected(playerId, position, true);
       });
 
-      onCurrent('player_ready', (payload: unknown) => {
-        const data = payload as Record<string, unknown> | undefined;
-        const position = data?.position as Position | undefined;
-        if (position) {
-          addReadyPlayer(position);
-        }
-      });
+      onCurrent('readiness_updated', setReadiness);
 
       onCurrent('player_reconnecting', (payload: unknown) => {
         const data = payload as Record<string, unknown> | undefined;
@@ -501,7 +497,7 @@ export const useGameChannel = ({
     updateCurrentTurn,
     setPlayerConnected,
     setSeatStatus,
-    addReadyPlayer,
+    setReadiness,
     setChannelStatus,
     setError,
   ]);
@@ -509,7 +505,7 @@ export const useGameChannel = ({
 
 export function pushGameAction(event: string, payload: object) {
   const channel = globalGameChannel;
-  if (!channel) {
+  if (!channel || (event === 'ready' && channel.state !== 'joined')) {
     console.warn('[GameChannel] Cannot push, no active channel');
     return Promise.reject(new Error('No active game channel'));
   }
@@ -517,8 +513,16 @@ export function pushGameAction(event: string, payload: object) {
   return new Promise<void>((resolve, reject) => {
     channel
       .push(event, payload)
-      .receive('ok', () => resolve())
-      .receive('error', (error: unknown) => reject(error))
+      .receive('ok', (response: { readiness?: ReadinessSnapshot }) => {
+        if (globalGameChannel === channel && response?.readiness)
+          useGameStore.getState().setReadiness(response.readiness);
+        resolve();
+      })
+      .receive('error', (error: { readiness?: ReadinessSnapshot }) => {
+        if (globalGameChannel === channel && error?.readiness)
+          useGameStore.getState().setReadiness(error.readiness);
+        reject(error);
+      })
       .receive('timeout', () => reject(new Error('Request timed out')));
   });
 }

@@ -1,7 +1,7 @@
-import { useGameStore } from '@pidro/shared';
+import { type ReadinessSnapshot, useGameStore } from '@pidro/shared';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useGameChannel } from './useGameChannel';
+import { pushGameAction, useGameChannel } from './useGameChannel';
 
 class MockPush {
   private callbacks = new Map<string, (payload: unknown) => void>();
@@ -17,6 +17,7 @@ class MockPush {
 }
 
 class MockChannel {
+  state = 'joined';
   joinPush = new MockPush();
   eventHandlers = new Map<string, (payload: unknown) => void>();
   errorHandler: (() => void) | null = null;
@@ -128,6 +129,81 @@ afterEach(() => {
 });
 
 describe('useGameChannel', () => {
+  function readiness(
+    revision: number,
+    ready: ReadinessSnapshot['ready_players'] = [],
+  ): ReadinessSnapshot {
+    const positions = { north: 'a', east: 'b', south: 'c', west: 'd' };
+    return {
+      room_id: 'room-id',
+      ready_epoch: 4,
+      snapshot_revision: revision,
+      status: 'waiting',
+      positions,
+      ready_players: ready,
+      seats: Object.fromEntries(
+        Object.entries(positions).map(([position, user_id]) => [
+          position,
+          {
+            user_id,
+            occupant_type: 'human',
+            status: 'connected',
+          },
+        ]),
+      ) as ReadinessSnapshot['seats'],
+    };
+  }
+
+  it('hydrates readiness from join and replaces flags on authoritative reset', () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    act(() =>
+      currentChannel?.joinPush.trigger('ok', {
+        readiness: readiness(5, ['north']),
+        role: 'player',
+        position: 'north',
+      }),
+    );
+    expect(useGameStore.getState().readyPlayers).toEqual(['north']);
+    act(() => currentChannel?.emit('readiness_updated', { ...readiness(6), ready_epoch: 5 }));
+    expect(useGameStore.getState().readyPlayers).toEqual([]);
+  });
+
+  it('sends the rendered epoch and hydrates stale errors without retrying', async () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    const request = pushGameAction('ready', { room_id: 'room-id', ready_epoch: 4 });
+    const rejected = expect(request).rejects.toMatchObject({ reason: 'stale_readiness' });
+    act(() =>
+      currentChannel?.push.mock.results[0].value.trigger('error', {
+        reason: 'stale_readiness',
+        readiness: { ...readiness(7), ready_epoch: 5 },
+      }),
+    );
+    await rejected;
+    expect(currentChannel?.push).toHaveBeenCalledExactlyOnceWith('ready', {
+      room_id: 'room-id',
+      ready_epoch: 4,
+    });
+    expect(useGameStore.getState().readiness?.ready_epoch).toBe(5);
+  });
+
+  it('does not buffer readiness while reconnecting', async () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    if (currentChannel) currentChannel.state = 'errored';
+    await expect(pushGameAction('ready', { room_id: 'room-id', ready_epoch: 4 })).rejects.toThrow(
+      'No active game channel',
+    );
+    expect(currentChannel?.push).not.toHaveBeenCalled();
+  });
+
+  it('ignores hydration from a channel that has been replaced', () => {
+    const first = renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    const oldChannel = currentChannel;
+    first.unmount();
+    renderHook(() => useGameChannel({ roomCode: 'WXYZ' }));
+    act(() => oldChannel?.joinPush.trigger('ok', { readiness: readiness(9), role: 'player' }));
+    expect(useGameStore.getState().readiness).toBeNull();
+  });
+
   it('hydrates the turn timer from the join payload', () => {
     const { unmount } = renderHook(() => useGameChannel({ roomCode: 'ABCD', enabled: true }));
 
