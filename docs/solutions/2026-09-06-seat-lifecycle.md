@@ -11,7 +11,22 @@ The backend sends `seat_lifecycle` on join/rejoin and lifecycle changes. Snapsho
 
 Both clients hydrate shared state atomically and ignore stale revisions and legacy lifecycle updates once a snapshot has arrived. Initial hydration is silent. Live takeover/reclaim notifications are deduplicated, including action replies that arrive before their broadcasts. Mobile renders lifecycle labels and bot/open-seat avatars; feedback reserves space rather than covering the north seat.
 
-The shared owner queue retains the displayed decision while others arrive, hides actions during the owner's turn or connection loss, and invalidates them when the seat/owner/room changes. Keep Bot is a local dismissal for that room instance, viewer, and decision generation; it survives channel reconnects, not a fresh application session. Open Seat includes the decision ID, dismisses only on success, and reconciles uncertain outcomes. Failures stay inline and retryable. Neither UI creates modal backdrops.
+The shared owner queue retains the displayed decision while others arrive, hides actions during the owner's turn or connection loss, and invalidates them when the seat/owner/room changes. Both Keep Bot and Open Seat send the decision ID to the server and reconcile uncertain outcomes. Only authoritative snapshots remove decisions. Failures stay inline and retryable. Neither UI creates modal backdrops.
+
+## PID-82: decision lifetime and return semantics
+
+The reported E4W2 prompt cannot be attributed to the returning host's own seat from the available evidence. Reclaim/fill already clear decisions and occupied-seat snapshots contain no decision. A concrete resurrection path was found instead: Keep Bot was only a local dismissal, lost on application restart or ownership transfer.
+
+- A departure creates one decision generation. Keep Bot consumes it in `Room.Seat` without replacing/stopping its controller; Open Seat consumes it by making the seat vacant. RoomManager serializes validation, transition, revision and broadcast.
+- Both channel actions require a nonempty matching ID, a playing room and the current connected owner. Repeated/stale actions cannot affect a filled seat or a later departure. Success and rejection replies carry current snapshots; older broadcasts cannot restore an answered decision.
+- Repeated surrender of an already-unreserved bot preserves decision fields, including an answered `nil`. A former player's later explicit Leave must not regenerate the same decision.
+- Host reconnect preserves unresolved decisions for **other** departed players. Ownership transfer changes who can answer; it neither recreates answered decisions nor discards unresolved ones. Names and absolute seat positions remain visible in the prompt.
+- Connection loss/backgrounding allows reclaim while the reservation lasts: **Rejoin to play**. Explicit Leave surrenders that reservation: returning requires watching or an explicit join into an opened seat. Unreserved bot seats say **Bot playing**, never promise automatic reclaim. Vacancies say **Open for player**.
+- Legacy HTTP/manager ID-free manual opening remains an operation on the current unreserved bot, not a generation-scoped prompt response. It cannot remove a reclaim reservation. A supplied HTTP decision ID is now validated rather than ignored.
+
+Regression sequences cover host disconnect → temporary bot → reclaim with another pending decision, Keep → repeated Leave → ownership transfer, stale Open/Keep after fill and next departure, cold joins and multiple observers after resolution, replayed snapshots, duplicate clicks and lost acknowledgements. Existing disconnect/ownership suites cover explicit Leave versus reclaim and watch/explicit join.
+
+Previously local-only Keep answers cannot be recovered after client state is lost. Do not bulk-clear historical pending decisions: some are legitimate. Durable resolution starts with the upgraded server and clients.
 
 ## Rollout
 

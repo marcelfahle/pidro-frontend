@@ -18,20 +18,18 @@ export function pendingSeatDecisions(state: ReturnType<typeof useGameStore.getSt
     const seat = snapshot.seats[position];
     if (!seat.decision || seat.status !== 'permanent_bot') return [];
     const key = `${snapshot.room_id}:${state.youPlayerId}:${position}:${seat.decision.id}`;
-    return state.dismissedDecisions.includes(key)
-      ? []
-      : [
-          {
-            key,
-            position,
-            id: seat.decision.id,
-            playerName: seat.decision.player_name || 'A player',
-          },
-        ];
+    return [
+      {
+        key,
+        position,
+        id: seat.decision.id,
+        playerName: seat.decision.player_name || 'A player',
+      },
+    ];
   });
 }
 
-/** UI-only dismissal/request state. Eligibility and timing policy remain server-owned. */
+/** UI-only request state. Decisions are resolved by the server, never local dismissal. */
 export function useSeatDecisions(
   push: (event: string, payload: object) => Promise<void>,
   refresh: () => Promise<void>,
@@ -52,10 +50,7 @@ export function useSeatDecisions(
   } | null>(null);
   const inFlight = useRef<string | null>(null);
 
-  const keepBot = () => {
-    if (visible && inFlight.current !== visible.key) state.dismissDecision(visible.key);
-  };
-  const openSeat = async () => {
+  const resolveDecision = async (event: 'open_seat' | 'keep_bot') => {
     if (!visible || inFlight.current === visible.key) return;
     const decision = visible;
     // Recheck eligibility at the click, not just at the previous render.
@@ -63,17 +58,16 @@ export function useSeatDecisions(
     inFlight.current = decision.key;
     setRequest({ key: decision.key, busy: true, error: null });
     try {
-      await push('open_seat', {
+      await push(event, {
         position: decision.position,
         decision_id: decision.id,
       });
-      useGameStore.getState().dismissDecision(decision.key);
       setRequest((current) => (current?.key === decision.key ? null : current));
     } catch (error) {
       const message =
         error && typeof error === 'object' && 'reason' in error
           ? String(error.reason)
-          : 'Could not open the seat. Please try again.';
+          : 'Could not update the seat. Please try again.';
       setRequest((current) =>
         current?.key === decision.key ? { key: decision.key, busy: true, error: message } : current,
       );
@@ -91,7 +85,7 @@ export function useSeatDecisions(
     pendingCount: queue.length,
     busy: !!visible && request?.key === visible.key && request.busy,
     error: visible && request?.key === visible.key ? request.error : null,
-    keepBot,
-    openSeat,
+    keepBot: () => resolveDecision('keep_bot'),
+    openSeat: () => resolveDecision('open_seat'),
   };
 }
