@@ -112,12 +112,13 @@ export function normalizeRoom(raw: any): Room {
 
   const positions = raw?.positions ?? buildPositionsFromSeats(seats);
 
-  const availablePositions: Position[] =
-    raw?.available_positions ??
-    seats
-      .filter((seat: Seat) => seat.position && seat.status !== 'occupied')
-      .map((seat: Seat) => seat.position!) ??
-    [];
+  const availablePositions: Position[] = raw?.locked
+    ? []
+    : (raw?.available_positions ??
+      seats
+        .filter((seat: Seat) => seat.position && seat.status !== 'occupied')
+        .map((seat: Seat) => seat.position!) ??
+      []);
 
   const occupiedCount = seats.filter((seat: Seat) => seat.status === 'occupied' || !!seat.player).length;
 

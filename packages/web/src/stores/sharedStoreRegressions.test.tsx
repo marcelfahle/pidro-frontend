@@ -85,6 +85,32 @@ describe('shared store regressions', () => {
     expect(useLobbyStore.getState().rooms.map((room) => room.code)).toEqual(['MINE', 'FLAT']);
   });
 
+  it('removes a room from authoritative lobby categories on an explicit null transition', () => {
+    const room = { code: 'JOIN', status: 'waiting' as const };
+
+    act(() => {
+      useLobbyStore.getState().setLobby({ ...emptyLobby, open_tables: [room] });
+      useLobbyStore.getState().upsertLobbyRoom({ ...room, locked: true }, null);
+    });
+
+    expect(useLobbyStore.getState().rooms).toEqual([]);
+    expect(useLobbyStore.getState().lobby.open_tables).toEqual([]);
+  });
+
+  it('retains the previous category when an older event omits category', () => {
+    const room = { code: 'MINE', status: 'playing' as const };
+
+    act(() => {
+      useLobbyStore.getState().setLobby({ ...emptyLobby, my_rejoinable: [room] });
+      useLobbyStore.getState().upsertLobbyRoom({ ...room, locked: true });
+    });
+
+    expect(useLobbyStore.getState().lobby.my_rejoinable[0]).toMatchObject({
+      code: 'MINE',
+      locked: true,
+    });
+  });
+
   it('keeps live seat state when a sparse room refresh arrives', () => {
     act(() => {
       useGameStore.getState().initFromRoom({

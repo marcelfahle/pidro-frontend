@@ -90,8 +90,9 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
         if (room) {
           onRealtimeUpdateRef.current?.();
           unstable_batchedUpdates(() => {
-            if (payload?.category) {
-              upsertLobbyRoom(normalizeRoom(room), payload.category);
+            const category = 'category' in payload ? payload.category : payload?.data?.category;
+            if (category !== undefined) {
+              upsertLobbyRoom(normalizeRoom(room), category);
             } else {
               addRoom(normalizeRoom(room));
             }
@@ -106,8 +107,9 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
         if (room) {
           onRealtimeUpdateRef.current?.();
           unstable_batchedUpdates(() => {
-            if (payload?.category) {
-              upsertLobbyRoom(normalizeRoom(room), payload.category);
+            const category = 'category' in payload ? payload.category : payload?.data?.category;
+            if (category !== undefined) {
+              upsertLobbyRoom(normalizeRoom(room), category);
             } else {
               updateRoom(normalizeRoom(room));
             }

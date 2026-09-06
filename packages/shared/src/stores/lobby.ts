@@ -79,11 +79,12 @@ export const useLobbyStore = create<LobbyState>((set) => ({
       const previousCategory = lobbyCategoryKeys.find((key) =>
         state.lobby[key].some((room) => room.code === updatedRoom.code),
       );
-      const requestedCategory =
-        category && lobbyCategoryKeys.includes(category as LobbyCategoryKey)
-          ? (category as LobbyCategoryKey)
-          : null;
-      const targetCategory = requestedCategory ?? previousCategory ?? null;
+      const targetCategory =
+        category === undefined
+          ? (previousCategory ?? null)
+          : lobbyCategoryKeys.includes(category as LobbyCategoryKey)
+            ? (category as LobbyCategoryKey)
+            : null;
 
       lobbyCategoryKeys.forEach((key) => {
         lobby[key] = state.lobby[key].filter((room) => room.code !== updatedRoom.code);
@@ -106,7 +107,7 @@ export const useLobbyStore = create<LobbyState>((set) => ({
           nextRooms.push(room);
         }
       });
-      if (!nextRooms.some((room) => room.code === updatedRoom.code)) {
+      if (category !== null && !nextRooms.some((room) => room.code === updatedRoom.code)) {
         nextRooms.push(updatedRoom);
       }
 
