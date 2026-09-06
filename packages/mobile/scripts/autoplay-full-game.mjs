@@ -56,7 +56,13 @@ async function main() {
   if (roomCode) {
     // Take a seat if we don't have one yet (fresh joiner into a waiting room).
     // Never leave first: this user may already host the requested active game.
-    const joined = await api(`/api/v1/rooms/${roomCode}/join`, 'POST', token, {});
+    let joined = await api(`/api/v1/rooms/${roomCode}/join`, 'POST', token, {});
+    if (joined.payload?.errors?.some((error) => error.code === 'ALREADY_IN_ROOM')) {
+      // This error specifically means another room; the same room uses ALREADY_SEATED.
+      const left = await api('/api/v1/rooms/current/leave', 'DELETE', token);
+      if (!left.ok) throw new Error(`leave other room failed: ${JSON.stringify(left.payload)}`);
+      joined = await api(`/api/v1/rooms/${roomCode}/join`, 'POST', token, {});
+    }
     log(
       joined.ok
         ? `took a seat in ${roomCode}`
