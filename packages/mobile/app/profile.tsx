@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -47,6 +47,7 @@ function ProfileContent() {
   const [refreshError, setRefreshError] = useState(false);
   const [bioDraft, setBioDraft] = useState('');
   const [bioBaseline, setBioBaseline] = useState('');
+  const [pendingSignOut, setPendingSignOut] = useState(false);
   const [confirmation, setConfirmation] = useState<{
     title: string;
     description: string;
@@ -90,6 +91,12 @@ function ProfileContent() {
       confirmDiscard(() => navigation.dispatch(data.action));
     }
   });
+
+  useEffect(() => {
+    if (!pendingSignOut || dirty || busy) return;
+    clearSession();
+    router.replace('/(auth)/login');
+  }, [pendingSignOut, dirty, busy, clearSession, router]);
 
   useFocusEffect(
     useCallback(() => {
@@ -271,8 +278,8 @@ function ProfileContent() {
       label: 'Sign out',
       cancelLabel: 'Cancel',
       proceed: () => {
-        clearSession();
-        router.replace('/(auth)/login');
+        closeEditor();
+        setPendingSignOut(true);
       },
     });
   };
