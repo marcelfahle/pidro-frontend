@@ -24,6 +24,7 @@ import { appendFileSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } 
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { confirmInitialTable } from './readiness-e2e.mjs';
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(mobileRoot, '../../..');
@@ -238,6 +239,11 @@ async function stageTwoMultiplayerVideo() {
     const seen = new Set();
     await captureMilestones(page, seen);
 
+    await confirmInitialTable([page], '[data-testid="game-table"]', {
+      waitForStart: false,
+      onWaiting: () => captureMilestones(page, seen),
+    });
+    // Guest confirms first; the registered host confirms on its joined autoplay channel.
     const autoplayDone = runAutoplayer(
       ['--room', roomCode, '--user', hostUser, '--password', password, '--max-minutes', '10'],
       'multi'

@@ -5,6 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { Socket } from 'phoenix';
 import { chromium } from 'playwright';
+import { confirmInitialTable } from '../../mobile/scripts/readiness-e2e.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const CODE_RALPH_DIR = path.resolve(SCRIPT_DIR, '../../../..');
@@ -850,6 +851,10 @@ async function main() {
         connectDriverClient(participant, roomCode, wsUrl, handleState),
       ),
     );
+
+    await confirmInitialTable(participants.map(({ page }) => page), '.pidro-game-frame', {
+      onWaiting: () => capture('full-table-not-ready', participants[0].page),
+    });
 
     await Promise.all(
       clients.map((client) =>

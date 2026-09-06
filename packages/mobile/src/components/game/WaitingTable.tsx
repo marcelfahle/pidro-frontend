@@ -1,5 +1,5 @@
 import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Background } from '@/components/ui/Background';
@@ -59,10 +59,12 @@ const SEAT_ANCHORS: Record<
 function SeatPlate({
   seat,
   portrait,
+  ready,
   onManage,
 }: {
   seat: SeatInfo;
   portrait: boolean;
+  ready: boolean;
   onManage?: () => void;
 }) {
   const anchor = SEAT_ANCHORS[seat.rel];
@@ -81,7 +83,10 @@ function SeatPlate({
         portrait && isSideSeat && styles.sideSeatPortrait,
       ]}
       pointerEvents={onManage ? 'box-none' : 'none'}>
-      <Surface variant="plaque" style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
+      <Surface
+        testID={`waiting-seat-${seat.absolute}`}
+        variant="plaque"
+        style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
         {seat.occupied ? (
           <Image
             source={require('~/assets/images/avatar1.png')}
@@ -98,7 +103,7 @@ function SeatPlate({
             {seat.name}
           </PidroText>
           <PidroText role="metadata" tone={seat.occupied ? 'cyan' : 'muted'}>
-            {seat.occupied ? 'Waiting' : 'Available'}
+            {seat.occupied ? (ready ? 'Ready' : 'Pending') : 'Available'}
           </PidroText>
         </View>
         {onManage ? (
@@ -119,6 +124,9 @@ interface Props {
   room: Room;
   youPlayerId: string;
   onLeave: () => void;
+  readyPlayers?: Position[];
+  readyDisabled?: boolean;
+  onReady?: () => Promise<void>;
   canManage?: boolean;
   joiningName?: string | null;
   controlsBusy?: boolean;
@@ -132,6 +140,9 @@ export function WaitingTable({
   room,
   youPlayerId,
   onLeave,
+  readyPlayers = [],
+  readyDisabled = true,
+  onReady,
   canManage = false,
   joiningName,
   controlsBusy = false,
@@ -149,6 +160,24 @@ export function WaitingTable({
   const youPosition =
     POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null;
   const [selectedSeat, setSelectedSeat] = useState<SeatInfo | null>(null);
+  const [readyBusy, setReadyBusy] = useState(false);
+  const readyBusyRef = useRef(false);
+  const [readyError, setReadyError] = useState<string | null>(null);
+  const isYouReady = !!youPosition && readyPlayers.includes(youPosition);
+  const confirmReady = async () => {
+    if (!onReady || readyDisabled || readyBusyRef.current || isYouReady) return;
+    readyBusyRef.current = true;
+    setReadyBusy(true);
+    setReadyError(null);
+    try {
+      await onReady();
+    } catch {
+      setReadyError('Readiness was not confirmed. Check the table and try again.');
+    } finally {
+      readyBusyRef.current = false;
+      setReadyBusy(false);
+    }
+  };
   const selectedSeatIsCurrent =
     !!selectedSeat && room.positions?.[selectedSeat.absolute] === selectedSeat.playerId;
   const moveTargets =
@@ -177,6 +206,7 @@ export function WaitingTable({
             key={seat.rel}
             seat={seat}
             portrait={portrait}
+            ready={readyPlayers.includes(seat.absolute)}
             onManage={
               canManage && seat.occupied && !seat.isYou && !seat.isBot && seat.playerId
                 ? () => setSelectedSeat(seat)
@@ -187,7 +217,9 @@ export function WaitingTable({
 
         <View style={styles.centerWrap} pointerEvents="box-none">
           <Surface
+            testID="readiness-panel"
             variant="window"
+            className={portrait ? 'w-full py-4' : 'w-[44%] py-2'}
             style={[
               styles.statusWindow,
               compactLandscape && canManage && styles.statusWindowCompact,
@@ -197,11 +229,30 @@ export function WaitingTable({
                 ? t('table.joining', { name: joiningName })
                 : openSeats > 0
                   ? `Waiting for ${openSeats} more ${openSeats === 1 ? 'player' : 'players'}…`
-                  : 'Starting the game…'}
+                  : 'Everyone ready?'}
             </PidroText>
             <PidroText role="metadata" tone="soft" align="center">
-              Table {room.code} · The game starts automatically when every seat is filled.
+              {readyPlayers.length}/4 ready · Bots are ready automatically
             </PidroText>
+            {openSeats === 0 && onReady ? (
+              <Button
+                label={isYouReady ? "You're ready" : "I'm ready"}
+                onPress={confirmReady}
+                disabled={readyDisabled || isYouReady || readyBusy}
+                loading={readyBusy}
+                className="w-full"
+              />
+            ) : null}
+            {portrait ? (
+              <PidroText role="metadata" tone="soft" align="center">
+                Seat changes or a disconnect reset confirmations.
+              </PidroText>
+            ) : null}
+            {readyError ? (
+              <PidroText role="metadata" align="center">
+                {readyError}
+              </PidroText>
+            ) : null}
             {canManage ? (
               <View style={styles.hostActions}>
                 <Button
@@ -281,7 +332,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: PidroSpacing.xs,
   },
   sideSeatPortrait: {
-    top: '32%',
+    top: '24%',
   },
   seatPlate: {
     maxWidth: 190,
@@ -325,7 +376,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: PidroSpacing.xs,
     paddingHorizontal: PidroSpacing.lg,
-    paddingVertical: PidroSpacing.md,
   },
   statusWindowCompact: {
     maxWidth: 300,

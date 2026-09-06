@@ -4,6 +4,24 @@ export type BotDifficulty = 'random' | 'basic' | 'smart';
 export type Position = 'north' | 'east' | 'south' | 'west';
 export type PositionPreference = Position | 'north_south' | 'east_west';
 
+export interface ReadinessSnapshot {
+  room_id: string;
+  ready_epoch: number;
+  snapshot_revision: number;
+  status: RoomStatus;
+  positions: Record<Position, string | null>;
+  seats: Record<
+    Position,
+    {
+      occupant_type: 'human' | 'bot' | 'vacant';
+      status: string;
+      user_id: string | null;
+      username?: string | null;
+    }
+  >;
+  ready_players: Position[];
+}
+
 export interface RoomSettings {
   min_games: number;
   time_limit: number;
@@ -55,10 +73,7 @@ export interface Room {
 }
 
 export type LobbyCategoryKey =
-  | 'my_rejoinable'
-  | 'open_tables'
-  | 'substitute_needed'
-  | 'spectatable';
+  'my_rejoinable' | 'open_tables' | 'substitute_needed' | 'spectatable';
 
 export interface LobbyCategories {
   my_rejoinable: Room[];
