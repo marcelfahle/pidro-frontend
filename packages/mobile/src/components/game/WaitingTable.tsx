@@ -15,6 +15,7 @@ import type { Position, Room } from '@/types/lobby';
 import { Avatar } from '@/components/ui/Avatar';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
+import { WatchingBadge } from './WatchingBadge';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 type RelPosition = 'top' | 'right' | 'bottom' | 'left';
@@ -149,6 +150,7 @@ function SeatPlate({
 interface Props {
   room: Room;
   youPlayerId: string;
+  isSpectator?: boolean;
   onLeave: () => void;
   readyPlayers?: Position[];
   readyDisabled?: boolean;
@@ -165,6 +167,7 @@ interface Props {
 export function WaitingTable({
   room,
   youPlayerId,
+  isSpectator = false,
   onLeave,
   readyPlayers = [],
   readyDisabled = true,
@@ -181,10 +184,12 @@ export function WaitingTable({
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
   const compactLandscape = !portrait && width < 720;
-  const seats = buildSeats(room, youPlayerId);
+  const canManageTable = canManage && !isSpectator;
+  const seats = buildSeats(room, isSpectator ? '' : youPlayerId);
   const openSeats = seats.filter((seat) => !seat.occupied).length;
-  const youPosition =
-    POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null;
+  const youPosition = isSpectator
+    ? null
+    : (POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null);
   const [selectedSeat, setSelectedSeat] = useState<SeatInfo | null>(null);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [readyBusy, setReadyBusy] = useState(false);
@@ -221,12 +226,13 @@ export function WaitingTable({
           left={insets.left}
         />
         <Button
-          label="Leave"
+          label={isSpectator ? 'Back to lobby' : 'Leave'}
           variant="outline"
           size="sm"
           onPress={onLeave}
           style={[styles.leave, { top: insets.top + 8, right: insets.right + 10 }]}
         />
+        {isSpectator && <WatchingBadge />}
 
         {seats.map((seat) => (
           <SeatPlate
@@ -238,7 +244,7 @@ export function WaitingTable({
             }
             ready={readyPlayers.includes(seat.absolute)}
             onManage={
-              canManage && seat.occupied && !seat.isYou && !seat.isBot && seat.playerId
+              canManageTable && seat.occupied && !seat.isYou && !seat.isBot && seat.playerId
                 ? () => setSelectedSeat(seat)
                 : undefined
             }
@@ -252,7 +258,7 @@ export function WaitingTable({
             className={portrait ? 'w-full py-4' : 'w-[44%] py-2'}
             style={[
               styles.statusWindow,
-              compactLandscape && canManage && styles.statusWindowCompact,
+              compactLandscape && canManageTable && styles.statusWindowCompact,
             ]}>
             <PidroText role="title" align="center">
               {joiningName
@@ -264,7 +270,7 @@ export function WaitingTable({
             <PidroText role="metadata" tone="soft" align="center">
               {readyPlayers.length}/4 ready · Bots are ready automatically
             </PidroText>
-            {openSeats === 0 && onReady ? (
+            {!isSpectator && openSeats === 0 && onReady ? (
               <Button
                 label={isYouReady ? "You're ready" : "I'm ready"}
                 onPress={confirmReady}
@@ -283,7 +289,7 @@ export function WaitingTable({
                 {readyError}
               </PidroText>
             ) : null}
-            {canManage ? (
+            {canManageTable ? (
               <View style={styles.hostActions}>
                 <Button
                   label={t('table.invite')}
@@ -306,7 +312,7 @@ export function WaitingTable({
         </View>
       </View>
       <Modal
-        isOpen={canManage && selectedSeatIsCurrent}
+        isOpen={canManageTable && selectedSeatIsCurrent}
         title={selectedSeat ? t('table.managePlayer', { name: selectedSeat.name }) : undefined}
         description={t('table.manageDescription')}
         onClose={() => setSelectedSeat(null)}>
@@ -318,7 +324,7 @@ export function WaitingTable({
               variant="secondary"
               disabled={controlsBusy}
               onPress={() => {
-                if (selectedSeat?.playerId && selectedSeatIsCurrent) {
+                if (canManageTable && selectedSeat?.playerId && selectedSeatIsCurrent) {
                   onMovePlayer?.(selectedSeat.playerId, position);
                 }
                 setSelectedSeat(null);
@@ -331,7 +337,7 @@ export function WaitingTable({
               variant="destructive"
               disabled={controlsBusy}
               onPress={() => {
-                if (selectedSeatIsCurrent) onKickPlayer?.(selectedSeat.absolute);
+                if (canManageTable && selectedSeatIsCurrent) onKickPlayer?.(selectedSeat.absolute);
                 setSelectedSeat(null);
               }}
             />

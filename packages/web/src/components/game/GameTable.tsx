@@ -41,16 +41,18 @@ export function GameTable({
   handShaking = false,
   optimisticCard = null,
 }: GameTableProps) {
-  const { serverState, legalActions, turnTimer } = useGameStore(
+  const { serverState, legalActions, turnTimer, role } = useGameStore(
     useShallow((s) => ({
       serverState: s.serverState as ServerGameState | null,
       legalActions: s.legalActions as LegalAction[],
       turnTimer: s.turnTimer,
+      role: s.role,
     })),
   );
 
   const { phase, trumpSuit, roomCode, players } = viewModel;
-  const viewerIsSpectator = !players.some((player) => player.isYou);
+  const viewerIsSpectator = role === 'spectator';
+  const viewerIsPlayer = role === 'player';
   const viewerPosition = viewModel.viewerPositionAbsolute;
 
   const cuts = serverState?.dealer_selection_cuts;
@@ -67,7 +69,8 @@ export function GameTable({
   const bareSeats = useMediaQuery('(max-width: 389px) and (orientation: portrait)');
 
   function avatarProps(player: NonNullable<typeof north>) {
-    const name = player.username ?? (player.isYou ? 'You' : 'Player');
+    const isYou = viewerIsPlayer && player.isYou;
+    const name = player.username ?? (isYou ? 'You' : 'Player');
     return {
       displayName: name,
       avatarUrl: player.avatar_url,
@@ -79,7 +82,7 @@ export function GameTable({
       isCurrentTurn: player.isCurrentTurn,
       isConnected: player.isConnected,
       seatStatus: player.seatStatus,
-      team: (player.isYou || player.isTeammate ? 'us' : 'them') as 'us' | 'them',
+      team: (isYou || (viewerIsPlayer && player.isTeammate) ? 'us' : 'them') as 'us' | 'them',
       rank: player.rank ?? null,
       timerProgress:
         timerTick && timerTick.position === player.absolutePosition ? timerTick.progress : null,
@@ -92,6 +95,9 @@ export function GameTable({
     if (!playerView) return { cards: null, cardCount: 0 };
 
     if (Array.isArray(playerView.hand)) {
+      if (!viewerIsPlayer) {
+        return { cards: null, cardCount: playerView.hand.length };
+      }
       return {
         cards: playerView.hand as CardType[],
         cardCount: playerView.hand.length,
@@ -112,20 +118,20 @@ export function GameTable({
       position,
       ...getPlayerCards(player.absolutePosition),
       username: player.username,
-      isYou: player.isYou,
+      isYou: viewerIsPlayer && player.isYou,
       isDealer: viewModel.dealerAbsolute === player.absolutePosition,
       isCurrentTurn: player.isCurrentTurn,
       isConnected: player.isConnected,
-      isTeammate: player.isTeammate,
+      isTeammate: viewerIsPlayer && player.isTeammate,
       seatStatus: player.seatStatus,
-      legalActions: player.isYou ? legalActions : ([] as LegalAction[]),
+      legalActions: viewerIsPlayer && player.isYou ? legalActions : ([] as LegalAction[]),
       trumpSuit,
       statusText: playerStatusText(player.absolutePosition, viewModel, serverState),
-      onPlayCard: player.isYou ? onPlayCard : undefined,
+      onPlayCard: viewerIsPlayer && player.isYou ? onPlayCard : undefined,
     };
   }
 
-  const youPlayer = players.find((p) => p.isYou);
+  const youPlayer = viewerIsPlayer ? players.find((p) => p.isYou) : undefined;
   const youCardsRaw = youPlayer ? getPlayerCards(youPlayer.absolutePosition).cards : null;
   const selectingHand = phase === 'second_deal' && (youCardsRaw?.length ?? 0) > 6;
   const youCards =
@@ -165,10 +171,14 @@ export function GameTable({
 
           {/* Center: hand number + trump suit */}
           <div className="pointer-events-none absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2.5">
-            {handNumber != null && (
-              <span className="whitespace-nowrap text-[9px] font-black uppercase tracking-[0.22em] text-cyan-50/55">
-                Hand {handNumber}
-              </span>
+            {viewerIsSpectator ? (
+              <WatchingIndicator />
+            ) : (
+              handNumber != null && (
+                <span className="whitespace-nowrap text-[9px] font-black uppercase tracking-[0.22em] text-cyan-50/55">
+                  Hand {handNumber}
+                </span>
+              )
             )}
             {trumpSuit && (
               <span
@@ -249,20 +259,19 @@ export function GameTable({
               phase={phase}
               viewModel={viewModel}
               serverState={serverState}
-              legalActions={legalActions}
+              legalActions={viewerIsPlayer ? legalActions : []}
               trumpSuit={trumpSuit}
               youCards={youCards}
-              onBid={onBid}
-              onPass={onPass}
               onDeclareTrump={onDeclareTrump}
               onSelectHand={onSelectHand}
+              viewerIsPlayer={viewerIsPlayer}
               optimisticCard={optimisticCard}
             />
           </div>
         )}
 
         {/* Bidding panel — floating, centered in game zone, shifted up */}
-        {!showDealerReveal && phase === 'bidding' && serverState && (
+        {viewerIsPlayer && !showDealerReveal && phase === 'bidding' && serverState && (
           <div className="absolute left-1/2 top-[calc(45%+44px)] z-30 -translate-x-1/2 -translate-y-1/2 short:top-[42%]">
             <BiddingPanel
               viewModel={viewModel}
@@ -286,7 +295,7 @@ export function GameTable({
                 <PlayerHand
                   {...handProps(south, 'south')}
                   {...filteredSouthCards}
-                  shaking={south.isYou && handShaking}
+                  shaking={viewerIsPlayer && south.isYou && handShaking}
                 />
               </div>
             )}
@@ -359,7 +368,22 @@ function useTurnTimerProgress(
  * here behind a confirm step so quitting never reads as a primary action.
  * Room to grow: chat, sound, game info.
  */
+function WatchingIndicator() {
+  return (
+    <div
+      role="status"
+      aria-label="Watching. You are a spectator, not seated."
+      className="flex items-center gap-1.5 rounded-full border border-cyan-200/30 bg-cyan-950 px-2.5 py-1 text-[11px] font-bold text-cyan-100"
+    >
+      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-cyan-300" />
+      Watching
+    </div>
+  );
+}
+
 function TableMenu({ onLeave }: { onLeave: () => void }) {
+  const role = useGameStore((s) => s.role);
+  const isSpectator = role === 'spectator';
   const [open, setOpen] = useState(false);
   const [confirmingLeave, setConfirmingLeave] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -391,7 +415,7 @@ function TableMenu({ onLeave }: { onLeave: () => void }) {
         aria-label="Game menu"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`flex h-9 w-9 items-center justify-center rounded-[9px] border transition-all active:scale-[0.96] ${
+        className={`flex h-11 w-11 items-center justify-center rounded-[9px] border transition-all active:scale-[0.96] ${
           open
             ? 'border-cyan-200/50 bg-cyan-400/15 text-cyan-50'
             : 'border-transparent bg-transparent text-cyan-100/55 hover:bg-white/6 hover:text-cyan-50'
@@ -464,7 +488,7 @@ function TableMenu({ onLeave }: { onLeave: () => void }) {
           ) : (
             <button
               type="button"
-              onClick={() => setConfirmingLeave(true)}
+              onClick={() => (isSpectator ? onLeave() : setConfirmingLeave(true))}
               className="flex w-full items-center gap-2.5 px-4 py-3 text-left text-[13px] font-bold text-red-200/75 transition-colors hover:bg-red-500/10 hover:text-red-100"
             >
               <svg
@@ -481,7 +505,7 @@ function TableMenu({ onLeave }: { onLeave: () => void }) {
                 <polyline points="16 17 21 12 16 7" />
                 <line x1="21" y1="12" x2="9" y2="12" />
               </svg>
-              Leave Table
+              {isSpectator ? 'Back to lobby' : 'Leave Table'}
             </button>
           )}
         </div>
@@ -542,11 +566,10 @@ function CenterContent({
   legalActions,
   trumpSuit,
   youCards,
-  onBid,
-  onPass,
   onDeclareTrump,
   onSelectHand,
   optimisticCard,
+  viewerIsPlayer,
 }: {
   phase: string;
   viewModel: GameViewModel;
@@ -554,14 +577,21 @@ function CenterContent({
   legalActions: LegalAction[];
   trumpSuit: Suit | null;
   youCards: CardType[] | null;
-  onBid: (amount: number) => void;
-  onPass: () => void;
   onDeclareTrump: (suit: Suit) => void;
   onSelectHand: (cards: CardType[]) => void;
   optimisticCard?: CardType | null;
+  viewerIsPlayer: boolean;
 }) {
   if (phase === 'bidding' && serverState) {
     return null;
+  }
+
+  if (!viewerIsPlayer && phase !== 'playing' && phase !== 'complete' && phase !== 'game_over') {
+    return (
+      <div className="flex items-center gap-2 rounded-full border border-cyan-300/15 bg-black/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-50/60">
+        Watching game
+      </div>
+    );
   }
 
   if (

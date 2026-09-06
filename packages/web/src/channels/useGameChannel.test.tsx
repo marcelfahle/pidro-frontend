@@ -1,7 +1,7 @@
-import { type SeatLifecycleSnapshot, type ReadinessSnapshot, useGameStore } from '@pidro/shared';
+import { type ReadinessSnapshot, type SeatLifecycleSnapshot, useGameStore } from '@pidro/shared';
 import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { refreshSeatLifecycle, pushGameAction, useGameChannel } from './useGameChannel';
+import { pushGameAction, refreshSeatLifecycle, useGameChannel } from './useGameChannel';
 
 class MockPush {
   private callbacks = new Map<string, (payload: unknown) => void>();
@@ -129,6 +129,57 @@ afterEach(() => {
 });
 
 describe('useGameChannel', () => {
+  it('keeps Watching through a disconnect without buffering player actions', async () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    act(() => currentChannel?.joinPush.trigger('ok', { role: 'spectator' }));
+    act(() => currentChannel?.closeHandler?.());
+    expect(useGameStore.getState().role).toBe('spectator');
+    expect(useGameStore.getState().isChannelJoined).toBe(false);
+    await expect(pushGameAction('ready', {})).rejects.toThrow('No active game channel');
+  });
+
+  it('keeps a former player read-only across spectator joins and private payloads', async () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    const privateState = {
+      ...gameState('playing'),
+      players: {
+        ...gameState().players,
+        south: { hand: [{ rank: 14, suit: 'spades' }] },
+      },
+    };
+    act(() => {
+      currentChannel?.joinPush.trigger('ok', {
+        role: 'player',
+        position: 'south',
+        state: privateState,
+      });
+      currentChannel?.joinPush.trigger('ok', {
+        role: 'spectator',
+        state: privateState,
+        legal_actions: [{ type: 'select_dealer' }],
+      });
+      currentChannel?.emit('game_state', {
+        state: privateState,
+        legal_actions: [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }],
+      });
+    });
+    expect(useGameStore.getState().role).toBe('spectator');
+    expect(useGameStore.getState().youPositionAbs).toBeNull();
+    expect(useGameStore.getState().legalActions).toEqual([]);
+    expect(useGameStore.getState().serverState?.players.south.hand).toBe(1);
+    await expect(pushGameAction('play_card', {})).rejects.toThrow('Watching is read-only');
+    expect(currentChannel?.push).not.toHaveBeenCalled();
+    act(() =>
+      currentChannel?.joinPush.trigger('ok', {
+        role: 'player',
+        position: 'east',
+        state: privateState,
+      }),
+    );
+    expect(useGameStore.getState().youPositionAbs).toBe('east');
+    expect(useGameStore.getState().playerMeta.east.isYou).toBe(true);
+  });
+
   it('hydrates missed lifecycle state, deduplicates live takeover notices, and ignores legacy regression', async () => {
     useGameStore.setState({ roomCode: 'ABCD', youPlayerId: 'south-id' });
     const initial: SeatLifecycleSnapshot = {
@@ -245,6 +296,7 @@ describe('useGameChannel', () => {
 
   it('sends the rendered epoch and hydrates stale errors without retrying', async () => {
     renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    act(() => currentChannel?.joinPush.trigger('ok', { role: 'player', position: 'south' }));
     const request = pushGameAction('ready', { room_id: 'room-id', ready_epoch: 4 });
     const rejected = expect(request).rejects.toMatchObject({ reason: 'stale_readiness' });
     act(() =>

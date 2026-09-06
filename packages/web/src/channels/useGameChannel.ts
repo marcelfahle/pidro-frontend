@@ -1,8 +1,14 @@
-import { lifecycleFromReply } from '@pidro/shared';
-import type { LegalAction, Position, ReadinessSnapshot, SeatLifecycleSnapshot, ServerGameState } from '@pidro/shared';
+import type {
+  LegalAction,
+  Position,
+  ReadinessSnapshot,
+  SeatLifecycleSnapshot,
+  ServerGameState,
+} from '@pidro/shared';
 import {
   describeGameAction,
   extractGameState,
+  lifecycleFromReply,
   normalizeTurnTimer,
   shouldAutoSelectDealer,
   useGameStore,
@@ -48,7 +54,6 @@ function seatDisplayName(position: Position | null, fallback?: string | null): s
 
   return useGameStore.getState().playerMeta[position].username ?? 'A player';
 }
-
 
 function applyLifecycle(
   snapshot: SeatLifecycleSnapshot,
@@ -142,6 +147,7 @@ export const useGameChannel = ({
         legalActions: LegalAction[],
         position: Position | null,
       ) => {
+        if (useGameStore.getState().role !== 'player') return;
         if (!shouldAutoSelectDealer(gameState, legalActions, position)) return;
 
         const handNumber =
@@ -163,17 +169,18 @@ export const useGameChannel = ({
 
           setChannelStatus(true, Boolean(response?.reconnected));
           setError(null);
+          const role = response?.role as 'player' | 'spectator' | undefined;
+          setRole(role ?? null);
+          youPositionRef.current = null;
           const lifecycle = lifecycleFromReply(response);
           if (lifecycle) applyLifecycle(lifecycle, false);
 
           const position = response?.position as Position | undefined;
-          if (position) {
+          if (role === 'player' && position) {
             youPositionRef.current = position;
             setYouPosition(position);
           }
 
-          const role = response?.role as 'player' | 'spectator' | undefined;
-          setRole(role ?? null);
           if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
 
           const gameState = extractGameState(response);
@@ -442,7 +449,8 @@ export const useGameChannel = ({
           currentTopic = null;
         }
         setChannelStatus(false, false);
-        setRole(null);
+        // Keep the last confirmed read-only role visible while reconnecting.
+        setRole(useGameStore.getState().role === 'spectator' ? 'spectator' : null);
       });
 
       globalGameChannel = channel;
@@ -486,8 +494,11 @@ export const useGameChannel = ({
 
 export function pushGameAction(event: string, payload: object) {
   const channel = globalGameChannel;
-  if (!channel || (event === 'ready' && channel.state !== 'joined')) {
+  if (!channel || channel.state !== 'joined') {
     return Promise.reject(new Error('No active game channel'));
+  }
+  if (event !== 'get_seat_lifecycle' && useGameStore.getState().role !== 'player') {
+    return Promise.reject(new Error('Watching is read-only'));
   }
 
   return new Promise<void>((resolve, reject) => {

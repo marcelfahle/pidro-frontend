@@ -2,9 +2,16 @@ import type { Player, Position, Room } from '@/types/lobby';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
-export function canManageRoom(room: Room, userId: string | null | undefined): boolean {
+export function canManageRoom(
+  room: Room,
+  userId: string | null | undefined,
+  role: 'player' | 'spectator' | null
+): boolean {
   return (
-    !!userId && room.host_id === userId && (room.status === 'waiting' || room.status === 'ready')
+    role === 'player' &&
+    !!userId &&
+    room.host_id === userId &&
+    (room.status === 'waiting' || room.status === 'ready')
   );
 }
 
