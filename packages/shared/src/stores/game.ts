@@ -57,9 +57,7 @@ interface GameState {
   setReadiness: (snapshot: ReadinessSnapshot) => void;
   turnTimer: ActiveTurnTimer | null;
   lifecycle: SeatLifecycleSnapshot | null;
-  dismissedDecisions: string[];
   applySeatLifecycle: (snapshot: SeatLifecycleSnapshot) => void;
-  dismissDecision: (key: string) => void;
 
   isChannelJoined: boolean;
   isRejoining: boolean;
@@ -105,8 +103,6 @@ export const useGameStore = create<GameState>((set, get) => ({
   readiness: null,
   turnTimer: null,
   lifecycle: null,
-  dismissedDecisions: [],
-  dismissDecision: (key) => set((s) => ({ dismissedDecisions: [...s.dismissedDecisions, key] })),
   applySeatLifecycle: (snapshot) =>
     set((current) => {
       if (!lifecycleFromReply(snapshot)) return {};
@@ -238,7 +234,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPlayerId,
         youPositionAbs: youPos,
         playerMeta: baseMeta,
-        ...(!sameSession ? { lifecycle: null, dismissedDecisions: [] } : {}),
+        ...(!sameSession ? { lifecycle: null } : {}),
         ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
     }),
@@ -443,7 +439,6 @@ export const useGameStore = create<GameState>((set, get) => ({
       legalActions: [],
       turnTimer: null,
       lifecycle: null,
-      dismissedDecisions: [],
       playerMeta: {
         north: createEmptyPlayerMeta('north'),
         east: createEmptyPlayerMeta('east'),

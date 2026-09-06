@@ -67,7 +67,7 @@ export function TableFeedback({
               onPress={decisions.openSeat}
               className="min-h-11 flex-1 items-center justify-center rounded-lg bg-amber-400 px-3">
               <Text className="font-bold text-amber-950">
-                {decisions.busy ? 'Opening…' : 'Open Seat'}
+                {decisions.busy ? 'Saving…' : 'Open Seat'}
               </Text>
             </Pressable>
             <Pressable

@@ -41,7 +41,7 @@ export function OwnerDecisionBanner({
             onClick={() => onOpenSeat(position)}
             className="rounded-md bg-amber-500/90 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-950 transition-colors hover:bg-amber-400"
           >
-            {busy ? 'Opening…' : 'Open Seat'}
+            {busy ? 'Saving…' : 'Open Seat'}
           </button>
           <button
             type="button"
