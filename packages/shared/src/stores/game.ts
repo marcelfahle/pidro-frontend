@@ -58,6 +58,7 @@ interface GameState {
   lastError: string | null;
 
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
+  refreshPlayerIdentities: (room: Room) => void;
   setServerState: (state: ServerGameState | Record<string, any>) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setTurnTimer: (timer: ActiveTurnTimer | null) => void;
@@ -143,6 +144,12 @@ export const useGameStore = create<GameState>((set, get) => ({
           position: pos,
           playerId,
           username: seat?.player?.username ?? (sameOccupant ? previous.username : null),
+          avatar_url:
+            seat?.player?.avatar_url !== undefined
+              ? seat.player.avatar_url
+              : sameOccupant
+                ? previous.avatar_url
+                : null,
           isYou: playerId === youPlayerId,
           isTeammate: false,
           isOpponent: false,
@@ -169,6 +176,23 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPositionAbs: youPos,
         playerMeta: baseMeta,
       };
+    }),
+
+  refreshPlayerIdentities: (room) =>
+    set((current) => {
+      if (room.code !== current.roomCode) return current;
+      const playerMeta = { ...current.playerMeta };
+      for (const position of POSITIONS) {
+        const meta = playerMeta[position];
+        const player = room.seats?.find((seat) => seat.player?.id === meta.playerId)?.player;
+        if (!player || player.is_bot) continue;
+        playerMeta[position] = {
+          ...meta,
+          username: player.username,
+          ...(player.avatar_url !== undefined ? { avatar_url: player.avatar_url } : {}),
+        };
+      }
+      return { playerMeta };
     }),
 
   setServerState: (state) =>
@@ -356,6 +380,7 @@ export function useGameViewModel(): GameViewModel | null {
         relativePosition: relPos,
         playerId: meta.playerId,
         username: displayUsername(meta),
+        avatar_url: meta.avatar_url ?? null,
         isYou: meta.isYou,
         isTeammate: meta.isTeammate,
         isOpponent: meta.isOpponent,

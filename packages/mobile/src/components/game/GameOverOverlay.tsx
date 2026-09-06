@@ -5,6 +5,7 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
+import { Avatar } from '@/components/ui/Avatar';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
@@ -120,9 +121,16 @@ export function GameOverOverlay({
                       variant="subtle"
                       style={styles.playerChip}>
                       <View style={styles.avatar}>
-                        <PidroText role="label" style={styles.avatarText} maxFontSizeMultiplier={1}>
-                          {displayName(player)[0]?.toUpperCase() ?? '?'}
-                        </PidroText>
+                        {player.avatar_url ? (
+                          <Avatar uri={player.avatar_url} style={styles.avatarImage} />
+                        ) : (
+                          <PidroText
+                            role="label"
+                            style={styles.avatarText}
+                            maxFontSizeMultiplier={1}>
+                            {displayName(player)[0]?.toUpperCase() ?? '?'}
+                          </PidroText>
+                        )}
                       </View>
                       <PidroText role="metadata" numberOfLines={1} style={styles.playerName}>
                         {displayName(player)}
@@ -283,6 +291,7 @@ const styles = StyleSheet.create({
     borderRadius: PidroRadii.tight,
     backgroundColor: PidroColors.gold,
   },
+  avatarImage: { width: '100%', height: '100%', borderRadius: PidroRadii.full },
   avatarText: {
     color: PidroColors.ink,
   },

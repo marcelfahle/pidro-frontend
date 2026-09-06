@@ -187,16 +187,7 @@ export function GamePage() {
     const lobbyRoom = lobbyRooms.find((r) => r.code === code);
     if (!lobbyRoom?.seats?.length) return;
 
-    const { playerMeta: meta, setSeatStatus } = useGameStore.getState();
-    for (const seat of lobbyRoom.seats) {
-      const pos = seat.position;
-      const username = seat.player?.username;
-      if (!pos || !username || seat.player?.is_bot) continue;
-      const m = meta[pos];
-      if (m && !m.username) {
-        setSeatStatus(pos, m.seatStatus, username);
-      }
-    }
+    useGameStore.getState().refreshPlayerIdentities(lobbyRoom);
   }, [lobbyRooms, code]);
 
   const [roomLoading, setRoomLoading] = useState(true);

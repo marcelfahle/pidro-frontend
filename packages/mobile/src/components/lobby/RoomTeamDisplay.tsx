@@ -5,6 +5,9 @@ import { POSITION_TO_INDEX } from '@/utils/positions';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroText } from '@/components/ui/PidroText';
+import { Avatar } from '@/components/ui/Avatar';
+import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
+import { useState } from 'react';
 
 interface RoomTeamDisplayProps {
   seats?: Seat[];
@@ -32,12 +35,18 @@ export function RoomTeamDisplay({
   currentUserId,
   currentUsername,
 }: RoomTeamDisplayProps) {
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const getSeat = (
     pos: Position
   ):
     | {
         status: 'occupied' | 'free';
-        player: { id: string; username: string; is_bot?: boolean } | null;
+        player: {
+          id: string;
+          username: string;
+          is_bot?: boolean;
+          avatar_url?: string | null;
+        } | null;
       }
     | undefined => {
     if (positions) {
@@ -92,11 +101,13 @@ export function RoomTeamDisplay({
     const canJoin = isAvailable(position) && !isPlaying && !isFull;
 
     if (isOccupied && player) {
-      return (
-        <View style={styles.seat}>
+      const content = (
+        <>
           <View style={[styles.avatar, player.is_bot && styles.botAvatar]}>
             {player.is_bot ? (
               <Feather name="cpu" size={16} color="#fff6d1" />
+            ) : player.avatar_url ? (
+              <Avatar uri={player.avatar_url} style={styles.avatarImage} resizeMode="cover" />
             ) : (
               <PidroText role="label" style={styles.avatarText}>
                 {player.username.charAt(0).toUpperCase()}
@@ -106,7 +117,18 @@ export function RoomTeamDisplay({
           <PidroText role="metadata" style={styles.name} numberOfLines={1}>
             {player.username}
           </PidroText>
-        </View>
+        </>
+      );
+      return player.is_bot ? (
+        <View style={styles.seat}>{content}</View>
+      ) : (
+        <PressableFX
+          accessibilityRole="button"
+          accessibilityLabel={`View ${player.username}'s profile`}
+          onPress={() => setProfilePlayerId(player.id)}
+          style={styles.seat}>
+          {content}
+        </PressableFX>
       );
     }
 
@@ -144,6 +166,11 @@ export function RoomTeamDisplay({
         {renderSeat('east')}
         {renderSeat('west')}
       </View>
+      <PlayerProfileModal
+        key={profilePlayerId ?? 'closed'}
+        playerId={profilePlayerId}
+        onClose={() => setProfilePlayerId(null)}
+      />
     </View>
   );
 }
@@ -185,6 +212,7 @@ const styles = StyleSheet.create({
     borderColor: PidroColors.cyanBorder,
     backgroundColor: PidroColors.glassHover,
   },
+  avatarImage: { width: '100%', height: '100%', borderRadius: PidroRadii.full },
   botAvatar: {
     borderColor: PidroColors.goldDark,
     backgroundColor: PidroColors.goldSoft,

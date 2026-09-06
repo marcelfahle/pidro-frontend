@@ -1,5 +1,6 @@
 import type { PlayerMeta, Position } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
+import { PlayerProfileButton } from '../profile/PlayerProfileButton';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Spinner } from '../ui/Spinner';
@@ -55,14 +56,24 @@ function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; i
 
   return (
     <div className={cardClasses}>
-      <PlayerAvatar
-        initial={meta.username?.[0]?.toUpperCase() ?? '?'}
-        name={meta.username ?? undefined}
-        size={44}
-        isVacant={!occupied}
-        isBot={meta.seatStatus === 'bot_substitute' || meta.seatStatus === 'permanent_bot'}
-        online={occupied ? (meta.isConnected ? 'online' : 'offline') : undefined}
-      />
+      <PlayerProfileButton
+        playerId={
+          meta.seatStatus === 'bot_substitute' || meta.seatStatus === 'permanent_bot'
+            ? null
+            : meta.playerId
+        }
+        name={meta.username ?? 'Player'}
+      >
+        <PlayerAvatar
+          initial={meta.username?.[0]?.toUpperCase() ?? '?'}
+          name={meta.username ?? undefined}
+          src={meta.avatar_url ?? undefined}
+          size={44}
+          isVacant={!occupied}
+          isBot={meta.seatStatus === 'bot_substitute' || meta.seatStatus === 'permanent_bot'}
+          online={occupied ? (meta.isConnected ? 'online' : 'offline') : undefined}
+        />
+      </PlayerProfileButton>
       <div className="min-w-0">
         <div className="truncate text-sm font-black text-white">
           {occupied ? meta.username : 'Waiting...'}

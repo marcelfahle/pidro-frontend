@@ -101,11 +101,13 @@ describe('table seat identities', () => {
       const players = Object.entries(playerMeta).map(([position, meta]) => ({
         ...player(position, position),
         ...meta,
+        avatar_url: position === 'south' ? 'https://cdn.example/avatar.jpg' : null,
       }));
       const model = build({ phase: 'bidding', players });
       expect(
         Object.fromEntries(Object.entries(model.seats).map(([pos, seat]) => [pos, seat.username]))
       ).toEqual({ north: 'mfios1', east: 'mfand1', south: 'mfios2', west: 'mfweb1' });
+      expect(model.seats.south.avatar_url).toBe('https://cdn.example/avatar.jpg');
     } finally {
       useGameStore.getState().reset();
     }

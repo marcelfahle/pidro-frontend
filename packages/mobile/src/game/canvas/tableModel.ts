@@ -30,6 +30,7 @@ export type TableSeat = {
   absolutePosition: Position;
   relativePosition: RelativePosition;
   username: string | null;
+  avatar_url: string | null;
   isYou: boolean;
   isTeammate: boolean;
   isOpponent: boolean;
@@ -164,6 +165,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
           absolutePosition: p.absolutePosition,
           relativePosition: rel,
           username: p.username,
+          avatar_url: p.avatar_url ?? null,
           isYou: p.isYou,
           isTeammate: p.isTeammate,
           isOpponent: p.isOpponent,

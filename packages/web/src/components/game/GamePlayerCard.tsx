@@ -1,5 +1,6 @@
 import type { PlayerRank, SeatStatus } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
+import { PlayerProfileButton } from '../profile/PlayerProfileButton';
 import type { SkillTier } from '../profile/ranking';
 import { DealerChip } from './DealerChip';
 
@@ -15,6 +16,8 @@ import { DealerChip } from './DealerChip';
 
 interface GamePlayerCardProps {
   displayName: string;
+  avatarUrl?: string | null;
+  playerId?: string | null;
   roleLabel?: string;
   statusText: string;
   initial: string;
@@ -41,6 +44,8 @@ interface GamePlayerCardProps {
 
 export function GamePlayerCard({
   displayName,
+  avatarUrl,
+  playerId,
   statusText,
   initial,
   isDealer = false,
@@ -74,18 +79,21 @@ export function GamePlayerCard({
   const avatar = (
     <div className="relative z-[2] shrink-0" style={{ width: avatarSize, height: avatarSize }}>
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <PlayerAvatar
-          initial={initial}
-          name={resolvedName}
-          size={avatarSize}
-          isBot={isBot}
-          isVacant={isVacant}
-          state={isCurrentTurn ? 'active' : dimmed ? 'dimmed' : 'normal'}
-          timerProgress={showTimer ? Math.max(0, Math.min(1, timerProgress)) : undefined}
-          level={rank?.level}
-          prestige={rank?.prestige ?? 0}
-          tier={(rank?.tier as SkillTier | undefined) ?? undefined}
-        />
+        <PlayerProfileButton playerId={isBot || isVacant ? null : playerId} name={resolvedName}>
+          <PlayerAvatar
+            initial={initial}
+            name={resolvedName}
+            src={avatarUrl ?? undefined}
+            size={avatarSize}
+            isBot={isBot}
+            isVacant={isVacant}
+            state={isCurrentTurn ? 'active' : dimmed ? 'dimmed' : 'normal'}
+            timerProgress={showTimer ? Math.max(0, Math.min(1, timerProgress)) : undefined}
+            level={rank?.level}
+            prestige={rank?.prestige ?? 0}
+            tier={(rank?.tier as SkillTier | undefined) ?? undefined}
+          />
+        </PlayerProfileButton>
       </div>
     </div>
   );

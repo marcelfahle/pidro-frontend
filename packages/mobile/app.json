@@ -18,6 +18,14 @@
       "expo-status-bar",
       "expo-web-browser",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a photo for your Pidro profile.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",

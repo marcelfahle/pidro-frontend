@@ -10,6 +10,15 @@ export {
 } from './auth';
 export { type ApiClient, createApiClient, type SessionClearer, type TokenGetter } from './client';
 export {
+  createProfileApi,
+  AVATAR_MAX_BYTES,
+  BIO_MAX_LENGTH,
+  normalizeBio,
+  bioLength,
+  bioError,
+  type ProfileIdentity,
+} from './profile';
+export {
   type CreateRoomResponse,
   createLobbyApi,
   type GetRoomResponse,

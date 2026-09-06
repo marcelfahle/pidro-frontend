@@ -24,6 +24,7 @@ import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { computeLayout, type RelativePosition } from './layout';
 import type { TableSeat } from './tableModel';
 import { T } from './tokens';
+import { Avatar } from '@/components/ui/Avatar';
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -247,7 +248,12 @@ function Nameplate({
         data.isCurrentTurn && styles.pillTurn,
       ]}>
       <View style={[styles.avatar, { borderColor: ring }]}>
-        <Image source={avatarFor(data.username)} style={styles.avatarImg} resizeMode="cover" />
+        <Avatar
+          uri={data.avatar_url}
+          fallbackSource={avatarFor(data.username)}
+          style={styles.avatarImg}
+          resizeMode="cover"
+        />
       </View>
       <View style={styles.text}>
         <PidroText

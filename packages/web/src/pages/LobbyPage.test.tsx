@@ -27,6 +27,7 @@ vi.mock('../channels/useLobbyChannel', () => ({
 // Mock lobby API
 const mockCreateRoom = vi.fn();
 const mockJoinRoom = vi.fn();
+vi.mock('../api/profile', () => ({ profileApi: { getPlayer: vi.fn() } }));
 vi.mock('../api/lobby', () => ({
   lobbyApi: {
     listRooms: vi.fn().mockResolvedValue({ rooms: [] }),

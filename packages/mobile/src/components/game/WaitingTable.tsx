@@ -1,4 +1,4 @@
-import { Image, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,9 @@ import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostCo
 import { t } from '@/i18n';
 import { Scoreboard } from '@/game/canvas/Scoreboard';
 import type { Position, Room } from '@/types/lobby';
+import { Avatar } from '@/components/ui/Avatar';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 type RelPosition = 'top' | 'right' | 'bottom' | 'left';
@@ -24,6 +27,7 @@ interface SeatInfo {
   isYou: boolean;
   isBot: boolean;
   occupied: boolean;
+  avatarUrl: string | null;
 }
 
 function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
@@ -42,7 +46,16 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
     const isBot = !!seat?.player?.is_bot;
     const name = isYou ? 'You' : isBot ? 'Bot' : seatDisplayName(seat?.player) || 'Open seat';
     const rel = relatives[(absoluteIndex - youIdx + 4) % 4];
-    return { absolute, rel, name, playerId, isYou, isBot, occupied: !!playerId };
+    return {
+      absolute,
+      rel,
+      name,
+      playerId,
+      isYou,
+      isBot,
+      occupied: !!playerId,
+      avatarUrl: seat?.player?.avatar_url ?? null,
+    };
   });
 }
 
@@ -60,10 +73,12 @@ function SeatPlate({
   seat,
   portrait,
   onManage,
+  onProfile,
 }: {
   seat: SeatInfo;
   portrait: boolean;
   onManage?: () => void;
+  onProfile?: () => void;
 }) {
   const anchor = SEAT_ANCHORS[seat.rel];
   const isSideSeat = seat.rel === 'left' || seat.rel === 'right';
@@ -80,14 +95,16 @@ function SeatPlate({
         },
         portrait && isSideSeat && styles.sideSeatPortrait,
       ]}
-      pointerEvents={onManage ? 'box-none' : 'none'}>
+      pointerEvents="box-none">
       <Surface variant="plaque" style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
         {seat.occupied ? (
-          <Image
-            source={require('~/assets/images/avatar1.png')}
-            style={styles.avatar}
-            resizeMode="cover"
-          />
+          <PressableFX
+            disabled={!onProfile}
+            accessibilityRole="button"
+            accessibilityLabel={seat.isYou ? 'View your profile' : `View ${seat.name}'s profile`}
+            onPress={onProfile}>
+            <Avatar uri={seat.avatarUrl} style={styles.avatar} resizeMode="cover" />
+          </PressableFX>
         ) : (
           <View style={styles.openAvatar}>
             <Feather name="user-plus" size={17} color={PidroColors.textMuted} />
@@ -149,6 +166,7 @@ export function WaitingTable({
   const youPosition =
     POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null;
   const [selectedSeat, setSelectedSeat] = useState<SeatInfo | null>(null);
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const selectedSeatIsCurrent =
     !!selectedSeat && room.positions?.[selectedSeat.absolute] === selectedSeat.playerId;
   const moveTargets =
@@ -177,6 +195,9 @@ export function WaitingTable({
             key={seat.rel}
             seat={seat}
             portrait={portrait}
+            onProfile={
+              seat.occupied && !seat.isBot ? () => setProfilePlayerId(seat.playerId) : undefined
+            }
             onManage={
               canManage && seat.occupied && !seat.isYou && !seat.isBot && seat.playerId
                 ? () => setSelectedSeat(seat)
@@ -263,6 +284,7 @@ export function WaitingTable({
           />
         </View>
       </Modal>
+      <PlayerProfileModal playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
     </Background>
   );
 }

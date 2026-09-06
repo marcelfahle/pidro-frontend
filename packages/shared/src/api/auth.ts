@@ -6,6 +6,8 @@ export type User = {
   username: string;
   display_name?: string | null;
   guest?: boolean;
+  avatar_url?: string | null;
+  bio?: string | null;
 };
 
 interface AuthResponseEnvelope {

@@ -7,11 +7,12 @@ import {
   AchievementListRow,
   AggressionMeter,
   GlassCard,
-  HeaderBanner,
   SkillBlock,
   StatGrid,
   VeteranBar,
 } from '../components/ds';
+import { AvatarEditor } from '../components/profile/AvatarEditor';
+import { BioEditor } from '../components/profile/BioEditor';
 import { IdentityBadge } from '../components/profile/IdentityBadge';
 import { veteranTitle } from '../components/profile/ranking';
 import { Spinner } from '../components/ui/Spinner';
@@ -30,9 +31,11 @@ export function ProfilePage() {
   const username = useAuthStore((s) => s.user?.username) ?? 'Player';
   const [profile, setProfile] = useState<PlayerProfile | null>(null);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
+    setStatus('loading');
     getProfile()
       .then((p) => {
         if (!active) return;
@@ -45,7 +48,7 @@ export function ProfilePage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [attempt]);
 
   const tier = profile
     ? profile.skill.provisional
@@ -62,7 +65,19 @@ export function ProfilePage() {
           <div className="pointer-events-none absolute inset-x-0 top-0 h-48 bg-[radial-gradient(circle_at_top,rgba(94,237,255,0.16),transparent_60%)]" />
 
           <div className="relative z-10 flex flex-col items-center gap-6">
-            <HeaderBanner size="lg">My Profile</HeaderBanner>
+            <div className="flex w-full items-center gap-3">
+              <button
+                type="button"
+                aria-label="Back"
+                onClick={() => navigate('/home')}
+                className="pidro-icon-button shrink-0"
+              >
+                <ArrowLeft className="pidro-metal-icon h-6 w-6" strokeWidth={2.4} />
+              </button>
+              <h1 className="pidro-banner flex-1" style={{ minWidth: 0, padding: '12px 14px' }}>
+                My Profile
+              </h1>
+            </div>
 
             {status === 'loading' && (
               <div className="flex h-64 items-center justify-center">
@@ -75,6 +90,13 @@ export function ProfilePage() {
                 <div className="text-center text-sm text-cyan-50/80">
                   Couldn’t load your profile right now. Your progression is safe — try again
                   shortly.
+                  <button
+                    type="button"
+                    className="mt-3 block w-full font-bold underline"
+                    onClick={() => setAttempt(attempt + 1)}
+                  >
+                    Retry
+                  </button>
                 </div>
               </GlassCard>
             )}
@@ -86,6 +108,7 @@ export function ProfilePage() {
                   <div className="flex flex-wrap items-center gap-5">
                     <IdentityBadge
                       name={username}
+                      src={profile.avatar_url ?? undefined}
                       level={profile.veteran.level}
                       progress={veteranProgressFraction(profile.veteran.progress)}
                       tier={tier}
@@ -113,6 +136,19 @@ export function ProfilePage() {
                       </div>
                     </div>
                   </div>
+                  <AvatarEditor
+                    avatarUrl={profile.avatar_url}
+                    onSaved={(avatar_url) =>
+                      setProfile((current) => current && { ...current, avatar_url })
+                    }
+                  />
+                </GlassCard>
+
+                <GlassCard>
+                  <BioEditor
+                    bio={profile.bio}
+                    onSaved={(bio) => setProfile((current) => current && { ...current, bio })}
+                  />
                 </GlassCard>
 
                 {/* Veteran */}
@@ -172,15 +208,6 @@ export function ProfilePage() {
             )}
           </div>
         </main>
-
-        <button
-          type="button"
-          aria-label="Back"
-          onClick={() => navigate('/home')}
-          className="pidro-icon-button absolute bottom-5 left-5 z-20"
-        >
-          <ArrowLeft className="pidro-metal-icon h-6 w-6" strokeWidth={2.4} />
-        </button>
       </div>
     </div>
   );

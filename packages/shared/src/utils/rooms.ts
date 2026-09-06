@@ -90,6 +90,7 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
               username: username ?? displayName ?? 'Bot',
               display_name: displayName,
               is_bot: isBot,
+              avatar_url: value?.avatar_url ?? null,
             }
           : null,
       // Only expose player_id when we can render a useful identity —
