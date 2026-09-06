@@ -170,6 +170,7 @@ export const useGameChannel = ({
         legalActions: LegalAction[],
         position: Position | null
       ) => {
+        if (useGameStore.getState().role !== 'player') return;
         if (!shouldAutoSelectDealer(gameState, legalActions, position)) return;
 
         const handNumber =
@@ -192,19 +193,18 @@ export const useGameChannel = ({
             setChannelStatus(true, Boolean(response?.reconnected));
             setError(null);
 
+            const role = response?.role as 'player' | 'spectator' | undefined;
+            setRole(role ?? null);
+            youPositionRef.current = null;
             const lifecycle = lifecycleFromReply(response);
             if (lifecycle) applyLifecycle(lifecycle, false);
 
             const position = response?.position as Position | undefined;
-            if (position) {
+            if (role === 'player' && position) {
               youPositionRef.current = position;
               setYouPosition(position);
-            } else {
-              console.warn('[GameChannel] No position in join response');
             }
 
-            const role = response?.role as 'player' | 'spectator' | undefined;
-            setRole(role ?? null);
             if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
 
             const gameState = extractGameState(response);
@@ -487,7 +487,8 @@ export const useGameChannel = ({
         globalGameChannel = null;
         currentTopic = null;
         setChannelStatus(false, false);
-        setRole(null);
+        // Keep the last confirmed read-only role visible while reconnecting.
+        setRole(useGameStore.getState().role === 'spectator' ? 'spectator' : null);
         // An unexpected close (socket drop, server restart) leaves no channel
         // behind and nothing re-runs the effect — reconnect ourselves while a
         // screen still needs this topic. Intentional leave() sets refCount 0.
@@ -538,9 +539,12 @@ export const useGameChannel = ({
 
 export function pushGameAction(event: string, payload: object) {
   const channel = globalGameChannel;
-  if (!channel || (event === 'ready' && channel.state !== 'joined')) {
+  if (!channel || channel.state !== 'joined') {
     console.warn('[GameChannel] Cannot push, no active channel');
     return Promise.reject(new Error('No active game channel'));
+  }
+  if (event !== 'get_seat_lifecycle' && useGameStore.getState().role !== 'player') {
+    return Promise.reject(new Error('Watching is read-only'));
   }
 
   return new Promise<void>((resolve, reject) => {

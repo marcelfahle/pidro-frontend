@@ -670,6 +670,7 @@ export default function GameScreen() {
       <WaitingTable
         room={readiness ? roomWithReadiness(room, readiness) : room}
         youPlayerId={youPlayerId}
+        isSpectator={role === 'spectator'}
         readyPlayers={readiness?.ready_players}
         readyDisabled={!isChannelJoined || !readiness}
         onReady={role === 'player' && youPositionAbs ? handleReady : undefined}

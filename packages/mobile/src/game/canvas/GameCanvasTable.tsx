@@ -15,6 +15,7 @@ import { useGameTableController } from '@/game/useGameTableController';
 import { useGameStore } from '@/stores/game';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
 import { Button } from '@/components/ui/Button';
+import { WatchingBadge } from '@/components/game/WatchingBadge';
 import { BiddingActions } from '@/components/game/BiddingActions';
 import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
 import { HandSelector } from '@/components/game/HandSelector';
@@ -192,6 +193,8 @@ export function GameCanvasTable({
   backLabel,
 }: Props) {
   const controller = useGameTableController(room);
+  const role = useGameStore((state) => state.role);
+  const isSpectator = role === 'spectator';
   const textures = useCardTextures();
   const model = useTableModel(controller);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
@@ -199,7 +202,7 @@ export function GameCanvasTable({
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
   const { bottomReserve } = reserves;
-  const topReserve = reserves.topReserve + feedbackHeight;
+  const topReserve = reserves.topReserve + (isSpectator ? 0 : feedbackHeight);
 
   const {
     trumpSuit,
@@ -268,8 +271,14 @@ export function GameCanvasTable({
       <View
         style={[styles.topRight, { top: insets.top + 8, right: insets.right + 10 }]}
         pointerEvents="box-none">
-        <Button label="Leave" variant="outline" size="sm" onPress={onLeave} />
+        <Button
+          label={isSpectator ? 'Back to lobby' : 'Leave'}
+          variant="outline"
+          size="sm"
+          onPress={onLeave}
+        />
       </View>
+      {isSpectator && <WatchingBadge />}
 
       {/* Second-deal hand selection */}
       {isSecondDeal && viewModel && yourHand && (

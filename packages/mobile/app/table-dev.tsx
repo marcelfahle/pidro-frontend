@@ -17,6 +17,8 @@ import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
 import type { Invite, SeatStatus } from '@pidro/shared';
 import { TableFeedback } from '@/components/game/TableFeedback';
+import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
+import { useGameStore } from '@/stores/game';
 
 const WAITING_ROOM: Room = {
   code: 'DEV01',
@@ -124,6 +126,7 @@ function TableDevHarness() {
     invite?: string;
     lifecycle?: SeatStatus;
     feedback?: string;
+    role?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -134,6 +137,16 @@ function TableDevHarness() {
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
   const [readyPlayers, setReadyPlayers] = useState<Position[]>(['north', 'west']);
+
+  if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
+    return (
+      <RolePreview
+        role={params.role === 'player' ? 'player' : 'spectator'}
+        phase={phase}
+        notice={params.feedback === 'notice'}
+      />
+    );
+  }
 
   if (
     phase === 'waiting' ||
@@ -163,6 +176,7 @@ function TableDevHarness() {
         <SafeAreaProvider>
           <WaitingTable
             room={waitingRoom}
+            isSpectator={params.role === 'spectator'}
             readyPlayers={full ? readyPlayers : ['north']}
             readyDisabled={false}
             onReady={async () => setReadyPlayers((current) => [...current, 'south'])}
@@ -236,5 +250,73 @@ function TableDevHarness() {
         </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+/** Exercise the production controller/store, not the animation-only mock model. */
+function RolePreview({
+  role,
+  phase,
+  notice,
+}: {
+  role: 'player' | 'spectator';
+  phase: string;
+  notice: boolean;
+}) {
+  const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
+  useEffect(() => {
+    let active = true;
+    const store = useGameStore.getState();
+    store.reset();
+    store.initFromRoom({ room: WAITING_ROOM, youPlayerId: 'p-south' });
+    store.setRole(role);
+    store.setYouPosition('south');
+    store.setChannelStatus(true);
+    store.setServerState({
+      phase: phase === 'bidding' ? 'bidding' : phase === 'declaring' ? 'declaring' : 'playing',
+      current_player: 'south',
+      trump: 'spades',
+      dealer: 'north',
+      scores: { north_south: 36, east_west: 29 },
+      hand_number: 4,
+      players: {
+        north: { hand: 6 },
+        east: { hand: 6 },
+        west: { hand: 6 },
+        south: {
+          hand: [
+            { rank: 14, suit: 'spades' },
+            { rank: 13, suit: 'hearts' },
+          ],
+        },
+      },
+      current_trick: [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }],
+    });
+    store.setLegalActions([{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]);
+    loadGameCanvasTable().then((component) => {
+      if (active) setTable(() => component);
+    });
+    return () => {
+      active = false;
+      store.reset();
+    };
+  }, [role, phase]);
+  return (
+    <View className="flex-1">
+      {Table ? (
+        <Table room={WAITING_ROOM} onLeave={() => {}} feedbackHeight={notice ? 72 : 0} />
+      ) : (
+        <Loading />
+      )}
+      {notice && (
+        <View pointerEvents="none" className="absolute inset-x-0 top-16 items-center px-3">
+          <View className="rounded-xl border border-white/20 bg-slate-900 p-3">
+            <Text className="text-sm text-white">
+              Nora (north) disconnected. Bot is filling in.
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
   );
 }

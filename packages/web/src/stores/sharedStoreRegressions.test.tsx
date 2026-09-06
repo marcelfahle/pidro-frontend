@@ -53,6 +53,9 @@ function seatAt(room: Room, position: Position) {
 function initializeGame(room: Room, youPlayerId = 'ios2') {
   act(() => {
     useGameStore.getState().initFromRoom({ room, youPlayerId });
+    useGameStore.getState().setRole('player');
+    const position = positions.find((pos) => room.positions?.[pos] === youPlayerId);
+    if (position) useGameStore.getState().setYouPosition(position);
     useGameStore.getState().setServerState({ phase: 'bidding', players: {} });
   });
 }
@@ -100,6 +103,8 @@ describe('shared store regressions', () => {
         },
         youPlayerId: 'me',
       });
+      useGameStore.getState().setRole('player');
+      useGameStore.getState().setYouPosition('north');
       useGameStore.getState().setSeatStatus('east', 'reconnecting', 'Casey');
       useGameStore.getState().initFromRoom({
         room: { code: 'ROOM', status: 'playing', seats: [] },

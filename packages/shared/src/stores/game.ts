@@ -20,6 +20,23 @@ import { lifecycleFromReply } from '../utils/seatLifecycle';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
+// Retain public counts, never a cached private hand after losing player authority.
+function publicState(state: ServerGameState | null): ServerGameState | null {
+  if (!state) return null;
+  return {
+    ...state,
+    players: Object.fromEntries(
+      Object.entries(state.players ?? {}).map(([position, player]) => [
+        position,
+        {
+          ...player,
+          hand: Array.isArray(player.hand) ? player.hand.length : player.hand,
+        },
+      ]),
+    ) as ServerGameState['players'],
+  };
+}
+
 function createEmptyPlayerMeta(position: Position): PlayerMeta {
   return {
     position,
@@ -119,14 +136,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         return {};
       const playerMeta = { ...current.playerMeta };
       const youPositionAbs =
-        POSITIONS.find(
-          (position) =>
-            snapshot.seats[position].player_id === current.youPlayerId &&
-            current.youPlayerId != null,
-        ) ?? current.youPositionAbs;
+        current.role !== 'player'
+          ? null
+          : (POSITIONS.find(
+              (position) =>
+                snapshot.seats[position].player_id === current.youPlayerId &&
+                current.youPlayerId != null,
+            ) ?? current.youPositionAbs);
       for (const position of POSITIONS) {
         const seat = snapshot.seats[position];
-        const isYou = seat.player_id != null && seat.player_id === current.youPlayerId;
+        const isYou = current.role === 'player' && position === youPositionAbs;
         const teammate = youPositionAbs != null && isTeammate(youPositionAbs, position);
         playerMeta[position] = {
           ...playerMeta[position],
@@ -173,6 +192,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (positions?.[pos] === youPlayerId) youPos = pos;
       });
       if (!youPos && sameSession && !current.readiness) youPos = current.youPositionAbs;
+      if (!sameSession || current.role !== 'player') youPos = null;
 
       const baseMeta: Record<Position, PlayerMeta> = {
         north: createEmptyPlayerMeta('north'),
@@ -213,7 +233,7 @@ export const useGameStore = create<GameState>((set, get) => ({
               : sameOccupant
                 ? previous.avatar_url
                 : null,
-          isYou: playerId === youPlayerId,
+          isYou: youPos === pos,
           isTeammate: false,
           isOpponent: false,
           isConnected: sameOccupant ? previous.isConnected : true,
@@ -238,6 +258,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPlayerId,
         youPositionAbs: youPos,
         playerMeta: baseMeta,
+        ...(!sameSession ? { role: null, serverState: null, legalActions: [] } : {}),
         ...(!sameSession ? { lifecycle: null, dismissedDecisions: [] } : {}),
         ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
@@ -261,8 +282,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
 
   setServerState: (state) =>
-    set(() => {
-      const raw = state as Record<string, any>;
+    set((current) => {
+      const raw = (
+        current.role === 'player' ? state : publicState(state as ServerGameState)
+      ) as Record<string, any>;
 
       const currentPlayer = raw.current_player ?? (raw.current_turn as Position | null | undefined);
       const trump = raw.trump ?? raw.trump_suit ?? null;
@@ -311,7 +334,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setYouPosition: (position) => {
     const curr = get();
-    if (curr.youPositionAbs === position) return;
+    if (curr.role !== 'player' || curr.youPositionAbs === position) return;
 
     const updated = { ...curr.playerMeta };
     POSITIONS.forEach((pos) => {
@@ -327,9 +350,33 @@ export const useGameStore = create<GameState>((set, get) => ({
     set({ youPositionAbs: position, playerMeta: updated });
   },
 
-  setRole: (role) => set({ role }),
+  setRole: (role) =>
+    set((current) =>
+      role === 'player'
+        ? { role }
+        : {
+            role,
+            youPositionAbs: null,
+            legalActions: [],
+            serverState: publicState(current.serverState),
+            playerMeta: Object.fromEntries(
+              POSITIONS.map((position) => [
+                position,
+                {
+                  ...current.playerMeta[position],
+                  isYou: false,
+                  isTeammate: false,
+                  isOpponent: false,
+                },
+              ]),
+            ) as Record<Position, PlayerMeta>,
+          },
+    ),
 
-  setLegalActions: (actions) => set({ legalActions: actions }),
+  setLegalActions: (actions) =>
+    set((current) => ({
+      legalActions: current.role === 'player' ? actions : [],
+    })),
 
   setTurnTimer: (timer) => set({ turnTimer: timer }),
 
@@ -392,7 +439,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         return { readiness: snapshot, readyPlayers: snapshot.ready_players };
       }
       const youPosition =
-        POSITIONS.find((pos) => snapshot.positions[pos] === current.youPlayerId) ?? null;
+        current.role !== 'player'
+          ? null
+          : (POSITIONS.find((pos) => snapshot.positions[pos] === current.youPlayerId) ?? null);
       const playerMeta = { ...current.playerMeta };
       for (const pos of POSITIONS) {
         const playerId = snapshot.positions[pos];
@@ -407,8 +456,9 @@ export const useGameStore = create<GameState>((set, get) => ({
             seat.username ??
             previous?.username ??
             (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
-          avatar_url: seat.avatar_url !== undefined ? seat.avatar_url : previous?.avatar_url ?? null,
-          isYou: playerId != null && playerId === current.youPlayerId,
+          avatar_url:
+            seat.avatar_url !== undefined ? seat.avatar_url : (previous?.avatar_url ?? null),
+          isYou: pos === youPosition,
           isTeammate: !!youPosition && pos !== youPosition && isTeammate(youPosition, pos),
           isOpponent: !!youPosition && !isTeammate(youPosition, pos),
           isConnected: seat.occupant_type === 'bot' || seat.status === 'connected',
@@ -490,12 +540,13 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
 }
 
 export function useGameViewModel(): GameViewModel | null {
-  const { serverState, playerMeta, youPositionAbs, roomCode } = useGameStore(
+  const { serverState, playerMeta, youPositionAbs, roomCode, role } = useGameStore(
     useShallow((state) => ({
       serverState: state.serverState,
       playerMeta: state.playerMeta,
       youPositionAbs: state.youPositionAbs,
       roomCode: state.roomCode,
+      role: state.role,
     })),
   );
 
@@ -504,7 +555,7 @@ export function useGameViewModel(): GameViewModel | null {
       return null;
     }
 
-    const viewerPositionAbs = youPositionAbs ?? 'south';
+    const viewerPositionAbs = (role === 'player' ? youPositionAbs : null) ?? 'south';
 
     const rawState = serverState as unknown as Record<string, unknown>;
     const currentPlayer =
@@ -525,9 +576,9 @@ export function useGameViewModel(): GameViewModel | null {
         playerId: meta.playerId,
         username: displayUsername(meta),
         avatar_url: meta.avatar_url ?? null,
-        isYou: meta.isYou,
-        isTeammate: meta.isTeammate,
-        isOpponent: meta.isOpponent,
+        isYou: role === 'player' && meta.isYou,
+        isTeammate: role === 'player' && meta.isTeammate,
+        isOpponent: role === 'player' && meta.isOpponent,
         isConnected: meta.isConnected,
         isCurrentTurn,
         seatStatus: meta.seatStatus,
@@ -550,5 +601,5 @@ export function useGameViewModel(): GameViewModel | null {
         : null,
       players,
     };
-  }, [serverState, playerMeta, youPositionAbs, roomCode]);
+  }, [serverState, playerMeta, youPositionAbs, roomCode, role]);
 }

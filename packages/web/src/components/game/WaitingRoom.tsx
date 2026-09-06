@@ -12,6 +12,7 @@ interface WaitingRoomProps {
   onReady?: () => void;
   readyDisabled?: boolean;
   onLeave: () => void;
+  viewerRole?: 'player' | 'spectator' | null;
 }
 
 const SEAT_POSITIONS: { position: Position; label: string; className: string }[] = [
@@ -41,13 +42,23 @@ const SEAT_POSITIONS: { position: Position; label: string; className: string }[]
   },
 ];
 
-function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; isReady: boolean }) {
+function SeatSlot({
+  meta,
+  label,
+  isReady,
+  showIdentity,
+}: {
+  meta: PlayerMeta;
+  label: string;
+  isReady: boolean;
+  showIdentity: boolean;
+}) {
   const occupied = meta.playerId !== null;
   const disconnected = occupied && !meta.isConnected;
   const cardClasses = [
     'pidro-seat-card',
     isReady ? 'pidro-seat-card--ready' : '',
-    meta.isYou ? 'pidro-seat-card--active' : '',
+    showIdentity && meta.isYou ? 'pidro-seat-card--active' : '',
     disconnected ? 'opacity-50' : '',
     'w-full',
   ]
@@ -82,8 +93,8 @@ function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; i
           {label}
         </div>
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          {meta.isYou && <Badge variant="blue">You</Badge>}
-          {meta.isTeammate && <Badge variant="green">Ally</Badge>}
+          {showIdentity && meta.isYou && <Badge variant="blue">You</Badge>}
+          {showIdentity && meta.isTeammate && <Badge variant="green">Ally</Badge>}
           {occupied && (
             <Badge variant={isReady ? 'yellow' : 'blue'}>{isReady ? 'Ready' : 'Pending'}</Badge>
           )}
@@ -102,7 +113,9 @@ export function WaitingRoom({
   onReady,
   readyDisabled = false,
   onLeave,
+  viewerRole = 'player',
 }: WaitingRoomProps) {
+  const isSpectator = viewerRole === 'spectator';
   const filledCount = Object.values(playerMeta).filter((m) => m.playerId !== null).length;
   const isFull = filledCount >= 4;
   const isYouReady = youPosition ? readyPlayers.includes(youPosition) : false;
@@ -121,12 +134,19 @@ export function WaitingRoom({
           </div>
         </div>
 
+        {isSpectator && (
+          <div className="pointer-events-none absolute right-[3%] top-[3%] z-30 flex items-center gap-2 rounded-full border border-cyan-200/25 bg-cyan-950/75 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100 shadow-md backdrop-blur-md">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-300" /> Watching
+          </div>
+        )}
+
         {SEAT_POSITIONS.map(({ position, label, className }) => (
           <div key={position} className={`absolute z-10 ${className}`}>
             <SeatSlot
               meta={playerMeta[position]}
               label={label}
               isReady={readyPlayers.includes(position)}
+              showIdentity={!isSpectator}
             />
           </div>
         ))}
@@ -137,7 +157,7 @@ export function WaitingRoom({
               <div className="text-base font-black uppercase tracking-[0.16em] text-cyan-50/80">
                 Everyone ready?
               </div>
-              {onReady && (
+              {!isSpectator && onReady && (
                 <Button
                   type="button"
                   onClick={onReady}
@@ -165,7 +185,7 @@ export function WaitingRoom({
 
         <div className="absolute bottom-[3%] right-[3%] z-20 max-md:left-1/2 max-md:right-auto max-md:-translate-x-1/2">
           <Button type="button" variant="secondary" size="sm" onClick={onLeave}>
-            Leave Room
+            {isSpectator ? 'Back to lobby' : 'Leave Room'}
           </Button>
         </div>
       </div>
