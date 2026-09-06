@@ -21,7 +21,7 @@ describe('GamePlayerCard', () => {
       />,
     );
     expect(screen.getByText('whatever')).toBeTruthy();
-    expect(screen.getByText('Bot · can return')).toBeTruthy();
+    expect(screen.getByText('Rejoin to play')).toBeTruthy();
   });
 
   it('wears the level chip when rank is provided', () => {

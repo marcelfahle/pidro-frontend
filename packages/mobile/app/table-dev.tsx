@@ -231,7 +231,7 @@ function TableDevHarness() {
                 pendingCount: 3 - dismissed,
                 busy: false,
                 error,
-                keepBot: () => {
+                keepBot: async () => {
                   setDismissed((count) => count + 1);
                   setError(null);
                 },
