@@ -41,6 +41,16 @@ const avatarFor = (name: string | null) =>
   AVATARS[(name ? name.charCodeAt(0) : 0) % AVATARS.length];
 
 function statusFor(data: TableSeat, override?: string): string | null {
+  switch (data.seatStatus) {
+    case 'reconnecting':
+      return 'Reconnecting';
+    case 'bot_substitute':
+      return 'Bot · can return';
+    case 'permanent_bot':
+      return 'Permanent bot';
+    case 'vacant':
+      return 'Open for player';
+  }
   if (data.lastPlayedCard) {
     const c = data.lastPlayedCard.card;
     return `Plays ${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}`;
@@ -241,19 +251,28 @@ function Nameplate({
   return (
     <View
       testID={testID}
+      accessible
+      accessibilityLabel={`${data.username || 'Open seat'}, ${data.absolutePosition}${status ? `, ${status}` : ''}`}
       style={[
         styles.pill,
         narrow && styles.pillNarrow,
+        narrow && data.seatStatus !== 'normal' && styles.pillCompact,
         compact && styles.pillCompact,
         data.isCurrentTurn && styles.pillTurn,
       ]}>
-      <View style={[styles.avatar, { borderColor: ring }]}>
-        <Avatar
-          uri={data.avatar_url}
-          fallbackSource={avatarFor(data.username)}
-          style={styles.avatarImg}
-          resizeMode="cover"
-        />
+      <View className="items-center justify-center" style={[styles.avatar, { borderColor: ring }]}>
+        {data.seatStatus === 'bot_substitute' || data.seatStatus === 'permanent_bot' ? (
+          <PidroText role="metadata">🤖</PidroText>
+        ) : data.seatStatus === 'vacant' ? (
+          <PidroText role="metadata">＋</PidroText>
+        ) : (
+          <Avatar
+            uri={data.avatar_url}
+            fallbackSource={avatarFor(data.username)}
+            style={styles.avatarImg}
+            resizeMode="cover"
+          />
+        )}
       </View>
       <View style={styles.text}>
         <PidroText
@@ -273,7 +292,7 @@ function Nameplate({
             role="metadata"
             maxFontSizeMultiplier={1.15}
             style={[styles.status, data.isCurrentTurn && styles.statusTurn]}
-            numberOfLines={1}>
+            numberOfLines={2}>
             {status}
           </PidroText>
         ) : null}

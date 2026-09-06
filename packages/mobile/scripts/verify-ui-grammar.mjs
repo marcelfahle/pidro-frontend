@@ -44,6 +44,18 @@ const allCases = [
   { name: 'create-table', path: '/ui-dev?state=create', testId: 'create-room-window' },
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {
+    name: 'table-ready',
+    path: '/table-dev?phase=ready',
+    testId: 'waiting-table',
+    verifyReadiness: true,
+  },
+  {
+    name: 'table-ready-host',
+    path: '/table-dev?phase=ready-host',
+    testId: 'waiting-table',
+    verifyReadiness: true,
+  },
+  {
     name: 'table-host-controls',
     path: '/table-dev?phase=waiting-host',
     testId: 'waiting-table',
@@ -525,6 +537,23 @@ async function main() {
             fullPage: false,
           });
           await assertAuthFormInteractions(page, testCase.name, viewport);
+          if (testCase.verifyReadiness) {
+            const panel = await getStableBox(page.getByTestId('readiness-panel'), page);
+            for (const position of ['north', 'east', 'south', 'west']) {
+              const seat = await getStableBox(page.getByTestId(`waiting-seat-${position}`), page);
+              if (!panel || !seat || boxesOverlap(panel, seat)) {
+                throw new Error(`Readiness panel overlaps ${position} in ${viewport.name}`);
+              }
+            }
+            await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+            const confirmed = page.getByRole('button', { name: "You're ready", exact: true });
+            await confirmed.waitFor();
+            if (!(await confirmed.isDisabled()))
+              throw new Error('Confirmed readiness action must be disabled');
+            await page
+              .getByText('3/4 ready · Bots are ready automatically', { exact: true })
+              .waitFor();
+          }
           if (pageErrors.length) {
             throw new Error(`${testCase.name} interaction errors: ${pageErrors.join(' | ')}`);
           }

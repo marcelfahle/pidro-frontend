@@ -1,9 +1,8 @@
 import {
   pushGameAction,
+  refreshSeatLifecycle,
   useGameChannel,
-  type OwnerDecisionEvent,
   type ProgressionSummary,
-  type SeatEvent,
 } from '@/channels/hooks/useGameChannel';
 import type { WaitingRoomEvent } from '@/channels/gameRoomEvents';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
@@ -21,6 +20,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/stores/lobby';
 import { useGameStore } from '@/stores/game';
+import { roomWithReadiness } from '@pidro/shared';
 import { useAuthStore } from '@/stores/auth';
 import { lobbyApi } from '@/api/lobby';
 import { api } from '@/api/client';
@@ -38,9 +38,12 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, gameRoute, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
+import { useSeatDecisions } from '@pidro/shared';
+import { TableFeedback, useTableNotices } from '@/components/game/TableFeedback';
 
 type SkiaTableProps = {
   room: Room;
+  feedbackHeight?: number;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: (room: Room) => void;
@@ -165,6 +168,17 @@ export default function GameScreen() {
   const setLegalActions = useGameStore((s) => s.setLegalActions);
   const youPositionAbs = useGameStore((s) => s.youPositionAbs);
   const role = useGameStore((s) => s.role);
+  const readiness = useGameStore((s) => s.readiness);
+  const isChannelJoined = useGameStore((s) => s.isChannelJoined);
+  const handleReady = useCallback(() => {
+    if (!readiness || !isChannelJoined || role !== 'player') {
+      return Promise.reject(new Error('Reconnect before confirming readiness.'));
+    }
+    return pushGameAction('ready', {
+      room_id: readiness.room_id,
+      ready_epoch: readiness.ready_epoch,
+    });
+  }, [readiness, isChannelJoined, role]);
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
 
   // Identity snapshots also update direct-link games without a lobby in the stack.
@@ -276,31 +290,9 @@ export default function GameScreen() {
   const hasGameState = !!serverPhase;
   const canJoinGameChannel =
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
-  const handleSeatEvent = useCallback((event: SeatEvent) => {
-    Alert.alert(event.variant === 'error' ? 'Table Error' : 'Table Update', event.message);
-  }, []);
-
-  const handleOwnerDecision = useCallback((event: OwnerDecisionEvent) => {
-    Alert.alert(
-      'Seat Filled by Bot',
-      `${event.playerName} did not return. Open the seat for a substitute?`,
-      [
-        { text: 'Keep Bot', style: 'cancel' },
-        {
-          text: 'Open Seat',
-          onPress: () => {
-            pushGameAction('open_seat', { position: event.position }).catch((error: unknown) => {
-              const message =
-                typeof error === 'object' && error !== null && 'reason' in error
-                  ? String((error as { reason: string }).reason)
-                  : 'Failed to open seat';
-              Alert.alert('Action Failed', message);
-            });
-          },
-        },
-      ]
-    );
-  }, []);
+  const { notice, addNotice: handleSeatEvent, dismissNotice } = useTableNotices(code);
+  const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
+  const [feedbackHeight, setFeedbackHeight] = useState(0);
 
   const handleProgressionSummary = useCallback(
     (summary: ProgressionSummary) => {
@@ -360,7 +352,6 @@ export default function GameScreen() {
     roomCode: code ?? '',
     enabled: canJoinGameChannel,
     onSeatEvent: handleSeatEvent,
-    onOwnerDecision: handleOwnerDecision,
     onProgressionSummary: handleProgressionSummary,
     onWaitingRoomEvent: handleWaitingRoomEvent,
   });
@@ -655,21 +646,33 @@ export default function GameScreen() {
 
   if (room.status === 'playing' || isInGamePhase) {
     return (
-      <SkiaGameTable
-        room={room}
-        progressionSummary={progressionSummary}
-        onLeave={handleLeaveGame}
-        onPlayAgain={handlePlayAgain}
-        backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
-      />
+      <View className="flex-1">
+        <SkiaGameTable
+          room={room}
+          feedbackHeight={feedbackHeight}
+          progressionSummary={progressionSummary}
+          onLeave={handleLeaveGame}
+          onPlayAgain={handlePlayAgain}
+          backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
+        />
+        <View
+          pointerEvents="box-none"
+          className="absolute inset-x-0 top-0"
+          onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
+          <TableFeedback decisions={decisions} notice={notice} dismissNotice={dismissNotice} />
+        </View>
+      </View>
     );
   }
 
   return (
     <>
       <WaitingTable
-        room={room}
+        room={readiness ? roomWithReadiness(room, readiness) : room}
         youPlayerId={youPlayerId}
+        readyPlayers={readiness?.ready_players}
+        readyDisabled={!isChannelJoined || !readiness}
+        onReady={role === 'player' && youPositionAbs ? handleReady : undefined}
         onLeave={handleLeaveGame}
         canManage={canManage}
         joiningName={joiningName}

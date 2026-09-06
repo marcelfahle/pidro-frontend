@@ -1,6 +1,22 @@
 import type { Position } from './lobby';
 
 export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
+export interface SeatLifecycleSnapshot {
+  room_id: string;
+  room_code: string;
+  revision: number;
+  owner_id: string | null;
+  room_status: string;
+  seats: Record<
+    Position,
+    {
+      status: SeatStatus;
+      player_id: string | null;
+      username: string | null;
+      decision: { id: string; player_name: string | null } | null;
+    }
+  >;
+}
 export type TurnTimerScope = 'seat' | 'room';
 
 export type GamePhase =

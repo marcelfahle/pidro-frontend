@@ -11,6 +11,7 @@ import type {
   LegalAction,
   RelativePlayerView,
   RelativePosition,
+  SeatStatus,
   Suit,
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
@@ -35,6 +36,7 @@ export type TableSeat = {
   isTeammate: boolean;
   isOpponent: boolean;
   isConnected: boolean;
+  seatStatus: SeatStatus;
   isCurrentTurn: boolean;
   cardCount: number | null;
   lastPlayedCard: TableCard | null;
@@ -170,6 +172,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
           isTeammate: p.isTeammate,
           isOpponent: p.isOpponent,
           isConnected: p.isConnected,
+          seatStatus: p.seatStatus,
           isCurrentTurn: p.isCurrentTurn,
           cardCount: input.getCardCountForPlayer(p.absolutePosition),
           lastPlayedCard: currentTrick[rel] ?? null,

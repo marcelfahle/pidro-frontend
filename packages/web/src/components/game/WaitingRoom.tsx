@@ -3,7 +3,6 @@ import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { PlayerProfileButton } from '../profile/PlayerProfileButton';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
-import { Spinner } from '../ui/Spinner';
 
 interface WaitingRoomProps {
   roomCode: string;
@@ -11,6 +10,7 @@ interface WaitingRoomProps {
   readyPlayers?: Position[];
   youPosition?: Position | null;
   onReady?: () => void;
+  readyDisabled?: boolean;
   onLeave: () => void;
 }
 
@@ -84,7 +84,9 @@ function SeatSlot({ meta, label, isReady }: { meta: PlayerMeta; label: string; i
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {meta.isYou && <Badge variant="blue">You</Badge>}
           {meta.isTeammate && <Badge variant="green">Ally</Badge>}
-          {isReady && !meta.isYou && <Badge variant="yellow">Ready</Badge>}
+          {occupied && (
+            <Badge variant={isReady ? 'yellow' : 'blue'}>{isReady ? 'Ready' : 'Pending'}</Badge>
+          )}
           {disconnected && <Badge variant="red">DC</Badge>}
         </div>
       </div>
@@ -98,6 +100,7 @@ export function WaitingRoom({
   readyPlayers = [],
   youPosition,
   onReady,
+  readyDisabled = false,
   onLeave,
 }: WaitingRoomProps) {
   const filledCount = Object.values(playerMeta).filter((m) => m.playerId !== null).length;
@@ -128,21 +131,28 @@ export function WaitingRoom({
           </div>
         ))}
 
-        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[49%] short:top-[42%] short:gap-2">
+        <div className="absolute inset-x-[16%] top-[39%] z-20 flex flex-col items-center gap-4 text-center max-md:inset-x-[8%] max-md:top-[49%] max-md:gap-2 short:top-[33%] short:gap-2">
           {isFull ? (
             <>
               <div className="text-base font-black uppercase tracking-[0.16em] text-cyan-50/80">
-                Tap to start the game
+                Everyone ready?
               </div>
               {onReady && (
-                <Button type="button" onClick={onReady} disabled={isYouReady} size="lg">
-                  {isYouReady ? 'Ready!' : 'Ready'}
+                <Button
+                  type="button"
+                  onClick={onReady}
+                  disabled={isYouReady || readyDisabled}
+                  size="lg"
+                >
+                  {isYouReady ? "You're ready" : "I'm ready"}
                 </Button>
               )}
-              <div className="flex items-center gap-2 rounded-full border border-cyan-300/20 bg-black/15 px-4 py-2 text-sm font-black text-cyan-50/75">
-                <Spinner size="sm" />
-                <span>Game starting...</span>
+              <div className="flex items-center gap-2 rounded-full border border-cyan-300/20 bg-black/15 px-4 py-2 text-sm font-black text-cyan-50/75 max-md:px-2 max-md:py-1 max-md:text-xs">
+                <span>{readyPlayers.length}/4 ready · Waiting for everyone to confirm</span>
               </div>
+              <p className="text-xs text-cyan-50/70 short:hidden">
+                Seat changes or a disconnect reset confirmations. Bots are ready automatically.
+              </p>
             </>
           ) : (
             <div className="pidro-panel px-6 py-4">

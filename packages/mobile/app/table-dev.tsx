@@ -14,8 +14,9 @@ import { InviteModal } from '@/components/invites/InviteModal';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
-import type { Room } from '@/types/lobby';
-import type { Invite } from '@pidro/shared';
+import type { Position, Room } from '@/types/lobby';
+import type { Invite, SeatStatus } from '@pidro/shared';
+import { TableFeedback } from '@/components/game/TableFeedback';
 
 const WAITING_ROOM: Room = {
   code: 'DEV01',
@@ -77,7 +78,13 @@ function Loading() {
   );
 }
 
-function SkiaDevTable({ onHandPresentationReadyChange, autoPlay, phase }: GameCanvasDevProps) {
+function SkiaDevTable({
+  onHandPresentationReadyChange,
+  autoPlay,
+  phase,
+  lifecycle,
+  feedbackHeight,
+}: GameCanvasDevProps) {
   const [Comp, setComp] = useState<ComponentType<GameCanvasDevProps> | null>(null);
 
   useEffect(() => {
@@ -97,6 +104,8 @@ function SkiaDevTable({ onHandPresentationReadyChange, autoPlay, phase }: GameCa
       onHandPresentationReadyChange={onHandPresentationReadyChange}
       autoPlay={autoPlay}
       phase={phase}
+      lifecycle={lifecycle}
+      feedbackHeight={feedbackHeight}
     />
   ) : (
     <Loading />
@@ -109,18 +118,54 @@ export default function TableDevRoute() {
 }
 
 function TableDevHarness() {
-  const params = useLocalSearchParams<{ phase?: string; autoplay?: string; invite?: string }>();
+  const params = useLocalSearchParams<{
+    phase?: string;
+    autoplay?: string;
+    invite?: string;
+    lifecycle?: SeatStatus;
+    feedback?: string;
+  }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
   const [isHandReady, setIsHandReady] = useState(false);
+  const [dismissed, setDismissed] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [feedbackHeight, setFeedbackHeight] = useState(0);
+  const names = ['Nora', 'Eli', 'Wynn'];
+  const positions = ['north', 'east', 'west'] as const;
+  const [readyPlayers, setReadyPlayers] = useState<Position[]>(['north', 'west']);
 
-  if (phase === 'waiting' || phase === 'waiting-host') {
-    const hostControls = phase === 'waiting-host';
+  if (
+    phase === 'waiting' ||
+    phase === 'waiting-host' ||
+    phase === 'ready' ||
+    phase === 'ready-host'
+  ) {
+    const hostControls = phase === 'waiting-host' || phase === 'ready-host';
+    const full = phase.startsWith('ready');
+    const waitingRoom: Room = full
+      ? {
+          ...WAITING_ROOM,
+          positions: { ...WAITING_ROOM.positions!, east: 'p-east' },
+          seats: WAITING_ROOM.seats!.map((seat) =>
+            seat.position === 'east'
+              ? {
+                  ...seat,
+                  status: 'occupied',
+                  player: { id: 'p-east', username: 'Erin' },
+                }
+              : seat
+          ),
+        }
+      : WAITING_ROOM;
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
           <WaitingTable
-            room={WAITING_ROOM}
+            room={waitingRoom}
+            readyPlayers={full ? readyPlayers : ['north']}
+            readyDisabled={false}
+            onReady={async () => setReadyPlayers((current) => [...current, 'south'])}
             youPlayerId="p-south"
             onLeave={() => {}}
             canManage={hostControls}
@@ -149,8 +194,46 @@ function TableDevHarness() {
           onHandPresentationReadyChange={setIsHandReady}
           autoPlay={autoPlay}
           phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
+          lifecycle={params.lifecycle}
+          feedbackHeight={feedbackHeight}
         />
         <DevOverlays phase={phase} isHandReady={isHandReady} />
+        <View
+          pointerEvents="box-none"
+          className="absolute inset-x-0 top-0"
+          onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
+          {params.feedback && (
+            <TableFeedback
+              decisions={{
+                decision:
+                  params.feedback === 'owner' && dismissed < 3
+                    ? {
+                        key: String(dismissed),
+                        id: String(dismissed),
+                        position: positions[dismissed],
+                        playerName: names[dismissed],
+                      }
+                    : null,
+                pendingCount: 3 - dismissed,
+                busy: false,
+                error,
+                keepBot: () => {
+                  setDismissed((count) => count + 1);
+                  setError(null);
+                },
+                openSeat: async () => {
+                  setError('Could not open the seat. Please try again.');
+                },
+              }}
+              notice={
+                params.feedback === 'notice'
+                  ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
+                  : null
+              }
+              dismissNotice={() => {}}
+            />
+          )}
+        </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

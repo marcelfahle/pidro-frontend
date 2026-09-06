@@ -4,6 +4,7 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { Socket } from 'phoenix';
 import { chromium } from 'playwright';
+import { confirmInitialTable } from '../../mobile/scripts/readiness-e2e.mjs';
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const CODE_RALPH_DIR = path.resolve(SCRIPT_DIR, '../../../..');
@@ -801,7 +802,10 @@ async function main() {
   });
 
   try {
-    await Promise.race([completion, timeout]);
+    const ready = passive ? Promise.resolve() : confirmInitialTable([page], '.pidro-game-frame', {
+      onWaiting: () => capture('full-table-not-ready', null, 'awaiting human confirmation'),
+    });
+    await Promise.race([Promise.all([ready, completion]), timeout]);
     await processing;
   } finally {
     if (timeoutId) {
