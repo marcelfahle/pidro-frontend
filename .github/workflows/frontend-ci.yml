@@ -126,6 +126,7 @@ jobs:
           fi
 
           bun run test:ui
+          node scripts/verify-seat-decisions.mjs
 
       - name: Compare against visual baselines
         working-directory: packages/mobile

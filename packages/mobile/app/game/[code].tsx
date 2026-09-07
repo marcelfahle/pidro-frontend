@@ -39,7 +39,7 @@ import { gameExitPath, gameRoute, parseGameOrigin } from '@/navigation/gameRoute
 import { canManageRoom } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
-import { TableFeedback, useTableNotices } from '@/components/game/TableFeedback';
+import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 
 type SkiaTableProps = {
   room: Room;
@@ -659,8 +659,9 @@ export default function GameScreen() {
           pointerEvents="box-none"
           className="absolute inset-x-0 top-0"
           onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
-          <TableFeedback decisions={decisions} notice={notice} dismissNotice={dismissNotice} />
+          <TableFeedback notice={notice} dismissNotice={dismissNotice} />
         </View>
+        <TableSeatDecision key={room.code} decisions={decisions} />
       </View>
     );
   }

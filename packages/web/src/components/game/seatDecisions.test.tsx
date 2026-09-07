@@ -155,7 +155,7 @@ describe('authoritative lifecycle and owner decisions', () => {
       reject({ reason: 'Try again' });
       await opening;
     });
-    expect(result.current.error).toBe('Try again');
+    expect(result.current.error).toBe('Could not confirm the seat update. Please try again.');
     expect(result.current.busy).toBe(false);
     expect(result.current.decision?.position).toBe('north');
     expect(refresh).toHaveBeenCalledOnce();
@@ -166,6 +166,106 @@ describe('authoritative lifecycle and owner decisions', () => {
     });
     await act(() => result.current.openSeat());
     expect(result.current.decision?.position).toBe('east');
+  });
+
+  it.each([
+    'openSeat',
+    'keepBot',
+  ] as const)('rejects captured %s after the local turn starts', async (action) => {
+    const push = vi.fn().mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useSeatDecisions(push, refresh));
+    const captured = result.current[action];
+    act(() =>
+      useGameStore.getState().setServerState({ phase: 'playing', current_player: 'south' }),
+    );
+    await act(captured);
+    expect(push).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(result.current.pendingCount).toBe(3);
+    expect(result.current.decision).toBeNull();
+    act(() => useGameStore.getState().updateCurrentTurn('north'));
+    await act(() => result.current[action]());
+    expect(push).toHaveBeenCalledExactlyOnceWith(action === 'openSeat' ? 'open_seat' : 'keep_bot', {
+      position: 'north',
+      decision_id: 'n1',
+    });
+  });
+
+  it('ignores a stale Keep bot callback after ownership loss', async () => {
+    const push = vi.fn();
+    const { result } = renderHook(() => useSeatDecisions(push, vi.fn()));
+    const keep = result.current.keepBot;
+    act(() => useGameStore.getState().applySeatLifecycle({ ...snapshot(2), owner_id: 'other' }));
+    await act(keep);
+    act(() => useGameStore.getState().applySeatLifecycle(snapshot(3)));
+    expect(result.current.pendingCount).toBe(3);
+    expect(result.current.decision?.id).toBe('n1');
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    'openSeat',
+    'keepBot',
+  ] as const)('serializes %s through reconciliation, even after the active seat changes', async (action) => {
+    let resolvePush!: () => void;
+    let resolveRefresh!: () => void;
+    const push = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePush = resolve;
+        }),
+    );
+    const refresh = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRefresh = resolve;
+        }),
+    );
+    const { result } = renderHook(() => useSeatDecisions(push, refresh));
+    let opening!: Promise<void>;
+    act(() => {
+      opening = result.current[action]();
+    });
+    const next = snapshot(2);
+    next.seats.north.decision = null;
+    act(() => useGameStore.getState().applySeatLifecycle(next));
+    expect(result.current.decision?.id).toBe('e1');
+    act(() => {
+      result.current.openSeat();
+      result.current.keepBot();
+    });
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingCount).toBe(2);
+    await act(async () => {
+      resolvePush();
+      await Promise.resolve();
+    });
+    expect(result.current.busy).toBe(true);
+    act(() => {
+      result.current.openSeat();
+      result.current.keepBot();
+    });
+    expect(push).toHaveBeenCalledTimes(1);
+    expect(result.current.pendingCount).toBe(2);
+    await act(async () => {
+      resolveRefresh();
+      await opening;
+    });
+    expect(result.current.busy).toBe(false);
+  });
+
+  it('allows a generation-checked retry after timeout and failed reconciliation', async () => {
+    const push = vi.fn().mockRejectedValue({ reason: 'timeout' });
+    const refresh = vi.fn().mockRejectedValue(new Error('offline'));
+    const { result } = renderHook(() => useSeatDecisions(push, refresh));
+    await act(() => result.current.openSeat());
+    expect(result.current.busy).toBe(false);
+    expect(result.current.pendingCount).toBe(3);
+    expect(result.current.error).not.toContain('timeout');
+    await act(() => result.current.openSeat());
+    expect(push).toHaveBeenCalledTimes(2);
+    expect(push).toHaveBeenLastCalledWith('open_seat', { position: 'north', decision_id: 'n1' });
   });
 
   it('a late action completion cannot dismiss a new generation in that seat', async () => {
@@ -200,7 +300,7 @@ describe('authoritative lifecycle and owner decisions', () => {
     const { result } = renderHook(() => useSeatDecisions(push, refresh));
     await act(() => result.current.keepBot());
     expect(result.current.decision?.id).toBe('n1');
-    expect(result.current.error).toBe('timeout');
+    expect(result.current.error).toBe('Could not confirm the seat update. Please try again.');
     refresh.mockImplementationOnce(async () => {
       const kept = snapshot(2);
       kept.seats.north.decision = null;

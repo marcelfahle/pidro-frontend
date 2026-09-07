@@ -51,10 +51,16 @@ export function useSeatDecisions(
   const inFlight = useRef<string | null>(null);
 
   const resolveDecision = async (event: 'open_seat' | 'keep_bot') => {
-    if (!visible || inFlight.current === visible.key) return;
+    if (!visible || inFlight.current !== null) return;
     const decision = visible;
     // Recheck eligibility at the click, not just at the previous render.
-    if (!pendingSeatDecisions(useGameStore.getState()).some((d) => d.key === decision.key)) return;
+    const current = useGameStore.getState();
+    if (
+      (current.youPositionAbs != null &&
+        current.serverState?.current_player === current.youPositionAbs) ||
+      !pendingSeatDecisions(current).some((d) => d.key === decision.key)
+    )
+      return;
     inFlight.current = decision.key;
     setRequest({ key: decision.key, busy: true, error: null });
     try {
@@ -62,17 +68,13 @@ export function useSeatDecisions(
         position: decision.position,
         decision_id: decision.id,
       });
-      setRequest((current) => (current?.key === decision.key ? null : current));
-    } catch (error) {
-      const message =
-        error && typeof error === 'object' && 'reason' in error
-          ? String(error.reason)
-          : 'Could not update the seat. Please try again.';
+    } catch {
+      const message = 'Could not confirm the seat update. Please try again.';
       setRequest((current) =>
         current?.key === decision.key ? { key: decision.key, busy: true, error: message } : current,
       );
     } finally {
-      // A timeout has an unknown outcome; reconcile before another attempt.
+      // Best-effort reconciliation. Retrying is safe because the server validates decision_id.
       await refresh().catch(() => {});
       if (inFlight.current === decision.key) inFlight.current = null;
       setRequest((current) =>
@@ -83,7 +85,7 @@ export function useSeatDecisions(
   return {
     decision: visible,
     pendingCount: queue.length,
-    busy: !!visible && request?.key === visible.key && request.busy,
+    busy: request?.busy ?? false,
     error: visible && request?.key === visible.key ? request.error : null,
     keepBot: () => resolveDecision('keep_bot'),
     openSeat: () => resolveDecision('open_seat'),
