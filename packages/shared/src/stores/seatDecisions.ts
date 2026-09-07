@@ -54,7 +54,13 @@ export function useSeatDecisions(
     if (!visible || inFlight.current !== null) return;
     const decision = visible;
     // Recheck eligibility at the click, not just at the previous render.
-    if (!pendingSeatDecisions(useGameStore.getState()).some((d) => d.key === decision.key)) return;
+    const current = useGameStore.getState();
+    if (
+      (current.youPositionAbs != null &&
+        current.serverState?.current_player === current.youPositionAbs) ||
+      !pendingSeatDecisions(current).some((d) => d.key === decision.key)
+    )
+      return;
     inFlight.current = decision.key;
     setRequest({ key: decision.key, busy: true, error: null });
     try {

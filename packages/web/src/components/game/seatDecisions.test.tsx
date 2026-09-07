@@ -168,6 +168,30 @@ describe('authoritative lifecycle and owner decisions', () => {
     expect(result.current.decision?.position).toBe('east');
   });
 
+  it.each([
+    'openSeat',
+    'keepBot',
+  ] as const)('rejects captured %s after the local turn starts', async (action) => {
+    const push = vi.fn().mockResolvedValue(undefined);
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useSeatDecisions(push, refresh));
+    const captured = result.current[action];
+    act(() =>
+      useGameStore.getState().setServerState({ phase: 'playing', current_player: 'south' }),
+    );
+    await act(captured);
+    expect(push).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(result.current.pendingCount).toBe(3);
+    expect(result.current.decision).toBeNull();
+    act(() => useGameStore.getState().updateCurrentTurn('north'));
+    await act(() => result.current[action]());
+    expect(push).toHaveBeenCalledExactlyOnceWith(action === 'openSeat' ? 'open_seat' : 'keep_bot', {
+      position: 'north',
+      decision_id: 'n1',
+    });
+  });
+
   it('ignores a stale Keep bot callback after ownership loss', async () => {
     const push = vi.fn();
     const { result } = renderHook(() => useSeatDecisions(push, vi.fn()));
