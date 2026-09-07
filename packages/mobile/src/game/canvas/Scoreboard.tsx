@@ -21,7 +21,7 @@ type ScoreHistoryEntry = {
 function teams(scores: Scores, you: Position | null) {
   const ns = scores?.north_south ?? 0;
   const ew = scores?.east_west ?? 0;
-  const youAreNS = you === 'north' || you === 'south';
+  const youAreNS = you === null || you === 'north' || you === 'south';
   return { us: youAreNS ? ns : ew, them: youAreNS ? ew : ns };
 }
 
@@ -57,6 +57,8 @@ export function Scoreboard({
   left?: number;
 }) {
   const { us, them } = teams(scores, youPosition);
+  const usLabel = youPosition ? 'US' : 'N/S';
+  const themLabel = youPosition ? 'THEM' : 'E/W';
   const [isOpen, setIsOpen] = useState(false);
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
   const prevScoresRef = useRef<ConcreteScores | null>(scores ? copyScores(scores) : null);
@@ -105,7 +107,7 @@ export function Scoreboard({
     <View style={[styles.wrap, { top: top - 10, left: left + 12 }]} pointerEvents="box-none">
       <PressableFX
         accessibilityRole="button"
-        accessibilityLabel={`Us ${us}, them ${them}. Toggle hand scores.`}
+        accessibilityLabel={`${usLabel} ${us}, ${themLabel} ${them}. Toggle hand scores.`}
         accessibilityState={{ expanded: isOpen }}
         onPress={() => setIsOpen((open) => !open)}
         style={styles.plaque}
@@ -113,7 +115,7 @@ export function Scoreboard({
         <View style={styles.plaqueRow}>
           <View style={styles.col}>
             <PidroText role="metadata" tone="gold" style={styles.label}>
-              US
+              {usLabel}
             </PidroText>
             <PidroText role="title" style={styles.value}>
               {us}
@@ -122,7 +124,7 @@ export function Scoreboard({
           <View style={styles.divider} />
           <View style={styles.col}>
             <PidroText role="metadata" tone="gold" style={styles.label}>
-              THEM
+              {themLabel}
             </PidroText>
             <PidroText role="title" style={styles.value}>
               {them}
@@ -143,7 +145,7 @@ export function Scoreboard({
               Hands
             </PidroText>
             <PidroText role="metadata" tone="muted">
-              Us / Them
+              {usLabel} / {themLabel}
             </PidroText>
           </View>
           {scoreHistory.length === 0 ? (

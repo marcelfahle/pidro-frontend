@@ -78,14 +78,28 @@ describe('authoritative lifecycle and owner decisions', () => {
     expect(useGameStore.getState().lifecycle).toBe(value);
   });
 
-  it('queues three departures and never reopens a dismissed generation on replay/rejoin', () => {
-    const { result } = renderHook(() => useSeatDecisions(vi.fn(), vi.fn()));
+  it('resolves Keep Bot on the server and never reopens it on replay or a cold join', async () => {
+    const kept = snapshot(2);
+    kept.seats.north.decision = null;
+    const push = vi.fn().mockImplementation(async () => {
+      useGameStore.getState().applySeatLifecycle(kept);
+    });
+    const { result } = renderHook(() =>
+      useSeatDecisions(push, vi.fn().mockResolvedValue(undefined)),
+    );
     expect(result.current.pendingCount).toBe(3);
     expect(result.current.decision?.playerName).toBe('Nora');
-    act(() => result.current.keepBot());
+    await act(() => result.current.keepBot());
+    expect(push).toHaveBeenCalledExactlyOnceWith('keep_bot', {
+      position: 'north',
+      decision_id: 'n1',
+    });
     act(() => {
+      useGameStore.getState().reset();
+      useGameStore.setState({ roomCode: 'TEST', youPlayerId: 'you', role: 'player' });
       useGameStore.getState().setChannelStatus(false);
-      useGameStore.getState().applySeatLifecycle(snapshot(2));
+      useGameStore.getState().applySeatLifecycle(kept);
+      useGameStore.getState().applySeatLifecycle(snapshot(1));
       useGameStore.getState().setChannelStatus(true);
     });
     expect(result.current.pendingCount).toBe(2);
@@ -145,7 +159,11 @@ describe('authoritative lifecycle and owner decisions', () => {
     expect(result.current.busy).toBe(false);
     expect(result.current.decision?.position).toBe('north');
     expect(refresh).toHaveBeenCalledOnce();
-    push.mockResolvedValueOnce(undefined);
+    push.mockImplementationOnce(async () => {
+      const opened = snapshot(2);
+      opened.seats.north = { status: 'vacant', player_id: null, username: null, decision: null };
+      useGameStore.getState().applySeatLifecycle(opened);
+    });
     await act(() => result.current.openSeat());
     expect(result.current.decision?.position).toBe('east');
   });
@@ -174,5 +192,22 @@ describe('authoritative lifecycle and owner decisions', () => {
     });
     expect(result.current.decision?.id).toBe('n2');
     expect(result.current.pendingCount).toBe(3);
+  });
+
+  it('keeps an unanswered prompt on failure but reconciles a lost Keep Bot acknowledgement', async () => {
+    const push = vi.fn().mockRejectedValue({ reason: 'timeout' });
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const { result } = renderHook(() => useSeatDecisions(push, refresh));
+    await act(() => result.current.keepBot());
+    expect(result.current.decision?.id).toBe('n1');
+    expect(result.current.error).toBe('timeout');
+    refresh.mockImplementationOnce(async () => {
+      const kept = snapshot(2);
+      kept.seats.north.decision = null;
+      useGameStore.getState().applySeatLifecycle(kept);
+    });
+    await act(() => result.current.keepBot());
+    expect(result.current.decision?.id).toBe('e1');
+    expect(result.current.error).toBeNull();
   });
 });

@@ -273,4 +273,21 @@ describe('WaitingRoom', () => {
     await userEvent.click(screen.getByRole('button', { name: "I'm ready" }));
     expect(onReady).not.toHaveBeenCalled();
   });
+
+  it('uses spectator role over stale roster identity', () => {
+    render(
+      <WaitingRoom
+        roomCode="XYZ"
+        playerMeta={makePlayerMeta({ playerId: 'p1', username: 'Alice', isYou: true })}
+        viewerRole="spectator"
+        onReady={vi.fn()}
+        onLeave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('Watching')).toBeInTheDocument();
+    expect(screen.queryByText('You')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: "I'm ready" })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Back to lobby' })).toBeInTheDocument();
+  });
 });

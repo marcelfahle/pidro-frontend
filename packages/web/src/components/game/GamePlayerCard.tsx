@@ -75,9 +75,9 @@ export function GamePlayerCard({
     : isReconnecting
       ? 'Reconnecting...'
       : seatStatus === 'bot_substitute'
-        ? 'Bot · can return'
+        ? 'Rejoin to play'
         : seatStatus === 'permanent_bot'
-          ? 'Permanent bot'
+          ? 'Bot playing'
           : statusText;
 
   const onRight = imagePosition === 'right';

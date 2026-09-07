@@ -45,9 +45,9 @@ function statusFor(data: TableSeat, override?: string): string | null {
     case 'reconnecting':
       return 'Reconnecting';
     case 'bot_substitute':
-      return 'Bot · can return';
+      return 'Rejoin to play';
     case 'permanent_bot':
-      return 'Permanent bot';
+      return 'Bot playing';
     case 'vacant':
       return 'Open for player';
   }

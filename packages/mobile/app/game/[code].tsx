@@ -356,7 +356,7 @@ export default function GameScreen() {
     onWaitingRoomEvent: handleWaitingRoomEvent,
   });
 
-  const canManage = room ? canManageRoom(room, youPlayerId) : false;
+  const canManage = isChannelJoined && room ? canManageRoom(room, youPlayerId, role) : false;
 
   useEffect(() => {
     if (!code || !authHydrated || !accessToken || !shouldRestoreServerState) {
@@ -669,7 +669,8 @@ export default function GameScreen() {
     <>
       <WaitingTable
         room={readiness ? roomWithReadiness(room, readiness) : room}
-        youPlayerId={youPlayerId}
+        youPlayerId={role === 'player' ? youPlayerId : ''}
+        isSpectator={role === 'spectator'}
         readyPlayers={readiness?.ready_players}
         readyDisabled={!isChannelJoined || !readiness}
         onReady={role === 'player' && youPositionAbs ? handleReady : undefined}

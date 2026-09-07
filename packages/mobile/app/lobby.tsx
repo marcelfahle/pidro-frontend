@@ -364,7 +364,7 @@ export default function LobbyScreen() {
                     key={`sub-${room.code}`}
                     room={room}
                     label="Join as substitute"
-                    onPress={() => router.push(`/game/${room.code}`)}
+                    onPress={() => handleJoinRoom(room.code)}
                   />
                 ))}
               </View>

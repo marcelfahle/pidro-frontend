@@ -1,4 +1,11 @@
-import { normalizeRoom, normalizeRooms, useLobbyStore } from '@pidro/shared';
+import {
+  flattenLobbyCategories,
+  hasLobbyCategories,
+  normalizeLobbyCategories,
+  normalizeRoom,
+  normalizeRooms,
+  useLobbyStore,
+} from '@pidro/shared';
 import type { Channel } from 'phoenix';
 import { Presence } from 'phoenix';
 import { useEffect } from 'react';
@@ -9,8 +16,10 @@ let referenceCount = 0;
 
 export const useLobbyChannel = () => {
   const setRooms = useLobbyStore((s) => s.setRooms);
+  const setLobby = useLobbyStore((s) => s.setLobby);
   const addRoom = useLobbyStore((s) => s.addRoom);
   const updateRoom = useLobbyStore((s) => s.updateRoom);
+  const upsertLobbyRoom = useLobbyStore((s) => s.upsertLobbyRoom);
   const removeRoom = useLobbyStore((s) => s.removeRoom);
   const setStats = useLobbyStore((s) => s.setStats);
   const setLoading = useLobbyStore((s) => s.setLoading);
@@ -34,6 +43,16 @@ export const useLobbyChannel = () => {
       channel
         .join()
         .receive('ok', (response: Record<string, unknown>) => {
+          const rawLobby = response?.lobby ?? (response?.data as Record<string, unknown>)?.lobby;
+          if (hasLobbyCategories(rawLobby)) {
+            const lobby = normalizeLobbyCategories(rawLobby);
+            const rooms = flattenLobbyCategories(lobby);
+            setLobby(lobby);
+            setStats({ active_games: rooms.length });
+            setLoading(false);
+            setError(null);
+            return;
+          }
           const rawRooms = (response?.rooms ??
             (response?.data as Record<string, unknown>)?.rooms) as unknown;
           const rooms = normalizeRooms(rawRooms);
@@ -52,6 +71,14 @@ export const useLobbyChannel = () => {
         });
 
       channel.on('lobby_update', (payload: Record<string, unknown>) => {
+        const rawLobby = payload?.lobby ?? (payload?.data as Record<string, unknown>)?.lobby;
+        if (hasLobbyCategories(rawLobby)) {
+          const lobby = normalizeLobbyCategories(rawLobby);
+          const rooms = flattenLobbyCategories(lobby);
+          setLobby(lobby);
+          setStats({ active_games: rooms.length });
+          return;
+        }
         const rawRooms = (payload?.rooms ??
           (payload?.data as Record<string, unknown>)?.rooms) as unknown;
         const rooms = normalizeRooms(rawRooms);
@@ -60,16 +87,24 @@ export const useLobbyChannel = () => {
       });
 
       channel.on('room_created', (payload: Record<string, unknown>) => {
-        const room = payload?.room || (payload?.data as Record<string, unknown>)?.room;
+        const data = payload?.data as Record<string, unknown> | undefined;
+        const room = payload?.room || data?.room;
         if (room) {
-          addRoom(normalizeRoom(room));
+          const category = 'category' in payload ? payload.category : data?.category;
+          category !== undefined
+            ? upsertLobbyRoom(normalizeRoom(room), category as string | null)
+            : addRoom(normalizeRoom(room));
         }
       });
 
       channel.on('room_updated', (payload: Record<string, unknown>) => {
-        const room = payload?.room || (payload?.data as Record<string, unknown>)?.room;
+        const data = payload?.data as Record<string, unknown> | undefined;
+        const room = payload?.room || data?.room;
         if (room) {
-          updateRoom(normalizeRoom(room));
+          const category = 'category' in payload ? payload.category : data?.category;
+          category !== undefined
+            ? upsertLobbyRoom(normalizeRoom(room), category as string | null)
+            : updateRoom(normalizeRoom(room));
         }
       });
 
@@ -121,5 +156,15 @@ export const useLobbyChannel = () => {
         globalChannel = null;
       }
     };
-  }, [setRooms, addRoom, updateRoom, removeRoom, setStats, setLoading, setError]);
+  }, [
+    setRooms,
+    setLobby,
+    addRoom,
+    updateRoom,
+    upsertLobbyRoom,
+    removeRoom,
+    setStats,
+    setLoading,
+    setError,
+  ]);
 };

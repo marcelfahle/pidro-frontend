@@ -53,12 +53,13 @@ export type GameTableController = {
 
 export function useGameTableController(room?: Room): GameTableController {
   const viewModel = useGameViewModel();
-  const { serverState, youPositionAbs, isChannelJoined, legalActions } = useGameStore(
+  const { serverState, youPositionAbs, isChannelJoined, legalActions, role } = useGameStore(
     useShallow((s) => ({
       serverState: s.serverState,
       youPositionAbs: s.youPositionAbs,
       isChannelJoined: s.isChannelJoined,
       legalActions: s.legalActions,
+      role: s.role,
     }))
   );
 
@@ -69,10 +70,10 @@ export function useGameTableController(room?: Room): GameTableController {
   const currentTurnRelative = viewModel?.currentTurnRelative ?? null;
 
   const yourHand = useMemo(() => {
-    if (!serverState || !youPositionAbs) return null;
+    if (role !== 'player' || !serverState || !youPositionAbs) return null;
     const hand = serverState.players?.[youPositionAbs]?.hand;
     return Array.isArray(hand) ? hand : null;
-  }, [serverState, youPositionAbs]);
+  }, [serverState, youPositionAbs, role]);
 
   const yourCardCount = useMemo(() => {
     if (!serverState || !youPositionAbs) return null;
@@ -114,14 +115,24 @@ export function useGameTableController(room?: Room): GameTableController {
     [serverState]
   );
 
-  const isYourTurn = players.find((p) => p.relativePosition === 'south')?.isCurrentTurn ?? false;
-  const isPlayingTurn = isYourTurn && phase === 'playing';
+  const isYourTurn =
+    role === 'player' && isChannelJoined && (players.find((p) => p.isYou)?.isCurrentTurn ?? false);
+  const isPlayingTurn =
+    isYourTurn && phase === 'playing' && legalActions.some((action) => action.type === 'play_card');
   const isDeclaringPhase =
     phase === 'declaring' || phase === 'declaring_trump' || phase === 'trump_declaration';
-  const showTrumpSelection = isDeclaringPhase && isYourTurn;
+  const showTrumpSelection =
+    isDeclaringPhase &&
+    isYourTurn &&
+    legalActions.some((action) => action.type === 'declare_trump');
   const isGameOver =
     phase === 'complete' || phase === 'game_over' || (phase as string) === 'finished';
-  const isSecondDeal = phase === 'second_deal' && !!yourHand && yourHand.length > 6;
+  const isSecondDeal =
+    role === 'player' &&
+    isChannelJoined &&
+    phase === 'second_deal' &&
+    !!yourHand &&
+    yourHand.length > 6;
 
   const [isPlayingCard, setIsPlayingCard] = useState(false);
 

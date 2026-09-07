@@ -30,9 +30,16 @@ const room = {
 
 describe('waiting-table host controls', () => {
   it('only exposes controls to the room host while waiting', () => {
-    expect(canManageRoom(room, 'host-1')).toBe(true);
-    expect(canManageRoom(room, 'guest-1')).toBe(false);
-    expect(canManageRoom({ ...room, status: 'playing' }, 'host-1')).toBe(false);
+    expect(canManageRoom(room, 'host-1', 'player')).toBe(true);
+    expect(canManageRoom(room, 'guest-1', 'player')).toBe(false);
+    expect(canManageRoom({ ...room, status: 'playing' }, 'host-1', 'player')).toBe(false);
+  });
+
+  it('rejects stale host ownership until the server confirms a player role', () => {
+    expect(canManageRoom(room, 'host-1', 'spectator')).toBe(false);
+    expect(canManageRoom(room, 'host-1', null)).toBe(false);
+    expect(canManageRoom({ ...room, status: 'ready' }, 'host-1', 'spectator')).toBe(false);
+    expect(canManageRoom({ ...room, status: 'ready' }, 'host-1', 'player')).toBe(true);
   });
 
   it('uses usernames and offers only open move targets', () => {

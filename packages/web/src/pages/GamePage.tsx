@@ -591,6 +591,7 @@ export function GamePage() {
           onReady={role === 'player' && youPositionAbs ? handleReady : undefined}
           readyDisabled={!isChannelJoined || !readiness}
           onLeave={handleLeave}
+          viewerRole={role}
         />
       </div>
     </div>
