@@ -6,7 +6,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { computeLayout } from '@/game/canvas/layout';
-import { useGameStore, useGameViewModel } from '@/stores/game';
+import { useGameStore } from '@/stores/game';
 import type { LegalAction } from '@/types/game';
 
 const ALL_BID_VALUES = [6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
@@ -30,7 +30,6 @@ export function BiddingActions({
 }) {
   const serverState = useGameStore((state) => state.serverState);
   const legalActions = useGameStore((state) => state.legalActions);
-  const viewModel = useGameViewModel();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const landscape = width > height;
@@ -47,17 +46,6 @@ export function BiddingActions({
     bids.sort((a, b) => a - b);
     return { bidOptions: bids, legalBidSet: new Set(bids), canPass: pass };
   }, [legalActions]);
-
-  const highestAmount =
-    serverState?.current_bid ??
-    (typeof serverState?.highest_bid?.amount === 'number' ? serverState.highest_bid.amount : null);
-  const highestPosition = serverState?.highest_bid?.position ?? serverState?.bid_winner ?? null;
-  const highestPlayer = highestPosition
-    ? viewModel?.players.find((player) => player.absolutePosition === highestPosition)
-    : null;
-  const bidContext = highestAmount
-    ? `Current bid: ${highestAmount}${highestPlayer?.username ? ` by ${highestPlayer.username}` : ''}.`
-    : 'No bid has been placed yet.';
 
   const showBiddingPanel = serverState?.phase === 'bidding';
   const canAct = isYourTurn && isHandReady && (bidOptions.length > 0 || canPass);
@@ -106,12 +94,7 @@ export function BiddingActions({
         },
       ]}
       pointerEvents="box-none">
-      <View
-        testID="bidding-window"
-        accessible
-        accessibilityLabel={`Place your bid. ${bidContext}`}
-        accessibilityState={{ busy: isSubmitting }}
-        style={styles.panel}>
+      <View testID="bidding-window" style={styles.panel}>
         <View testID="bidding-grid" style={[styles.bidGrid, { width: gridWidth, gap: GRID_GAP }]}>
           {ALL_BID_VALUES.map((amount) => {
             const isLegal = legalBidSet.has(amount);

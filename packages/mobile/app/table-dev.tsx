@@ -271,6 +271,7 @@ function TableDevHarness() {
             phase={phase}
             isHandReady={isHandReady}
             canPass={params.pass !== 'disabled'}
+            feedbackHeight={feedbackHeight}
           />
         </SafeAreaInsetsContext.Provider>
         {params.feedback === 'owner' && (
