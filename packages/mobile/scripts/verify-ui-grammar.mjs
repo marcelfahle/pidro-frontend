@@ -155,10 +155,10 @@ async function assertTargetGeometry(page, testCase, viewport) {
   }
 
   if (testCase.name === 'table-waiting' || testCase.name === 'table-host-controls') {
-    if (await page.getByRole('button', { name: "View Bot's profile" }).count()) {
+    if (await page.getByRole('button', { name: /Bot.*View profile/ }).count()) {
       throw new Error(`${testCase.name} exposes a bot profile action in ${viewport.name}`);
     }
-    await page.getByRole('button', { name: 'View your profile', exact: true }).waitFor();
+    await page.getByRole('button', { name: /, You, .*View profile$/ }).waitFor();
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
@@ -550,9 +550,7 @@ async function main() {
             await confirmed.waitFor();
             if (!(await confirmed.isDisabled()))
               throw new Error('Confirmed readiness action must be disabled');
-            await page
-              .getByText('3/4 ready · Bots are ready automatically', { exact: true })
-              .waitFor();
+            await page.getByText('3 of 4 ready', { exact: true }).waitFor();
           }
           if (pageErrors.length) {
             throw new Error(`${testCase.name} interaction errors: ${pageErrors.join(' | ')}`);

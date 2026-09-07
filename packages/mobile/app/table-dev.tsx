@@ -6,7 +6,7 @@
  */
 import { useEffect, useState, type ComponentType } from 'react';
 import { Text, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
@@ -43,7 +43,7 @@ const WAITING_ROOM: Room = {
     {
       seat_index: 2,
       status: 'occupied',
-      player: { id: 'p-west', username: 'Wynn' },
+      player: { id: 'p-west', username: 'mfios1', avatar_url: fixtureAvatar('i', '#437d9e') },
       position: 'west',
     },
     {
@@ -55,6 +55,10 @@ const WAITING_ROOM: Room = {
     { seat_index: 4, status: 'free', player: null, position: 'east' },
   ],
 };
+
+function fixtureAvatar(initial: string, color: string) {
+  return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="${color}"/><text x="40" y="54" text-anchor="middle" font-size="48" fill="white">${initial}</text></svg>`)}`;
+}
 
 const INVITE_FIXTURE: Invite = {
   code: '7KQ4M2XB',
@@ -129,6 +133,9 @@ function TableDevHarness() {
     role?: string;
     playerName?: string;
     notice?: string;
+    names?: string;
+    safeArea?: string;
+    viewer?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -140,6 +147,9 @@ function TableDevHarness() {
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
   const [readyPlayers, setReadyPlayers] = useState<Position[]>(['north', 'west']);
+  const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
+  const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
+  const [waitingLocked, setWaitingLocked] = useState(false);
 
   if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
     return (
@@ -168,34 +178,73 @@ function TableDevHarness() {
               ? {
                   ...seat,
                   status: 'occupied',
-                  player: { id: 'p-east', username: 'Erin' },
+                  player: {
+                    id: 'p-east',
+                    username: 'mfand1',
+                    avatar_url: fixtureAvatar('a', '#8e6851'),
+                  },
                 }
               : seat
           ),
         }
       : WAITING_ROOM;
+    const fixtureRoom = {
+      ...waitingRoom,
+      locked: waitingLocked,
+      positions: waitingPositions ?? waitingRoom.positions,
+      seats: waitingRoom.seats?.map((seat) =>
+        params.names === 'long' && seat.player?.id === 'p-west'
+          ? { ...seat, player: { ...seat.player, username: 'Alexandria the Long-Named Player' } }
+          : seat
+      ),
+    };
+    const fixtureInsets =
+      params.safeArea === 'island'
+        ? { top: 59, bottom: 34, left: 0, right: 0 }
+        : params.safeArea === 'android'
+          ? { top: 24, bottom: 48, left: 0, right: 0 }
+          : { top: 0, bottom: 0, left: 0, right: 0 };
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
-          <WaitingTable
-            room={waitingRoom}
-            isSpectator={params.role === 'spectator'}
-            readyPlayers={full ? readyPlayers : ['north']}
-            readyDisabled={false}
-            onReady={async () => setReadyPlayers((current) => [...current, 'south'])}
-            youPlayerId="p-south"
-            onLeave={() => {}}
-            canManage={hostControls}
-            onOpenInvite={() => {}}
-            onToggleLock={() => {}}
-            onMovePlayer={() => {}}
-            onKickPlayer={() => {}}
-          />
+          <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+            <WaitingTable
+              room={fixtureRoom}
+              isSpectator={params.role === 'spectator'}
+              readyPlayers={full ? readyPlayers : ['north']}
+              readyDisabled={false}
+              onReady={async () =>
+                setReadyPlayers((current) => [
+                  ...current,
+                  params.viewer === 'east' ? 'east' : 'south',
+                ])
+              }
+              youPlayerId={params.viewer === 'east' ? 'p-east' : 'p-south'}
+              onLeave={() => {}}
+              canManage={hostControls}
+              onOpenInvite={() => setInviteOpen(true)}
+              onToggleLock={() => setWaitingLocked((locked) => !locked)}
+              onMovePlayer={(playerId, target) => {
+                const positions = { ...fixtureRoom.positions! };
+                const source = (Object.keys(positions) as Position[]).find(
+                  (position) => positions[position] === playerId
+                )!;
+                positions[source] = positions[target];
+                positions[target] = playerId;
+                setWaitingPositions(positions);
+                setReadyPlayers(['north']);
+              }}
+              onKickPlayer={(position) => {
+                setWaitingPositions({ ...fixtureRoom.positions!, [position]: null });
+                setReadyPlayers(['north']);
+              }}
+            />
+          </SafeAreaInsetsContext.Provider>
           {hostControls ? (
             <InviteModal
-              isOpen={params.invite === 'true'}
+              isOpen={inviteOpen}
               roomCode={WAITING_ROOM.code}
-              onClose={() => {}}
+              onClose={() => setInviteOpen(false)}
               fixture={INVITE_FIXTURE}
             />
           ) : null}

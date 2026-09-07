@@ -1,16 +1,14 @@
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useRef, useState } from 'react';
+import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { Fragment, useRef, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Background } from '@/components/ui/Background';
 import { Button } from '@/components/ui/Button';
 import { PidroText } from '@/components/ui/PidroText';
-import { Surface } from '@/components/ui/Surface';
 import { Modal } from '@/components/ui/Modal';
-import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroColors } from '@/design/tokens';
 import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
-import { Scoreboard } from '@/game/canvas/Scoreboard';
 import type { Position, Room } from '@/types/lobby';
 import { Avatar } from '@/components/ui/Avatar';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -39,20 +37,16 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
   const youAbs = POSITIONS.find((position) => positions?.[position] === youPlayerId) ?? 'south';
   const youIdx = POSITIONS.indexOf(youAbs);
   const relatives: RelPosition[] = ['bottom', 'left', 'top', 'right'];
-
   return POSITIONS.map((absolute, absoluteIndex) => {
     const playerId = positions?.[absolute] ?? null;
     const seat = playerId ? seatByPlayerId.get(playerId) : undefined;
-    const isYou = !!playerId && playerId === youPlayerId;
     const isBot = !!seat?.player?.is_bot;
-    const name = isYou ? 'You' : isBot ? 'Bot' : seatDisplayName(seat?.player) || 'Open seat';
-    const rel = relatives[(absoluteIndex - youIdx + 4) % 4];
     return {
       absolute,
-      rel,
-      name,
+      rel: relatives[(absoluteIndex - youIdx + 4) % 4],
+      name: seatDisplayName(seat?.player) || (isBot ? 'Bot' : playerId ? 'Player' : 'Open seat'),
       playerId,
-      isYou,
+      isYou: !!playerId && playerId === youPlayerId,
       isBot,
       occupied: !!playerId,
       avatarUrl: seat?.player?.avatar_url ?? null,
@@ -60,89 +54,73 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
   });
 }
 
-const SEAT_ANCHORS: Record<
-  RelPosition,
-  { top?: string; bottom?: string; left?: string; right?: string; center?: boolean }
-> = {
-  top: { top: '8%', center: true },
-  bottom: { bottom: '9%', center: true },
-  left: { left: '3%', top: '43%' },
-  right: { right: '3%', top: '43%' },
-};
-
 function SeatPlate({
   seat,
-  portrait,
   ready,
-  onManage,
+  relationship,
   onProfile,
 }: {
   seat: SeatInfo;
-  portrait: boolean;
   ready: boolean;
-  onManage?: () => void;
+  relationship: string;
   onProfile?: () => void;
 }) {
-  const anchor = SEAT_ANCHORS[seat.rel];
-  const isSideSeat = seat.rel === 'left' || seat.rel === 'right';
-  return (
-    <View
-      style={[
-        styles.seatWrap,
-        {
-          top: anchor.top as never,
-          bottom: anchor.bottom as never,
-          left: anchor.center ? 0 : (anchor.left as never),
-          right: anchor.center ? 0 : (anchor.right as never),
-          alignItems: anchor.center ? 'center' : anchor.left ? 'flex-start' : 'flex-end',
-        },
-        portrait && isSideSeat && styles.sideSeatPortrait,
-      ]}
-      pointerEvents="box-none">
-      <Surface
-        testID={`waiting-seat-${seat.absolute}`}
-        variant="plaque"
-        style={[styles.seatPlate, seat.isYou && styles.seatPlateYou]}>
-        {seat.occupied ? (
-          onProfile ? (
-            <View className="-m-1">
-              <PressableFX
-                accessibilityRole="button"
-                accessibilityLabel={
-                  seat.isYou ? 'View your profile' : `View ${seat.name}'s profile`
-                }
-                onPress={onProfile}>
-                <View className="h-11 w-11 items-center justify-center">
-                  <Avatar uri={seat.avatarUrl} style={styles.avatar} resizeMode="cover" />
-                </View>
-              </PressableFX>
-            </View>
+  const status = seat.occupied ? (ready ? 'Ready' : 'Pending') : 'Available';
+  const identity = (
+    <View className="items-center gap-2 py-2">
+      <View className="relative">
+        <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-white/20 bg-black/10">
+          {seat.occupied ? (
+            <Avatar
+              key={seat.playerId}
+              uri={seat.avatarUrl}
+              // Bundled RN Web images need explicit dimensions instead of intrinsic size.
+              style={{ width: 72, height: 72 }}
+              resizeMode="cover"
+            />
           ) : (
-            <Avatar uri={seat.avatarUrl} style={styles.avatar} resizeMode="cover" />
-          )
-        ) : (
-          <View style={styles.openAvatar}>
-            <Feather name="user-plus" size={17} color={PidroColors.textMuted} />
+            <Feather name="user-plus" size={28} color={PidroColors.textSoft} />
+          )}
+        </View>
+        {seat.occupied && ready && (
+          <View
+            testID={`waiting-ready-${seat.absolute}`}
+            className="absolute right-0 bottom-0 h-6 w-6 items-center justify-center rounded-full border-2 border-[#12344c] bg-[#87ddd1]">
+            <Feather name="check" size={14} color="#082738" />
           </View>
         )}
-        <View style={styles.seatCopy}>
-          <PidroText role="label" tone={seat.isYou ? 'gold' : 'default'} numberOfLines={1}>
-            {seat.name}
-          </PidroText>
-          <PidroText role="metadata" tone={seat.occupied ? 'cyan' : 'muted'}>
-            {seat.occupied ? (ready ? 'Ready' : 'Pending') : 'Available'}
-          </PidroText>
+      </View>
+      <PidroText
+        testID={`waiting-name-${seat.absolute}`}
+        role="label"
+        align="center"
+        numberOfLines={1}
+        ellipsizeMode="tail"
+        className="w-full">
+        {seat.name}
+      </PidroText>
+      {(seat.isYou || (seat.isBot && seat.name !== 'Bot')) && (
+        <PidroText role="metadata" tone="soft">
+          {seat.isYou ? 'You' : 'Bot'}
+        </PidroText>
+      )}
+    </View>
+  );
+  return (
+    <View testID={`waiting-seat-${seat.absolute}`} className="min-w-0 flex-1">
+      {onProfile ? (
+        <PressableFX
+          accessibilityRole="button"
+          accessibilityLabel={`${seat.name}, ${relationship}, ${status}. View profile`}
+          accessibilityHint="Opens the player's full name and profile"
+          onPress={onProfile}>
+          {identity}
+        </PressableFX>
+      ) : (
+        <View accessible accessibilityLabel={`${seat.name}, ${relationship}, ${status}`}>
+          {identity}
         </View>
-        {onManage ? (
-          <Button
-            accessibilityLabel={t('table.managePlayer', { name: seat.name })}
-            variant="ghost"
-            size="icon"
-            onPress={onManage}>
-            <Feather name="more-horizontal" size={20} color={PidroColors.text} />
-          </Button>
-        ) : null}
-      </Surface>
+      )}
     </View>
   );
 }
@@ -183,13 +161,13 @@ export function WaitingTable({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
-  const compactLandscape = !portrait && width < 720;
   const canManageTable = canManage && !isSpectator;
   const seats = buildSeats(room, isSpectator ? '' : youPlayerId);
   const openSeats = seats.filter((seat) => !seat.occupied).length;
   const youPosition = isSpectator
     ? null
     : (POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null);
+  const [tableMenuOpen, setTableMenuOpen] = useState(false);
   const [selectedSeat, setSelectedSeat] = useState<SeatInfo | null>(null);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [readyBusy, setReadyBusy] = useState(false);
@@ -197,7 +175,7 @@ export function WaitingTable({
   const [readyError, setReadyError] = useState<string | null>(null);
   const isYouReady = !!youPosition && readyPlayers.includes(youPosition);
   const confirmReady = async () => {
-    if (!onReady || readyDisabled || readyBusyRef.current || isYouReady) return;
+    if (isSpectator || !onReady || readyDisabled || readyBusyRef.current || isYouReady) return;
     readyBusyRef.current = true;
     setReadyBusy(true);
     setReadyError(null);
@@ -214,222 +192,232 @@ export function WaitingTable({
     !!selectedSeat && room.positions?.[selectedSeat.absolute] === selectedSeat.playerId;
   const moveTargets =
     selectedSeat && selectedSeatIsCurrent ? availableMoveTargets(room, selectedSeat.absolute) : [];
+  const teamName = (seat: SeatInfo) =>
+    seat.rel === 'bottom' || seat.rel === 'top'
+      ? youPosition
+        ? 'Your team'
+        : 'North / South'
+      : youPosition
+        ? 'Opponents'
+        : 'East / West';
 
   return (
     <Background>
-      <View testID="waiting-table" style={styles.root}>
-        <Scoreboard
-          scores={{ north_south: 0, east_west: 0 }}
-          youPosition={youPosition}
-          roomCode={room.code}
-          top={insets.top}
-          left={insets.left}
-        />
-        <Button
-          label={isSpectator ? 'Back to lobby' : 'Leave'}
-          variant="outline"
-          size="sm"
-          onPress={onLeave}
-          style={[styles.leave, { top: insets.top + 8, right: insets.right + 10 }]}
-        />
-        {isSpectator && <WatchingBadge />}
-
-        {seats.map((seat) => (
-          <SeatPlate
-            key={seat.rel}
-            seat={seat}
-            portrait={portrait}
-            onProfile={
-              seat.occupied && !seat.isBot ? () => setProfilePlayerId(seat.playerId) : undefined
-            }
-            ready={readyPlayers.includes(seat.absolute)}
-            onManage={
-              canManageTable && seat.occupied && !seat.isYou && !seat.isBot && seat.playerId
-                ? () => setSelectedSeat(seat)
-                : undefined
-            }
+      <View
+        testID="waiting-table"
+        className="flex-1"
+        style={{
+          paddingTop: insets.top,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
+          paddingBottom: insets.bottom + (isSpectator ? 64 : 0),
+        }}>
+        <View
+          testID="waiting-toolbar"
+          className="flex-row items-center justify-between gap-2 px-4 py-2">
+          <Button
+            label={isSpectator ? 'Back to lobby' : 'Leave'}
+            variant="ghost"
+            size="sm"
+            onPress={onLeave}
           />
-        ))}
-
-        <View style={styles.centerWrap} pointerEvents="box-none">
-          <Surface
-            testID="readiness-panel"
-            variant="window"
-            className={portrait ? 'w-full py-4' : 'w-[44%] py-2'}
-            style={[
-              styles.statusWindow,
-              compactLandscape && canManageTable && styles.statusWindowCompact,
-            ]}>
-            <PidroText role="title" align="center">
-              {joiningName
-                ? t('table.joining', { name: joiningName })
-                : openSeats > 0
-                  ? `Waiting for ${openSeats} more ${openSeats === 1 ? 'player' : 'players'}…`
-                  : 'Everyone ready?'}
+          <View className="min-w-0 flex-1 flex-row items-center justify-center gap-1">
+            {room.locked && (
+              <Feather
+                name="lock"
+                size={12}
+                color={PidroColors.textSoft}
+                accessibilityLabel="Table locked"
+              />
+            )}
+            <PidroText testID="waiting-room-code" role="metadata" tone="soft" numberOfLines={1}>
+              {room.code}
             </PidroText>
-            <PidroText role="metadata" tone="soft" align="center">
-              {readyPlayers.length}/4 ready · Bots are ready automatically
-            </PidroText>
-            {!isSpectator && openSeats === 0 && onReady ? (
+          </View>
+          {canManageTable && openSeats > 0 && (
+            <Button
+              accessibilityLabel={t('table.invite')}
+              variant="outline"
+              size="icon"
+              onPress={onOpenInvite}
+              disabled={controlsBusy}>
+              <Feather name="user-plus" size={20} color={PidroColors.text} />
+            </Button>
+          )}
+          {canManageTable && (
+            <Button
+              label="Table"
+              variant="ghost"
+              size="sm"
+              onPress={() => setTableMenuOpen(true)}
+            />
+          )}
+        </View>
+        <ScrollView
+          testID="waiting-seats-scroll"
+          className="flex-1"
+          contentContainerClassName="grow justify-center gap-6 px-4 py-4">
+          <View
+            className={
+              portrait
+                ? 'w-full max-w-md items-center gap-3 self-center'
+                : 'w-full max-w-4xl flex-row items-center gap-5 self-center'
+            }>
+            {[
+              ['bottom', 'top'],
+              ['left', 'right'],
+            ].map((relatives, index) => (
+              <Fragment key={index}>
+                {index === 1 && (
+                  <PidroText role="title" tone="soft" align="center">
+                    VS
+                  </PidroText>
+                )}
+                <View
+                  testID={`waiting-team-${index}`}
+                  className={portrait ? 'w-full gap-3' : 'min-w-0 flex-1 gap-3'}>
+                  <PidroText role="label" tone={index === 0 ? 'gold' : 'cyan'} align="center">
+                    {teamName(seats.find((seat) => seat.rel === relatives[0])!)}
+                  </PidroText>
+                  <View className="flex-row items-start gap-3">
+                    {relatives.map((rel) => {
+                      const seat = seats.find((candidate) => candidate.rel === rel)!;
+                      return (
+                        <SeatPlate
+                          key={seat.absolute}
+                          seat={seat}
+                          ready={readyPlayers.includes(seat.absolute)}
+                          relationship={
+                            seat.isYou
+                              ? 'You'
+                              : youPosition
+                                ? seat.rel === 'top'
+                                  ? 'Partner'
+                                  : 'Opponent'
+                                : seat.absolute
+                          }
+                          onProfile={
+                            seat.occupied && !seat.isBot
+                              ? () => setProfilePlayerId(seat.playerId)
+                              : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </View>
+                </View>
+              </Fragment>
+            ))}
+          </View>
+          <View testID="readiness-panel" className="w-full max-w-xs gap-3 self-center">
+            <View className="flex-row items-center justify-center gap-2">
+              {openSeats === 0 && (
+                <Feather name="check-circle" size={16} color={PidroColors.cyanText} />
+              )}
+              <PidroText
+                role="metadata"
+                tone="soft"
+                align="center"
+                className="shrink"
+                accessibilityLiveRegion="polite">
+                {joiningName
+                  ? t('table.joining', { name: joiningName })
+                  : openSeats > 0
+                    ? `Waiting for ${openSeats} ${openSeats === 1 ? 'player' : 'players'}`
+                    : `${readyPlayers.length} of 4 ready`}
+              </PidroText>
+            </View>
+            {!isSpectator && openSeats === 0 && onReady && (
               <Button
-                label={isYouReady ? "You're ready" : "I'm ready"}
+                label={isYouReady ? "You're ready" : readyBusy ? 'Confirming…' : "I'm ready"}
                 onPress={confirmReady}
                 disabled={readyDisabled || isYouReady || readyBusy}
                 loading={readyBusy}
-                className="w-full"
               />
-            ) : null}
-            {portrait ? (
-              <PidroText role="metadata" tone="soft" align="center">
-                Seat changes or a disconnect reset confirmations.
-              </PidroText>
-            ) : null}
-            {readyError ? (
-              <PidroText role="metadata" align="center">
+            )}
+            {readyError && (
+              <PidroText role="metadata" tone="danger" align="center">
                 {readyError}
               </PidroText>
-            ) : null}
-            {canManageTable ? (
-              <View style={styles.hostActions}>
-                <Button
-                  label={t('table.invite')}
-                  size="sm"
-                  onPress={onOpenInvite}
-                  disabled={controlsBusy}
-                  style={styles.hostAction}
-                />
-                <Button
-                  label={room.locked ? t('table.unlock') : t('table.lock')}
-                  variant="outline"
-                  size="sm"
-                  onPress={onToggleLock}
-                  loading={controlsBusy}
-                  style={styles.hostAction}
-                />
-              </View>
-            ) : null}
-          </Surface>
-        </View>
+            )}
+          </View>
+        </ScrollView>
       </View>
+      {isSpectator && <WatchingBadge />}
       <Modal
-        isOpen={canManageTable && selectedSeatIsCurrent}
-        title={selectedSeat ? t('table.managePlayer', { name: selectedSeat.name }) : undefined}
-        description={t('table.manageDescription')}
-        onClose={() => setSelectedSeat(null)}>
-        <View style={styles.manageActions}>
-          {moveTargets.map((position) => (
-            <Button
-              key={position}
-              label={t('table.moveTo', { position: t(`table.position.${position}`) })}
-              variant="secondary"
-              disabled={controlsBusy}
-              onPress={() => {
-                if (canManageTable && selectedSeat?.playerId && selectedSeatIsCurrent) {
-                  onMovePlayer?.(selectedSeat.playerId, position);
-                }
-                setSelectedSeat(null);
-              }}
-            />
-          ))}
-          {selectedSeat ? (
-            <Button
-              label={t('table.kick')}
-              variant="destructive"
-              disabled={controlsBusy}
-              onPress={() => {
-                if (canManageTable && selectedSeatIsCurrent) onKickPlayer?.(selectedSeat.absolute);
-                setSelectedSeat(null);
-              }}
-            />
-          ) : null}
-          <Button
-            label={t('common.cancel')}
-            variant="outline"
-            disabled={controlsBusy}
-            onPress={() => setSelectedSeat(null)}
-          />
-        </View>
+        isOpen={canManageTable && (tableMenuOpen || selectedSeatIsCurrent)}
+        title={
+          selectedSeatIsCurrent
+            ? t('table.managePlayer', { name: selectedSeat!.name })
+            : 'Table settings'
+        }
+        onClose={() => {
+          setTableMenuOpen(false);
+          setSelectedSeat(null);
+        }}>
+        <ScrollView
+          style={{
+            maxHeight: Math.min(320, Math.max(120, height - insets.top - insets.bottom - 160)),
+          }}
+          contentContainerClassName="gap-3">
+          {selectedSeatIsCurrent ? (
+            <>
+              {moveTargets.map((position) => (
+                <Button
+                  key={position}
+                  label={`${t('table.moveTo', { position: teamName(seats.find((seat) => seat.absolute === position)!) })} · ${t(`table.position.${position}`)}`}
+                  variant="secondary"
+                  disabled={controlsBusy}
+                  onPress={() => {
+                    if (canManageTable && selectedSeat?.playerId && selectedSeatIsCurrent)
+                      onMovePlayer?.(selectedSeat.playerId, position);
+                    setSelectedSeat(null);
+                  }}
+                />
+              ))}
+              <Button
+                label={t('table.kick')}
+                variant="destructive"
+                disabled={controlsBusy}
+                onPress={() => {
+                  if (canManageTable && selectedSeatIsCurrent)
+                    onKickPlayer?.(selectedSeat!.absolute);
+                  setSelectedSeat(null);
+                }}
+              />
+              <Button label="Back" variant="outline" onPress={() => setSelectedSeat(null)} />
+            </>
+          ) : (
+            <>
+              <Button
+                label={room.locked ? t('table.unlock') : t('table.lock')}
+                variant="outline"
+                onPress={onToggleLock}
+                loading={controlsBusy}
+              />
+              <PidroText role="metadata" tone="soft">
+                Players
+              </PidroText>
+              {seats
+                .filter((seat) => seat.occupied && !seat.isYou && !seat.isBot)
+                .map((seat) => (
+                  <Button
+                    key={seat.playerId}
+                    label={seat.name}
+                    accessibilityLabel={t('table.managePlayer', { name: seat.name })}
+                    variant="secondary"
+                    onPress={() => setSelectedSeat(seat)}
+                  />
+                ))}
+              <PidroText role="metadata" tone="muted">
+                Seat changes or disconnects reset readiness. Bots are ready automatically.
+              </PidroText>
+              <Button label="Close" variant="outline" onPress={() => setTableMenuOpen(false)} />
+            </>
+          )}
+        </ScrollView>
       </Modal>
       <PlayerProfileModal playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
     </Background>
   );
 }
-
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  leave: {
-    position: 'absolute',
-    zIndex: 120,
-  },
-  seatWrap: {
-    position: 'absolute',
-    zIndex: 5,
-    paddingHorizontal: PidroSpacing.xs,
-  },
-  sideSeatPortrait: {
-    top: '24%',
-  },
-  seatPlate: {
-    maxWidth: 190,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: PidroSpacing.xs,
-    padding: PidroSpacing.xs,
-  },
-  seatPlateYou: {
-    borderColor: PidroColors.goldDark,
-  },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: PidroRadii.tight,
-    borderWidth: 1,
-    borderColor: PidroColors.cyanBorder,
-  },
-  openAvatar: {
-    width: 36,
-    height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: PidroRadii.tight,
-    borderWidth: 1,
-    borderStyle: 'dashed',
-    borderColor: PidroColors.border,
-  },
-  seatCopy: {
-    minWidth: 0,
-    flex: 1,
-  },
-  centerWrap: {
-    ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: PidroSpacing.md,
-  },
-  statusWindow: {
-    maxWidth: 470,
-    alignItems: 'center',
-    gap: PidroSpacing.xs,
-    paddingHorizontal: PidroSpacing.lg,
-  },
-  statusWindowCompact: {
-    maxWidth: 300,
-    paddingHorizontal: PidroSpacing.sm,
-    paddingVertical: PidroSpacing.sm,
-  },
-  hostActions: {
-    width: '100%',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: PidroSpacing.xs,
-  },
-  hostAction: {
-    minWidth: 120,
-    flex: 1,
-  },
-  manageActions: {
-    gap: PidroSpacing.sm,
-  },
-});
