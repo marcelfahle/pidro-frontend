@@ -16,7 +16,7 @@ import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
 import type { Invite, SeatStatus } from '@pidro/shared';
-import { TableFeedback } from '@/components/game/TableFeedback';
+import { TableFeedback, TableSeatDecision } from '@/components/game/TableFeedback';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 
@@ -127,12 +127,15 @@ function TableDevHarness() {
     lifecycle?: SeatStatus;
     feedback?: string;
     role?: string;
+    playerName?: string;
+    notice?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
   const [isHandReady, setIsHandReady] = useState(false);
   const [dismissed, setDismissed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [feedbackHeight, setFeedbackHeight] = useState(0);
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
@@ -212,41 +215,48 @@ function TableDevHarness() {
           feedbackHeight={feedbackHeight}
         />
         <DevOverlays phase={phase} isHandReady={isHandReady} />
+        {params.feedback === 'owner' && (
+          <TableSeatDecision
+            decisions={{
+              decision:
+                params.feedback === 'owner' && dismissed < 3
+                  ? {
+                      key: String(dismissed),
+                      id: String(dismissed),
+                      position: positions[dismissed],
+                      playerName:
+                        dismissed === 0 ? (params.playerName ?? names[0]) : names[dismissed],
+                    }
+                  : null,
+              pendingCount: 3 - dismissed,
+              busy,
+              error,
+              keepBot: async () => {
+                setDismissed((count) => count + 1);
+                setError(null);
+              },
+              openSeat: async () => {
+                setBusy(true);
+                setError(null);
+                await new Promise((resolve) => setTimeout(resolve, 800));
+                setError('Could not confirm the seat update. Please try again.');
+                setBusy(false);
+              },
+            }}
+          />
+        )}
         <View
           pointerEvents="box-none"
           className="absolute inset-x-0 top-0"
           onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
-          {params.feedback && (
-            <TableFeedback
-              decisions={{
-                decision:
-                  params.feedback === 'owner' && dismissed < 3
-                    ? {
-                        key: String(dismissed),
-                        id: String(dismissed),
-                        position: positions[dismissed],
-                        playerName: names[dismissed],
-                      }
-                    : null,
-                pendingCount: 3 - dismissed,
-                busy: false,
-                error,
-                keepBot: async () => {
-                  setDismissed((count) => count + 1);
-                  setError(null);
-                },
-                openSeat: async () => {
-                  setError('Could not open the seat. Please try again.');
-                },
-              }}
-              notice={
-                params.feedback === 'notice'
-                  ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
-                  : null
-              }
-              dismissNotice={() => {}}
-            />
-          )}
+          <TableFeedback
+            notice={
+              params.feedback === 'notice' || params.notice === 'true'
+                ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
+                : null
+            }
+            dismissNotice={() => {}}
+          />
         </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>

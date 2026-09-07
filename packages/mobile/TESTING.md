@@ -50,6 +50,20 @@ WS_BASE_URL=ws://127.0.0.1:4000/socket \
 bun scripts/autoplay-full-game.mjs --user skiatest2
 ```
 
+## Host seat decisions (PID-93)
+
+With Expo web running, run `MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-seat-decisions.mjs`.
+Optionally set `UI_SHOT_DIR` to capture the phone, compact-landscape and tablet cases.
+The dev-only fixture never writes to a backend; Open seat deliberately shows a delayed error.
+Use `/table-dev?lifecycle=permanent_bot&feedback=owner&notice=true` to review three decisions
+alongside a notice. Add `playerName=Alexandria%20the%20Long-Named%20Player` to check wrapping.
+
+The decision card is an explicit, non-modal overlay: Later preserves the queue; starting
+your turn or losing eligibility closes review without choosing an outcome. Its size does
+not feed into table geometry. The existing notice reserve and header remain owned by
+PID-95/PID-90. Native iOS/Android safe-area, font-scaling and background/rejoin QA is still
+required; browser viewports are not device proof.
+
 ## Full-game e2e (the CI gate)
 
 `scripts/ci-game-e2e.mjs` plays two complete games against a real backend and
