@@ -364,9 +364,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
         {!flowLoading && availability === 'joinable' && user ? (
           <View style={styles.stack}>
             <PidroText role="body" tone="soft" align="center" accessibilityLiveRegion="polite">
-              {submitting
-                ? t('invite.joining')
-                : t('invite.readyAs', { name: user.display_name ?? user.username })}
+              {submitting ? t('invite.joining') : t('invite.readyAs', { name: user.username })}
             </PidroText>
             {error && !confirmLeave && !submitting ? (
               <Button

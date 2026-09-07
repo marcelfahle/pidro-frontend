@@ -28,6 +28,37 @@ function snapshot(roomId = "room-1", revision = 1): SeatLifecycleSnapshot {
 afterEach(() => useGameStore.getState().reset());
 
 describe("seat lifecycle boundary", () => {
+  test('restores returning avatars on observers without an HTTP refresh', () => {
+    for (const hasCachedAvatar of [false, true]) {
+      useGameStore.getState().reset();
+      useGameStore.setState({ roomCode: 'ABCD' });
+      let revision = 0;
+      const apply = (playerId: string | null, avatar: string | null) => {
+        const next = snapshot('room-1', ++revision);
+        next.seats.north = {
+          status: playerId ? 'normal' : 'permanent_bot',
+          player_id: playerId,
+          username: playerId ? 'mfios1' : 'Bot',
+          display_name: playerId ? 'iOS 1' : null,
+          avatar_url: avatar,
+          decision: null,
+        };
+        useGameStore.getState().applySeatLifecycle(next);
+        expect(useGameStore.getState().playerMeta.north).toMatchObject({
+          playerId, username: playerId ? 'mfios1' : 'Bot', avatar_url: avatar,
+        });
+      };
+      if (hasCachedAvatar) apply('ios1', 'old.jpg');
+      for (let cycle = 0; cycle < 3; cycle++) {
+        apply('ios1', 'avatar.jpg');
+        apply(null, null);
+        apply('ios1', 'avatar.jpg');
+      }
+      apply('ios1', null); // Explicit removal must not retain a cached avatar.
+      apply('replacement', 'replacement.jpg');
+    }
+  });
+
   test('moves avatars with their player and clears them when another player takes the seat', () => {
     useGameStore.setState({ roomCode: 'ABCD' });
     const first = snapshot();
@@ -63,6 +94,7 @@ describe("seat lifecycle boundary", () => {
         { status: "unknown" },
         { player_id: 1 },
         { username: [] },
+        { avatar_url: {} },
         { decision: {} },
       ]) {
         expect(

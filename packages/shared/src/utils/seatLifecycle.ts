@@ -37,7 +37,8 @@ export function lifecycleFromReply(
       typeof seat.status !== "string" ||
       !STATUSES.includes(seat.status) ||
       !nullableString(seat.player_id) ||
-      !nullableString(seat.username)
+      !nullableString(seat.username) ||
+      (seat.avatar_url !== undefined && !nullableString(seat.avatar_url))
     )
       return null;
     if (

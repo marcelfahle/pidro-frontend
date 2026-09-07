@@ -93,10 +93,7 @@ function PlayerProfileDialog({ playerId, onClose }: { playerId: string; onClose:
               size={72}
             />
             <div className="min-w-0 [overflow-wrap:anywhere]">
-              <h3 className="text-lg font-bold">{profile.display_name || profile.username}</h3>
-              {profile.display_name && (
-                <p className="text-sm text-cyan-50/65">@{profile.username}</p>
-              )}
+              <h3 className="text-lg font-bold">{profile.username}</h3>
             </div>
           </div>
           <h3 className="text-sm font-bold text-cyan-100">About me</h3>
