@@ -1,18 +1,24 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  AccessibilityInfo,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { useSeatDecisions } from '@pidro/shared';
-
-type Notice = { message: string; variant: 'warning' | 'success' | 'error' };
+import { HUD_RESERVE } from '@/game/canvas/TableChrome';
+import { enqueueTableNotice, type QueuedTableNotice, type TableNotice } from '@/game/tableNotices';
 
 export function useTableNotices(roomCode: string) {
-  const [notices, setNotices] = useState<(Notice & { roomCode: string })[]>([]);
+  const [notices, setNotices] = useState<QueuedTableNotice[]>([]);
   const addNotice = useCallback(
-    (notice: Notice) => {
-      setNotices((current) => [
-        ...current.filter((entry) => entry.roomCode === roomCode),
-        { ...notice, roomCode },
-      ]);
+    (notice: TableNotice) => {
+      setNotices((current) => enqueueTableNotice(current, notice, roomCode));
     },
     [roomCode]
   );
@@ -106,32 +112,68 @@ export function TableSeatDecision({
   );
 }
 
-export function TableFeedback({
-  notice,
-  dismissNotice,
-}: {
-  notice: Notice | null;
-  dismissNotice: () => void;
-}) {
-  if (!notice) return null;
+export function TableFeedback({ notice }: { notice: TableNotice | null }) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const landscape = width > height;
+
+  useEffect(() => {
+    if (!notice || Platform.OS !== 'ios') return;
+    AccessibilityInfo.announceForAccessibilityWithOptions(notice.message, { queue: true });
+  }, [notice]);
+
+  const noticeWidth = Math.min(360, width - insets.left - insets.right - 24);
   return (
-    <SafeAreaView
-      pointerEvents="box-none"
-      edges={['top', 'left', 'right']}
-      className="items-center px-3">
+    <View pointerEvents="none" style={styles.noticeOverlay}>
       {notice ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${notice.message} Dismiss notification`}
-          onPress={dismissNotice}
-          className="w-full max-w-lg rounded-xl border border-white/20 bg-slate-900 p-3">
+        <View
+          testID="table-feedback"
+          accessible={Platform.OS !== 'ios'}
+          accessibilityLabel={notice.message}
+          accessibilityLiveRegion="polite"
+          aria-live="polite"
+          aria-atomic
+          className="absolute flex-row items-center gap-2 rounded-xl border border-white/20 bg-slate-950 px-3 shadow-lg"
+          style={[
+            styles.notice,
+            {
+              top: landscape ? insets.top + 28 : insets.top + HUD_RESERVE + 104,
+              width: noticeWidth,
+              height: landscape ? 36 : 52,
+            },
+          ]}>
+          <View
+            className={
+              notice.variant === 'error'
+                ? 'h-2 w-2 rounded-full bg-red-300'
+                : notice.variant === 'success'
+                  ? 'h-2 w-2 rounded-full bg-emerald-300'
+                  : 'h-2 w-2 rounded-full bg-amber-300'
+            }
+          />
           <Text
-            accessibilityLiveRegion="polite"
-            className={notice.variant === 'error' ? 'text-sm text-red-200' : 'text-sm text-white'}>
+            numberOfLines={landscape ? 1 : 2}
+            ellipsizeMode="tail"
+            className={
+              notice.variant === 'error'
+                ? 'flex-1 text-sm text-red-100'
+                : 'flex-1 text-sm text-white'
+            }>
             {notice.message}
           </Text>
-        </Pressable>
+        </View>
       ) : null}
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  noticeOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 140,
+    elevation: 140,
+  },
+  notice: {
+    alignSelf: 'center',
+  },
+});
