@@ -31,7 +31,7 @@ try {
       await page.evaluate(() => document.fonts.ready);
       for (const scale of [1, 1.5]) {
         if (scale > 1) {
-          await page.evaluate(() => {
+          const scaled = await page.evaluate(() => {
             const texts = [...document.querySelectorAll('[class*="css-text-"]')];
             const sizes = texts.map((el) => [
               el,
@@ -42,7 +42,9 @@ try {
               el.style.fontSize = `${parseFloat(font) * 1.5}px`;
               if (line !== 'normal') el.style.lineHeight = `${parseFloat(line) * 1.5}px`;
             }
+            return texts.length;
           });
+          assert(scaled > 0, `${viewport.name}/${phase}: text-scale selector matched no elements`);
         }
         const boxes = [];
         for (const position of positions) {
