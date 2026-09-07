@@ -42,8 +42,8 @@ describe('waiting-table host controls', () => {
     expect(canManageRoom({ ...room, status: 'ready' }, 'host-1', 'player')).toBe(true);
   });
 
-  it('prefers display names and offers only open move targets', () => {
-    expect(seatDisplayName(room.seats[1].player)).toBe('Anna');
+  it('uses usernames and offers only open move targets', () => {
+    expect(seatDisplayName(room.seats[1].player)).toBe('guest_7KQ4M2XB');
     expect(availableMoveTargets(room, 'east')).toEqual(['south', 'west']);
   });
 });

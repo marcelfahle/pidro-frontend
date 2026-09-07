@@ -7,6 +7,7 @@ import type {
   Seat,
 } from '../types/lobby';
 import { INDEX_TO_POSITION, POSITION_TO_INDEX } from './positions';
+import { publicPlayerName } from './playerName';
 
 function normalizeSeat(raw: any, fallbackIndex: number): Seat {
   const seatIndex =
@@ -21,7 +22,7 @@ function normalizeSeat(raw: any, fallbackIndex: number): Seat {
     (raw?.player_id
       ? {
           id: String(raw.player_id),
-          username: String(raw.player_username ?? raw.player_id),
+          username: publicPlayerName(raw.player_username, raw.player_is_bot ? 'Bot' : 'Player'),
           display_name: raw.player_display_name ?? null,
           is_bot: raw.player_is_bot ?? false,
           avatar_url: raw.player_avatar_url ?? null,
@@ -84,18 +85,16 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
       position,
       status: playerId ? 'occupied' : 'free',
       player:
-        playerId && (isBot || username || displayName)
+        playerId
           ? {
               id: String(playerId),
-              username: username ?? displayName ?? 'Bot',
+              username: publicPlayerName(username, isBot ? 'Bot' : 'Player'),
               display_name: displayName,
               is_bot: isBot,
               avatar_url: value?.avatar_url ?? null,
             }
           : null,
-      // Only expose player_id when we can render a useful identity —
-      // normalizeSeat falls back to showing the raw id otherwise.
-      player_id: isBot || username || displayName ? playerId : null,
+      player_id: playerId,
     };
   });
 }

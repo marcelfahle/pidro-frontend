@@ -1,14 +1,16 @@
 import { describe, expect, it } from 'bun:test';
-import {
-  createCoalescedCallback,
-  waitingRoomEvent,
-} from '../../src/channels/gameRoomEvents.ts';
+import { createCoalescedCallback, waitingRoomEvent } from '../../src/channels/gameRoomEvents.ts';
 
 describe('waiting-room channel events', () => {
   it('maps authoritative invalidation events and local kick separately', () => {
-    expect(waitingRoomEvent('invite_redeemed', { display_name: 'Anna' })).toEqual({
+    expect(
+      waitingRoomEvent('invite_redeemed', { username: 'mfios1', display_name: 'iOS 1' })
+    ).toEqual({
       kind: 'refresh',
-      joiningName: 'Anna',
+      joiningName: 'mfios1',
+    });
+    expect(waitingRoomEvent('invite_redeemed', { display_name: 'iOS 1' })).toEqual({
+      kind: 'refresh',
     });
     for (const event of ['player_kicked', 'seat_moved', 'owner_changed']) {
       expect(waitingRoomEvent(event, {})).toEqual({ kind: 'refresh' });
@@ -29,7 +31,7 @@ describe('waiting-room channel events', () => {
         scheduled.push(run);
         return scheduled.length;
       },
-      (id) => cancelled.push(id),
+      (id) => cancelled.push(id)
     );
 
     callback.trigger();

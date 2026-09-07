@@ -1,4 +1,5 @@
 import type { Player, Position, Room } from '@/types/lobby';
+import { publicPlayerName } from '@pidro/shared';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
@@ -16,7 +17,7 @@ export function canManageRoom(
 }
 
 export function seatDisplayName(player: Player | null | undefined): string {
-  return player?.display_name?.trim() || player?.username || '';
+  return publicPlayerName(player?.username, '');
 }
 
 export function availableMoveTargets(room: Room, current: Position): Position[] {

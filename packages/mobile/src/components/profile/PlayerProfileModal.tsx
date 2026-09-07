@@ -70,13 +70,8 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
               resizeMode="cover"
             />
             <PidroText role="label" align="center">
-              {profile.display_name || profile.username}
+              {profile.username}
             </PidroText>
-            {profile.display_name && profile.display_name !== profile.username && (
-              <PidroText role="metadata" tone="soft" align="center">
-                @{profile.username}
-              </PidroText>
-            )}
             <PidroText role="label">About me</PidroText>
             <PidroText role="body" className="break-words" tone={profile.bio ? 'default' : 'muted'}>
               {profile.bio || 'No bio yet.'}

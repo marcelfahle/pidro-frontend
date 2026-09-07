@@ -6,6 +6,16 @@ This file contains information for AI coding assistants working on the Pidro mob
 
 React Native mobile app using Expo Router for a multiplayer card game. Connects to a Phoenix/Elixir backend via REST API and Phoenix Channels (WebSocket).
 
+## Current UI Direction: Simplified React Native UI
+
+The broader UI grammar is still in progress. **Use its current simplified version**, not the more elaborate design-system treatments.
+
+- Treat `app/home.tsx` and `app/profile.tsx` as the authoritative references for the current look, component choices, spacing, and typography.
+- Reuse the existing React Native components from `src/components/ui`, as those screens do: `ScreenShell`, `ScreenHeader`, `Surface`, `PidroText`, `Avatar`, `Button`, `Input`, and `Modal`; use `MenuAction` and `PressableFX` where appropriate.
+- Follow their existing variants and `src/design/tokens`. Do not introduce decorative frames, gradients, or alternative component systems just because an unfinished UI-grammar showcase includes them.
+- The separate `packages/web` client and its design-system page are not the visual reference for the React Native client. Verify mobile UI in the React Native app (native or its Expo web rendering); a screenshot of the separate web client does not verify mobile appearance.
+- Keep behavior fixes focused. Do not use them to roll out the unfinished UI redesign.
+
 ## Architecture Principle: Dumb Client, Smart Server
 
 **The server is the single source of truth.** This is a card game with an authoritative server architecture.

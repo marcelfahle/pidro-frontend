@@ -1,3 +1,5 @@
+import { publicPlayerName } from '@pidro/shared';
+
 export type WaitingRoomEvent = { kind: 'refresh'; joiningName?: string } | { kind: 'kicked' };
 
 export function waitingRoomEvent(
@@ -6,10 +8,7 @@ export function waitingRoomEvent(
 ): WaitingRoomEvent | null {
   if (event === 'kicked') return { kind: 'kicked' };
   if (event === 'invite_redeemed') {
-    const joiningName =
-      typeof payload.display_name === 'string' && payload.display_name.trim()
-        ? payload.display_name
-        : undefined;
+    const joiningName = publicPlayerName(payload.username, '');
     return { kind: 'refresh', ...(joiningName ? { joiningName } : {}) };
   }
   if (event === 'player_kicked' || event === 'seat_moved' || event === 'owner_changed') {

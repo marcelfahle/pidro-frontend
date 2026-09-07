@@ -13,6 +13,8 @@ export interface SeatLifecycleSnapshot {
       status: SeatStatus;
       player_id: string | null;
       username: string | null;
+      display_name?: string | null;
+      avatar_url?: string | null;
       decision: { id: string; player_name: string | null } | null;
     }
   >;

@@ -148,9 +148,11 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerId: seat.player_id,
           username: seat.username,
           avatar_url:
-            Object.values(current.playerMeta).find(
-              (meta) => seat.player_id != null && meta.playerId === seat.player_id,
-            )?.avatar_url ?? null,
+            seat.avatar_url !== undefined
+              ? seat.avatar_url
+              : Object.values(current.playerMeta).find(
+                  (meta) => seat.player_id != null && meta.playerId === seat.player_id,
+                )?.avatar_url ?? null,
           seatStatus: seat.status,
           isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
           isYou,
