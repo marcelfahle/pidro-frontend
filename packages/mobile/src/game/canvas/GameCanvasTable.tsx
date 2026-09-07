@@ -301,7 +301,12 @@ export function GameCanvasTable({
       )}
 
       {/* Bidding + trump selection (PartialModal floats from the bottom) */}
-      <BiddingActions isYourTurn={isYourTurn} isHandReady={isHandReady} />
+      <BiddingActions
+        isYourTurn={isYourTurn}
+        isHandReady={isHandReady}
+        topReserve={topReserve}
+        bottomReserve={bottomReserve}
+      />
       <TrumpSelectionModal
         isOpen={showTrumpSelection}
         onSelectTrump={async (s: Suit) => {

@@ -135,6 +135,7 @@ function TableDevHarness() {
     notice?: string;
     names?: string;
     safeArea?: string;
+    pass?: string;
     viewer?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
@@ -150,6 +151,14 @@ function TableDevHarness() {
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
+  const fixtureInsets =
+    params.safeArea === 'island'
+      ? { top: 59, bottom: 34, left: 0, right: 0 }
+      : params.safeArea === 'android-buttons' || params.safeArea === 'android'
+        ? { top: 24, bottom: 48, left: 0, right: 0 }
+        : params.safeArea === 'android-gesture'
+          ? { top: 24, bottom: 24, left: 0, right: 0 }
+          : { top: 0, bottom: 0, left: 0, right: 0 };
 
   if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
     return (
@@ -198,12 +207,6 @@ function TableDevHarness() {
           : seat
       ),
     };
-    const fixtureInsets =
-      params.safeArea === 'island'
-        ? { top: 59, bottom: 34, left: 0, right: 0 }
-        : params.safeArea === 'android'
-          ? { top: 24, bottom: 48, left: 0, right: 0 }
-          : { top: 0, bottom: 0, left: 0, right: 0 };
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
@@ -256,14 +259,20 @@ function TableDevHarness() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
       <SafeAreaProvider>
-        <SkiaDevTable
-          onHandPresentationReadyChange={setIsHandReady}
-          autoPlay={autoPlay}
-          phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
-          lifecycle={params.lifecycle}
-          feedbackHeight={feedbackHeight}
-        />
-        <DevOverlays phase={phase} isHandReady={isHandReady} />
+        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+          <SkiaDevTable
+            onHandPresentationReadyChange={setIsHandReady}
+            autoPlay={autoPlay}
+            phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
+            lifecycle={params.lifecycle}
+            feedbackHeight={feedbackHeight}
+          />
+          <DevOverlays
+            phase={phase}
+            isHandReady={isHandReady}
+            canPass={params.pass !== 'disabled'}
+          />
+        </SafeAreaInsetsContext.Provider>
         {params.feedback === 'owner' && (
           <TableSeatDecision
             decisions={{

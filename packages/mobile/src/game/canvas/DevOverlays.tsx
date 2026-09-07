@@ -22,6 +22,7 @@ import { BiddingActions } from '@/components/game/BiddingActions';
 import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
 import { HandSelector } from '@/components/game/HandSelector';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
+import { useTableReserves } from './TableChrome';
 
 const noop = () => {};
 
@@ -115,8 +116,17 @@ const HAND12: Card[] = [
   { suit: 'clubs', rank: 3 },
 ];
 
-export function DevOverlays({ phase, isHandReady }: { phase: string; isHandReady: boolean }) {
+export function DevOverlays({
+  phase,
+  isHandReady,
+  canPass = true,
+}: {
+  phase: string;
+  isHandReady: boolean;
+  canPass?: boolean;
+}) {
   const insets = useSafeAreaInsets();
+  const { topReserve, bottomReserve } = useTableReserves();
 
   // Seed the store so the store-driven BiddingActions shows in dev (no Phoenix).
   useEffect(() => {
@@ -129,12 +139,12 @@ export function DevOverlays({ phase, isHandReady }: { phase: string; isHandReady
         ...([7, 8, 9, 10, 11, 12, 13, 14] as const).map(
           (amount) => ({ type: 'bid', amount }) as const
         ),
-        { type: 'pass' },
+        ...(canPass ? ([{ type: 'pass' }] as const) : []),
       ],
     });
     return () =>
       useGameStore.setState({ serverState: prev.serverState, legalActions: prev.legalActions });
-  }, [phase]);
+  }, [canPass, phase]);
 
   return (
     <>
@@ -143,7 +153,14 @@ export function DevOverlays({ phase, isHandReady }: { phase: string; isHandReady
         <ConnectionBanner isConnected />
       </View>
 
-      {phase === 'bidding' && <BiddingActions isYourTurn isHandReady={isHandReady} />}
+      {phase === 'bidding' && (
+        <BiddingActions
+          isYourTurn
+          isHandReady={isHandReady}
+          topReserve={topReserve}
+          bottomReserve={bottomReserve}
+        />
+      )}
 
       {phase === 'declaring' && (
         <TrumpSelectionModal isOpen onSelectTrump={async () => {}} cards={HAND6} />
