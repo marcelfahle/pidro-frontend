@@ -129,6 +129,17 @@ try {
         await page.getByRole('button', { name: 'Close', exact: true }).click();
       }
     }
+    await page.goto(`${baseUrl}/table-dev?phase=ready-host&role=spectator`);
+    await page.getByRole('button', { name: 'Back to lobby', exact: true }).waitFor();
+    await page.getByText('Watching', { exact: true }).waitFor();
+    await page.getByText('North / South', { exact: true }).waitFor();
+    await page.getByText('East / West', { exact: true }).waitFor();
+    assert.equal(
+      await page.getByRole('button', { name: /I'm ready|Table|Invite|^Manage / }).count(),
+      0
+    );
+    assert.equal(await page.getByText('You', { exact: true }).count(), 0);
+    if (viewport.name === 'android') await page.screenshot({ path: `${shots}/spectator.png` });
     await page.close();
   }
 

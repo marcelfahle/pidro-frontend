@@ -127,6 +127,7 @@ jobs:
 
           bun run test:ui
           node scripts/verify-seat-decisions.mjs
+          UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs
 
       - name: Compare against visual baselines
         working-directory: packages/mobile
