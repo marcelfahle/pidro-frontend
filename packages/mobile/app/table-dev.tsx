@@ -16,7 +16,7 @@ import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
 import type { Invite, SeatStatus } from '@pidro/shared';
-import { TableFeedback, TableSeatDecision } from '@/components/game/TableFeedback';
+import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 
@@ -84,12 +84,40 @@ function Loading() {
   );
 }
 
+function TimedTableFeedback() {
+  const { notice, addNotice } = useTableNotices(WAITING_ROOM.code);
+
+  useEffect(() => {
+    const timers = [
+      setTimeout(
+        () =>
+          addNotice({
+            message: 'Nora (north) disconnected. Bot is filling in.',
+            variant: 'warning',
+          }),
+        800
+      ),
+      setTimeout(
+        () =>
+          addNotice({
+            message: 'Nora (north) disconnected. Bot is filling in.',
+            variant: 'warning',
+          }),
+        1_000
+      ),
+      setTimeout(() => addNotice({ message: 'Nora reconnected.', variant: 'success' }), 1_200),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [addNotice]);
+
+  return <TableFeedback notice={notice} />;
+}
+
 function SkiaDevTable({
   onHandPresentationReadyChange,
   autoPlay,
   phase,
   lifecycle,
-  feedbackHeight,
 }: GameCanvasDevProps) {
   const [Comp, setComp] = useState<ComponentType<GameCanvasDevProps> | null>(null);
 
@@ -111,7 +139,6 @@ function SkiaDevTable({
       autoPlay={autoPlay}
       phase={phase}
       lifecycle={lifecycle}
-      feedbackHeight={feedbackHeight}
     />
   ) : (
     <Loading />
@@ -143,7 +170,6 @@ function TableDevHarness() {
   const [dismissed, setDismissed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [feedbackHeight, setFeedbackHeight] = useState(0);
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
   const [readyPlayers, setReadyPlayers] = useState<Position[]>(['north', 'west']);
@@ -156,7 +182,7 @@ function TableDevHarness() {
       <RolePreview
         role={params.role === 'player' ? 'player' : 'spectator'}
         phase={phase}
-        notice={params.feedback === 'notice'}
+        feedback={params.feedback}
       />
     );
   }
@@ -261,7 +287,6 @@ function TableDevHarness() {
           autoPlay={autoPlay}
           phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
           lifecycle={params.lifecycle}
-          feedbackHeight={feedbackHeight}
         />
         <DevOverlays phase={phase} isHandReady={isHandReady} />
         {params.feedback === 'owner' && (
@@ -294,19 +319,17 @@ function TableDevHarness() {
             }}
           />
         )}
-        <View
-          pointerEvents="box-none"
-          className="absolute inset-x-0 top-0"
-          onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
+        {params.feedback === 'timed' ? (
+          <TimedTableFeedback />
+        ) : (
           <TableFeedback
             notice={
               params.feedback === 'notice' || params.notice === 'true'
                 ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
                 : null
             }
-            dismissNotice={() => {}}
           />
-        </View>
+        )}
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -316,11 +339,11 @@ function TableDevHarness() {
 function RolePreview({
   role,
   phase,
-  notice,
+  feedback,
 }: {
   role: 'player' | 'spectator';
   phase: string;
-  notice: boolean;
+  feedback?: string;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -352,6 +375,18 @@ function RolePreview({
       current_trick: [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }],
     });
     store.setLegalActions([{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]);
+    store.setTurnTimer({
+      timerId: 1,
+      scope: 'seat',
+      position: 'south',
+      phase: 'playing',
+      durationMs: 30_000,
+      transitionDelayMs: 0,
+      serverTime: new Date().toISOString(),
+      remainingMs: 30_000,
+      receivedAtMs: Date.now(),
+      eventSeq: 1,
+    });
     loadGameCanvasTable().then((component) => {
       if (active) setTable(() => component);
     });
@@ -362,19 +397,17 @@ function RolePreview({
   }, [role, phase]);
   return (
     <View className="flex-1">
-      {Table ? (
-        <Table room={WAITING_ROOM} onLeave={() => {}} feedbackHeight={notice ? 72 : 0} />
+      {Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />}
+      {feedback === 'timed' ? (
+        <TimedTableFeedback />
       ) : (
-        <Loading />
-      )}
-      {notice && (
-        <View pointerEvents="none" className="absolute inset-x-0 top-16 items-center px-3">
-          <View className="rounded-xl border border-white/20 bg-slate-900 p-3">
-            <Text className="text-sm text-white">
-              Nora (north) disconnected. Bot is filling in.
-            </Text>
-          </View>
-        </View>
+        <TableFeedback
+          notice={
+            feedback === 'notice'
+              ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
+              : null
+          }
+        />
       )}
     </View>
   );

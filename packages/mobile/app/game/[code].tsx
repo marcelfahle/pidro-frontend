@@ -43,7 +43,6 @@ import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/
 
 type SkiaTableProps = {
   room: Room;
-  feedbackHeight?: number;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: (room: Room) => void;
@@ -290,9 +289,8 @@ export default function GameScreen() {
   const hasGameState = !!serverPhase;
   const canJoinGameChannel =
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
-  const { notice, addNotice: handleSeatEvent, dismissNotice } = useTableNotices(code);
+  const { notice, addNotice: handleSeatEvent } = useTableNotices(code);
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
-  const [feedbackHeight, setFeedbackHeight] = useState(0);
 
   const handleProgressionSummary = useCallback(
     (summary: ProgressionSummary) => {
@@ -649,18 +647,12 @@ export default function GameScreen() {
       <View className="flex-1">
         <SkiaGameTable
           room={room}
-          feedbackHeight={feedbackHeight}
           progressionSummary={progressionSummary}
           onLeave={handleLeaveGame}
           onPlayAgain={handlePlayAgain}
           backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
         />
-        <View
-          pointerEvents="box-none"
-          className="absolute inset-x-0 top-0"
-          onLayout={(event) => setFeedbackHeight(event.nativeEvent.layout.height)}>
-          <TableFeedback notice={notice} dismissNotice={dismissNotice} />
-        </View>
+        <TableFeedback notice={notice} />
         <TableSeatDecision key={room.code} decisions={decisions} />
       </View>
     );
