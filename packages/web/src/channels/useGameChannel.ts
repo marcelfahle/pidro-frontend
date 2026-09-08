@@ -184,7 +184,7 @@ export const useGameChannel = ({
           if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
 
           const gameState = extractGameState(response);
-          const accepted = applyGameSnapshot(response);
+          const accepted = applyGameSnapshot(response, { rehydratePlayer: role === 'player' });
           const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
           if (accepted) setTurnTimer(normalizeTurnTimer(response?.turn_timer));
           if (gameState && accepted && !useGameStore.getState().snapshotCursor) {

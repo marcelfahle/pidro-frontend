@@ -59,6 +59,52 @@ describe('game snapshot authority', () => {
       clock.mockRestore();
     }
   });
+  it('rehydrates only an authorized equal-revision player join without replaying presentation', () => {
+    const store = useGameStore.getState();
+    const payload = snapshot(4);
+    const hand = [{ rank: 14, suit: 'spades' }];
+    const privateSnapshot = {
+      ...payload,
+      state: { ...payload.state, players: { south: { hand } } },
+    };
+    store.setYouPosition('south');
+    store.applyGameSnapshot(privateSnapshot);
+    const { snapshotCursor, dealerPresentation } = useGameStore.getState();
+    store.setRole(null);
+    expect(useGameStore.getState().serverState?.players.south.hand).toBe(1);
+    expect(useGameStore.getState().legalActions).toEqual([]);
+    expect(store.applyGameSnapshot(privateSnapshot, { rehydratePlayer: true })).toBe(false);
+    store.setRole('player');
+    store.setYouPosition('south');
+    expect(store.applyGameSnapshot(privateSnapshot)).toBe(false);
+    expect(
+      store.applyGameSnapshot(
+        { ...privateSnapshot, server_time_ms: 12000 },
+        { rehydratePlayer: true },
+      ),
+    ).toBe(true);
+    expect(useGameStore.getState().serverState?.players.south.hand).toEqual(hand);
+    expect(useGameStore.getState().legalActions).toEqual(payload.legal_actions);
+    expect(useGameStore.getState().snapshotCursor).toBe(snapshotCursor);
+    expect(useGameStore.getState().dealerPresentation).toBe(dealerPresentation);
+    const hydrated = useGameStore.getState();
+    expect(store.applyGameSnapshot(privateSnapshot)).toBe(false);
+    expect(
+      store.applyGameSnapshot({ ...privateSnapshot, state_revision: 3 }, { rehydratePlayer: true }),
+    ).toBe(false);
+    expect(
+      store.applyGameSnapshot(
+        { ...privateSnapshot, state: { ...privateSnapshot.state, phase: 'bidding' } },
+        { rehydratePlayer: true },
+      ),
+    ).toBe(false);
+    expect(
+      store.applyGameSnapshot({ state: privateSnapshot.state }, { rehydratePlayer: true }),
+    ).toBe(false);
+    expect(useGameStore.getState()).toBe(hydrated);
+    store.applyGameSnapshot({ ...privateSnapshot, game_instance_id: 'b', state_revision: 0 });
+    expect(store.applyGameSnapshot(privateSnapshot, { rehydratePlayer: true })).toBe(false);
+  });
   it('resets revisions for a new instance but rejects a retired instance', () => {
     const store = useGameStore.getState();
     store.applyGameSnapshot(snapshot(30));

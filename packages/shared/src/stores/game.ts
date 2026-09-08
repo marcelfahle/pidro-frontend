@@ -73,7 +73,10 @@ interface GameState {
   snapshotCursor: { instanceId: string; revision: number } | null;
   retiredInstances: string[];
   dealerPresentation: DealerPresentation | null;
-  applyGameSnapshot: (payload: Record<string, unknown> | undefined) => boolean;
+  applyGameSnapshot: (
+    payload: Record<string, unknown> | undefined,
+    options?: { rehydratePlayer?: boolean },
+  ) => boolean;
   legalActions: LegalAction[];
   playerMeta: Record<Position, PlayerMeta>;
   readyPlayers: Position[];
@@ -124,7 +127,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   snapshotCursor: null,
   retiredInstances: [],
   dealerPresentation: null,
-  applyGameSnapshot: (payload) => {
+  applyGameSnapshot: (payload, options) => {
     const state = extractGameState(payload);
     if (!state || !payload) return false;
     const current = get();
@@ -145,6 +148,36 @@ export const useGameStore = create<GameState>((set, get) => ({
         !Number.isFinite(time)
       )
         return false;
+      if (
+        options?.rehydratePlayer &&
+        current.role === 'player' &&
+        current.snapshotCursor?.instanceId === instanceId &&
+        revision === current.snapshotCursor.revision &&
+        !current.retiredInstances.includes(instanceId)
+      ) {
+        const position = current.youPositionAbs;
+        const confirmed = current.serverState;
+        if (
+          !position ||
+          !confirmed ||
+          state.phase !== confirmed.phase ||
+          !state.players?.[position]
+        )
+          return false;
+        // A current-channel join can restore private data stripped on authority loss.
+        // This is not progression: retain the accepted phase/outcome and timing anchor.
+        set({
+          serverState: {
+            ...confirmed,
+            players: {
+              ...confirmed.players,
+              [position]: { ...confirmed.players[position], hand: state.players[position].hand },
+            },
+          },
+          legalActions: (payload.legal_actions as LegalAction[] | undefined) ?? [],
+        });
+        return true;
+      }
       if (
         current.retiredInstances.includes(instanceId) ||
         (current.snapshotCursor?.instanceId === instanceId &&
