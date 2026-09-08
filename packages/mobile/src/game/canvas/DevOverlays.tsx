@@ -120,16 +120,13 @@ export function DevOverlays({
   phase,
   isHandReady,
   canPass = true,
-  feedbackHeight = 0,
 }: {
   phase: string;
   isHandReady: boolean;
   canPass?: boolean;
-  feedbackHeight?: number;
 }) {
   const insets = useSafeAreaInsets();
   const { topReserve, bottomReserve } = useTableReserves();
-  const effectiveTopReserve = topReserve + feedbackHeight;
 
   // Seed the store so the store-driven BiddingActions shows in dev (no Phoenix).
   useEffect(() => {
@@ -160,7 +157,7 @@ export function DevOverlays({
         <BiddingActions
           isYourTurn
           isHandReady={isHandReady}
-          topReserve={effectiveTopReserve}
+          topReserve={topReserve}
           bottomReserve={bottomReserve}
         />
       )}

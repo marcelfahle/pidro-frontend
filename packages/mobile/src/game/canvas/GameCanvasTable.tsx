@@ -33,7 +33,6 @@ import { TableChromeBars, useTableReserves } from './TableChrome';
 
 type Props = {
   room: Room;
-  feedbackHeight?: number;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: (room: Room) => void;
@@ -186,7 +185,6 @@ function TimedSeatLayer({
 
 export function GameCanvasTable({
   room,
-  feedbackHeight = 0,
   progressionSummary,
   onLeave,
   onPlayAgain,
@@ -201,8 +199,7 @@ export function GameCanvasTable({
   const isHandReady = useHandPresentationReady(model.yourHand, textures, isBiddingTurn);
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
-  const { bottomReserve } = reserves;
-  const topReserve = reserves.topReserve + (isSpectator ? 0 : feedbackHeight);
+  const { topReserve, bottomReserve } = reserves;
 
   const {
     trumpSuit,

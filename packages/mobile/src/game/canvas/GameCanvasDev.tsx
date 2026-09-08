@@ -100,7 +100,6 @@ export type GameCanvasDevProps = {
   autoPlay?: boolean;
   phase?: GamePhase;
   lifecycle?: SeatStatus;
-  feedbackHeight?: number;
 };
 
 export default function GameCanvasDev({
@@ -108,13 +107,11 @@ export default function GameCanvasDev({
   autoPlay = false,
   phase = 'playing',
   lifecycle,
-  feedbackHeight = 0,
 }: GameCanvasDevProps) {
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
-  const { bottomReserve } = reserves;
-  const topReserve = reserves.topReserve + feedbackHeight;
+  const { topReserve, bottomReserve } = reserves;
   const [hand, setHand] = useState<Card[]>([]);
   const [trick, setTrick] = useState<Play[]>([]);
   const [tricks, setTricks] = useState<Play[][]>([]);
