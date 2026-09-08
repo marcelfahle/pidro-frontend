@@ -45,17 +45,20 @@ function statusFor(data: TableSeat, override?: string): string | null {
     case 'reconnecting':
       return 'Reconnecting';
     case 'bot_substitute':
-      return 'Rejoin to play';
+      if (data.isYou) return 'Rejoin to play';
+      break;
     case 'permanent_bot':
-      return 'Bot playing';
+      break;
     case 'vacant':
       return 'Open for player';
   }
+  // Occupant kind isn't an action. Bots draw, bid and play just like humans.
+  if (override) return override;
   if (data.lastPlayedCard) {
     const c = data.lastPlayedCard.card;
     return `Plays ${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}`;
   }
-  return override ?? null;
+  return data.seatStatus === 'permanent_bot' || data.seatStatus === 'bot_substitute' ? 'Bot' : null;
 }
 
 type Props = {
@@ -252,7 +255,7 @@ function Nameplate({
     <View
       testID={testID}
       accessible
-      accessibilityLabel={`${data.username || 'Open seat'}, ${data.absolutePosition}${status ? `, ${status}` : ''}`}
+      accessibilityLabel={`${data.username || 'Open seat'}, ${data.absolutePosition}${isDealer ? ', Dealer' : ''}${data.seatStatus === 'bot_substitute' || data.seatStatus === 'permanent_bot' ? ', Bot' : ''}${status ? `, ${status}` : ''}`}
       style={[
         styles.pill,
         narrow && styles.pillNarrow,

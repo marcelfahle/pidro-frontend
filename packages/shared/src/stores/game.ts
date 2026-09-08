@@ -3,6 +3,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { useMemo } from 'react';
 import type {
   ActiveTurnTimer,
+  DealerPresentation,
+  GameSnapshot,
   ServerGameState,
   PlayerMeta,
   PlayerRank,
@@ -17,6 +19,7 @@ import type { Position, ReadinessSnapshot, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
 import { lifecycleFromReply } from '../utils/seatLifecycle';
+import { extractGameState } from '../channels/gamePayloads';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
@@ -67,6 +70,10 @@ interface GameState {
   role: 'player' | 'spectator' | null;
 
   serverState: ServerGameState | null;
+  snapshotCursor: { instanceId: string; revision: number } | null;
+  retiredInstances: string[];
+  dealerPresentation: DealerPresentation | null;
+  applyGameSnapshot: (payload: Record<string, unknown> | undefined) => boolean;
   legalActions: LegalAction[];
   playerMeta: Record<Position, PlayerMeta>;
   readyPlayers: Position[];
@@ -82,7 +89,7 @@ interface GameState {
 
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
   refreshPlayerIdentities: (room: Room) => void;
-  setServerState: (state: ServerGameState | Record<string, any>) => void;
+  setServerState: (state: ServerGameState | Record<string, any>, snapshot?: GameSnapshot) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setTurnTimer: (timer: ActiveTurnTimer | null) => void;
   clearTurnTimer: (timerId?: number | null) => void;
@@ -114,6 +121,45 @@ export const useGameStore = create<GameState>((set, get) => ({
   youPositionAbs: null,
   role: null,
   serverState: null,
+  snapshotCursor: null,
+  retiredInstances: [],
+  dealerPresentation: null,
+  applyGameSnapshot: (payload) => {
+    const state = extractGameState(payload);
+    if (!state || !payload) return false;
+    const current = get();
+    const rich = 'game_instance_id' in payload || 'state_revision' in payload;
+    if (rich) {
+      const {
+        game_instance_id: instanceId,
+        state_revision: revision,
+        server_time_ms: time,
+      } = payload;
+      if (
+        typeof instanceId !== 'string' ||
+        !instanceId ||
+        typeof revision !== 'number' ||
+        !Number.isSafeInteger(revision) ||
+        revision < 0 ||
+        typeof time !== 'number' ||
+        !Number.isFinite(time)
+      )
+        return false;
+      if (
+        current.retiredInstances.includes(instanceId) ||
+        (current.snapshotCursor?.instanceId === instanceId &&
+          revision <= current.snapshotCursor.revision)
+      )
+        return false;
+      get().setServerState(state, payload as unknown as GameSnapshot);
+    } else {
+      // Legacy servers/fixtures still send bare state. Never downgrade a versioned session.
+      if (current.snapshotCursor) return false;
+      get().setServerState(state);
+      get().setLegalActions((payload.legal_actions as LegalAction[] | undefined) ?? []);
+    }
+    return true;
+  },
   legalActions: [],
   playerMeta: { ...initialPlayerMeta },
   readyPlayers: [],
@@ -150,9 +196,9 @@ export const useGameStore = create<GameState>((set, get) => ({
           avatar_url:
             seat.avatar_url !== undefined
               ? seat.avatar_url
-              : Object.values(current.playerMeta).find(
+              : (Object.values(current.playerMeta).find(
                   (meta) => seat.player_id != null && meta.playerId === seat.player_id,
-                )?.avatar_url ?? null,
+                )?.avatar_url ?? null),
           seatStatus: seat.status,
           isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
           isYou,
@@ -256,7 +302,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPlayerId,
         youPositionAbs: youPos,
         playerMeta: baseMeta,
-        ...(!sameSession ? { role: null, serverState: null, legalActions: [] } : {}),
+        ...(!sameSession
+          ? {
+              role: null,
+              serverState: null,
+              legalActions: [],
+              snapshotCursor: null,
+              retiredInstances: [],
+              dealerPresentation: null,
+            }
+          : {}),
         ...(!sameSession ? { lifecycle: null } : {}),
         ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
@@ -279,7 +334,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { playerMeta };
     }),
 
-  setServerState: (state) =>
+  setServerState: (state, snapshot) =>
     set((current) => {
       const raw = (
         current.role === 'player' ? state : publicState(state as ServerGameState)
@@ -314,8 +369,43 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       const phase = (raw.phase as ServerGameState['phase'] | undefined) ?? null;
       const isTerminalPhase = phase === 'complete' || phase === 'game_over';
+      const timing = phase === 'dealer_selection' ? snapshot?.presentation?.dealer_selection : null;
+      const receivedAtMs = Date.now();
+      const previousTiming =
+        current.snapshotCursor?.instanceId === snapshot?.game_instance_id
+          ? current.dealerPresentation
+          : null;
+      const serverTimeMs = Math.max(
+        snapshot?.server_time_ms ?? 0,
+        previousTiming
+          ? previousTiming.serverTimeMs + Math.max(0, receivedAtMs - previousTiming.receivedAtMs)
+          : 0,
+      );
 
       return {
+        ...(snapshot
+          ? {
+              snapshotCursor: {
+                instanceId: snapshot.game_instance_id,
+                revision: snapshot.state_revision,
+              },
+              retiredInstances:
+                current.snapshotCursor &&
+                current.snapshotCursor.instanceId !== snapshot.game_instance_id
+                  ? [...current.retiredInstances, current.snapshotCursor.instanceId]
+                  : current.retiredInstances,
+              legalActions: current.role === 'player' ? (snapshot.legal_actions ?? []) : [],
+            }
+          : {}),
+        dealerPresentation:
+          timing && Number.isFinite(timing.started_at_ms) && Number.isFinite(timing.ends_at_ms)
+            ? {
+                startedAtMs: timing.started_at_ms,
+                endsAtMs: timing.ends_at_ms,
+                serverTimeMs,
+                receivedAtMs,
+              }
+            : null,
         serverState: {
           ...(raw as ServerGameState),
           current_player: currentPlayer ?? null,
@@ -488,6 +578,9 @@ export const useGameStore = create<GameState>((set, get) => ({
       youPositionAbs: null,
       role: null,
       serverState: null,
+      snapshotCursor: null,
+      retiredInstances: [],
+      dealerPresentation: null,
       legalActions: [],
       turnTimer: null,
       lifecycle: null,

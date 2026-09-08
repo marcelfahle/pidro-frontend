@@ -72,9 +72,8 @@ function statusText(
 
   switch (phase) {
     case 'dealer_selection':
-      if (cut) return `Draws ${cardLabel(cut)}`;
-      if (playedCard) return `Draws ${cardLabel(playedCard)}`;
-      return player.isCurrentTurn ? 'Drawing' : 'Waiting';
+      if (cut) return `Drew ${cardLabel(cut)}`;
+      return 'Drawing';
     case 'bidding':
       if (bid === 'pass') return 'Passed';
       if (typeof bid === 'number') return `Bet ${bid}`;

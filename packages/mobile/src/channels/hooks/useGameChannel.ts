@@ -108,7 +108,7 @@ export const useGameChannel = ({
   onWaitingRoomEvent,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
-  const setLegalActions = useGameStore((s) => s.setLegalActions);
+  const applyGameSnapshot = useGameStore((s) => s.applyGameSnapshot);
   const setTurnTimer = useGameStore((s) => s.setTurnTimer);
   const clearTurnTimer = useGameStore((s) => s.clearTurnTimer);
   const setYouPosition = useGameStore((s) => s.setYouPosition);
@@ -170,6 +170,7 @@ export const useGameChannel = ({
         legalActions: LegalAction[],
         position: Position | null
       ) => {
+        if (useGameStore.getState().snapshotCursor) return;
         if (useGameStore.getState().role !== 'player') return;
         if (!shouldAutoSelectDealer(gameState, legalActions, position)) return;
 
@@ -208,15 +209,11 @@ export const useGameChannel = ({
             if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
 
             const gameState = extractGameState(response);
-            if (gameState) {
-              setServerState(gameState);
-            }
-
+            const accepted = applyGameSnapshot(response);
             const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
-            setLegalActions(legalActions);
-            setTurnTimer(normalizeTurnTimer(response?.turn_timer));
+            if (accepted) setTurnTimer(normalizeTurnTimer(response?.turn_timer));
 
-            if (gameState) {
+            if (gameState && accepted) {
               maybeAutoSelectDealer(gameState, legalActions, position ?? youPositionRef.current);
             }
           });
@@ -240,8 +237,7 @@ export const useGameChannel = ({
         if (gameState) {
           const legalActions = (data?.legal_actions as LegalAction[] | undefined) ?? [];
           unstable_batchedUpdates(() => {
-            setServerState(gameState);
-            setLegalActions(legalActions);
+            if (!applyGameSnapshot(data)) return;
             maybeAutoSelectDealer(gameState, legalActions, youPositionRef.current);
           });
         } else {
@@ -255,6 +251,7 @@ export const useGameChannel = ({
       });
 
       onCurrent('game_over', (payload: unknown) => {
+        if (useGameStore.getState().snapshotCursor) return;
         if (disposed || globalGameChannel !== channel) return;
         const data = payload as Record<string, unknown> | undefined;
         const winner =
@@ -312,6 +309,7 @@ export const useGameChannel = ({
       });
 
       onCurrent('turn_changed', (payload: unknown) => {
+        if (useGameStore.getState().snapshotCursor) return;
         const data = payload as Record<string, unknown> | undefined;
         const pos: Position | null =
           (data?.position as Position) ||
@@ -523,7 +521,7 @@ export const useGameChannel = ({
     roomCode,
     enabled,
     setServerState,
-    setLegalActions,
+    applyGameSnapshot,
     setTurnTimer,
     clearTurnTimer,
     setYouPosition,
