@@ -188,11 +188,15 @@ function TableDevHarness() {
 
   if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
     return (
-      <RolePreview
-        role={params.role === 'player' ? 'player' : 'spectator'}
-        phase={phase}
-        feedback={params.feedback}
-      />
+      <SafeAreaProvider>
+        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+          <RolePreview
+            role={params.role === 'player' ? 'player' : 'spectator'}
+            phase={phase}
+            feedback={params.feedback}
+          />
+        </SafeAreaInsetsContext.Provider>
+      </SafeAreaProvider>
     );
   }
 
@@ -358,13 +362,15 @@ function RolePreview({
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
+    const previewPhase =
+      phase === 'bidding' ? 'bidding' : phase === 'declaring' ? 'declaring' : 'playing';
     store.reset();
     store.initFromRoom({ room: WAITING_ROOM, youPlayerId: 'p-south' });
     store.setRole(role);
     store.setYouPosition('south');
     store.setChannelStatus(true);
     store.setServerState({
-      phase: phase === 'bidding' ? 'bidding' : phase === 'declaring' ? 'declaring' : 'playing',
+      phase: previewPhase,
       current_player: 'south',
       trump: 'spades',
       dealer: 'north',
@@ -384,18 +390,20 @@ function RolePreview({
       current_trick: [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }],
     });
     store.setLegalActions([{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]);
-    store.setTurnTimer({
-      timerId: 1,
-      scope: 'seat',
-      position: 'south',
-      phase: 'playing',
-      durationMs: 30_000,
-      transitionDelayMs: 0,
-      serverTime: new Date().toISOString(),
-      remainingMs: 30_000,
-      receivedAtMs: Date.now(),
-      eventSeq: 1,
-    });
+    if (previewPhase === 'playing') {
+      store.setTurnTimer({
+        timerId: 1,
+        scope: 'seat',
+        position: 'south',
+        phase: 'playing',
+        durationMs: 30_000,
+        transitionDelayMs: 0,
+        serverTime: new Date().toISOString(),
+        remainingMs: 30_000,
+        receivedAtMs: Date.now(),
+        eventSeq: 1,
+      });
+    }
     loadGameCanvasTable().then((component) => {
       if (active) setTable(() => component);
     });
