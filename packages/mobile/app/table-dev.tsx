@@ -162,6 +162,7 @@ function TableDevHarness() {
     notice?: string;
     names?: string;
     safeArea?: string;
+    pass?: string;
     viewer?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
@@ -176,14 +177,27 @@ function TableDevHarness() {
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
+  const fixtureInsets =
+    params.safeArea === 'island'
+      ? { top: 59, bottom: 34, left: 0, right: 0 }
+      : params.safeArea === 'android-buttons' || params.safeArea === 'android'
+        ? { top: 24, bottom: 48, left: 0, right: 0 }
+        : params.safeArea === 'android-gesture'
+          ? { top: 24, bottom: 24, left: 0, right: 0 }
+          : { top: 0, bottom: 0, left: 0, right: 0 };
 
   if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
     return (
-      <RolePreview
-        role={params.role === 'player' ? 'player' : 'spectator'}
-        phase={phase}
-        feedback={params.feedback}
-      />
+      <SafeAreaProvider>
+        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+          <RolePreview
+            role={params.role === 'player' ? 'player' : 'spectator'}
+            phase={phase}
+            feedback={params.feedback}
+            canPass={params.pass !== 'disabled'}
+          />
+        </SafeAreaInsetsContext.Provider>
+      </SafeAreaProvider>
     );
   }
 
@@ -224,12 +238,6 @@ function TableDevHarness() {
           : seat
       ),
     };
-    const fixtureInsets =
-      params.safeArea === 'island'
-        ? { top: 59, bottom: 34, left: 0, right: 0 }
-        : params.safeArea === 'android'
-          ? { top: 24, bottom: 48, left: 0, right: 0 }
-          : { top: 0, bottom: 0, left: 0, right: 0 };
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
@@ -282,54 +290,60 @@ function TableDevHarness() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
       <SafeAreaProvider>
-        <SkiaDevTable
-          onHandPresentationReadyChange={setIsHandReady}
-          autoPlay={autoPlay}
-          phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
-          lifecycle={params.lifecycle}
-        />
-        <DevOverlays phase={phase} isHandReady={isHandReady} />
-        {params.feedback === 'owner' && (
-          <TableSeatDecision
-            decisions={{
-              decision:
-                params.feedback === 'owner' && dismissed < 3
-                  ? {
-                      key: String(dismissed),
-                      id: String(dismissed),
-                      position: positions[dismissed],
-                      playerName:
-                        dismissed === 0 ? (params.playerName ?? names[0]) : names[dismissed],
-                    }
-                  : null,
-              pendingCount: 3 - dismissed,
-              busy,
-              error,
-              keepBot: async () => {
-                setDismissed((count) => count + 1);
-                setError(null);
-              },
-              openSeat: async () => {
-                setBusy(true);
-                setError(null);
-                await new Promise((resolve) => setTimeout(resolve, 800));
-                setError('Could not confirm the seat update. Please try again.');
-                setBusy(false);
-              },
-            }}
+        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+          <SkiaDevTable
+            onHandPresentationReadyChange={setIsHandReady}
+            autoPlay={autoPlay}
+            phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
+            lifecycle={params.lifecycle}
           />
-        )}
-        {params.feedback === 'timed' ? (
-          <TimedTableFeedback />
-        ) : (
-          <TableFeedback
-            notice={
-              params.feedback === 'notice' || params.notice === 'true'
-                ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
-                : null
-            }
+          <DevOverlays
+            phase={phase}
+            isHandReady={isHandReady}
+            canPass={params.pass !== 'disabled'}
           />
-        )}
+          {params.feedback === 'owner' && (
+            <TableSeatDecision
+              decisions={{
+                decision:
+                  params.feedback === 'owner' && dismissed < 3
+                    ? {
+                        key: String(dismissed),
+                        id: String(dismissed),
+                        position: positions[dismissed],
+                        playerName:
+                          dismissed === 0 ? (params.playerName ?? names[0]) : names[dismissed],
+                      }
+                    : null,
+                pendingCount: 3 - dismissed,
+                busy,
+                error,
+                keepBot: async () => {
+                  setDismissed((count) => count + 1);
+                  setError(null);
+                },
+                openSeat: async () => {
+                  setBusy(true);
+                  setError(null);
+                  await new Promise((resolve) => setTimeout(resolve, 800));
+                  setError('Could not confirm the seat update. Please try again.');
+                  setBusy(false);
+                },
+              }}
+            />
+          )}
+          {params.feedback === 'timed' ? (
+            <TimedTableFeedback />
+          ) : (
+            <TableFeedback
+              notice={
+                params.feedback === 'notice' || params.notice === 'true'
+                  ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
+                  : null
+              }
+            />
+          )}
+        </SafeAreaInsetsContext.Provider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
@@ -340,24 +354,28 @@ function RolePreview({
   role,
   phase,
   feedback,
+  canPass,
 }: {
   role: 'player' | 'spectator';
   phase: string;
   feedback?: string;
+  canPass: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
+    const previewPhase =
+      phase === 'bidding' ? 'bidding' : phase === 'declaring' ? 'declaring' : 'playing';
     store.reset();
     store.initFromRoom({ room: WAITING_ROOM, youPlayerId: 'p-south' });
     store.setRole(role);
     store.setYouPosition('south');
     store.setChannelStatus(true);
     store.setServerState({
-      phase: phase === 'bidding' ? 'bidding' : phase === 'declaring' ? 'declaring' : 'playing',
+      phase: previewPhase,
       current_player: 'south',
-      trump: 'spades',
+      trump: previewPhase === 'playing' ? 'spades' : null,
       dealer: 'north',
       scores: { north_south: 36, east_west: 29 },
       hand_number: 4,
@@ -372,21 +390,37 @@ function RolePreview({
           ],
         },
       },
-      current_trick: [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }],
+      current_trick:
+        previewPhase === 'playing' ? [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }] : [],
     });
-    store.setLegalActions([{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]);
-    store.setTurnTimer({
-      timerId: 1,
-      scope: 'seat',
-      position: 'south',
-      phase: 'playing',
-      durationMs: 30_000,
-      transitionDelayMs: 0,
-      serverTime: new Date().toISOString(),
-      remainingMs: 30_000,
-      receivedAtMs: Date.now(),
-      eventSeq: 1,
-    });
+    store.setLegalActions(
+      previewPhase === 'bidding'
+        ? [
+            ...([6, 7, 8, 9, 10, 11, 12, 13, 14] as const).map(
+              (amount) => ({ type: 'bid', amount }) as const
+            ),
+            ...(canPass ? ([{ type: 'pass' }] as const) : []),
+          ]
+        : previewPhase === 'declaring'
+          ? (['clubs', 'diamonds', 'hearts', 'spades'] as const).map(
+              (suit) => ({ type: 'declare_trump', suit }) as const
+            )
+          : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
+    );
+    if (previewPhase === 'playing') {
+      store.setTurnTimer({
+        timerId: 1,
+        scope: 'seat',
+        position: 'south',
+        phase: 'playing',
+        durationMs: 30_000,
+        transitionDelayMs: 0,
+        serverTime: new Date().toISOString(),
+        remainingMs: 30_000,
+        receivedAtMs: Date.now(),
+        eventSeq: 1,
+      });
+    }
     loadGameCanvasTable().then((component) => {
       if (active) setTable(() => component);
     });
@@ -394,7 +428,7 @@ function RolePreview({
       active = false;
       store.reset();
     };
-  }, [role, phase]);
+  }, [role, phase, canPass]);
   return (
     <View className="flex-1">
       {Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />}

@@ -4,26 +4,32 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { pushGameAction } from '@/channels/hooks/useGameChannel';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
-import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
-import { cardSize } from '@/game/canvas/layout';
-import { useGameStore, useGameViewModel } from '@/stores/game';
+import { computeLayout } from '@/game/canvas/layout';
+import { useGameStore } from '@/stores/game';
 import type { LegalAction } from '@/types/game';
 
 const ALL_BID_VALUES = [6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
-const CARD_RATIO = 110 / 78;
-const PORTRAIT_UTILITY_RESERVE = 72;
+const GRID_GAP = PidroSpacing.xxs;
+const CONTROL_GAP = PidroSpacing.xs;
+const PANEL_PADDING = PidroSpacing.xxs;
+const HAND_GAP = 18;
+const MAX_BUTTON_SIZE = 54;
+const FIXED_GROUP_HEIGHT = PidroLayout.touchTarget + GRID_GAP * 2 + CONTROL_GAP + PANEL_PADDING * 2;
 
 export function BiddingActions({
   isYourTurn,
   isHandReady,
+  topReserve,
+  bottomReserve,
 }: {
   isYourTurn: boolean;
   isHandReady: boolean;
+  topReserve: number;
+  bottomReserve: number;
 }) {
   const serverState = useGameStore((state) => state.serverState);
   const legalActions = useGameStore((state) => state.legalActions);
-  const viewModel = useGameViewModel();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const landscape = width > height;
@@ -40,17 +46,6 @@ export function BiddingActions({
     bids.sort((a, b) => a - b);
     return { bidOptions: bids, legalBidSet: new Set(bids), canPass: pass };
   }, [legalActions]);
-
-  const highestAmount =
-    serverState?.current_bid ??
-    (typeof serverState?.highest_bid?.amount === 'number' ? serverState.highest_bid.amount : null);
-  const highestPosition = serverState?.highest_bid?.position ?? serverState?.bid_winner ?? null;
-  const highestPlayer = highestPosition
-    ? viewModel?.players.find((player) => player.absolutePosition === highestPosition)
-    : null;
-  const bidContext = highestAmount
-    ? `Current bid: ${highestAmount}${highestPlayer?.username ? ` by ${highestPlayer.username}` : ''}.`
-    : 'No bid has been placed yet.';
 
   const showBiddingPanel = serverState?.phase === 'bidding';
   const canAct = isYourTurn && isHandReady && (bidOptions.length > 0 || canPass);
@@ -72,61 +67,35 @@ export function BiddingActions({
 
   if (!showBiddingPanel || !canAct) return null;
 
-  const compactPortrait = !landscape && height < 720;
-  const compactControls = landscape || compactPortrait;
-  const buttonSize = compactControls ? PidroLayout.touchTarget : 54;
-  const gridGap = compactControls ? PidroSpacing.xxs : PidroSpacing.xs;
-  const panelPaddingHorizontal = landscape
-    ? 6
-    : compactPortrait
-      ? PidroSpacing.xxs
-      : PidroSpacing.sm;
-  const panelPaddingVertical = landscape ? 6 : compactPortrait ? 0 : PidroSpacing.sm;
-  const controlGap = landscape ? 6 : compactPortrait ? 2 : PidroSpacing.xs;
-  const gridWidth = buttonSize * 3 + gridGap * 2;
-  const panelWidth = gridWidth + panelPaddingHorizontal * 2;
-  const gridHeight = buttonSize * 3 + gridGap * 2;
-  const panelHeight =
-    gridHeight + controlGap + PidroLayout.touchTarget + panelPaddingVertical * 2 + 2;
-  const assumedBottomInset = Math.max(insets.bottom, landscape ? 21 : 34);
-  const availableHeight = height - insets.top - assumedBottomInset;
-  const referenceTop = insets.top + availableHeight * (landscape ? 0.11 : 0.355);
-  const safeTop = insets.top + (landscape ? PidroLayout.touchTarget : 172);
-  const cardHeight = cardSize(Math.min(width, height)) * CARD_RATIO;
-  const tableBottom = height - assumedBottomInset - (landscape ? 0 : PORTRAIT_UTILITY_RESERVE);
-  const handCenter = tableBottom - cardHeight * (landscape ? 0.56 : 1.35);
-  const handTop = handCenter - (cardHeight * (landscape ? 0.9 : 1)) / 2;
-  const latestPanelTop = handTop - PidroSpacing.xs - panelHeight;
-  const errorReserve = submissionError ? PidroSpacing.xl : 0;
-  const panelTop = Math.max(
-    insets.top + PidroSpacing.xs,
-    Math.min(Math.max(referenceTop, safeTop), latestPanelTop) - errorReserve
+  const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
+  const handHeight = layout.cardH * (landscape ? 0.9 : 1);
+  const handTop = layout.hand.cy - handHeight / 2;
+  const tableTop = insets.top + topReserve;
+  const sideBackWidth = Math.max(30, Math.min(56, layout.cardW * 0.62));
+  const northClearance = tableTop + (landscape ? 56 : 82);
+  const sideClearance =
+    layout.trick.cy - (sideBackWidth * 3.4) / 2 - 62 + PidroLayout.touchTarget + HAND_GAP;
+  const preferredTop = landscape ? northClearance : Math.max(northClearance, sideClearance);
+  const availableHeight = handTop - HAND_GAP - preferredTop;
+  const buttonSize = Math.max(
+    PidroLayout.touchTarget,
+    Math.min(MAX_BUTTON_SIZE, Math.floor((availableHeight - FIXED_GROUP_HEIGHT) / 3))
   );
+  const gridWidth = buttonSize * 3 + GRID_GAP * 2;
+  const hardTop = tableTop + HAND_GAP;
 
   return (
     <View
       style={[
         styles.overlay,
         {
-          paddingTop: panelTop,
+          top: hardTop,
+          bottom: height - handTop + HAND_GAP,
         },
       ]}
       pointerEvents="box-none">
-      <Surface
-        testID="bidding-window"
-        variant="window"
-        accessibilityLabel={`Place your bid. ${bidContext}`}
-        accessibilityState={{ busy: isSubmitting }}
-        style={[
-          styles.panel,
-          {
-            width: panelWidth,
-            gap: controlGap,
-            paddingHorizontal: panelPaddingHorizontal,
-            paddingVertical: panelPaddingVertical,
-          },
-        ]}>
-        <View testID="bidding-grid" style={[styles.bidGrid, { width: gridWidth, gap: gridGap }]}>
+      <View testID="bidding-window" style={styles.panel}>
+        <View testID="bidding-grid" style={[styles.bidGrid, { width: gridWidth, gap: GRID_GAP }]}>
           {ALL_BID_VALUES.map((amount) => {
             const isLegal = legalBidSet.has(amount);
             return (
@@ -149,7 +118,6 @@ export function BiddingActions({
                   maxFontSizeMultiplier={1.2}>
                   {amount}
                 </PidroText>
-                {!isLegal ? <View pointerEvents="none" style={styles.disabledSlash} /> : null}
               </PressableFX>
             );
           })}
@@ -180,20 +148,27 @@ export function BiddingActions({
             {submissionError}
           </PidroText>
         ) : null}
-      </Surface>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    left: 0,
+    right: 0,
     zIndex: 54,
     alignItems: 'center',
+    justifyContent: 'flex-end',
     paddingHorizontal: PidroSpacing.sm,
   },
   panel: {
     alignItems: 'center',
+    gap: CONTROL_GAP,
+    padding: PANEL_PADDING,
+    borderRadius: PidroRadii.lg,
+    backgroundColor: PidroColors.panelStrong,
   },
   bidGrid: {
     alignSelf: 'center',
@@ -222,14 +197,6 @@ const styles = StyleSheet.create({
   bidButtonPressed: {
     opacity: 0.76,
     backgroundColor: PidroColors.glass,
-  },
-  disabledSlash: {
-    position: 'absolute',
-    width: '76%',
-    height: 2,
-    borderRadius: PidroRadii.full,
-    backgroundColor: PidroColors.textSoft,
-    transform: [{ rotate: '-45deg' }],
   },
   passButton: {
     minHeight: PidroLayout.touchTarget,
