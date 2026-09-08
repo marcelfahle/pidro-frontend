@@ -418,6 +418,34 @@ describe('useGameChannel', () => {
     unmount();
   });
 
+  it('uses the versioned terminal snapshot and ignores an unversioned game-over regression', () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    const payload = {
+      game_instance_id: 'game-a',
+      state_revision: 1,
+      server_time_ms: 10000,
+      presentation: null,
+      legal_actions: [],
+      state: gameState('playing'),
+    };
+    act(() =>
+      currentChannel?.joinPush.trigger('ok', { ...payload, role: 'player', position: 'south' }),
+    );
+    const result = { winner: 'east_west', scores: { north_south: 65, east_west: 62 } };
+    // Backend GameAdapter broadcasts state_update before the legacy game_over event.
+    act(() =>
+      currentChannel?.emit('game_state', {
+        ...payload,
+        state_revision: 2,
+        state: { ...payload.state, phase: 'complete', ...result },
+      }),
+    );
+    expect(useGameStore.getState().serverState).toMatchObject({ phase: 'complete', ...result });
+    const terminal = useGameStore.getState();
+    act(() => currentChannel?.emit('game_over', { winner: 'north_south', scores: {} }));
+    expect(useGameStore.getState()).toBe(terminal);
+  });
+
   it('records the authoritative game-over winner', () => {
     const { unmount } = renderHook(() => useGameChannel({ roomCode: 'ABCD', enabled: true }));
 

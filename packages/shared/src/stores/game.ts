@@ -92,7 +92,11 @@ interface GameState {
 
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
   refreshPlayerIdentities: (room: Room) => void;
-  setServerState: (state: ServerGameState | Record<string, any>, snapshot?: GameSnapshot) => void;
+  setServerState: (
+    state: ServerGameState | Record<string, any>,
+    snapshot?: GameSnapshot,
+    actions?: LegalAction[],
+  ) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setTurnTimer: (timer: ActiveTurnTimer | null) => void;
   clearTurnTimer: (timerId?: number | null) => void;
@@ -188,8 +192,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     } else {
       // Legacy servers/fixtures still send bare state. Never downgrade a versioned session.
       if (current.snapshotCursor) return false;
-      get().setServerState(state);
-      get().setLegalActions((payload.legal_actions as LegalAction[] | undefined) ?? []);
+      get().setServerState(
+        state,
+        undefined,
+        (payload.legal_actions as LegalAction[] | undefined) ?? [],
+      );
     }
     return true;
   },
@@ -367,7 +374,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return { playerMeta };
     }),
 
-  setServerState: (state, snapshot) =>
+  setServerState: (state, snapshot, actions) =>
     set((current) => {
       const raw = (
         current.role === 'player' ? state : publicState(state as ServerGameState)
@@ -416,6 +423,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       );
 
       return {
+        ...(actions ? { legalActions: current.role === 'player' ? actions : [] } : {}),
         ...(snapshot
           ? {
               snapshotCursor: {

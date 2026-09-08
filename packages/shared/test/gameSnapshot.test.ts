@@ -43,6 +43,30 @@ describe('game snapshot authority', () => {
     expect(useGameStore.getState()).toBe(before);
     expect(before.dealerPresentation).toBeNull();
   });
+  it('publishes legacy state and actions atomically, including the missing-actions fallback', () => {
+    const store = useGameStore.getState();
+    store.setLegalActions([{ type: 'pass' }]);
+    const updates: { phase: string | undefined; actions: unknown[] }[] = [];
+    const unsub = useGameStore.subscribe((state) =>
+      updates.push({
+        phase: state.serverState?.phase,
+        actions: state.legalActions,
+      }),
+    );
+    try {
+      store.applyGameSnapshot({
+        state: snapshot(1, 'a', 'bidding').state,
+        legal_actions: [{ type: 'bid', amount: 6 }],
+      });
+      store.applyGameSnapshot({ state: snapshot(1, 'a', 'playing').state });
+      expect(updates).toEqual([
+        { phase: 'bidding', actions: [{ type: 'bid', amount: 6 }] },
+        { phase: 'playing', actions: [] },
+      ]);
+    } finally {
+      unsub();
+    }
+  });
   it('does not rewind presentation when a newer revision spent longer in transit', () => {
     const clock = spyOn(Date, 'now').mockReturnValue(1000);
     try {
