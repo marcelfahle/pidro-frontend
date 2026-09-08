@@ -194,6 +194,7 @@ function TableDevHarness() {
             role={params.role === 'player' ? 'player' : 'spectator'}
             phase={phase}
             feedback={params.feedback}
+            canPass={params.pass !== 'disabled'}
           />
         </SafeAreaInsetsContext.Provider>
       </SafeAreaProvider>
@@ -353,10 +354,12 @@ function RolePreview({
   role,
   phase,
   feedback,
+  canPass,
 }: {
   role: 'player' | 'spectator';
   phase: string;
   feedback?: string;
+  canPass: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -372,7 +375,7 @@ function RolePreview({
     store.setServerState({
       phase: previewPhase,
       current_player: 'south',
-      trump: 'spades',
+      trump: previewPhase === 'playing' ? 'spades' : null,
       dealer: 'north',
       scores: { north_south: 36, east_west: 29 },
       hand_number: 4,
@@ -387,9 +390,23 @@ function RolePreview({
           ],
         },
       },
-      current_trick: [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }],
+      current_trick:
+        previewPhase === 'playing' ? [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }] : [],
     });
-    store.setLegalActions([{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]);
+    store.setLegalActions(
+      previewPhase === 'bidding'
+        ? [
+            ...([6, 7, 8, 9, 10, 11, 12, 13, 14] as const).map(
+              (amount) => ({ type: 'bid', amount }) as const
+            ),
+            ...(canPass ? ([{ type: 'pass' }] as const) : []),
+          ]
+        : previewPhase === 'declaring'
+          ? (['clubs', 'diamonds', 'hearts', 'spades'] as const).map(
+              (suit) => ({ type: 'declare_trump', suit }) as const
+            )
+          : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
+    );
     if (previewPhase === 'playing') {
       store.setTurnTimer({
         timerId: 1,
@@ -411,7 +428,7 @@ function RolePreview({
       active = false;
       store.reset();
     };
-  }, [role, phase]);
+  }, [role, phase, canPass]);
   return (
     <View className="flex-1">
       {Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />}
