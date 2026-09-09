@@ -4,39 +4,24 @@ interface PidroLogoProps {
   size?: 'regular' | 'hero';
 }
 
-const ARTWORK_ASPECT_RATIO = 1385 / 1929;
-const VISIBLE_MARK_WIDTH_RATIO = 0.405;
-const VISIBLE_MARK_VERTICAL_OFFSET_RATIO = 0.065;
+// logo-v3: tightly cropped mark (1614×975), no baked glow bleed — the
+// rotating shimmer behind it is LogoGlow's job. Rendered at natural
+// aspect from a 1614px source, so up to ~530pt it stays razor sharp @3x.
+const ASPECT = 975 / 1614;
 
-/**
- * Sizes the visible Pidro mark rather than the artwork bitmap. The source image
- * includes long transparent glow rays that are expected to bleed outside its
- * parent stage.
- */
 export function PidroLogo({ size = 'regular' }: PidroLogoProps) {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const hero = size === 'hero';
 
-  const visibleMarkWidth = landscape
-    ? Math.min(hero ? 310 : 270, width * (hero ? 0.32 : 0.29))
-    : Math.min(hero ? 310 : 280, width * (hero ? 0.8 : 0.72));
-  const artworkWidth = visibleMarkWidth / VISIBLE_MARK_WIDTH_RATIO;
-  const artworkHeight = artworkWidth * ARTWORK_ASPECT_RATIO;
+  const markWidth = landscape
+    ? Math.min(hero ? 280 : 230, width * (hero ? 0.3 : 0.26))
+    : Math.min(hero ? 330 : 240, width * (hero ? 0.82 : 0.62));
 
   return (
     <Image
-      source={require('../../../assets/images/logo-full.png')}
-      style={[
-        styles.image,
-        {
-          width: artworkWidth,
-          height: artworkHeight,
-          marginLeft: -artworkWidth / 2,
-          marginTop: -artworkHeight / 2,
-          transform: [{ translateY: artworkHeight * VISIBLE_MARK_VERTICAL_OFFSET_RATIO }],
-        },
-      ]}
+      source={require('../../../assets/images/logo-v3.png')}
+      style={[styles.image, { width: markWidth, height: markWidth * ASPECT }]}
       resizeMode="contain"
       accessibilityLabel="Pidro"
     />
@@ -45,9 +30,6 @@ export function PidroLogo({ size = 'regular' }: PidroLogoProps) {
 
 const styles = StyleSheet.create({
   image: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
     flexShrink: 0,
   },
 });

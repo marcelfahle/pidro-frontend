@@ -5,7 +5,7 @@
  * radial halo, one full turn every 80 seconds. Honors reduced motion.
  */
 import { useEffect } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -57,38 +57,40 @@ export function LogoGlow({ size = 460 }: LogoGlowProps) {
   const r = size / 2;
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.glow,
-        { width: size, height: size, marginLeft: -size / 2, marginTop: -size / 2 },
-        spin,
-      ]}>
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <Defs>
-          <RadialGradient id="glow-fade" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#8ce0ff" stopOpacity="0.16" />
-            <Stop offset="45%" stopColor="#8ce0ff" stopOpacity="0.08" />
-            <Stop offset="100%" stopColor="#8ce0ff" stopOpacity="0" />
-          </RadialGradient>
-          <RadialGradient id="glow-halo" cx="50%" cy="50%" r="50%">
-            <Stop offset="0%" stopColor="#aee8ff" stopOpacity="0.14" />
-            <Stop offset="100%" stopColor="#aee8ff" stopOpacity="0" />
-          </RadialGradient>
-        </Defs>
-        {rayPaths(r).map((d) => (
-          <Path key={d} d={d} fill="url(#glow-fade)" />
-        ))}
-        <Circle cx={r} cy={r} r={r * 0.55} fill="url(#glow-halo)" />
-      </Svg>
-    </Animated.View>
+    <View pointerEvents="none" style={styles.stage}>
+      <Animated.View style={[{ width: size, height: size }, spin]}>
+        <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <Defs>
+            <RadialGradient id="glow-fade" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#8ce0ff" stopOpacity="0.22" />
+              <Stop offset="45%" stopColor="#8ce0ff" stopOpacity="0.10" />
+              <Stop offset="100%" stopColor="#8ce0ff" stopOpacity="0" />
+            </RadialGradient>
+            <RadialGradient id="glow-halo" cx="50%" cy="50%" r="50%">
+              <Stop offset="0%" stopColor="#aee8ff" stopOpacity="0.16" />
+              <Stop offset="100%" stopColor="#aee8ff" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          {rayPaths(r).map((d) => (
+            <Path key={d} d={d} fill="url(#glow-fade)" />
+          ))}
+          <Circle cx={r} cy={r} r={r * 0.55} fill="url(#glow-halo)" />
+        </Svg>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  glow: {
+  // Fill the logo stage and center the disc with flex — immune to the
+  // %-plus-negative-margin pitfalls on animated views.
+  stage: {
     position: 'absolute',
-    left: '50%',
-    top: '50%',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
