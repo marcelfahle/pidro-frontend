@@ -45,6 +45,20 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
 - On height-starved layouts (phone landscape, <500px tall) **decoration yields, not the
   form** — hide the logo, keep the fields comfortable.
 
+## Motion
+
+- **Press physics** (built into `BevelPressable`/`PressableFX`): 2px travel or 0.97
+  scale, 90–140ms ease-out. Never both; never opacity flicker.
+- **Tab switches**: 160ms opacity-only cross-fade on the content (`(shell)/_layout`);
+  the pill never animates during navigation. Route pushes (lobby, game) stay instant —
+  `animation: 'none'` for game feel.
+- **Ambient motion** is rare and slow (the 80s logo glow). One orchestrated moment
+  beats scattered micro-wiggles.
+- **Older devices**: animate only opacity and transform (GPU-composited); never
+  layout properties. Every animation honors Reduce Motion
+  (`useReducedMotion` / `ReduceMotion.System`) — the app must feel complete with all
+  motion off.
+
 ## Type
 
 - **Bree Serif** (`PidroFonts.display`): CTA labels, screen/plaque titles, big numbers.

@@ -6,6 +6,7 @@
  */
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { TabPill, type ShellTab } from '@/components/shell/TabPill';
 import { useLobbyStore } from '@/stores/lobby';
 import { gameRoute } from '@/navigation/gameRoute';
@@ -32,6 +33,7 @@ export default function ShellLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const active = activeTabForPath(pathname);
+  const reduceMotion = useReducedMotion();
   const rejoinable = useLobbyStore((state) => state.lobby.my_rejoinable);
   const waitingGame = rejoinable.length > 0 ? rejoinable[0] : null;
 
@@ -51,7 +53,14 @@ export default function ShellLayout() {
 
   return (
     <View style={styles.root}>
-      <Slot />
+      {/* 160ms opacity-only cross-fade on tab switch: cheap on old GPUs,
+          skipped under Reduce Motion. The pill stays outside the fade. */}
+      <Animated.View
+        key={active}
+        style={styles.root}
+        entering={reduceMotion ? undefined : FadeIn.duration(160)}>
+        <Slot />
+      </Animated.View>
       <TabPill
         orientation={landscape ? 'rail' : 'bottom'}
         active={active}
