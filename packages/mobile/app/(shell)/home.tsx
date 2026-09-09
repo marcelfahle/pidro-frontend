@@ -1,22 +1,19 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { lobbyApi } from '@/api/lobby';
 import { Avatar } from '@/components/ui/Avatar';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
-import { Button } from '@/components/ui/Button';
 import { gradientBg } from '@/components/ui/Bevel';
-import { HomeTabBar } from '@/components/home/HomeTabBar';
 import { LogoGlow } from '@/components/home/LogoGlow';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
-import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
@@ -38,7 +35,6 @@ export default function HomeScreen() {
   const router = useRouter();
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [soonNote, setSoonNote] = useState<string | null>(null);
   const refreshIdentity = useProfileIdentity();
 
   useFocusEffect(
@@ -97,8 +93,6 @@ export default function HomeScreen() {
     }
   };
 
-  const soon = (feature: string) => () => setSoonNote(`${feature} is coming soon.`);
-
   const topBar = (
     <View style={styles.topBar}>
       <PressableFX
@@ -156,13 +150,6 @@ export default function HomeScreen() {
 
   const actions = (
     <View style={[styles.actions, landscape && styles.actionsLandscape]}>
-      {soonNote ? (
-        <Surface variant="subtle" style={styles.note}>
-          <PidroText role="metadata" tone="cyan" align="center">
-            {soonNote}
-          </PidroText>
-        </Surface>
-      ) : null}
       {error ? (
         <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
           <PidroText role="metadata" tone="danger" align="center">
@@ -222,23 +209,7 @@ export default function HomeScreen() {
           <PidroText style={styles.chipLabel}>Play with friends</PidroText>
         </BevelButton>
       </View>
-
-      <Button
-        label={t('invite.manual.entry')}
-        variant="link"
-        onPress={() => router.push('/join-code' as Href)}
-      />
     </View>
-  );
-
-  const tabBar = (
-    <HomeTabBar
-      orientation={landscape ? 'rail' : 'bottom'}
-      onLeague={soon('The league')}
-      onStats={() => router.push('/profile')}
-      onFriends={soon('Friends')}
-      onSettings={() => router.push('/settings')}
-    />
   );
 
   return (
@@ -264,7 +235,6 @@ export default function HomeScreen() {
             </View>
           )}
         </SafeAreaView>
-        {tabBar}
       </View>
     </Background>
   );
@@ -285,11 +255,12 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: PidroSpacing.md,
     paddingTop: PidroSpacing.xs,
+    paddingBottom: 92,
   },
   mainLandscape: {
     flex: 1,
     paddingLeft: PidroSpacing.md,
-    paddingRight: PidroSpacing.sm,
+    paddingRight: 96,
     paddingTop: PidroSpacing.xs,
   },
   bodyLandscape: {
@@ -389,9 +360,6 @@ const styles = StyleSheet.create({
   actionsLandscape: {
     width: 330,
     paddingBottom: 0,
-  },
-  note: {
-    padding: PidroSpacing.xs,
   },
   error: {
     borderColor: PidroColors.dangerBorder,

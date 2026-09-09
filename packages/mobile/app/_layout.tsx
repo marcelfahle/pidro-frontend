@@ -44,17 +44,9 @@ export default function RootLayout() {
         <Stack.Screen name="join/[code]" />
         <Stack.Screen name="(auth)" />
         <Stack.Protected guard={canAccessApp}>
-          <Stack.Screen name="home" />
+          <Stack.Screen name="(shell)" />
           <Stack.Screen
             name="lobby"
-            options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
-          />
-          <Stack.Screen
-            name="profile"
-            options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
-          />
-          <Stack.Screen
-            name="settings"
             options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
           />
           <Stack.Screen
