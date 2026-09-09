@@ -21,7 +21,9 @@ export interface AuthProviderButtonsProps {
   onApple: () => void;
   onGoogle: () => void;
   onFacebook: () => void;
-  onEmail: () => void;
+  onEmail?: () => void;
+  /** Hide the email fallback (e.g. when an email form sits right below). */
+  showEmail?: boolean;
   /** Dev/preview override; defaults to the running platform. */
   forcePlatform?: AuthProviderPlatform;
 }
@@ -70,6 +72,7 @@ export function AuthProviderButtons({
   onGoogle,
   onFacebook,
   onEmail,
+  showEmail = true,
   forcePlatform,
 }: AuthProviderButtonsProps) {
   const platform: AuthProviderPlatform =
@@ -120,13 +123,15 @@ export function AuthProviderButtons({
       {appleFirst
         ? [appleButton, googleButton, facebookButton]
         : [googleButton, appleButton, facebookButton]}
-      <BevelButton
-        label="Continue with email"
-        material="glass"
-        size="md"
-        fullWidth
-        onPress={onEmail}
-      />
+      {showEmail && onEmail ? (
+        <BevelButton
+          label="Continue with email"
+          material="glass"
+          size="md"
+          fullWidth
+          onPress={onEmail}
+        />
+      ) : null}
     </View>
   );
 }

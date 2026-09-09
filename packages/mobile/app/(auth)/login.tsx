@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter, type Href } from 'expo-router';
 import { Keyboard, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -21,6 +22,9 @@ export default function LoginScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const [socialNote, setSocialNote] = useState<string | null>(null);
+  const socialSoon = (provider: string) => () =>
+    setSocialNote(`${provider} sign-in is coming soon — use your email account below for now.`);
 
   const clearValidationError = useCallback(
     (field: LoginField) => {
@@ -92,6 +96,24 @@ export default function LoginScreen() {
           </Link>
         </>
       }>
+      <AuthProviderButtons
+        showEmail={false}
+        onApple={socialSoon('Apple')}
+        onGoogle={socialSoon('Google')}
+        onFacebook={socialSoon('Facebook')}
+      />
+      {socialNote ? (
+        <PidroText role="metadata" tone="cyan" align="center">
+          {socialNote}
+        </PidroText>
+      ) : null}
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <PidroText role="metadata" tone="muted">
+          or with email
+        </PidroText>
+        <View style={styles.dividerLine} />
+      </View>
       <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
         <View style={landscape && styles.fieldLandscape}>
           <Input
@@ -141,6 +163,17 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(184, 225, 246, 0.2)',
+  },
   fields: {
     gap: 12,
   },

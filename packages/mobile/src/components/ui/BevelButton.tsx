@@ -11,7 +11,7 @@ import { PidroBevel, PidroFonts, PidroLayout } from '@/design/tokens';
 import { PidroText } from './PidroText';
 import { BevelPressable, type BevelMaterial, type BevelPressableProps } from './Bevel';
 
-type BevelButtonSize = 'sm' | 'md' | 'lg' | 'icon';
+type BevelButtonSize = 'sm' | 'md' | 'lg' | 'hero' | 'icon';
 
 export interface BevelButtonProps extends Omit<
   BevelPressableProps,
@@ -30,21 +30,31 @@ const FACE_SIZES: Record<BevelButtonSize, ViewStyle> = {
   sm: { paddingVertical: 10, paddingHorizontal: 18 },
   md: { paddingVertical: 13, paddingHorizontal: 26 },
   lg: { paddingVertical: 17, paddingHorizontal: 40 },
+  // Extra bottom padding gives the hero's 6px lip room to read.
+  hero: { paddingTop: 18, paddingBottom: 24, paddingHorizontal: 40 },
   icon: { width: 42, height: 42, paddingVertical: 0, paddingHorizontal: 0 },
 };
 
 // Bree Serif descenders need ~1.3 line-height or g/p/y clip against the
 // PidroText role's inherited lineHeight.
-const WOOD_LABEL_SIZES: Record<BevelButtonSize, { fontSize: number; lineHeight: number }> = {
+const WOOD_LABEL_SIZES: Record<
+  BevelButtonSize,
+  { fontSize: number; lineHeight: number; letterSpacing?: number }
+> = {
   sm: { fontSize: 15, lineHeight: 20 },
   md: { fontSize: 19, lineHeight: 25 },
   lg: { fontSize: 23, lineHeight: 30 },
+  hero: { fontSize: 34, lineHeight: 44, letterSpacing: 2 },
   icon: { fontSize: 0, lineHeight: 0 },
 };
-const GLASS_LABEL_SIZES: Record<BevelButtonSize, { fontSize: number; lineHeight: number }> = {
+const GLASS_LABEL_SIZES: Record<
+  BevelButtonSize,
+  { fontSize: number; lineHeight: number; letterSpacing?: number }
+> = {
   sm: { fontSize: 14, lineHeight: 19 },
   md: { fontSize: 16, lineHeight: 21 },
   lg: { fontSize: 18, lineHeight: 24 },
+  hero: { fontSize: 20, lineHeight: 26 },
   icon: { fontSize: 0, lineHeight: 0 },
 };
 
@@ -81,7 +91,8 @@ export function BevelButton({
       accessibilityLabel={rest.accessibilityLabel ?? label}
       accessibilityState={{ disabled: disabled || loading, busy: loading }}
       material={material}
-      radius={size === 'icon' ? 12 : 14}
+      weight={size === 'hero' ? 'hero' : 'lite'}
+      radius={size === 'icon' ? 12 : size === 'hero' ? 20 : 14}
       disabled={disabled || loading}
       style={[styles.rim, fullWidth && styles.fullWidth, style]}
       contentStyle={[styles.face, FACE_SIZES[size]]}
