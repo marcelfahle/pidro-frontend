@@ -67,16 +67,16 @@ export const PidroBevel = {
     'linear-gradient(180deg, rgba(170,235,255,0.72) 0%, rgba(60,140,190,0.55) 50%, rgba(16,72,112,0.68) 100%)',
   glassFaceGradient: 'linear-gradient(180deg, rgba(46,118,178,0.92) 0%, rgba(24,78,128,0.92) 100%)',
   woodGlossGradient:
-    'linear-gradient(180deg, rgba(255,248,225,0.28) 0%, rgba(255,248,225,0.09) 100%)',
+    'linear-gradient(180deg, rgba(255,248,225,0.2) 0%, rgba(255,248,225,0.06) 100%)',
   glassGlossGradient:
-    'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 100%)',
-  dropShadow: '0px 5px 10px rgba(0,0,0,0.45), 0px 1px 3px rgba(0,0,0,0.3)',
-  dropShadowPressed: '0px 2px 5px rgba(0,0,0,0.4)',
-  glassDropShadow: '0px 3px 8px rgba(0,0,0,0.35)',
-  glassDropShadowPressed: '0px 1px 4px rgba(0,0,0,0.32)',
-  woodFaceInset: 'inset 0px 1px 0px rgba(255,230,180,0.35), inset 0px -3px 0px rgba(0,0,0,0.32)',
+    'linear-gradient(180deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.02) 100%)',
+  dropShadow: '0px 4px 8px rgba(0,0,0,0.38), 0px 1px 2px rgba(0,0,0,0.25)',
+  dropShadowPressed: '0px 2px 4px rgba(0,0,0,0.34)',
+  glassDropShadow: '0px 2px 6px rgba(0,0,0,0.3)',
+  glassDropShadowPressed: '0px 1px 3px rgba(0,0,0,0.28)',
+  woodFaceInset: 'inset 0px 1px 0px rgba(255,230,180,0.3), inset 0px -2px 0px rgba(0,0,0,0.3)',
   woodFaceInsetPressed:
-    'inset 0px 1px 0px rgba(255,230,180,0.22), inset 0px -1px 0px rgba(0,0,0,0.28)',
+    'inset 0px 1px 0px rgba(255,230,180,0.2), inset 0px -1px 0px rgba(0,0,0,0.26)',
   glassFaceInset: 'inset 0px 1px 0px rgba(255,255,255,0.30), inset 0px -2px 0px rgba(2,24,44,0.45)',
   glassFaceInsetPressed:
     'inset 0px 1px 0px rgba(255,255,255,0.18), inset 0px -1px 0px rgba(2,24,44,0.4)',

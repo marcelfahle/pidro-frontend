@@ -4,13 +4,13 @@ import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
 import { BevelButton } from '@/components/ui/BevelButton';
-import { MenuAction } from '@/components/ui/MenuAction';
+import { Button } from '@/components/ui/Button';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroFonts, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -137,15 +137,6 @@ export default function HomeScreen() {
         </View>
 
         <View style={[styles.actionPane, landscape && styles.actionPaneLandscape]}>
-          <View style={styles.intro}>
-            <PidroText role="title" style={styles.introTitle} align={landscape ? 'left' : 'center'}>
-              Choose a table
-            </PidroText>
-            <PidroText role="body" tone="soft" align={landscape ? 'left' : 'center'}>
-              Start a quick game or join friends online.
-            </PidroText>
-          </View>
-
           {error ? (
             <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
               <PidroText role="metadata" tone="danger" align="center">
@@ -155,25 +146,24 @@ export default function HomeScreen() {
           ) : null}
 
           <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
-            <MenuAction
-              title="Single player"
-              description="Start immediately with three bots."
-              icon="play"
-              onPress={handleSinglePlayer}
+            <BevelButton
+              label="Single player"
+              material="wood"
+              size="lg"
+              fullWidth
               loading={singlePlayerLoading}
-              variant="primary"
-            />
-            <MenuAction
-              title="Multiplayer"
-              description="Find a table or create one for friends."
-              icon="users"
-              onPress={() => router.push('/lobby')}
+              onPress={handleSinglePlayer}
             />
             <BevelButton
-              label={t('invite.manual.entry')}
+              label="Multiplayer"
               material="glass"
-              size="sm"
+              size="lg"
               fullWidth
+              onPress={() => router.push('/lobby')}
+            />
+            <Button
+              label={t('invite.manual.entry')}
+              variant="link"
               onPress={() => router.push('/join-code' as Href)}
             />
           </View>
@@ -256,14 +246,6 @@ const styles = StyleSheet.create({
   actionPaneLandscape: {
     width: '46%',
     maxWidth: 420,
-  },
-  intro: {
-    gap: PidroSpacing.xxs,
-  },
-  introTitle: {
-    fontFamily: PidroFonts.display,
-    fontWeight: '400',
-    letterSpacing: 0.3,
   },
   error: {
     borderColor: PidroColors.dangerBorder,

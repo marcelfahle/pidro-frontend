@@ -54,8 +54,8 @@ export function gradientBg(css: string): ViewStyle {
     : { experimental_backgroundImage: css };
 }
 
-const RIM_PAD: Record<BevelMaterial, number> = { wood: 2.5, glass: 1.5 };
-const KEY_PAD: Record<BevelMaterial, number> = { wood: 1.5, glass: 0 };
+const RIM_PAD: Record<BevelMaterial, number> = { wood: 2, glass: 1.25 };
+const KEY_PAD: Record<BevelMaterial, number> = { wood: 1, glass: 0 };
 
 interface BevelChrome {
   material: BevelMaterial;
