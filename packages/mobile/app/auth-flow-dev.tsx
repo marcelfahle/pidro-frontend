@@ -109,6 +109,7 @@ export default function AuthFlowDevScreen() {
         onClose={record('dismissed sheet')}
         onApple={record('Continue with Apple')}
         onGoogle={record('Continue with Google')}
+        onFacebook={record('Continue with Facebook')}
         onEmail={() => {
           closeAll();
           router.push('/(auth)/login');
@@ -122,6 +123,7 @@ export default function AuthFlowDevScreen() {
         onClose={record('maybe later')}
         onApple={record('Continue with Apple (post-game)')}
         onGoogle={record('Continue with Google (post-game)')}
+        onFacebook={record('Continue with Facebook (post-game)')}
         onEmail={() => {
           closeAll();
           router.push('/(auth)/register');

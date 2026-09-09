@@ -20,6 +20,7 @@ export type AuthProviderPlatform = 'ios' | 'android';
 export interface AuthProviderButtonsProps {
   onApple: () => void;
   onGoogle: () => void;
+  onFacebook: () => void;
   onEmail: () => void;
   /** Dev/preview override; defaults to the running platform. */
   forcePlatform?: AuthProviderPlatform;
@@ -56,9 +57,18 @@ function GoogleLogo() {
   );
 }
 
+function FacebookLogo() {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24" fill="#ffffff">
+      <Path d="M13.5 21v-7.5h2.52l.38-3h-2.9V8.6c0-.87.24-1.46 1.49-1.46h1.59V4.44c-.28-.04-1.22-.12-2.32-.12-2.3 0-3.87 1.4-3.87 3.98v2.2H7.9v3h2.49V21z" />
+    </Svg>
+  );
+}
+
 export function AuthProviderButtons({
   onApple,
   onGoogle,
+  onFacebook,
   onEmail,
   forcePlatform,
 }: AuthProviderButtonsProps) {
@@ -92,9 +102,24 @@ export function AuthProviderButtons({
     </PressableFX>
   );
 
+  const facebookButton = (
+    <PressableFX
+      key="facebook"
+      accessibilityRole="button"
+      accessibilityLabel="Continue with Facebook"
+      onPress={onFacebook}
+      style={styles.facebookButton}
+      pressedStyle={styles.facebookPressed}>
+      <FacebookLogo />
+      <PidroText style={styles.facebookLabel}>Continue with Facebook</PidroText>
+    </PressableFX>
+  );
+
   return (
     <View style={styles.stack}>
-      {appleFirst ? [appleButton, googleButton] : [googleButton, appleButton]}
+      {appleFirst
+        ? [appleButton, googleButton, facebookButton]
+        : [googleButton, appleButton, facebookButton]}
       <BevelButton
         label="Continue with email"
         material="glass"
@@ -148,5 +173,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#1F1F1F',
+  },
+  facebookButton: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 9,
+    borderRadius: 13,
+    backgroundColor: '#1877F2',
+  },
+  facebookPressed: {
+    backgroundColor: '#1462c9',
+  },
+  facebookLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#ffffff',
   },
 });

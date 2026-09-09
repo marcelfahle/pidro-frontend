@@ -33,6 +33,7 @@ export interface AuthSheetProps {
   onClose: () => void;
   onApple: () => void;
   onGoogle: () => void;
+  onFacebook: () => void;
   onEmail: () => void;
   forcePlatform?: AuthProviderPlatform;
 }
@@ -43,6 +44,7 @@ export function AuthSheet({
   onClose,
   onApple,
   onGoogle,
+  onFacebook,
   onEmail,
   forcePlatform,
 }: AuthSheetProps) {
@@ -71,6 +73,7 @@ export function AuthSheet({
           <AuthProviderButtons
             onApple={onApple}
             onGoogle={onGoogle}
+            onFacebook={onFacebook}
             onEmail={onEmail}
             forcePlatform={forcePlatform}
           />

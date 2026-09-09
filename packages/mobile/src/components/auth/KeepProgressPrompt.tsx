@@ -17,6 +17,7 @@ export interface KeepProgressPromptProps {
   onClose: () => void;
   onApple: () => void;
   onGoogle: () => void;
+  onFacebook: () => void;
   onEmail: () => void;
   forcePlatform?: AuthProviderPlatform;
 }
@@ -28,6 +29,7 @@ export function KeepProgressPrompt({
   onClose,
   onApple,
   onGoogle,
+  onFacebook,
   onEmail,
   forcePlatform,
 }: KeepProgressPromptProps) {
@@ -66,6 +68,7 @@ export function KeepProgressPrompt({
           <AuthProviderButtons
             onApple={onApple}
             onGoogle={onGoogle}
+            onFacebook={onFacebook}
             onEmail={onEmail}
             forcePlatform={forcePlatform}
           />
