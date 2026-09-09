@@ -164,7 +164,8 @@ export default function HomeScreen() {
         <BevelButton
           label="PLAY"
           material="wood"
-          size="hero"
+          size={landscape ? 'lg' : 'hero'}
+          weight="hero"
           fullWidth
           onPress={() => router.push('/lobby')}
         />
