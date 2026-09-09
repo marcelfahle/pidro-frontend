@@ -15,6 +15,7 @@ initSentry();
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     Nunito: require('../assets/fonts/Nunito-VariableFont_wght.ttf'),
+    BreeSerif: require('../assets/fonts/BreeSerif-Regular.ttf'),
   });
   const authHydrated = useAuthStore((state) => state.hydrated);
   const authStatus = useAuthStore((state) => state.status);

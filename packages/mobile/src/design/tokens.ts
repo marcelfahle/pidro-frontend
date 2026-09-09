@@ -41,6 +41,57 @@ export const PidroColors = {
   warningBg: 'rgba(107, 73, 11, 0.72)',
 } as const;
 
+/**
+ * DS v2 bevel palette — the four-layer construction shared by wood and glass
+ * controls (rim → keyline → face → gloss). Gradients are CSS strings consumed
+ * through gradientBg() in components/ui/Bevel.tsx; shadows are RN boxShadow
+ * strings (inset entries need the New Architecture).
+ */
+export const PidroBevel = {
+  rimHi: '#F6DE9A',
+  rim: '#E2AF45',
+  rimLo: '#C4892A',
+  rimDeep: '#8F5E12',
+  textGold: '#FFD447',
+  woodHi: '#9C6D35',
+  wood: '#7A4A1C',
+  woodLo: '#57310E',
+  woodDeep: '#3F2108',
+  keyline: '#2A1505',
+  panelHi: '#175086',
+  panelMid: '#0E3158',
+  panelDeep: '#0A2340',
+  goldRimGradient: 'linear-gradient(180deg, #F6DE9A 0%, #E2AF45 35%, #C4892A 65%, #8F5E12 100%)',
+  woodFaceGradient: 'linear-gradient(180deg, #9C6D35 0%, #7A4A1C 42%, #57310E 78%, #3F2108 100%)',
+  glassRimGradient:
+    'linear-gradient(180deg, rgba(170,235,255,0.72) 0%, rgba(60,140,190,0.55) 50%, rgba(16,72,112,0.68) 100%)',
+  glassFaceGradient: 'linear-gradient(180deg, rgba(46,118,178,0.92) 0%, rgba(24,78,128,0.92) 100%)',
+  woodGlossGradient:
+    'linear-gradient(180deg, rgba(255,248,225,0.28) 0%, rgba(255,248,225,0.09) 100%)',
+  glassGlossGradient:
+    'linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 100%)',
+  dropShadow: '0px 5px 10px rgba(0,0,0,0.45), 0px 1px 3px rgba(0,0,0,0.3)',
+  dropShadowPressed: '0px 2px 5px rgba(0,0,0,0.4)',
+  glassDropShadow: '0px 3px 8px rgba(0,0,0,0.35)',
+  glassDropShadowPressed: '0px 1px 4px rgba(0,0,0,0.32)',
+  woodFaceInset: 'inset 0px 1px 0px rgba(255,230,180,0.35), inset 0px -3px 0px rgba(0,0,0,0.32)',
+  woodFaceInsetPressed:
+    'inset 0px 1px 0px rgba(255,230,180,0.22), inset 0px -1px 0px rgba(0,0,0,0.28)',
+  glassFaceInset: 'inset 0px 1px 0px rgba(255,255,255,0.30), inset 0px -2px 0px rgba(2,24,44,0.45)',
+  glassFaceInsetPressed:
+    'inset 0px 1px 0px rgba(255,255,255,0.18), inset 0px -1px 0px rgba(2,24,44,0.4)',
+  labelShadow: {
+    textShadowColor: 'rgba(20, 8, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+  },
+  glassLabelShadow: {
+    textShadowColor: 'rgba(0, 10, 20, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+} as const;
+
 export const PidroRadii = {
   tight: 6,
   surface: 8,
@@ -52,6 +103,7 @@ export const PidroRadii = {
 
 export const PidroFonts = {
   ui: 'Nunito',
+  display: 'BreeSerif',
 } as const;
 
 export const PidroType = {

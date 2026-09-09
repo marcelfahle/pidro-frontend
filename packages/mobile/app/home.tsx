@@ -3,14 +3,14 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { MenuAction } from '@/components/ui/MenuAction';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroFonts, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -112,22 +112,20 @@ export default function HomeScreen() {
         </PressableFX>
 
         <View style={styles.utilityActions} accessibilityLabel="Help and settings">
-          <Button
+          <BevelButton
             accessibilityLabel="Help"
-            variant="ghost"
+            material="glass"
             size="icon"
-            onPress={() => router.push('/help')}
-            style={styles.utilityButton}>
+            onPress={() => router.push('/help')}>
             <Feather name="help-circle" size={21} color={PidroColors.textSoft} />
-          </Button>
-          <Button
+          </BevelButton>
+          <BevelButton
             accessibilityLabel="Settings"
-            variant="ghost"
+            material="glass"
             size="icon"
-            onPress={() => router.push('/settings')}
-            style={styles.utilityButton}>
+            onPress={() => router.push('/settings')}>
             <Feather name="settings" size={21} color={PidroColors.textSoft} />
-          </Button>
+          </BevelButton>
         </View>
       </View>
 
@@ -140,7 +138,7 @@ export default function HomeScreen() {
 
         <View style={[styles.actionPane, landscape && styles.actionPaneLandscape]}>
           <View style={styles.intro}>
-            <PidroText role="title" align={landscape ? 'left' : 'center'}>
+            <PidroText role="title" style={styles.introTitle} align={landscape ? 'left' : 'center'}>
               Choose a table
             </PidroText>
             <PidroText role="body" tone="soft" align={landscape ? 'left' : 'center'}>
@@ -171,9 +169,11 @@ export default function HomeScreen() {
               icon="users"
               onPress={() => router.push('/lobby')}
             />
-            <Button
+            <BevelButton
               label={t('invite.manual.entry')}
-              variant="outline"
+              material="glass"
+              size="sm"
+              fullWidth
               onPress={() => router.push('/join-code' as Href)}
             />
           </View>
@@ -226,11 +226,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: PidroSpacing.xs,
   },
-  utilityButton: {
-    borderWidth: 1,
-    borderColor: PidroColors.border,
-    backgroundColor: PidroColors.panelStrong,
-  },
   main: {
     minHeight: 0,
     flex: 1,
@@ -264,6 +259,11 @@ const styles = StyleSheet.create({
   },
   intro: {
     gap: PidroSpacing.xxs,
+  },
+  introTitle: {
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    letterSpacing: 0.3,
   },
   error: {
     borderColor: PidroColors.dangerBorder,
