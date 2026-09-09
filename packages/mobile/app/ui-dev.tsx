@@ -166,7 +166,7 @@ function UiDevHarness() {
               onPress={noop}
               style={styles.action}
             />
-            <Button label="Link" variant="link" onPress={noop} />
+            <Button label="Link action" variant="link" onPress={noop} style={styles.action} />
           </View>
         </Surface>
 
