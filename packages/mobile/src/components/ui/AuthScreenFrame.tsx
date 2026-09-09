@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { PidroLogo } from './PidroLogo';
 import { PidroText } from './PidroText';
 import { ScreenShell } from './ScreenShell';
@@ -42,7 +42,7 @@ export function AuthScreenFrame({
         style={[styles.panel, landscape && styles.panelLandscape]}
         padded>
         <View style={styles.heading}>
-          <PidroText role="title" tone="gold" align="center">
+          <PidroText role="title" align="center" style={styles.title}>
             {title}
           </PidroText>
           <PidroText role="body" tone="soft" align="center">
@@ -86,6 +86,16 @@ const styles = StyleSheet.create({
   },
   heading: {
     gap: PidroSpacing.xxs,
+  },
+  title: {
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 25,
+    lineHeight: 32,
+    color: PidroBevel.textGold,
+    textShadowColor: 'rgba(20, 8, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
   error: {
     borderColor: 'rgba(255, 138, 145, 0.48)',

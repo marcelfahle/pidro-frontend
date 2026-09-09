@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter } from 'expo-router';
 import { Keyboard, Platform, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
@@ -166,7 +166,14 @@ export default function RegisterScreen() {
           />
         </View>
       </View>
-      <Button label="Create account" onPress={handleRegister} loading={isLoading} size="lg" />
+      <BevelButton
+        label="Create account"
+        material="wood"
+        size="lg"
+        fullWidth
+        onPress={handleRegister}
+        loading={isLoading}
+      />
     </AuthScreenFrame>
   );
 }

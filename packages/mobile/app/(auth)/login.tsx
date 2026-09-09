@@ -3,10 +3,11 @@ import { Link, useRouter, type Href } from 'expo-router';
 import { Keyboard, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
-import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 import { t } from '@/i18n';
 
@@ -81,20 +82,19 @@ export default function LoginScreen() {
       subtitle="Sign in to return to your table."
       error={error}
       footer={
-        <>
-          <PidroText role="metadata" tone="soft">
-            New to Pidro?
-          </PidroText>
-          <Link href="/(auth)/register" style={styles.link}>
-            Create an account
-          </Link>
-          <PidroText role="metadata" tone="soft">
+        <View style={styles.footerRows}>
+          <View style={styles.footerRow}>
+            <PidroText role="metadata" tone="soft">
+              New to Pidro?
+            </PidroText>
+            <Link href="/(auth)/register" style={styles.link}>
+              Create an account
+            </Link>
+          </View>
+          <Link href={'/join-code' as Href} style={[styles.link, styles.quietLink]}>
             {t('invite.manual.entry')}
-          </PidroText>
-          <Link href={'/join-code' as Href} style={styles.link}>
-            {t('invite.manual.entryAction')}
           </Link>
-        </>
+        </View>
       }>
       <AuthProviderButtons
         variant="compact"
@@ -158,7 +158,25 @@ export default function LoginScreen() {
           />
         </View>
       </View>
-      <Button label="Sign in" onPress={handleLogin} loading={isLoading} size="lg" />
+      <PressableFX
+        accessibilityRole="button"
+        accessibilityLabel="Forgot password"
+        onPress={() =>
+          setSocialNote('Password reset is coming soon — ask us and we will reset it for you.')
+        }
+        style={styles.forgot}>
+        <PidroText role="metadata" tone="cyan">
+          Forgot password?
+        </PidroText>
+      </PressableFX>
+      <BevelButton
+        label="Sign in"
+        material="wood"
+        size="lg"
+        fullWidth
+        onPress={handleLogin}
+        loading={isLoading}
+      />
     </AuthScreenFrame>
   );
 }
@@ -185,6 +203,22 @@ const styles = StyleSheet.create({
   fieldLandscape: {
     width: '49%',
   },
+  forgot: {
+    minHeight: PidroLayout.touchTarget,
+    alignSelf: 'flex-end',
+    justifyContent: 'center',
+    marginTop: -6,
+    marginBottom: -6,
+  },
+  footerRows: {
+    alignItems: 'center',
+    gap: 0,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+  },
   link: {
     minWidth: PidroLayout.touchTarget,
     minHeight: PidroLayout.touchTarget,
@@ -192,5 +226,8 @@ const styles = StyleSheet.create({
     color: PidroColors.cyanText,
     ...PidroType.metadata,
     paddingVertical: 14,
+  },
+  quietLink: {
+    paddingVertical: 8,
   },
 });
