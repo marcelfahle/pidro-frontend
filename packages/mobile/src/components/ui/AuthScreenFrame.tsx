@@ -8,7 +8,7 @@ import { Surface } from './Surface';
 
 interface AuthScreenFrameProps {
   title: string;
-  subtitle: string;
+  subtitle?: string;
   error?: string | null;
   children: ReactNode;
   footer: ReactNode;
@@ -45,9 +45,11 @@ export function AuthScreenFrame({
           <PidroText role="title" align="center" style={styles.title}>
             {title}
           </PidroText>
-          <PidroText role="body" tone="soft" align="center">
-            {subtitle}
-          </PidroText>
+          {subtitle ? (
+            <PidroText role="body" tone="soft" align="center">
+              {subtitle}
+            </PidroText>
+          ) : null}
         </View>
         {error ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">

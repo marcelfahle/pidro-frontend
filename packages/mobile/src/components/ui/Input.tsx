@@ -111,8 +111,10 @@ export const Input = forwardRef<TextInput, InputProps>(
 Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
+  // Proximity: a label must sit visibly closer to its own field (6px)
+  // than to whatever is above it (the form's 16px block gap).
   label: {
-    marginBottom: PidroSpacing.xs,
+    marginBottom: 6,
   },
   // A carved-in well: dark-to-light vertical gradient, inner top shadow,
   // and a bottom hairline glint — the inverse of the bevel buttons that

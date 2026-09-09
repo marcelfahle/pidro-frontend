@@ -23,6 +23,7 @@ export default function LoginScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const compactLandscape = landscape && height < 500;
   const [socialNote, setSocialNote] = useState<string | null>(null);
   const socialSoon = (provider: string) => () =>
     setSocialNote(`${provider} sign-in is coming soon — use your email account below for now.`);
@@ -79,10 +80,10 @@ export default function LoginScreen() {
   return (
     <AuthScreenFrame
       title="Welcome back"
-      subtitle="Sign in to return to your table."
+      subtitle={compactLandscape ? undefined : 'Sign in to return to your table.'}
       error={error}
       footer={
-        <View style={styles.footerRows}>
+        <View style={[styles.footerRows, landscape && styles.footerRowsLandscape]}>
           <View style={styles.footerRow}>
             <PidroText role="metadata" tone="soft">
               New to Pidro?
@@ -91,7 +92,7 @@ export default function LoginScreen() {
               Create an account
             </Link>
           </View>
-          <Link href={'/join-code' as Href} style={[styles.link, styles.quietLink]}>
+          <Link href={'/join-code' as Href} style={[styles.link, !landscape && styles.quietLink]}>
             {t('invite.manual.entry')}
           </Link>
         </View>
@@ -108,13 +109,15 @@ export default function LoginScreen() {
           {socialNote}
         </PidroText>
       ) : null}
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <PidroText role="metadata" tone="muted">
-          or with email
-        </PidroText>
-        <View style={styles.dividerLine} />
-      </View>
+      {compactLandscape ? null : (
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <PidroText role="metadata" tone="muted">
+            or with email
+          </PidroText>
+          <View style={styles.dividerLine} />
+        </View>
+      )}
       <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
         <View style={landscape && styles.fieldLandscape}>
           <Input
@@ -127,6 +130,8 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="username"
+            textContentType="username"
+            importantForAutofill="yes"
             clearButtonMode="while-editing"
             editable={!isLoading}
             keyboardAppearance="dark"
@@ -145,6 +150,8 @@ export default function LoginScreen() {
             error={validationErrors.password}
             autoCapitalize="none"
             autoComplete="current-password"
+            textContentType="password"
+            importantForAutofill="yes"
             autoCorrect={false}
             editable={!isLoading}
             enablesReturnKeyAutomatically
@@ -194,7 +201,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(184, 225, 246, 0.2)',
   },
   fields: {
-    gap: 12,
+    gap: PidroSpacing.md,
   },
   fieldsLandscape: {
     flexDirection: 'row',
@@ -213,6 +220,12 @@ const styles = StyleSheet.create({
   footerRows: {
     alignItems: 'center',
     gap: 0,
+  },
+  footerRowsLandscape: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: PidroSpacing.xs,
   },
   footerRow: {
     flexDirection: 'row',
