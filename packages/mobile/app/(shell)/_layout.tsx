@@ -8,6 +8,7 @@ import { Slot, usePathname, useRouter } from 'expo-router';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { TabPill, type ShellTab } from '@/components/shell/TabPill';
+import { PidroColors } from '@/design/tokens';
 import { useLobbyStore } from '@/stores/lobby';
 import { gameRoute } from '@/navigation/gameRoute';
 
@@ -58,7 +59,7 @@ export default function ShellLayout() {
       <Animated.View
         key={active}
         style={styles.root}
-        entering={reduceMotion ? undefined : FadeIn.duration(160)}>
+        entering={reduceMotion ? undefined : FadeIn.duration(140)}>
         <Slot />
       </Animated.View>
       <TabPill
@@ -74,5 +75,6 @@ export default function ShellLayout() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+    backgroundColor: PidroColors.feltBottom,
   },
 });

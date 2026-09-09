@@ -31,7 +31,7 @@ const FACE_SIZES: Record<BevelButtonSize, ViewStyle> = {
   md: { paddingVertical: 13, paddingHorizontal: 26 },
   lg: { paddingVertical: 17, paddingHorizontal: 40 },
   // Extra bottom padding gives the hero's 6px lip room to read.
-  hero: { paddingTop: 18, paddingBottom: 24, paddingHorizontal: 40 },
+  hero: { paddingTop: 15, paddingBottom: 20, paddingHorizontal: 40 },
   icon: { width: 42, height: 42, paddingVertical: 0, paddingHorizontal: 0 },
 };
 
@@ -44,7 +44,7 @@ const WOOD_LABEL_SIZES: Record<
   sm: { fontSize: 15, lineHeight: 20 },
   md: { fontSize: 19, lineHeight: 25 },
   lg: { fontSize: 23, lineHeight: 30 },
-  hero: { fontSize: 34, lineHeight: 44, letterSpacing: 2 },
+  hero: { fontSize: 31, lineHeight: 40, letterSpacing: 1.5 },
   icon: { fontSize: 0, lineHeight: 0 },
 };
 const GLASS_LABEL_SIZES: Record<
@@ -94,7 +94,12 @@ export function BevelButton({
       weight={size === 'hero' ? 'hero' : 'lite'}
       radius={size === 'icon' ? 12 : size === 'hero' ? 20 : 14}
       disabled={disabled || loading}
-      style={[styles.rim, fullWidth && styles.fullWidth, style]}
+      style={[
+        styles.rim,
+        fullWidth && styles.fullWidth,
+        fullWidth && size === 'hero' && styles.fullWidthHero,
+        style,
+      ]}
       contentStyle={[styles.face, FACE_SIZES[size]]}
       {...rest}>
       {loading ? <ActivityIndicator color={wood ? PidroBevel.textGold : '#ffffff'} /> : content}
@@ -113,6 +118,10 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
     maxWidth: 380,
+  },
+  // The hero reads as an object at logo mass, not a slab.
+  fullWidthHero: {
+    maxWidth: 340,
   },
   face: {
     flexGrow: 1,

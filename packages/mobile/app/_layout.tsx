@@ -9,6 +9,7 @@ import { initRealtime } from '../src/bootstrap/realtime';
 import { initSentry } from '../src/bootstrap/sentry';
 import { canAccessProtectedRoutes } from '../src/navigation/initialRoute';
 import { useAuthStore } from '../src/stores/auth';
+import { PidroColors } from '../src/design/tokens';
 
 initSentry();
 
@@ -38,6 +39,8 @@ export default function RootLayout() {
         screenOptions={{
           headerShown: false,
           animation: 'none', // Instant transitions for game feel
+          // Felt behind every route so fades/swaps never reveal white.
+          contentStyle: { backgroundColor: PidroColors.feltBottom },
         }}>
         <Stack.Screen name="index" />
         <Stack.Screen name="join-code" />

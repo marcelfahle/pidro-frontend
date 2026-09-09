@@ -49,7 +49,7 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
 
 - **Press physics** (built into `BevelPressable`/`PressableFX`): 2px travel or 0.97
   scale, 90–140ms ease-out. Never both; never opacity flicker.
-- **Tab switches**: 160ms opacity-only cross-fade on the content (`(shell)/_layout`);
+- **Tab switches**: 140ms opacity-only cross-fade on the content (`(shell)/_layout`);
   the pill never animates during navigation. Route pushes (lobby, game) stay instant —
   `animation: 'none'` for game feel.
 - **Ambient motion** is rare and slow (the 80s logo glow). One orchestrated moment
