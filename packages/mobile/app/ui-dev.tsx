@@ -1,20 +1,44 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
+import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
 
+/**
+ * The DS v2 living gallery. CI screenshots this route and pixel-diffs it
+ * against test/ui-baselines — a change to any token or primitive shows up
+ * here as drift and is adopted deliberately. The constitution lives in
+ * src/design/README.md.
+ */
 export default function UiDevRoute() {
   if (!__DEV__) return <Redirect href="/home" />;
   return <UiDevHarness />;
 }
+
+const noop = () => {};
+
+const SWATCHES: { name: string; value: string }[] = [
+  { name: 'rim-hi', value: PidroBevel.rimHi },
+  { name: 'rim', value: PidroBevel.rim },
+  { name: 'rim-lo', value: PidroBevel.rimLo },
+  { name: 'rim-deep', value: PidroBevel.rimDeep },
+  { name: 'text-gold', value: PidroBevel.textGold },
+  { name: 'wood-hi', value: PidroBevel.woodHi },
+  { name: 'wood', value: PidroBevel.wood },
+  { name: 'wood-lo', value: PidroBevel.woodLo },
+  { name: 'wood-deep', value: PidroBevel.woodDeep },
+  { name: 'keyline', value: PidroBevel.keyline },
+  { name: 'panel-hi', value: PidroBevel.panelHi },
+  { name: 'panel-deep', value: PidroBevel.panelDeep },
+];
 
 function UiDevHarness() {
   const params = useLocalSearchParams<{ state?: string }>();
@@ -24,12 +48,12 @@ function UiDevHarness() {
     <>
       <ScreenShell scroll testID="ui-dev-screen" contentStyle={styles.shell}>
         <ScreenHeader
-          title="Interface preview"
-          subtitle="Static development fixtures; no live account or game data."
+          title="Design system gallery"
+          subtitle="DS v2 primitives and tokens; static fixtures, no live data."
         />
 
         <Surface testID="ui-foundation-panel" variant="window" style={styles.section} padded>
-          <PidroText role="display">Display</PidroText>
+          <PidroText style={styles.displaySerif}>Bree Serif display</PidroText>
           <PidroText role="title">A clear screen title</PidroText>
           <PidroText role="label">Control label</PidroText>
           <PidroText role="body" tone="soft">
@@ -41,59 +65,110 @@ function UiDevHarness() {
         </Surface>
 
         <Surface variant="panel" style={styles.section} padded>
-          <PidroText role="title">Actions</PidroText>
-          <View style={styles.actions}>
-            <Button label="Primary action" onPress={() => {}} style={styles.action} />
-            <Button
-              label="Secondary action"
-              variant="secondary"
-              onPress={() => {}}
-              style={styles.action}
-            />
-            <Button
-              label="Quiet action"
-              variant="outline"
-              onPress={() => {}}
-              style={styles.action}
-            />
-            <Button
-              label="Destructive action"
-              variant="destructive"
-              onPress={() => {}}
-              style={styles.action}
-            />
-            <Button label="Loading" loading onPress={() => {}} style={styles.action} />
-            <Button label="Disabled" disabled onPress={() => {}} style={styles.action} />
+          <PidroText role="title">Bevel buttons — wood</PidroText>
+          <View style={styles.row}>
+            <BevelButton label="Small" material="wood" size="sm" onPress={noop} />
+            <BevelButton label="Medium" material="wood" size="md" onPress={noop} />
+            <BevelButton label="Large" material="wood" size="lg" onPress={noop} />
+          </View>
+          <PidroText role="metadata" tone="muted">
+            Hero weight — exactly one per screen:
+          </PidroText>
+          <BevelButton label="PLAY" material="wood" size="hero" fullWidth onPress={noop} />
+          <View style={styles.row}>
+            <BevelButton label="Loading" material="wood" size="md" loading onPress={noop} />
+            <BevelButton label="Disabled" material="wood" size="md" disabled onPress={noop} />
           </View>
         </Surface>
 
-        <View style={styles.cards}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Table card</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PidroText role="body" tone="soft">
-                Cards group related information without becoming a second window.
-              </PidroText>
-            </CardContent>
-          </Card>
-          <Surface variant="plaque" style={styles.longText}>
-            <PidroText role="label" numberOfLines={2}>
-              A deliberately long player name that must remain balanced and readable
-            </PidroText>
-            <PidroText role="metadata" tone="cyan">
-              Connected · Waiting for the next hand
-            </PidroText>
-          </Surface>
-        </View>
+        <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Bevel buttons — glass</PidroText>
+          <View style={styles.row}>
+            <BevelButton label="Small" material="glass" size="sm" onPress={noop} />
+            <BevelButton label="Medium" material="glass" size="md" onPress={noop} />
+            <BevelButton label="Large" material="glass" size="lg" onPress={noop} />
+            <BevelButton
+              accessibilityLabel="Icon button"
+              material="glass"
+              size="icon"
+              onPress={noop}>
+              <PidroText role="label">?</PidroText>
+            </BevelButton>
+          </View>
+        </Surface>
 
-        <Input
-          label="Table name"
-          placeholder="Enter a table name"
-          value="A friendly Friday table"
-          editable={false}
-        />
+        <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Inputs — carved-in wells</PidroText>
+          <Input
+            label="Table name"
+            placeholder="Enter a table name"
+            value="A friendly Friday table"
+            editable={false}
+          />
+          <Input
+            label="Password"
+            placeholder="Your password"
+            value="secret"
+            editable={false}
+            secureTextEntry
+            revealPassword
+          />
+          <Input
+            label="With an error"
+            placeholder="Something required"
+            value=""
+            editable={false}
+            error="Enter a value."
+          />
+        </Surface>
+
+        <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Sign-in providers</PidroText>
+          <AuthProviderButtons
+            variant="compact"
+            showEmail={false}
+            forcePlatform="ios"
+            onApple={noop}
+            onGoogle={noop}
+            onFacebook={noop}
+          />
+          <AuthProviderButtons
+            forcePlatform="ios"
+            onApple={noop}
+            onGoogle={noop}
+            onFacebook={noop}
+            onEmail={noop}
+          />
+        </Surface>
+
+        <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Bevel tokens</PidroText>
+          <View style={styles.row}>
+            {SWATCHES.map((swatch) => (
+              <View key={swatch.name} style={styles.swatch}>
+                <View style={[styles.swatchChip, { backgroundColor: swatch.value }]} />
+                <PidroText role="metadata" tone="muted">
+                  {swatch.name}
+                </PidroText>
+              </View>
+            ))}
+          </View>
+        </Surface>
+
+        <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Legacy buttons — migrate away</PidroText>
+          <View style={styles.row}>
+            <Button label="Secondary" variant="secondary" onPress={noop} style={styles.action} />
+            <Button label="Quiet" variant="outline" onPress={noop} style={styles.action} />
+            <Button
+              label="Destructive"
+              variant="destructive"
+              onPress={noop}
+              style={styles.action}
+            />
+            <Button label="Link" variant="link" onPress={noop} />
+          </View>
+        </Surface>
 
         <DecisionWindow
           testID="decision-window-preview"
@@ -101,8 +176,8 @@ function UiDevHarness() {
           description="Context comes first, then choices, then a stable action footer."
           footer={
             <>
-              <Button label="Cancel" variant="outline" onPress={() => {}} />
-              <Button label="Confirm" onPress={() => {}} />
+              <BevelButton label="Cancel" material="glass" size="md" onPress={noop} />
+              <BevelButton label="Confirm" material="wood" size="md" onPress={noop} />
             </>
           }>
           <Surface variant="subtle" padded>
@@ -115,8 +190,8 @@ function UiDevHarness() {
 
       <CreateRoomModal
         isOpen={state === 'create'}
-        onClose={() => {}}
-        onSubmit={() => {}}
+        onClose={noop}
+        onSubmit={noop}
         username="Alexandria the Long-Named Player"
       />
     </>
@@ -130,24 +205,35 @@ const styles = StyleSheet.create({
   section: {
     gap: PidroSpacing.sm,
   },
-  actions: {
+  displaySerif: {
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 30,
+    lineHeight: 38,
+    color: PidroBevel.textGold,
+    textShadowColor: 'rgba(20, 8, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+  },
+  row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: PidroSpacing.sm,
   },
   action: {
-    minWidth: 150,
-    flexGrow: 1,
+    minWidth: 130,
   },
-  cards: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: PidroSpacing.sm,
+  swatch: {
+    alignItems: 'center',
+    gap: 2,
+    width: 72,
   },
-  longText: {
-    minWidth: 260,
-    flex: 1,
-    gap: PidroSpacing.xs,
-    padding: PidroSpacing.md,
+  swatchChip: {
+    width: 64,
+    height: 36,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
 });
