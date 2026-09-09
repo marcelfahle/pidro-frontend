@@ -9,6 +9,7 @@ import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { gradientBg } from '@/components/ui/Bevel';
 import { LogoGlow } from '@/components/home/LogoGlow';
+import { usePillClearance } from '@/components/shell/TabPill';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refreshIdentity = useProfileIdentity();
+  const pillClearance = usePillClearance();
 
   useFocusEffect(
     useCallback(() => {
@@ -220,7 +222,7 @@ export default function HomeScreen() {
           style={styles.safe}
           edges={landscape ? ['top', 'left', 'bottom'] : ['top', 'left', 'right']}>
           {landscape ? (
-            <View style={styles.mainLandscape}>
+            <View style={[styles.mainLandscape, { paddingRight: pillClearance.right }]}>
               {topBar}
               <View style={styles.bodyLandscape}>
                 {logoStage}
@@ -228,7 +230,7 @@ export default function HomeScreen() {
               </View>
             </View>
           ) : (
-            <View style={styles.main}>
+            <View style={[styles.main, { paddingBottom: pillClearance.bottom }]}>
               {topBar}
               {logoStage}
               {actions}
@@ -255,12 +257,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: PidroSpacing.md,
     paddingTop: PidroSpacing.xs,
-    paddingBottom: 92,
   },
   mainLandscape: {
     flex: 1,
     paddingLeft: PidroSpacing.md,
-    paddingRight: 96,
     paddingTop: PidroSpacing.xs,
   },
   bodyLandscape: {

@@ -5,7 +5,13 @@
  * right edge, under the right thumb. The gold Table anchor is the center
  * tab (home / your table); it wears a badge when a game is waiting.
  */
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +21,32 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { gradientBg } from '@/components/ui/Bevel';
 
 export type ShellTab = 'league' | 'stats' | 'table' | 'friends' | 'settings';
+
+// Pill geometry, single source of truth for clearance math.
+const PILL_THICKNESS = 65; // item 50 + face padding 12 + rim 2.5
+const PILL_EDGE_GAP = 6; // pill inset beyond the safe area
+const CONTENT_GAP = 14; // breathing room between content and pill
+
+/**
+ * How much space screens inside the shell must leave for the floating
+ * pill. Derived from safe-area insets + pill geometry — never hardcode
+ * clearances in screens (web has zero insets; devices do not).
+ */
+export function usePillClearance() {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
+  if (landscape) {
+    return {
+      bottom: 0,
+      right: Math.max(insets.right, 8) + PILL_EDGE_GAP + 2 + PILL_THICKNESS + CONTENT_GAP,
+    };
+  }
+  return {
+    bottom: Math.max(insets.bottom, 10) + PILL_EDGE_GAP + PILL_THICKNESS + CONTENT_GAP,
+    right: 0,
+  };
+}
 
 export interface TabPillProps {
   orientation: 'bottom' | 'rail';
@@ -84,8 +116,8 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
       pointerEvents="box-none"
       style={[
         rail
-          ? [styles.railAnchor, { right: Math.max(insets.right, 8) + 8 }]
-          : [styles.bottomAnchor, { bottom: Math.max(insets.bottom, 10) + 6 }],
+          ? [styles.railAnchor, { right: Math.max(insets.right, 8) + PILL_EDGE_GAP + 2 }]
+          : [styles.bottomAnchor, { bottom: Math.max(insets.bottom, 10) + PILL_EDGE_GAP }],
         style,
       ]}>
       <View style={[styles.pillRim, gradientBg(PidroBevel.glassRimGradient)]}>
