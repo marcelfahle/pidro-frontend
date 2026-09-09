@@ -24,6 +24,9 @@ export interface AuthProviderButtonsProps {
   onEmail?: () => void;
   /** Hide the email fallback (e.g. when an email form sits right below). */
   showEmail?: boolean;
+  /** 'stack' = full-width labeled buttons (the sheet); 'compact' = a row
+   *  of brand icon circles for tight screens like login. */
+  variant?: 'stack' | 'compact';
   /** Dev/preview override; defaults to the running platform. */
   forcePlatform?: AuthProviderPlatform;
 }
@@ -73,11 +76,53 @@ export function AuthProviderButtons({
   onFacebook,
   onEmail,
   showEmail = true,
+  variant = 'stack',
   forcePlatform,
 }: AuthProviderButtonsProps) {
   const platform: AuthProviderPlatform =
     forcePlatform ?? (Platform.OS === 'android' ? 'android' : 'ios');
   const appleFirst = platform === 'ios';
+
+  if (variant === 'compact') {
+    const apple = (
+      <PressableFX
+        key="apple"
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Apple"
+        onPress={onApple}
+        style={[styles.appleButton, styles.circle]}
+        pressedStyle={styles.applePressed}>
+        <AppleLogo color="#ffffff" />
+      </PressableFX>
+    );
+    const google = (
+      <PressableFX
+        key="google"
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+        onPress={onGoogle}
+        style={[styles.googleButton, styles.circle]}
+        pressedStyle={styles.googlePressed}>
+        <GoogleLogo />
+      </PressableFX>
+    );
+    const facebook = (
+      <PressableFX
+        key="facebook"
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Facebook"
+        onPress={onFacebook}
+        style={[styles.facebookButton, styles.circle]}
+        pressedStyle={styles.facebookPressed}>
+        <FacebookLogo />
+      </PressableFX>
+    );
+    return (
+      <View style={styles.circleRow}>
+        {appleFirst ? [apple, google, facebook] : [google, apple, facebook]}
+      </View>
+    );
+  }
 
   const appleButton = (
     <PressableFX
@@ -140,6 +185,20 @@ const styles = StyleSheet.create({
   stack: {
     alignSelf: 'stretch',
     gap: PidroSpacing.sm,
+  },
+  circleRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: PidroSpacing.md,
+  },
+  circle: {
+    width: 50,
+    height: 50,
+    minHeight: 50,
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 0,
   },
   appleButton: {
     minHeight: 50,

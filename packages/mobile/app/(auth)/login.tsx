@@ -97,6 +97,7 @@ export default function LoginScreen() {
         </>
       }>
       <AuthProviderButtons
+        variant="compact"
         showEmail={false}
         onApple={socialSoon('Apple')}
         onGoogle={socialSoon('Google')}
