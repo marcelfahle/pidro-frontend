@@ -44,6 +44,16 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
 - **Proximity rhythm**: a form label sits 6px above its own field; blocks are 16px apart.
 - On height-starved layouts (phone landscape, <500px tall) **decoration yields, not the
   form** — hide the logo, keep the fields comfortable.
+- **Clearances are derived, never hardcoded.** A floating element (the tab pill) owns a
+  hook that computes the space screens must leave from safe-area insets + its own
+  geometry (`usePillClearance`). Web previews have zero insets — a clearance tuned
+  there WILL overlap on device.
+- **Layered centering.** HUD chips (identity, rating) float as overlays; the world
+  (logo) centers against the full height; an action stack centers within the zone
+  below the HUD. Never let a corner HUD reserve a full-width row that sags the world.
+- **Hero-ness lives in the chrome, not the bulk.** `weight` and `size` decouple:
+  landscape keeps the hero material (thick rim, 6px lip, strong gloss) at lg
+  proportions. Badges anchor to the capped control itself, never a wider wrapper.
 
 ## Motion
 

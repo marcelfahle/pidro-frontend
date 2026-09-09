@@ -33,6 +33,13 @@ treatments in screens.
   (consume). Changes trickle down; they are never forked per-screen.
 - The separate `packages/web` client is not the visual reference for the React Native
   client. Verify mobile UI in the React Native app (native or its Expo web rendering).
+- **Verify overlays/clearances on a simulator, not just web** — web has zero safe-area
+  insets. Fast loop: Metro running, then load Expo Go on a booted sim via
+  `xcrun simctl openurl booted "exp://localhost:8081"`; rotate through Simulator's
+  Device menu (AppleScript works); screenshot with `xcrun simctl io booted screenshot`.
+  Known quirk: rotating while Expo Go's JS is paused can leave `useWindowDimensions`
+  stale (portrait layout at landscape size) — reload fixes it; production builds are
+  unaffected.
 - Keep behavior fixes focused; visual changes ride the DS, not ad-hoc styling.
 
 ## Architecture Principle: Dumb Client, Smart Server
