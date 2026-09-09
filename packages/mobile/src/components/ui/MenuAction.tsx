@@ -1,8 +1,8 @@
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { PidroText } from './PidroText';
-import { PressableFX } from './PressableFX';
+import { BevelPressable } from './Bevel';
 
 interface MenuActionProps {
   title: string;
@@ -26,33 +26,37 @@ export function MenuAction({
   const primary = variant === 'primary';
 
   return (
-    <PressableFX
+    <BevelPressable
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${description}`}
       accessibilityState={{ disabled: loading, busy: loading }}
       disabled={loading}
       onPress={onPress}
-      style={[styles.action, primary ? styles.primary : styles.secondary, style]}
-      pressedStyle={primary ? styles.primaryPressed : styles.secondaryPressed}>
+      material={primary ? 'wood' : 'glass'}
+      style={style}
+      contentStyle={styles.face}>
       <View style={[styles.icon, primary ? styles.primaryIcon : styles.secondaryIcon]}>
         {loading ? (
-          <ActivityIndicator color={primary ? PidroColors.goldLight : PidroColors.cyanText} />
+          <ActivityIndicator color={primary ? PidroBevel.textGold : PidroColors.cyanText} />
         ) : (
           <Feather
             name={icon}
             size={22}
-            color={primary ? PidroColors.goldLight : PidroColors.cyanText}
+            color={primary ? PidroBevel.textGold : PidroColors.cyanText}
           />
         )}
       </View>
 
       <View style={styles.copy}>
-        <PidroText role="label" style={primary && styles.primaryTitle} numberOfLines={1}>
+        <PidroText
+          role="label"
+          style={primary ? styles.primaryTitle : styles.secondaryTitle}
+          numberOfLines={1}>
           {title}
         </PidroText>
         <PidroText
           role="metadata"
-          tone={primary ? 'soft' : 'muted'}
+          tone="soft"
           style={primary && styles.primaryDescription}
           numberOfLines={2}>
           {description}
@@ -62,53 +66,36 @@ export function MenuAction({
       <Feather
         name="chevron-right"
         size={22}
-        color={primary ? PidroColors.goldLight : PidroColors.textMuted}
+        color={primary ? PidroBevel.textGold : PidroColors.textMuted}
       />
-    </PressableFX>
+    </BevelPressable>
   );
 }
 
 const styles = StyleSheet.create({
-  action: {
-    minHeight: 72,
+  face: {
+    minHeight: 66,
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.sm,
-    overflow: 'hidden',
-    borderRadius: PidroRadii.lg,
-    borderWidth: 1.5,
     paddingHorizontal: PidroSpacing.sm,
-    paddingVertical: PidroSpacing.sm,
-  },
-  primary: {
-    borderColor: PidroColors.actionPrimaryBorder,
-    backgroundColor: PidroColors.actionPrimary,
-  },
-  primaryPressed: {
-    backgroundColor: PidroColors.actionPrimaryPressed,
-  },
-  secondary: {
-    borderColor: PidroColors.cyanBorder,
-    backgroundColor: PidroColors.panelStrong,
-  },
-  secondaryPressed: {
-    backgroundColor: PidroColors.glassHover,
+    paddingVertical: PidroSpacing.xs + 2,
   },
   icon: {
     width: PidroLayout.touchTarget,
     height: PidroLayout.touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: PidroRadii.surface,
+    borderRadius: 8,
     borderWidth: 1,
   },
   primaryIcon: {
-    borderColor: PidroColors.actionPrimaryBorder,
-    backgroundColor: 'rgba(29, 13, 3, 0.28)',
+    borderColor: 'rgba(246, 222, 154, 0.28)',
+    backgroundColor: 'rgba(20, 9, 2, 0.35)',
   },
   secondaryIcon: {
     borderColor: PidroColors.cyanBorder,
-    backgroundColor: PidroColors.glass,
+    backgroundColor: 'rgba(7, 38, 66, 0.45)',
   },
   copy: {
     minWidth: 0,
@@ -116,9 +103,19 @@ const styles = StyleSheet.create({
     gap: PidroSpacing.xxs,
   },
   primaryTitle: {
-    color: PidroColors.goldLight,
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 18,
+    lineHeight: 24,
+    color: PidroBevel.textGold,
+    letterSpacing: 0.3,
+    ...PidroBevel.labelShadow,
+    transform: [{ translateY: -1 }],
+  },
+  secondaryTitle: {
+    ...PidroBevel.glassLabelShadow,
   },
   primaryDescription: {
-    color: PidroColors.textSoft,
+    color: 'rgba(244, 231, 205, 0.78)',
   },
 });

@@ -3,8 +3,8 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
-import { MenuAction } from '@/components/ui/MenuAction';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -112,22 +112,20 @@ export default function HomeScreen() {
         </PressableFX>
 
         <View style={styles.utilityActions} accessibilityLabel="Help and settings">
-          <Button
+          <BevelButton
             accessibilityLabel="Help"
-            variant="ghost"
+            material="glass"
             size="icon"
-            onPress={() => router.push('/help')}
-            style={styles.utilityButton}>
+            onPress={() => router.push('/help')}>
             <Feather name="help-circle" size={21} color={PidroColors.textSoft} />
-          </Button>
-          <Button
+          </BevelButton>
+          <BevelButton
             accessibilityLabel="Settings"
-            variant="ghost"
+            material="glass"
             size="icon"
-            onPress={() => router.push('/settings')}
-            style={styles.utilityButton}>
+            onPress={() => router.push('/settings')}>
             <Feather name="settings" size={21} color={PidroColors.textSoft} />
-          </Button>
+          </BevelButton>
         </View>
       </View>
 
@@ -139,15 +137,6 @@ export default function HomeScreen() {
         </View>
 
         <View style={[styles.actionPane, landscape && styles.actionPaneLandscape]}>
-          <View style={styles.intro}>
-            <PidroText role="title" align={landscape ? 'left' : 'center'}>
-              Choose a table
-            </PidroText>
-            <PidroText role="body" tone="soft" align={landscape ? 'left' : 'center'}>
-              Start a quick game or join friends online.
-            </PidroText>
-          </View>
-
           {error ? (
             <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
               <PidroText role="metadata" tone="danger" align="center">
@@ -157,23 +146,24 @@ export default function HomeScreen() {
           ) : null}
 
           <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
-            <MenuAction
-              title="Single player"
-              description="Start immediately with three bots."
-              icon="play"
-              onPress={handleSinglePlayer}
-              loading={singlePlayerLoading}
-              variant="primary"
-            />
-            <MenuAction
-              title="Multiplayer"
-              description="Find a table or create one for friends."
-              icon="users"
+            <BevelButton
+              label="Multiplayer"
+              material="wood"
+              size="lg"
+              fullWidth
               onPress={() => router.push('/lobby')}
+            />
+            <BevelButton
+              label="Single player"
+              material="glass"
+              size="lg"
+              fullWidth
+              loading={singlePlayerLoading}
+              onPress={handleSinglePlayer}
             />
             <Button
               label={t('invite.manual.entry')}
-              variant="outline"
+              variant="link"
               onPress={() => router.push('/join-code' as Href)}
             />
           </View>
@@ -226,11 +216,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: PidroSpacing.xs,
   },
-  utilityButton: {
-    borderWidth: 1,
-    borderColor: PidroColors.border,
-    backgroundColor: PidroColors.panelStrong,
-  },
   main: {
     minHeight: 0,
     flex: 1,
@@ -261,9 +246,6 @@ const styles = StyleSheet.create({
   actionPaneLandscape: {
     width: '46%',
     maxWidth: 420,
-  },
-  intro: {
-    gap: PidroSpacing.xxs,
   },
   error: {
     borderColor: PidroColors.dangerBorder,
