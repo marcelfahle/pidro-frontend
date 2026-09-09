@@ -6,15 +6,34 @@ This file contains information for AI coding assistants working on the Pidro mob
 
 React Native mobile app using Expo Router for a multiplayer card game. Connects to a Phoenix/Elixir backend via REST API and Phoenix Channels (WebSocket).
 
-## Current UI Direction: Simplified React Native UI
+## Current UI Direction: Design System v2 (LOCKED — 2026-09-09)
 
-The broader UI grammar is still in progress. **Use its current simplified version**, not the more elaborate design-system treatments.
+The DS v2 bevel system is the canonical UI language. **Every new screen and every
+restyle uses it.** The constitution lives in `src/design/README.md` — read it before
+building UI. Do not invent one-off styles, raw hex colors, or alternative component
+treatments in screens.
 
-- Treat `app/home.tsx` and `app/profile.tsx` as the authoritative references for the current look, component choices, spacing, and typography.
-- Reuse the existing React Native components from `src/components/ui`, as those screens do: `ScreenShell`, `ScreenHeader`, `Surface`, `PidroText`, `Avatar`, `Button`, `Input`, and `Modal`; use `MenuAction` and `PressableFX` where appropriate.
-- Follow their existing variants and `src/design/tokens`. Do not introduce decorative frames, gradients, or alternative component systems just because an unfinished UI-grammar showcase includes them.
-- The separate `packages/web` client and its design-system page are not the visual reference for the React Native client. Verify mobile UI in the React Native app (native or its Expo web rendering); a screenshot of the separate web client does not verify mobile appearance.
-- Keep behavior fixes focused. Do not use them to roll out the unfinished UI redesign.
+- **Tokens**: `src/design/tokens.ts` (`PidroBevel` is the bevel palette; gradients and
+  boxShadow strings included). Screens never hardcode colors, radii, or shadows.
+- **Primitives** (in `src/components/ui/` and `src/components/home|auth/`):
+  `BevelButton` (all CTAs; `material` wood/glass, `size` sm/md/lg/hero/icon),
+  `BevelPressable`/`BevelSurface` (custom beveled controls/surfaces), `Input`
+  (carved-in wells), `PidroText`, `Surface`, `ScreenShell`, `DecisionWindow`, `Modal`,
+  `PressableFX`, `HomeTabBar`, `LogoGlow`, `AuthProviderButtons`, `AuthSheet`,
+  `KeepProgressPrompt`. Legacy `Button` is utility-only on old screens — do not add
+  call sites; migrate to `BevelButton` when touching a screen. `MenuAction` and
+  `PrimaryButton` are compatibility-only.
+- **The living gallery** is `/ui-dev?state=components` — it is screenshotted by CI and
+  pixel-diffed against `test/ui-baselines/`. When you change a token or primitive, the
+  gallery and every consuming screen drift together; refresh baselines from the CI run
+  (`bun run ui:baselines <runId>`) as the documented acceptance step.
+- **Design exploration** happens on the Pidro Design System v2 canvas
+  (claude.ai/code/artifact/0e088d48-ae23-430d-aadd-88cb3da5b5af). Flow: canvas
+  (explore) → tokens/primitives (implement) → gallery + baselines (enforce) → screens
+  (consume). Changes trickle down; they are never forked per-screen.
+- The separate `packages/web` client is not the visual reference for the React Native
+  client. Verify mobile UI in the React Native app (native or its Expo web rendering).
+- Keep behavior fixes focused; visual changes ride the DS, not ad-hoc styling.
 
 ## Architecture Principle: Dumb Client, Smart Server
 
@@ -63,10 +82,12 @@ Note: Unlike fast-paced games, Pidro is turn-based, so we don't need client-side
 - **Package Manager**: Bun
 - **Language**: TypeScript (strict mode)
 - **Navigation**: Expo Router (file-based routing)
-- **Styling**: NativeWind v4 + Tailwind CSS v3
-  - **CRITICAL**: ALWAYS use `className` prop for styling.
-  - **DO NOT** use inline `style` objects unless absolutely necessary (e.g., dynamic values).
-  - Uses standard Tailwind v3 configuration.
+- **Styling**: design tokens + `StyleSheet.create` (canonical for all DS v2 work)
+  - Style with `src/design/tokens.ts` values through the DS primitives; use
+    `StyleSheet.create` for component styles. Gradients via `gradientBg()` from
+    `src/components/ui/Bevel.tsx`; shadows as RN `boxShadow` strings (New Arch).
+  - NativeWind/`className` remains only in legacy code paths — do not extend it to
+    new components.
 - **State Management**:
   - Zustand for client state (auth, settings, UI)
   - TanStack Query for server state (planned)
