@@ -107,8 +107,12 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     minHeight: PidroLayout.touchTarget,
   },
+  // A CTA is an object, not a bar: it fills its column on phones but
+  // never grows past 380 on wide layouts — it centers instead.
   fullWidth: {
-    alignSelf: 'stretch',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 380,
   },
   face: {
     flexGrow: 1,
