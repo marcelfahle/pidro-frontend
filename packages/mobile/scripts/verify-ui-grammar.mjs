@@ -166,7 +166,7 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
 async function assertAuthFormInteractions(page, name, viewport) {
   const password = page.getByPlaceholder(
-    name === 'login' ? 'Enter your password' : 'Choose a password'
+    name === 'login' ? 'Enter your password' : 'Your password'
   );
 
   if (name === 'login') {
@@ -187,8 +187,8 @@ async function assertAuthFormInteractions(page, name, viewport) {
       throw new Error(`login Next key did not focus password in ${viewport.name}`);
     }
   } else if (name === 'register') {
-    const username = page.getByPlaceholder('Choose a username');
-    const email = page.getByPlaceholder('Enter your email');
+    const username = page.getByPlaceholder('Your name');
+    const email = page.getByPlaceholder('you@email.com');
     await password.fill('correct horse battery staple');
     await page.getByRole('button', { name: 'Create account' }).click();
     await page.getByText('Enter a username.', { exact: true }).waitFor();
