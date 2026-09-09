@@ -223,10 +223,18 @@ export default function HomeScreen() {
           edges={landscape ? ['top', 'left', 'bottom'] : ['top', 'left', 'right']}>
           {landscape ? (
             <View style={[styles.mainLandscape, { paddingRight: pillClearance.right }]}>
-              {topBar}
               <View style={styles.bodyLandscape}>
                 {logoStage}
-                {actions}
+                {/* The action stack centers below the corner HUD, not
+                    against the full height — keeps it off the progress
+                    block on tall phones without sagging the logo. */}
+                <View style={styles.actionsColumnLandscape}>{actions}</View>
+              </View>
+              {/* HUD floats; the world centers against the full height. */}
+              <View
+                pointerEvents="box-none"
+                style={[styles.topBarOverlay, { right: pillClearance.right }]}>
+                {topBar}
               </View>
             </View>
           ) : (
@@ -261,7 +269,11 @@ const styles = StyleSheet.create({
   mainLandscape: {
     flex: 1,
     paddingLeft: PidroSpacing.md,
-    paddingTop: PidroSpacing.xs,
+  },
+  topBarOverlay: {
+    position: 'absolute',
+    top: PidroSpacing.xs,
+    left: PidroSpacing.md,
   },
   bodyLandscape: {
     flex: 1,
@@ -361,12 +373,22 @@ const styles = StyleSheet.create({
     width: 300,
     paddingBottom: 0,
   },
+  actionsColumnLandscape: {
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    paddingTop: 104,
+  },
   error: {
     borderColor: PidroColors.dangerBorder,
     padding: PidroSpacing.sm,
   },
+  // Match the hero's own width cap so the badge hugs the button at any
+  // container width instead of anchoring to a wider wrapper.
   playWrap: {
     position: 'relative',
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 340,
   },
   playBadge: {
     position: 'absolute',
