@@ -48,58 +48,95 @@ const PRESS_OUT = {
 
 export type BevelMaterial = 'wood' | 'glass';
 
+/** 'lite' is the everyday calibration; 'hero' is the full-fat chrome
+ *  reserved for one dominant CTA per screen (thicker rim, deeper lip,
+ *  stronger gloss and shadow). */
+export type BevelWeight = 'lite' | 'hero';
+
 export function gradientBg(css: string): ViewStyle {
   return Platform.OS === 'web'
     ? ({ backgroundImage: css } as unknown as ViewStyle)
     : { experimental_backgroundImage: css };
 }
 
-const RIM_PAD: Record<BevelMaterial, number> = { wood: 2, glass: 1.25 };
-const KEY_PAD: Record<BevelMaterial, number> = { wood: 1, glass: 0 };
+const RIM_PAD: Record<BevelWeight, Record<BevelMaterial, number>> = {
+  lite: { wood: 2, glass: 1.25 },
+  hero: { wood: 2.5, glass: 1.5 },
+};
+const KEY_PAD: Record<BevelWeight, Record<BevelMaterial, number>> = {
+  lite: { wood: 1, glass: 0 },
+  hero: { wood: 1.5, glass: 0 },
+};
 
 interface BevelChrome {
   material: BevelMaterial;
+  weight: BevelWeight;
   radius: number;
   pressed: boolean;
 }
 
-function rimStyle({ material, radius, pressed }: BevelChrome): ViewStyle[] {
+function chromePads({ material, weight }: BevelChrome) {
+  return { rimPad: RIM_PAD[weight][material], keyPad: KEY_PAD[weight][material] };
+}
+
+function rimStyle(chrome: BevelChrome): ViewStyle[] {
+  const { material, weight, radius, pressed } = chrome;
   const wood = material === 'wood';
+  const hero = weight === 'hero';
   return [
-    { borderRadius: radius, padding: RIM_PAD[material] },
+    { borderRadius: radius, padding: chromePads(chrome).rimPad },
     gradientBg(wood ? PidroBevel.goldRimGradient : PidroBevel.glassRimGradient),
     {
       boxShadow: pressed
-        ? wood
-          ? PidroBevel.dropShadowPressed
-          : PidroBevel.glassDropShadowPressed
-        : wood
-          ? PidroBevel.dropShadow
-          : PidroBevel.glassDropShadow,
+        ? hero
+          ? PidroBevel.heroDropShadowPressed
+          : wood
+            ? PidroBevel.dropShadowPressed
+            : PidroBevel.glassDropShadowPressed
+        : hero
+          ? PidroBevel.heroDropShadow
+          : wood
+            ? PidroBevel.dropShadow
+            : PidroBevel.glassDropShadow,
     },
   ];
 }
 
-function faceStyle({ material, radius, pressed }: BevelChrome): ViewStyle[] {
+function faceStyle(chrome: BevelChrome): ViewStyle[] {
+  const { material, weight, radius, pressed } = chrome;
   const wood = material === 'wood';
+  const hero = weight === 'hero' && wood;
+  const { rimPad, keyPad } = chromePads(chrome);
   return [
     styles.face,
-    { borderRadius: radius - RIM_PAD[material] - KEY_PAD[material] },
+    { borderRadius: radius - rimPad - keyPad },
     gradientBg(wood ? PidroBevel.woodFaceGradient : PidroBevel.glassFaceGradient),
     {
       boxShadow: pressed
-        ? wood
-          ? PidroBevel.woodFaceInsetPressed
-          : PidroBevel.glassFaceInsetPressed
-        : wood
-          ? PidroBevel.woodFaceInset
-          : PidroBevel.glassFaceInset,
+        ? hero
+          ? PidroBevel.heroFaceInsetPressed
+          : wood
+            ? PidroBevel.woodFaceInsetPressed
+            : PidroBevel.glassFaceInsetPressed
+        : hero
+          ? PidroBevel.heroFaceInset
+          : wood
+            ? PidroBevel.woodFaceInset
+            : PidroBevel.glassFaceInset,
     },
   ];
 }
 
-function BevelGloss({ material, radius, pressed }: BevelChrome) {
-  const faceRadius = radius - RIM_PAD[material] - KEY_PAD[material];
+function BevelGloss(chrome: BevelChrome) {
+  const { material, weight, radius, pressed } = chrome;
+  const { rimPad, keyPad } = chromePads(chrome);
+  const faceRadius = radius - rimPad - keyPad;
+  const glossGradient =
+    material === 'wood'
+      ? weight === 'hero'
+        ? PidroBevel.heroGlossGradient
+        : PidroBevel.woodGlossGradient
+      : PidroBevel.glassGlossGradient;
   return (
     <View
       pointerEvents="none"
@@ -110,9 +147,7 @@ function BevelGloss({ material, radius, pressed }: BevelChrome) {
           borderTopRightRadius: faceRadius,
           opacity: pressed ? 0.55 : 1,
         },
-        gradientBg(
-          material === 'wood' ? PidroBevel.woodGlossGradient : PidroBevel.glassGlossGradient
-        ),
+        gradientBg(glossGradient),
       ]}
     />
   );
@@ -124,19 +159,28 @@ interface BevelLayersProps extends BevelChrome {
 }
 
 /** Keyline + face + gloss — everything inside the rim. */
-function BevelLayers({ material, radius, pressed, contentStyle, children }: BevelLayersProps) {
+function BevelLayers({
+  material,
+  weight,
+  radius,
+  pressed,
+  contentStyle,
+  children,
+}: BevelLayersProps) {
+  const chrome = { material, weight, radius, pressed };
   const face = (
-    <View style={[...faceStyle({ material, radius, pressed }), contentStyle]}>
-      <BevelGloss material={material} radius={radius} pressed={pressed} />
+    <View style={[...faceStyle(chrome), contentStyle]}>
+      <BevelGloss {...chrome} />
       {children}
     </View>
   );
   if (material !== 'wood') return face;
+  const { rimPad, keyPad } = chromePads(chrome);
   return (
     <View
       style={{
-        borderRadius: radius - RIM_PAD.wood,
-        padding: KEY_PAD.wood,
+        borderRadius: radius - rimPad,
+        padding: keyPad,
         backgroundColor: PidroBevel.keyline,
       }}>
       {face}
@@ -146,6 +190,7 @@ function BevelLayers({ material, radius, pressed, contentStyle, children }: Beve
 
 export interface BevelSurfaceProps {
   material?: BevelMaterial;
+  weight?: BevelWeight;
   radius?: number;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
@@ -155,14 +200,20 @@ export interface BevelSurfaceProps {
 /** Static (non-pressable) bevel surface. */
 export function BevelSurface({
   material = 'wood',
+  weight = 'lite',
   radius = 14,
   style,
   contentStyle,
   children,
 }: BevelSurfaceProps) {
   return (
-    <View style={[...rimStyle({ material, radius, pressed: false }), style]}>
-      <BevelLayers material={material} radius={radius} pressed={false} contentStyle={contentStyle}>
+    <View style={[...rimStyle({ material, weight, radius, pressed: false }), style]}>
+      <BevelLayers
+        material={material}
+        weight={weight}
+        radius={radius}
+        pressed={false}
+        contentStyle={contentStyle}>
         {children}
       </BevelLayers>
     </View>
@@ -171,6 +222,7 @@ export function BevelSurface({
 
 export interface BevelPressableProps extends Omit<PressableProps, 'style' | 'children'> {
   material?: BevelMaterial;
+  weight?: BevelWeight;
   radius?: number;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
@@ -181,6 +233,7 @@ export interface BevelPressableProps extends Omit<PressableProps, 'style' | 'chi
 /** Pressable bevel with the DS press physics (2px travel, shadows tighten). */
 export function BevelPressable({
   material = 'wood',
+  weight = 'lite',
   radius = 14,
   disabled = false,
   style,
@@ -220,13 +273,14 @@ export function BevelPressable({
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[
-        ...rimStyle({ material, radius, pressed }),
+        ...rimStyle({ material, weight, radius, pressed }),
         disabled && styles.disabled,
         animatedStyle,
         style,
       ]}>
       <BevelLayers
         material={material}
+        weight={weight}
         radius={radius}
         pressed={pressed}
         contentStyle={contentStyle}>

@@ -2,7 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import { forwardRef, useCallback, useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { cn } from '@/utils/cn';
-import { PidroColors, PidroLayout, PidroRadii, PidroSpacing, PidroType } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
+import { gradientBg } from './Bevel';
 import { PidroText } from './PidroText';
 import { PressableFX } from './PressableFX';
 
@@ -60,7 +61,12 @@ export const Input = forwardRef<TextInput, InputProps>(
         )}
         <View
           className="flex-row items-stretch overflow-hidden"
-          style={[styles.inputFrame, focused && styles.inputFocused, error && styles.inputError]}>
+          style={[
+            styles.inputFrame,
+            gradientBg('linear-gradient(180deg, #0A2340 0%, #10365D 100%)'),
+            focused && styles.inputFocused,
+            error && styles.inputError,
+          ]}>
           <TextInput
             ref={ref}
             className={cn('min-w-0 flex-1', className)}
@@ -105,18 +111,25 @@ export const Input = forwardRef<TextInput, InputProps>(
 Input.displayName = 'Input';
 
 const styles = StyleSheet.create({
+  // Proximity: a label must sit visibly closer to its own field (6px)
+  // than to whatever is above it (the form's 16px block gap).
   label: {
-    marginBottom: PidroSpacing.xs,
+    marginBottom: 6,
   },
+  // A carved-in well: dark-to-light vertical gradient, inner top shadow,
+  // and a bottom hairline glint — the inverse of the bevel buttons that
+  // sit proud of the surface.
   inputFrame: {
     minHeight: PidroLayout.touchTarget + 6,
-    borderRadius: PidroRadii.surface,
-    borderWidth: 1,
-    borderColor: PidroColors.borderStrong,
-    backgroundColor: PidroColors.panelStrong,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(140, 215, 250, 0.28)',
+    boxShadow: 'inset 0px 2px 3px rgba(0,0,0,0.35), 0px 1px 0px rgba(255,255,255,0.06)',
   },
   inputFocused: {
     borderColor: PidroColors.cyanBorderStrong,
+    boxShadow:
+      '0px 0px 0px 3px rgba(70,220,255,0.22), inset 0px 2px 3px rgba(0,0,0,0.35), 0px 1px 0px rgba(255,255,255,0.06)',
   },
   input: {
     minHeight: PidroLayout.touchTarget + 4,
@@ -128,6 +141,8 @@ const styles = StyleSheet.create({
   },
   inputError: {
     borderColor: PidroColors.dangerBorder,
+    boxShadow:
+      '0px 0px 0px 3px rgba(255,120,128,0.18), inset 0px 2px 3px rgba(0,0,0,0.35), 0px 1px 0px rgba(255,255,255,0.06)',
   },
   error: {
     marginTop: PidroSpacing.xs,
@@ -135,5 +150,7 @@ const styles = StyleSheet.create({
   passwordToggle: {
     width: PidroLayout.touchTarget + 4,
     minHeight: PidroLayout.touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

@@ -1,11 +1,13 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter, type Href } from 'expo-router';
 import { Keyboard, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
-import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 import { t } from '@/i18n';
 
@@ -21,6 +23,10 @@ export default function LoginScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const compactLandscape = landscape && height < 500;
+  const [socialNote, setSocialNote] = useState<string | null>(null);
+  const socialSoon = (provider: string) => () =>
+    setSocialNote(`${provider} sign-in is coming soon — use your email account below for now.`);
 
   const clearValidationError = useCallback(
     (field: LoginField) => {
@@ -74,26 +80,48 @@ export default function LoginScreen() {
   return (
     <AuthScreenFrame
       title="Welcome back"
-      subtitle="Sign in to return to your table."
+      subtitle={compactLandscape ? undefined : 'Sign in to return to your table.'}
       error={error}
       footer={
-        <>
-          <PidroText role="metadata" tone="soft">
-            New to Pidro?
-          </PidroText>
-          <Link href="/(auth)/register" style={styles.link}>
-            Create an account
-          </Link>
-          <PidroText role="metadata" tone="soft">
+        <View style={[styles.footerRows, compactLandscape && styles.footerRowsLandscape]}>
+          <View style={styles.footerRow}>
+            <PidroText role="metadata" tone="soft">
+              New to Pidro?
+            </PidroText>
+            <Link href="/(auth)/register" style={styles.link}>
+              Create an account
+            </Link>
+          </View>
+          <Link
+            href={'/join-code' as Href}
+            style={[styles.link, !compactLandscape && styles.quietLink]}>
             {t('invite.manual.entry')}
-          </PidroText>
-          <Link href={'/join-code' as Href} style={styles.link}>
-            {t('invite.manual.entryAction')}
           </Link>
-        </>
+        </View>
       }>
-      <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
-        <View style={landscape && styles.fieldLandscape}>
+      <AuthProviderButtons
+        variant="compact"
+        showEmail={false}
+        onApple={socialSoon('Apple')}
+        onGoogle={socialSoon('Google')}
+        onFacebook={socialSoon('Facebook')}
+      />
+      {socialNote ? (
+        <PidroText role="metadata" tone="cyan" align="center">
+          {socialNote}
+        </PidroText>
+      ) : null}
+      {compactLandscape ? null : (
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <PidroText role="metadata" tone="muted">
+            or with email
+          </PidroText>
+          <View style={styles.dividerLine} />
+        </View>
+      )}
+      <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={usernameRef}
             label="Username"
@@ -104,6 +132,8 @@ export default function LoginScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete="username"
+            textContentType="username"
+            importantForAutofill="yes"
             clearButtonMode="while-editing"
             editable={!isLoading}
             keyboardAppearance="dark"
@@ -112,7 +142,7 @@ export default function LoginScreen() {
             onSubmitEditing={focusPassword}
           />
         </View>
-        <View style={landscape && styles.fieldLandscape}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={passwordRef}
             label="Password"
@@ -122,6 +152,8 @@ export default function LoginScreen() {
             error={validationErrors.password}
             autoCapitalize="none"
             autoComplete="current-password"
+            textContentType="password"
+            importantForAutofill="yes"
             autoCorrect={false}
             editable={!isLoading}
             enablesReturnKeyAutomatically
@@ -135,14 +167,43 @@ export default function LoginScreen() {
           />
         </View>
       </View>
-      <Button label="Sign in" onPress={handleLogin} loading={isLoading} size="lg" />
+      <PressableFX
+        accessibilityRole="button"
+        accessibilityLabel="Forgot password"
+        onPress={() =>
+          setSocialNote('Password reset is coming soon — ask us and we will reset it for you.')
+        }
+        style={styles.forgot}>
+        <PidroText role="metadata" tone="cyan">
+          Forgot password?
+        </PidroText>
+      </PressableFX>
+      <BevelButton
+        label="Sign in"
+        material="wood"
+        size="md"
+        fullWidth
+        onPress={handleLogin}
+        loading={isLoading}
+      />
     </AuthScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(184, 225, 246, 0.2)',
+  },
   fields: {
-    gap: 12,
+    gap: PidroSpacing.md,
   },
   fieldsLandscape: {
     flexDirection: 'row',
@@ -151,6 +212,28 @@ const styles = StyleSheet.create({
   fieldLandscape: {
     width: '49%',
   },
+  forgot: {
+    minHeight: PidroLayout.touchTarget,
+    alignSelf: 'flex-end',
+    justifyContent: 'center',
+    marginTop: -6,
+    marginBottom: -6,
+  },
+  footerRows: {
+    alignItems: 'center',
+    gap: 0,
+  },
+  footerRowsLandscape: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: PidroSpacing.xs,
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+  },
   link: {
     minWidth: PidroLayout.touchTarget,
     minHeight: PidroLayout.touchTarget,
@@ -158,5 +241,8 @@ const styles = StyleSheet.create({
     color: PidroColors.cyanText,
     ...PidroType.metadata,
     paddingVertical: 14,
+  },
+  quietLink: {
+    paddingVertical: 8,
   },
 });

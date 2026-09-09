@@ -1,11 +1,12 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter } from 'expo-router';
 import { Keyboard, Platform, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
-import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 
 type RegisterField = 'username' | 'email' | 'password';
@@ -24,6 +25,10 @@ export default function RegisterScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const compactLandscape = landscape && height < 500;
+  const [socialNote, setSocialNote] = useState<string | null>(null);
+  const socialSoon = (provider: string) => () =>
+    setSocialNote(`${provider} sign-up is coming soon — create an account with email for now.`);
 
   const clearValidationError = useCallback(
     (field: RegisterField) => {
@@ -91,7 +96,7 @@ export default function RegisterScreen() {
   return (
     <AuthScreenFrame
       title="Create your account"
-      subtitle="Choose your name and claim a seat at the table."
+      subtitle={compactLandscape ? undefined : 'Choose your name and claim a seat at the table.'}
       error={authError}
       footer={
         <>
@@ -103,18 +108,41 @@ export default function RegisterScreen() {
           </Link>
         </>
       }>
-      <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
-        <View style={landscape && styles.fieldLandscape}>
+      <AuthProviderButtons
+        variant="compact"
+        showEmail={false}
+        onApple={socialSoon('Apple')}
+        onGoogle={socialSoon('Google')}
+        onFacebook={socialSoon('Facebook')}
+      />
+      {socialNote ? (
+        <PidroText role="metadata" tone="cyan" align="center">
+          {socialNote}
+        </PidroText>
+      ) : null}
+      {compactLandscape ? null : (
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <PidroText role="metadata" tone="muted">
+            or create with email
+          </PidroText>
+          <View style={styles.dividerLine} />
+        </View>
+      )}
+      <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={usernameRef}
             label="Username"
-            placeholder="Choose a username"
+            placeholder="Your name"
             value={username}
             onChangeText={handleUsernameChange}
             error={validationErrors.username}
             autoCapitalize="none"
             autoCorrect={false}
             autoComplete={Platform.OS === 'android' ? 'username-new' : 'username'}
+            textContentType="username"
+            importantForAutofill="yes"
             clearButtonMode="while-editing"
             editable={!isLoading}
             keyboardAppearance="dark"
@@ -123,16 +151,18 @@ export default function RegisterScreen() {
             onSubmitEditing={focusEmail}
           />
         </View>
-        <View style={landscape && styles.fieldLandscape}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={emailRef}
             label="Email"
-            placeholder="Enter your email"
+            placeholder="you@email.com"
             value={email}
             onChangeText={handleEmailChange}
             error={validationErrors.email}
             autoCapitalize="none"
             autoComplete="email"
+            textContentType="emailAddress"
+            importantForAutofill="yes"
             autoCorrect={false}
             clearButtonMode="while-editing"
             editable={!isLoading}
@@ -143,16 +173,18 @@ export default function RegisterScreen() {
             onSubmitEditing={focusPassword}
           />
         </View>
-        <View className={landscape ? 'w-full' : undefined}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={passwordRef}
             label="Password"
-            placeholder="Choose a password"
+            placeholder="Your password"
             value={password}
             onChangeText={handlePasswordChange}
             error={validationErrors.password}
             autoCapitalize="none"
             autoComplete="new-password"
+            textContentType="newPassword"
+            importantForAutofill="yes"
             autoCorrect={false}
             editable={!isLoading}
             enablesReturnKeyAutomatically
@@ -166,14 +198,32 @@ export default function RegisterScreen() {
           />
         </View>
       </View>
-      <Button label="Create account" onPress={handleRegister} loading={isLoading} size="lg" />
+      <BevelButton
+        label="Create account"
+        material="wood"
+        size="md"
+        fullWidth
+        onPress={handleRegister}
+        loading={isLoading}
+      />
     </AuthScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
+  divider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 2,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(184, 225, 246, 0.2)',
+  },
   fields: {
-    gap: 12,
+    gap: PidroSpacing.md,
   },
   fieldsLandscape: {
     flexDirection: 'row',
@@ -181,7 +231,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   fieldLandscape: {
-    width: '49%',
+    width: '32%',
+    flexGrow: 1,
   },
   link: {
     minWidth: PidroLayout.touchTarget,

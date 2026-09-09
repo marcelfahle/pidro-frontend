@@ -1,23 +1,34 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect, useRouter, type Href } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { lobbyApi } from '@/api/lobby';
+import { Avatar } from '@/components/ui/Avatar';
+import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
+import { gradientBg } from '@/components/ui/Bevel';
+import { HomeTabBar } from '@/components/home/HomeTabBar';
+import { LogoGlow } from '@/components/home/LogoGlow';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
-import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
+import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { gameRoute } from '@/navigation/gameRoute';
-import { Avatar } from '@/components/ui/Avatar';
-import { useProfileIdentity } from '@/hooks/useProfileIdentity';
+
+// Progression is mocked until leagues/levels land server-side; the layout
+// is the real one so the numbers can go live without moving anything.
+const MOCK_LEVEL = 12;
+const MOCK_RATING = 1487;
+const MOCK_LEAGUE = 'LEAGUE III · 9 WINS TO LEAGUE IV';
+const MOCK_LEAGUE_PROGRESS = 0.64;
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -27,6 +38,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [soonNote, setSoonNote] = useState<string | null>(null);
   const refreshIdentity = useProfileIdentity();
 
   useFocusEffect(
@@ -85,176 +97,339 @@ export default function HomeScreen() {
     }
   };
 
-  return (
-    <ScreenShell testID="home-screen" contentStyle={styles.shell}>
-      <View style={styles.topBar}>
-        <PressableFX
-          accessibilityRole="button"
-          accessibilityLabel="Open your profile"
-          onPress={() => router.push('/profile')}
-          style={styles.playerPlate}
-          pressedStyle={styles.playerPlatePressed}>
+  const soon = (feature: string) => () => setSoonNote(`${feature} is coming soon.`);
+
+  const topBar = (
+    <View style={styles.topBar}>
+      <PressableFX
+        accessibilityRole="button"
+        accessibilityLabel="Open your profile"
+        onPress={() => router.push('/profile')}
+        style={styles.identity}>
+        <View style={[styles.levelRing, gradientBg(PidroBevel.goldRimGradient)]}>
           <Avatar
             uri={user?.avatar_url}
             style={styles.avatar}
             resizeMode="cover"
             accessibilityLabel="Your profile picture"
           />
-          <View style={styles.playerCopy}>
-            <PidroText role="metadata" tone="gold">
-              Welcome back
-            </PidroText>
-            <PidroText role="label" numberOfLines={1}>
-              {user?.username ?? 'Player'}
-            </PidroText>
-          </View>
-          <Feather name="chevron-right" size={18} color={PidroColors.textMuted} />
-        </PressableFX>
+        </View>
+        <View style={styles.identityCopy}>
+          <PidroText role="label" numberOfLines={1}>
+            {user?.username ?? 'Player'}
+          </PidroText>
+          <PidroText role="metadata" tone="muted">
+            Level {MOCK_LEVEL}
+          </PidroText>
+        </View>
+      </PressableFX>
 
-        <View style={styles.utilityActions} accessibilityLabel="Help and settings">
-          <BevelButton
-            accessibilityLabel="Help"
-            material="glass"
-            size="icon"
-            onPress={() => router.push('/help')}>
-            <Feather name="help-circle" size={21} color={PidroColors.textSoft} />
-          </BevelButton>
-          <BevelButton
-            accessibilityLabel="Settings"
-            material="glass"
-            size="icon"
-            onPress={() => router.push('/settings')}>
-            <Feather name="settings" size={21} color={PidroColors.textSoft} />
-          </BevelButton>
+      <View style={styles.progression}>
+        <View style={[styles.ratingRim, gradientBg(PidroBevel.goldRimGradient)]}>
+          <View
+            style={[
+              styles.ratingFace,
+              gradientBg(
+                `linear-gradient(180deg, ${PidroBevel.panelHi}, ${PidroBevel.panelMid} 60%, ${PidroBevel.panelDeep})`
+              ),
+            ]}>
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill={PidroBevel.textGold}>
+              <Path d="M12 2l2.4 5.7 6.1.5-4.6 4 1.4 6L12 15l-5.3 3.2 1.4-6-4.6-4 6.1-.5z" />
+            </Svg>
+            <PidroText style={styles.ratingValue}>{MOCK_RATING}</PidroText>
+          </View>
+        </View>
+        <View style={styles.leagueBar}>
+          <View style={[styles.leagueFill, { width: `${MOCK_LEAGUE_PROGRESS * 100}%` }]} />
+        </View>
+        <PidroText style={styles.leagueLabel}>{MOCK_LEAGUE}</PidroText>
+      </View>
+    </View>
+  );
+
+  const logoStage = (
+    <View style={styles.logoStage} pointerEvents="none">
+      <LogoGlow size={landscape ? 360 : 440} />
+      <PidroLogo size="hero" />
+    </View>
+  );
+
+  const actions = (
+    <View style={[styles.actions, landscape && styles.actionsLandscape]}>
+      {soonNote ? (
+        <Surface variant="subtle" style={styles.note}>
+          <PidroText role="metadata" tone="cyan" align="center">
+            {soonNote}
+          </PidroText>
+        </Surface>
+      ) : null}
+      {error ? (
+        <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
+          <PidroText role="metadata" tone="danger" align="center">
+            {error}
+          </PidroText>
+        </Surface>
+      ) : null}
+
+      <View style={styles.playWrap}>
+        <BevelButton
+          label="PLAY"
+          material="wood"
+          size="hero"
+          fullWidth
+          onPress={() => router.push('/lobby')}
+        />
+        <View style={styles.playBadge} pointerEvents="none">
+          <PidroText style={styles.playBadgeLabel}>FIND A TABLE</PidroText>
         </View>
       </View>
 
-      <View style={[styles.main, landscape && styles.mainLandscape]}>
-        <View
-          style={[styles.logoStage, landscape && styles.logoStageLandscape]}
-          pointerEvents="none">
-          <PidroLogo size="hero" />
-        </View>
-
-        <View style={[styles.actionPane, landscape && styles.actionPaneLandscape]}>
-          {error ? (
-            <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
-              <PidroText role="metadata" tone="danger" align="center">
-                {error}
-              </PidroText>
-            </Surface>
-          ) : null}
-
-          <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
-            <BevelButton
-              label="Multiplayer"
-              material="wood"
-              size="lg"
-              fullWidth
-              onPress={() => router.push('/lobby')}
-            />
-            <BevelButton
-              label="Single player"
-              material="glass"
-              size="lg"
-              fullWidth
-              loading={singlePlayerLoading}
-              onPress={handleSinglePlayer}
-            />
-            <Button
-              label={t('invite.manual.entry')}
-              variant="link"
-              onPress={() => router.push('/join-code' as Href)}
-            />
-          </View>
-        </View>
+      <View style={styles.chips}>
+        <BevelButton
+          material="glass"
+          size="sm"
+          accessibilityLabel="Solo practice. Start immediately with three bots."
+          loading={singlePlayerLoading}
+          onPress={handleSinglePlayer}>
+          <Svg
+            width={15}
+            height={15}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#CFEFFF"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round">
+            <Path d="M6 4.5l13 7.5-13 7.5z" />
+          </Svg>
+          <PidroText style={styles.chipLabel}>Solo practice</PidroText>
+        </BevelButton>
+        <BevelButton
+          material="glass"
+          size="sm"
+          accessibilityLabel="Play with friends. Create a table and invite them."
+          onPress={() => router.push('/lobby')}>
+          <Svg
+            width={15}
+            height={15}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="#CFEFFF"
+            strokeWidth={2}
+            strokeLinecap="round">
+            <Path d="M9 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM3 20a6 6 0 0 1 12 0M16.5 5.5a3.2 3.2 0 0 1 0 5.6M21 20a6 6 0 0 0-4-5.6" />
+          </Svg>
+          <PidroText style={styles.chipLabel}>Play with friends</PidroText>
+        </BevelButton>
       </View>
-    </ScreenShell>
+
+      <Button
+        label={t('invite.manual.entry')}
+        variant="link"
+        onPress={() => router.push('/join-code' as Href)}
+      />
+    </View>
+  );
+
+  const tabBar = (
+    <HomeTabBar
+      orientation={landscape ? 'rail' : 'bottom'}
+      onLeague={soon('The league')}
+      onStats={() => router.push('/profile')}
+      onFriends={soon('Friends')}
+      onSettings={() => router.push('/settings')}
+    />
+  );
+
+  return (
+    <Background>
+      <View style={[styles.scrim, landscape && styles.scrimLandscape]}>
+        <SafeAreaView
+          testID="home-screen"
+          style={styles.safe}
+          edges={landscape ? ['top', 'left', 'bottom'] : ['top', 'left', 'right']}>
+          {landscape ? (
+            <View style={styles.mainLandscape}>
+              {topBar}
+              <View style={styles.bodyLandscape}>
+                {logoStage}
+                {actions}
+              </View>
+            </View>
+          ) : (
+            <View style={styles.main}>
+              {topBar}
+              {logoStage}
+              {actions}
+            </View>
+          )}
+        </SafeAreaView>
+        {tabBar}
+      </View>
+    </Background>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: {
-    gap: PidroSpacing.sm,
+  scrim: {
+    flex: 1,
+    backgroundColor: PidroColors.screenScrim,
   },
-  topBar: {
-    minHeight: PidroLayout.touchTarget,
+  scrimLandscape: {
+    flexDirection: 'row',
+  },
+  safe: {
+    flex: 1,
+  },
+  main: {
+    flex: 1,
+    paddingHorizontal: PidroSpacing.md,
+    paddingTop: PidroSpacing.xs,
+  },
+  mainLandscape: {
+    flex: 1,
+    paddingLeft: PidroSpacing.md,
+    paddingRight: PidroSpacing.sm,
+    paddingTop: PidroSpacing.xs,
+  },
+  bodyLandscape: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    gap: PidroSpacing.md,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
     gap: PidroSpacing.sm,
   },
-  playerPlate: {
-    minWidth: 0,
-    maxWidth: 280,
-    flex: 1,
+  identity: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.xs,
-    overflow: 'hidden',
-    borderRadius: PidroRadii.surface,
-    borderWidth: 1,
-    borderColor: PidroColors.borderStrong,
-    backgroundColor: PidroColors.panelStrong,
-    padding: PidroSpacing.xs,
+    minHeight: 46,
   },
-  playerPlatePressed: {
-    backgroundColor: PidroColors.glassHover,
+  levelRing: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    padding: 2.5,
+    boxShadow: '0px 2px 6px rgba(0,0,0,0.4)',
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: PidroRadii.tight,
-    borderWidth: 1,
-    borderColor: PidroColors.cyanBorder,
+    width: '100%',
+    height: '100%',
+    borderRadius: 21,
   },
-  playerCopy: {
+  identityCopy: {
     minWidth: 0,
-    flex: 1,
+    maxWidth: 170,
   },
-  utilityActions: {
-    flexDirection: 'row',
-    gap: PidroSpacing.xs,
+  progression: {
+    alignItems: 'flex-end',
+    gap: 4,
   },
-  main: {
-    minHeight: 0,
-    flex: 1,
+  ratingRim: {
+    borderRadius: 12,
+    padding: 1.5,
+    boxShadow: '0px 2px 6px rgba(0,0,0,0.4)',
   },
-  mainLandscape: {
+  ratingFace: {
+    borderRadius: 10.5,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: PidroSpacing.xl,
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 13,
+    boxShadow: 'inset 0px 1px 3px rgba(0,0,0,0.35)',
+  },
+  ratingValue: {
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 16,
+    lineHeight: 21,
+    color: PidroBevel.textGold,
+    textShadowColor: 'rgba(0, 0, 0, 0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+    transform: [{ translateY: -0.5 }],
+  },
+  leagueBar: {
+    width: 172,
+    height: 6,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    overflow: 'hidden',
+  },
+  leagueFill: {
+    height: '100%',
+    borderRadius: 6,
+    backgroundColor: PidroBevel.rim,
+  },
+  leagueLabel: {
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    color: 'rgba(214, 238, 250, 0.65)',
   },
   logoStage: {
-    minHeight: 190,
     flex: 1,
+    minHeight: 150,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoStageLandscape: {
-    width: '48%',
-    minHeight: 0,
-    alignSelf: 'stretch',
-  },
-  actionPane: {
-    width: '100%',
-    maxWidth: 520,
-    alignSelf: 'center',
-    gap: PidroSpacing.md,
+  actions: {
+    gap: PidroSpacing.sm,
     paddingBottom: PidroSpacing.xs,
   },
-  actionPaneLandscape: {
-    width: '46%',
-    maxWidth: 420,
+  actionsLandscape: {
+    width: 330,
+    paddingBottom: 0,
+  },
+  note: {
+    padding: PidroSpacing.xs,
   },
   error: {
     borderColor: PidroColors.dangerBorder,
     padding: PidroSpacing.sm,
   },
-  playActions: {
+  playWrap: {
+    position: 'relative',
+  },
+  playBadge: {
+    position: 'absolute',
+    top: -9,
+    right: -2,
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    backgroundColor: PidroColors.cyan,
+    boxShadow: '0px 2px 6px rgba(0,0,0,0.4)',
+  },
+  playBadgeLabel: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    color: '#06263f',
+  },
+  chips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     gap: PidroSpacing.sm,
   },
-  playActionsLandscape: {
-    gap: PidroSpacing.xs,
+  chipLabel: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '800',
+    color: '#ffffff',
+    textShadowColor: 'rgba(0, 10, 20, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 });

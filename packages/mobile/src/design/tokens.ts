@@ -80,6 +80,13 @@ export const PidroBevel = {
   glassFaceInset: 'inset 0px 1px 0px rgba(255,255,255,0.30), inset 0px -2px 0px rgba(2,24,44,0.45)',
   glassFaceInsetPressed:
     'inset 0px 1px 0px rgba(255,255,255,0.18), inset 0px -1px 0px rgba(2,24,44,0.4)',
+  heroDropShadow: '0px 8px 16px rgba(0,0,0,0.5), 0px 2px 4px rgba(0,0,0,0.35)',
+  heroDropShadowPressed: '0px 3px 7px rgba(0,0,0,0.45)',
+  heroFaceInset: 'inset 0px 2px 0px rgba(255,240,200,0.4), inset 0px -6px 0px rgba(0,0,0,0.34)',
+  heroFaceInsetPressed:
+    'inset 0px 2px 0px rgba(255,240,200,0.26), inset 0px -3px 0px rgba(0,0,0,0.3)',
+  heroGlossGradient:
+    'linear-gradient(180deg, rgba(255,248,225,0.3) 0%, rgba(255,248,225,0.08) 100%)',
   labelShadow: {
     textShadowColor: 'rgba(20, 8, 0, 0.6)',
     textShadowOffset: { width: 0, height: 2 },
