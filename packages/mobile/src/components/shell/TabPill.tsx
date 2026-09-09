@@ -42,7 +42,7 @@ const TAB_ICONS: Record<Exclude<ShellTab, 'table'>, keyof typeof Feather.glyphMa
 const TAB_LABELS: Record<ShellTab, string> = {
   league: 'League',
   stats: 'Stats',
-  table: 'Table',
+  table: 'Home',
   friends: 'Friends',
   settings: 'Settings',
 };
@@ -100,7 +100,7 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
 
           <PressableFX
             accessibilityRole="button"
-            accessibilityLabel={tableBadge ? 'Your table — game waiting' : 'Your table'}
+            accessibilityLabel={tableBadge ? 'Rejoin your game' : 'Home'}
             accessibilityState={{ selected: active === 'table' }}
             onPress={() => onSelect('table')}
             style={styles.item}>
@@ -114,7 +114,9 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
               </View>
               {tableBadge ? <View style={styles.badge} /> : null}
             </View>
-            <PidroText style={[styles.itemLabel, styles.tableLabel]}>{TAB_LABELS.table}</PidroText>
+            {tableBadge ? (
+              <PidroText style={[styles.itemLabel, styles.tableLabel]}>Rejoin</PidroText>
+            ) : null}
           </PressableFX>
 
           <TabItem tab="friends" active={active === 'friends'} onSelect={onSelect} />
