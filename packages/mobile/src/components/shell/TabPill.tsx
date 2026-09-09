@@ -25,7 +25,8 @@ export type ShellTab = 'league' | 'stats' | 'table' | 'friends' | 'settings';
 // Pill geometry, single source of truth for clearance math.
 const PILL_THICKNESS = 65; // item 50 + face padding 12 + rim 2.5
 const PILL_EDGE_GAP = 6; // pill inset beyond the safe area
-const CONTENT_GAP = 14; // breathing room between content and pill
+const CONTENT_GAP = 14; // breathing room between content and pill (portrait)
+const CONTENT_GAP_RAIL = 22; // the rail deserves more air beside content
 
 /**
  * How much space screens inside the shell must leave for the floating
@@ -39,7 +40,7 @@ export function usePillClearance() {
   if (landscape) {
     return {
       bottom: 0,
-      right: Math.max(insets.right, 8) + PILL_EDGE_GAP + 2 + PILL_THICKNESS + CONTENT_GAP,
+      right: Math.max(insets.right, 8) + PILL_EDGE_GAP + 2 + PILL_THICKNESS + CONTENT_GAP_RAIL,
     };
   }
   return {

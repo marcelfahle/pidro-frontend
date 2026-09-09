@@ -358,7 +358,7 @@ const styles = StyleSheet.create({
     paddingBottom: PidroSpacing.xs,
   },
   actionsLandscape: {
-    width: 330,
+    width: 300,
     paddingBottom: 0,
   },
   error: {
@@ -371,7 +371,7 @@ const styles = StyleSheet.create({
   playBadge: {
     position: 'absolute',
     top: -9,
-    right: -2,
+    right: 6,
     borderRadius: 999,
     paddingVertical: 4,
     paddingHorizontal: 12,
