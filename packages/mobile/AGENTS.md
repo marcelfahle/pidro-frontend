@@ -19,7 +19,7 @@ treatments in screens.
   `BevelButton` (all CTAs; `material` wood/glass, `size` sm/md/lg/hero/icon),
   `BevelPressable`/`BevelSurface` (custom beveled controls/surfaces), `Input`
   (carved-in wells), `PidroText`, `Surface`, `ScreenShell`, `DecisionWindow`, `Modal`,
-  `PressableFX`, `HomeTabBar`, `LogoGlow`, `AuthProviderButtons`, `AuthSheet`,
+  `PressableFX`, `TabPill` (the floating shell pill), `LogoGlow`, `AuthProviderButtons`, `AuthSheet`,
   `KeepProgressPrompt`. Legacy `Button` is utility-only on old screens — do not add
   call sites; migrate to `BevelButton` when touching a screen. `MenuAction` and
   `PrimaryButton` are compatibility-only.
