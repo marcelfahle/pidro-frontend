@@ -147,19 +147,19 @@ export default function HomeScreen() {
 
           <View style={[styles.playActions, landscape && styles.playActionsLandscape]}>
             <BevelButton
-              label="Single player"
+              label="Multiplayer"
               material="wood"
+              size="lg"
+              fullWidth
+              onPress={() => router.push('/lobby')}
+            />
+            <BevelButton
+              label="Single player"
+              material="glass"
               size="lg"
               fullWidth
               loading={singlePlayerLoading}
               onPress={handleSinglePlayer}
-            />
-            <BevelButton
-              label="Multiplayer"
-              material="glass"
-              size="lg"
-              fullWidth
-              onPress={() => router.push('/lobby')}
             />
             <Button
               label={t('invite.manual.entry')}

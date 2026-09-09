@@ -33,8 +33,20 @@ const FACE_SIZES: Record<BevelButtonSize, ViewStyle> = {
   icon: { width: 42, height: 42, paddingVertical: 0, paddingHorizontal: 0 },
 };
 
-const WOOD_LABEL_SIZES: Record<BevelButtonSize, number> = { sm: 15, md: 19, lg: 23, icon: 0 };
-const GLASS_LABEL_SIZES: Record<BevelButtonSize, number> = { sm: 14, md: 16, lg: 18, icon: 0 };
+// Bree Serif descenders need ~1.3 line-height or g/p/y clip against the
+// PidroText role's inherited lineHeight.
+const WOOD_LABEL_SIZES: Record<BevelButtonSize, { fontSize: number; lineHeight: number }> = {
+  sm: { fontSize: 15, lineHeight: 20 },
+  md: { fontSize: 19, lineHeight: 25 },
+  lg: { fontSize: 23, lineHeight: 30 },
+  icon: { fontSize: 0, lineHeight: 0 },
+};
+const GLASS_LABEL_SIZES: Record<BevelButtonSize, { fontSize: number; lineHeight: number }> = {
+  sm: { fontSize: 14, lineHeight: 19 },
+  md: { fontSize: 16, lineHeight: 21 },
+  lg: { fontSize: 18, lineHeight: 24 },
+  icon: { fontSize: 0, lineHeight: 0 },
+};
 
 export function BevelButton({
   label,
@@ -53,7 +65,7 @@ export function BevelButton({
       <PidroText
         style={[
           wood ? styles.woodLabel : styles.glassLabel,
-          { fontSize: wood ? WOOD_LABEL_SIZES[size] : GLASS_LABEL_SIZES[size] },
+          wood ? WOOD_LABEL_SIZES[size] : GLASS_LABEL_SIZES[size],
         ]}
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}>

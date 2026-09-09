@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     fontFamily: PidroFonts.display,
     fontWeight: '400',
     fontSize: 18,
-    lineHeight: 22,
+    lineHeight: 24,
     color: PidroBevel.textGold,
     letterSpacing: 0.3,
     ...PidroBevel.labelShadow,
