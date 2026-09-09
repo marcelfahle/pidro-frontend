@@ -83,7 +83,7 @@ export default function LoginScreen() {
       subtitle={compactLandscape ? undefined : 'Sign in to return to your table.'}
       error={error}
       footer={
-        <View style={[styles.footerRows, landscape && styles.footerRowsLandscape]}>
+        <View style={[styles.footerRows, compactLandscape && styles.footerRowsLandscape]}>
           <View style={styles.footerRow}>
             <PidroText role="metadata" tone="soft">
               New to Pidro?
@@ -92,7 +92,9 @@ export default function LoginScreen() {
               Create an account
             </Link>
           </View>
-          <Link href={'/join-code' as Href} style={[styles.link, !landscape && styles.quietLink]}>
+          <Link
+            href={'/join-code' as Href}
+            style={[styles.link, !compactLandscape && styles.quietLink]}>
             {t('invite.manual.entry')}
           </Link>
         </View>
@@ -118,8 +120,8 @@ export default function LoginScreen() {
           <View style={styles.dividerLine} />
         </View>
       )}
-      <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
-        <View style={landscape && styles.fieldLandscape}>
+      <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={usernameRef}
             label="Username"
@@ -140,7 +142,7 @@ export default function LoginScreen() {
             onSubmitEditing={focusPassword}
           />
         </View>
-        <View style={landscape && styles.fieldLandscape}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={passwordRef}
             label="Password"
@@ -179,7 +181,7 @@ export default function LoginScreen() {
       <BevelButton
         label="Sign in"
         material="wood"
-        size="lg"
+        size="md"
         fullWidth
         onPress={handleLogin}
         loading={isLoading}

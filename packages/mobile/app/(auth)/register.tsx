@@ -129,8 +129,8 @@ export default function RegisterScreen() {
           <View style={styles.dividerLine} />
         </View>
       )}
-      <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
-        <View style={landscape && styles.fieldLandscape}>
+      <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={usernameRef}
             label="Username"
@@ -151,7 +151,7 @@ export default function RegisterScreen() {
             onSubmitEditing={focusEmail}
           />
         </View>
-        <View style={landscape && styles.fieldLandscape}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={emailRef}
             label="Email"
@@ -173,7 +173,7 @@ export default function RegisterScreen() {
             onSubmitEditing={focusPassword}
           />
         </View>
-        <View style={landscape && styles.fieldLandscape}>
+        <View style={compactLandscape && styles.fieldLandscape}>
           <Input
             ref={passwordRef}
             label="Password"
@@ -201,7 +201,7 @@ export default function RegisterScreen() {
       <BevelButton
         label="Create account"
         material="wood"
-        size="lg"
+        size="md"
         fullWidth
         onPress={handleRegister}
         loading={isLoading}

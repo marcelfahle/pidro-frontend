@@ -23,6 +23,10 @@ export function AuthScreenFrame({
 }: AuthScreenFrameProps) {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  // Only phone landscape is genuinely height-starved. There the decorative
+  // logo yields its space to the card; everywhere else the form stays a
+  // comfortable single column beside (or under) the logo.
+  const compact = landscape && height < 500;
 
   return (
     <ScreenShell
@@ -33,13 +37,19 @@ export function AuthScreenFrame({
         alignItems: 'center',
         gap: landscape ? PidroSpacing.xl : PidroSpacing.md,
       }}>
-      <View style={[styles.logoStage, landscape && styles.logoStageLandscape]}>
-        <PidroLogo />
-      </View>
+      {compact ? null : (
+        <View style={[styles.logoStage, landscape && styles.logoStageLandscape]}>
+          <PidroLogo />
+        </View>
+      )}
       <Surface
         testID="auth-window"
         variant="window"
-        style={[styles.panel, landscape && styles.panelLandscape]}
+        style={[
+          styles.panel,
+          landscape && !compact && styles.panelBeside,
+          compact && styles.panelCompact,
+        ]}
         padded>
         <View style={styles.heading}>
           <PidroText role="title" align="center" style={styles.title}>
@@ -68,7 +78,7 @@ export function AuthScreenFrame({
 const styles = StyleSheet.create({
   logoStage: {
     width: '100%',
-    height: 184,
+    height: 148,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -76,13 +86,23 @@ const styles = StyleSheet.create({
     width: '42%',
     maxWidth: 330,
     height: 246,
+    flexShrink: 1,
   },
   panel: {
     width: '100%',
-    maxWidth: 480,
+    maxWidth: 440,
     gap: PidroSpacing.md,
   },
-  panelLandscape: {
+  // Beside the logo, the card must be allowed to shrink with the window
+  // instead of holding its full width and clipping off-screen.
+  panelBeside: {
+    width: 'auto',
+    minWidth: 0,
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  panelCompact: {
+    maxWidth: 720,
     padding: PidroSpacing.xs,
     gap: PidroSpacing.xs,
   },
