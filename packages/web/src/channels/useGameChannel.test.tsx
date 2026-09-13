@@ -129,6 +129,51 @@ afterEach(() => {
 });
 
 describe('useGameChannel', () => {
+  it('rehydrates private data on an equal-revision rejoin, not on duplicate broadcasts', () => {
+    const { unmount, rerender } = renderHook(
+      ({ enabled }) => useGameChannel({ roomCode: 'ABCD', enabled }),
+      { initialProps: { enabled: true } },
+    );
+    try {
+      const hand = [{ rank: 14, suit: 'spades' }];
+      const reply = {
+        role: 'player',
+        position: 'south',
+        game_instance_id: 'game-a',
+        state_revision: 4,
+        server_time_ms: 10000,
+        presentation: { dealer_selection: { started_at_ms: 10000, ends_at_ms: 13000 } },
+        state: {
+          ...gameState('dealer_selection'),
+          players: { ...gameState().players, south: { hand } },
+        },
+        legal_actions: [{ type: 'pass' }],
+      };
+      act(() => currentChannel?.joinPush.trigger('ok', reply));
+      const { snapshotCursor, dealerPresentation } = useGameStore.getState();
+      const oldChannel = currentChannel;
+      act(() => oldChannel?.closeHandler?.());
+      expect(useGameStore.getState().role).toBeNull();
+      expect(useGameStore.getState().serverState?.players.south.hand).toBe(1);
+      expect(useGameStore.getState().legalActions).toEqual([]);
+      rerender({ enabled: false });
+      rerender({ enabled: true });
+      expect(currentChannel).not.toBe(oldChannel);
+      act(() => oldChannel?.joinPush.trigger('ok', reply));
+      expect(useGameStore.getState().role).toBeNull();
+      act(() => currentChannel?.joinPush.trigger('ok', { ...reply, server_time_ms: 11200 }));
+      expect(useGameStore.getState().serverState?.players.south.hand).toEqual(hand);
+      expect(useGameStore.getState().legalActions).toEqual(reply.legal_actions);
+      expect(useGameStore.getState().snapshotCursor).toBe(snapshotCursor);
+      expect(useGameStore.getState().dealerPresentation).toBe(dealerPresentation);
+      const hydrated = useGameStore.getState();
+      act(() => currentChannel?.emit('game_state', { ...reply, legal_actions: [] }));
+      expect(useGameStore.getState()).toBe(hydrated);
+    } finally {
+      unmount();
+    }
+  });
+
   it('keeps Watching through a disconnect without buffering player actions', async () => {
     renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
     act(() => currentChannel?.joinPush.trigger('ok', { role: 'spectator' }));
@@ -371,6 +416,34 @@ describe('useGameChannel', () => {
     expect(mockChannelFactory).toHaveBeenCalledTimes(1);
 
     unmount();
+  });
+
+  it('uses the versioned terminal snapshot and ignores an unversioned game-over regression', () => {
+    renderHook(() => useGameChannel({ roomCode: 'ABCD' }));
+    const payload = {
+      game_instance_id: 'game-a',
+      state_revision: 1,
+      server_time_ms: 10000,
+      presentation: null,
+      legal_actions: [],
+      state: gameState('playing'),
+    };
+    act(() =>
+      currentChannel?.joinPush.trigger('ok', { ...payload, role: 'player', position: 'south' }),
+    );
+    const result = { winner: 'east_west', scores: { north_south: 65, east_west: 62 } };
+    // Backend GameAdapter broadcasts state_update before the legacy game_over event.
+    act(() =>
+      currentChannel?.emit('game_state', {
+        ...payload,
+        state_revision: 2,
+        state: { ...payload.state, phase: 'complete', ...result },
+      }),
+    );
+    expect(useGameStore.getState().serverState).toMatchObject({ phase: 'complete', ...result });
+    const terminal = useGameStore.getState();
+    act(() => currentChannel?.emit('game_over', { winner: 'north_south', scores: {} }));
+    expect(useGameStore.getState()).toBe(terminal);
   });
 
   it('records the authoritative game-over winner', () => {

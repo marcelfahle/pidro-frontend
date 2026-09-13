@@ -92,7 +92,7 @@ export const useGameChannel = ({
   onProgressionSummary,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
-  const setLegalActions = useGameStore((s) => s.setLegalActions);
+  const applyGameSnapshot = useGameStore((s) => s.applyGameSnapshot);
   const setTurnTimer = useGameStore((s) => s.setTurnTimer);
   const clearTurnTimer = useGameStore((s) => s.clearTurnTimer);
   const setYouPosition = useGameStore((s) => s.setYouPosition);
@@ -184,14 +184,10 @@ export const useGameChannel = ({
           if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
 
           const gameState = extractGameState(response);
-          if (gameState) {
-            setServerState(gameState);
-          }
-
+          const accepted = applyGameSnapshot(response, { rehydratePlayer: role === 'player' });
           const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
-          setLegalActions(legalActions);
-          setTurnTimer(normalizeTurnTimer(response?.turn_timer));
-          if (gameState) {
+          if (accepted) setTurnTimer(normalizeTurnTimer(response?.turn_timer));
+          if (gameState && accepted && !useGameStore.getState().snapshotCursor) {
             maybeAutoSelectDealer(gameState, legalActions, position ?? youPositionRef.current);
           }
         })
@@ -215,8 +211,7 @@ export const useGameChannel = ({
         const gameState = extractGameState(data);
         if (gameState) {
           const legalActions = (data?.legal_actions as LegalAction[] | undefined) ?? [];
-          setServerState(gameState);
-          setLegalActions(legalActions);
+          if (!applyGameSnapshot(data) || useGameStore.getState().snapshotCursor) return;
           maybeAutoSelectDealer(gameState, legalActions, youPositionRef.current);
         }
       });
@@ -227,6 +222,7 @@ export const useGameChannel = ({
       });
 
       onCurrent('game_over', (payload: unknown) => {
+        if (useGameStore.getState().snapshotCursor) return;
         const data = payload as Record<string, unknown> | undefined;
         const winner =
           data?.winner === 'north_south' || data?.winner === 'east_west' ? data.winner : null;
@@ -283,6 +279,7 @@ export const useGameChannel = ({
       });
 
       onCurrent('turn_changed', (payload: unknown) => {
+        if (useGameStore.getState().snapshotCursor) return;
         const data = payload as Record<string, unknown> | undefined;
         const pos: Position | null =
           (data?.position as Position) ||
@@ -478,7 +475,7 @@ export const useGameChannel = ({
     roomCode,
     enabled,
     setServerState,
-    setLegalActions,
+    applyGameSnapshot,
     setTurnTimer,
     clearTurnTimer,
     setYouPosition,

@@ -208,3 +208,22 @@ export type LegalAction =
   | DeclareTrumpAction
   | SelectHandAction
   | SelectDealerAction;
+
+export interface GameSnapshot {
+  game_instance_id: string;
+  state_revision: number;
+  server_time_ms: number;
+  state: ServerGameState;
+  legal_actions: LegalAction[];
+  presentation: {
+    dealer_selection: { started_at_ms: number; ends_at_ms: number };
+  } | null;
+}
+
+/** Receipt-anchored server clock; independent of the device's wall-clock offset. */
+export interface DealerPresentation {
+  startedAtMs: number;
+  endsAtMs: number;
+  serverTimeMs: number;
+  receivedAtMs: number;
+}
