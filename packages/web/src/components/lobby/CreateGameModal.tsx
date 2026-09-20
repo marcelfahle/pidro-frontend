@@ -1,4 +1,4 @@
-import { clampRoomName, ROOM_NAME_MAX_LENGTH, type SeatType } from '@pidro/shared';
+import { clampRoomName, limitRoomNameInput, type SeatType } from '@pidro/shared';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth';
 import { GlassButton, PidroButton } from '../ds';
@@ -134,8 +134,7 @@ export function CreateGameModal({
             type="text"
             placeholder={`${username}'s game`}
             value={name}
-            maxLength={ROOM_NAME_MAX_LENGTH}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => setName(limitRoomNameInput(e.target.value))}
             className="pidro-input"
           />
         </div>

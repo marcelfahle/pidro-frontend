@@ -99,23 +99,36 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
   });
 }
 
-/** The server rejects a room name longer than this. */
+/**
+ * The server rejects a room name longer than 60 characters. It counts grapheme
+ * clusters; the client clamps by code point, which is never the larger count,
+ * so a clamped name always passes.
+ */
 export const ROOM_NAME_MAX_LENGTH = 60;
 
 /**
+ * Keeps the first `ROOM_NAME_MAX_LENGTH` code points of what is typed into a
+ * room name field. Unlike `clampRoomName` it leaves trailing whitespace alone,
+ * so the space between two words survives the keystroke that types it.
+ */
+export function limitRoomNameInput(text: string): string {
+  // A UTF-16 length within the limit cannot hold more code points than that.
+  if (text.length <= ROOM_NAME_MAX_LENGTH) return text;
+  const codePoints = Array.from(text);
+  if (codePoints.length <= ROOM_NAME_MAX_LENGTH) return text;
+  return codePoints.slice(0, ROOM_NAME_MAX_LENGTH).join('');
+}
+
+/**
  * Cuts a room name down to the server's limit. Default names embed the
- * username, which has no maximum length. Cuts on a code point boundary, so a
- * surrogate pair is never split; a multi-code-point sequence such as a flag or
- * a family emoji on the boundary can still lose part of itself.
+ * username, which has no maximum length. Counts code points, so a surrogate
+ * pair is never split and 60 emoji fit; the server counts grapheme clusters,
+ * so a multi-code-point sequence such as a flag or a family emoji on the
+ * boundary can still lose part of itself.
  */
 export function clampRoomName(name: string): string {
-  if (name.length <= ROOM_NAME_MAX_LENGTH) return name;
-  let clamped = '';
-  for (const char of name) {
-    if (clamped.length + char.length > ROOM_NAME_MAX_LENGTH) break;
-    clamped += char;
-  }
-  return clamped.trimEnd();
+  const limited = limitRoomNameInput(name);
+  return limited === name ? name : limited.trimEnd();
 }
 
 export function normalizeRoom(raw: any): Room {
@@ -147,11 +160,14 @@ export function normalizeRoom(raw: any): Room {
 
   const status: RoomStatus = (raw?.status as RoomStatus | undefined) ?? 'waiting';
 
+  // `config.name` is the server's word and comes first. The server never sends
+  // a top-level `name`; one only exists on a room that was normalized before,
+  // where it may be a stale lifted value such as the room code.
   // `metadata.name` is what a backend that predates the room config sends over
   // the lobby channel. This client ships before that backend is replaced, so
   // keep reading it until the config-emitting backend is deployed everywhere.
   const name =
-    raw?.name ?? raw?.config?.name ?? raw?.metadata?.name ?? raw?.code ?? 'Game Room';
+    raw?.config?.name ?? raw?.name ?? raw?.metadata?.name ?? raw?.code ?? 'Game Room';
 
   return {
     ...raw,

@@ -574,7 +574,7 @@ channel.push('ready', {});
 
 **Validation**:
 
-- Room name max 50 characters
+- Room name max 60 characters
 - At least one seat must be "Open" (can't create game with no open seats)
 - Cannot create if already in a room
 

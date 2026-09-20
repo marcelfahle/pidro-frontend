@@ -1,6 +1,7 @@
 import { expect, test } from 'bun:test';
 import {
   clampRoomName,
+  limitRoomNameInput,
   normalizeRoom,
   ROOM_NAME_MAX_LENGTH,
 } from '../src/utils/rooms';
@@ -47,8 +48,23 @@ test('a generated name is cut to the server limit without splitting an emoji', (
   expect(clampRoomName("testuser's game")).toBe("testuser's game");
   expect(clampRoomName(`${'u'.repeat(70)}'s solo table`)).toBe('u'.repeat(60));
   const clamped = clampRoomName(`${'u'.repeat(59)}🦊's table`);
-  expect(clamped).toBe('u'.repeat(59));
-  expect(clamped.length).toBeLessThanOrEqual(ROOM_NAME_MAX_LENGTH);
+  expect(clamped).toBe(`${'u'.repeat(59)}🦊`);
+  expect(Array.from(clamped).length).toBe(ROOM_NAME_MAX_LENGTH);
+});
+
+test('a room name is counted by code point, so 60 emoji fit', () => {
+  const sixty = '😀'.repeat(60);
+  expect(clampRoomName(sixty)).toBe(sixty);
+  expect(clampRoomName('😀'.repeat(61))).toBe(sixty);
+  expect(limitRoomNameInput(sixty)).toBe(sixty);
+  expect(limitRoomNameInput('😀'.repeat(61))).toBe(sixty);
+});
+
+test('the input limiter keeps the space typed between two words', () => {
+  expect(limitRoomNameInput('Friday ')).toBe('Friday ');
+  const padded = `${'u'.repeat(59)}  more`;
+  expect(limitRoomNameInput(padded)).toBe(`${'u'.repeat(59)} `);
+  expect(clampRoomName(padded)).toBe('u'.repeat(59));
 });
 
 test('a lobby room from a backend that predates the config keeps its name', () => {
@@ -56,6 +72,25 @@ test('a lobby room from a backend that predates the config keeps its name', () =
     code: 'E4W2',
     metadata: { name: 'Friday night' },
     seats: positions.map((position) => ({ position, player: null })),
+  });
+  expect(room.name).toBe('Friday night');
+});
+
+test('a config name wins over a differing top-level name', () => {
+  const room = normalizeRoom({
+    code: 'E4W2',
+    name: 'E4W2',
+    config: { name: 'Friday night', bot_difficulty: 'basic', solo: false },
+  });
+  expect(room.name).toBe('Friday night');
+  expect(normalizeRoom(room).name).toBe('Friday night');
+});
+
+test('a top-level name still counts when the config has none', () => {
+  const room = normalizeRoom({
+    code: 'E4W2',
+    name: 'Friday night',
+    config: { name: null, bot_difficulty: 'basic', solo: false },
   });
   expect(room.name).toBe('Friday night');
 });

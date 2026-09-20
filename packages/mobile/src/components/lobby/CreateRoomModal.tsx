@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { clampRoomName, ROOM_NAME_MAX_LENGTH } from '@pidro/shared';
+import { clampRoomName, limitRoomNameInput } from '@pidro/shared';
 import type { BotDifficulty, CreateRoomRequest, SeatType } from '@/types/lobby';
 import { Button } from '@/components/ui/Button';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
@@ -115,9 +115,8 @@ export function CreateRoomModal({
               <Input
                 label="Table name"
                 value={name}
-                onChangeText={setName}
+                onChangeText={(text) => setName(limitRoomNameInput(text))}
                 placeholder={`${username ?? 'Player'}'s table`}
-                maxLength={ROOM_NAME_MAX_LENGTH}
                 editable={!isLoading}
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}
