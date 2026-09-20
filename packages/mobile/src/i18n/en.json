@@ -79,5 +79,8 @@
   "table.position.west": "west",
   "table.kick": "Remove from table",
   "table.actionErrorTitle": "Table action failed",
-  "table.actionError": "The server did not accept that change. Refresh and try again."
+  "table.actionError": "The server did not accept that change. Refresh and try again.",
+  "table.rematch.tableNotFull": "A seat is empty. A rematch needs all four seats taken.",
+  "table.rematch.tableChanged": "The table changed. Press Play again once more.",
+  "table.rematch.failed": "The rematch did not go through. Try again."
 }

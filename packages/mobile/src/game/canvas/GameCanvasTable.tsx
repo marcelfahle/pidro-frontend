@@ -38,6 +38,7 @@ type Props = {
   onLeave: () => void;
   onPlayAgain?: () => void;
   rematch?: RematchVote | null;
+  rematchPending?: boolean;
   backLabel?: string;
 };
 
@@ -191,6 +192,7 @@ export function GameCanvasTable({
   onLeave,
   onPlayAgain,
   rematch,
+  rematchPending,
   backLabel,
 }: Props) {
   const controller = useGameTableController(room);
@@ -324,6 +326,7 @@ export function GameCanvasTable({
           onBackToLobby={onLeave}
           onPlayAgain={onPlayAgain ?? onLeave}
           rematch={rematch}
+          rematchPending={rematchPending}
           backLabel={backLabel}
         />
       )}

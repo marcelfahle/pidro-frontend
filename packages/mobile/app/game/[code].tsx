@@ -47,6 +47,7 @@ type SkiaTableProps = {
   onLeave: () => void;
   onPlayAgain?: () => void;
   rematch?: RematchVote | null;
+  rematchPending?: boolean;
   backLabel?: string;
 };
 
@@ -452,17 +453,33 @@ export default function GameScreen() {
   // A rematch is an intent on the game channel: the server restarts the game
   // in this room once every human has asked. Nothing navigates; the next
   // game's state arrives on the channel we are already joined to.
+  const rematchPendingRef = useRef(false);
+  const [rematchPending, setRematchPending] = useState(false);
   const handlePlayAgain = useCallback(() => {
-    if (!readiness || !isChannelJoined || role !== 'player') return;
+    if (!readiness || !isChannelJoined || role !== 'player' || rematchPendingRef.current) return;
+    rematchPendingRef.current = true;
+    setRematchPending(true);
     pushGameAction('rematch', {
       room_id: readiness.room_id,
       ready_epoch: readiness.ready_epoch,
-    }).catch((error: unknown) => {
-      // A stale epoch reply carries the current snapshot, already applied by
-      // pushGameAction, so pressing again sends the right epoch.
-      console.warn('[GameScreen] Rematch was not accepted.', error);
-    });
-  }, [readiness, isChannelJoined, role]);
+    })
+      .catch((error: unknown) => {
+        // A stale epoch reply carries the current snapshot, already applied by
+        // pushGameAction, so pressing again sends the right epoch.
+        const reason = (error as { reason?: string } | null)?.reason;
+        const key =
+          reason === 'table_not_full'
+            ? 'table.rematch.tableNotFull'
+            : reason === 'stale_readiness'
+              ? 'table.rematch.tableChanged'
+              : 'table.rematch.failed';
+        handleSeatEvent({ message: t(key), variant: 'warning' });
+      })
+      .finally(() => {
+        rematchPendingRef.current = false;
+        setRematchPending(false);
+      });
+  }, [readiness, isChannelJoined, role, handleSeatEvent]);
   const rematch = rematchVote(readiness, youPositionAbs);
 
   const handleLeaveGame = () => {
@@ -632,6 +649,7 @@ export default function GameScreen() {
           onLeave={handleLeaveGame}
           onPlayAgain={handlePlayAgain}
           rematch={rematch}
+          rematchPending={rematchPending}
           backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
         />
         <TableFeedback notice={notice} />

@@ -14,6 +14,8 @@ interface GameOverOverlayProps {
   onPlayAgain: () => void;
   /** The rematch vote of a finished room; absent before the snapshot arrives. */
   rematch?: RematchVote | null;
+  /** A rematch request is in flight. */
+  rematchPending?: boolean;
 }
 
 export function GameOverOverlay({
@@ -23,6 +25,7 @@ export function GameOverOverlay({
   onBackToLobby,
   onPlayAgain,
   rematch,
+  rematchPending = false,
 }: GameOverOverlayProps) {
   const rawScores = serverState.scores ?? { north_south: 0, east_west: 0 };
   const youPlayer = viewModel.players.find((p) => p.isYou);
@@ -167,7 +170,10 @@ export function GameOverOverlay({
             Back to Lobby
           </Button>
           {viewerIsSpectator ? null : (
-            <Button onClick={onPlayAgain} disabled={rematch?.youAgreed}>
+            <Button
+              onClick={onPlayAgain}
+              disabled={!rematch || rematch.youAgreed || rematchPending}
+            >
               {rematch?.youAgreed ? 'Waiting for the others' : 'Play Again'}
             </Button>
           )}

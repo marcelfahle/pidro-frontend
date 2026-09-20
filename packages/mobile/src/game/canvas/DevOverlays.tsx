@@ -30,6 +30,7 @@ const noop = () => {};
 // `?rematch=` on the game-over fixture: the vote as the first to ask sees it
 // (`waiting`), and as somebody the others are waiting on sees it (`asked`).
 const REMATCH_FIXTURES: Record<string, RematchVote> = {
+  open: { needed: 4, agreed: 0, youAgreed: false },
   waiting: { needed: 4, agreed: 1, youAgreed: true },
   asked: { needed: 4, agreed: 3, youAgreed: false },
 };
@@ -193,7 +194,7 @@ export function DevOverlays({
           serverState={GAME_OVER_SERVER}
           onBackToLobby={noop}
           onPlayAgain={noop}
-          rematch={rematch ? REMATCH_FIXTURES[rematch] : null}
+          rematch={REMATCH_FIXTURES[rematch ?? 'open']}
         />
       )}
     </>

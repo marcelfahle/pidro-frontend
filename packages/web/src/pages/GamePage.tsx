@@ -374,9 +374,22 @@ export function GamePage() {
 
   // A rematch is an intent on the game channel: the server restarts the game in
   // this room once every human has asked, and the next game's state arrives here.
-  const handlePlayAgain = useCallback(() => {
-    if (!readiness || !isChannelJoined || role !== 'player') return;
-    pushAction('rematch', { room_id: readiness.room_id, ready_epoch: readiness.ready_epoch });
+  const rematchPendingRef = useRef(false);
+  const [rematchPending, setRematchPending] = useState(false);
+  const handlePlayAgain = useCallback(async () => {
+    if (!readiness || !isChannelJoined || role !== 'player' || rematchPendingRef.current) return;
+    rematchPendingRef.current = true;
+    setRematchPending(true);
+    try {
+      // pushAction toasts the server's reason when the rematch is refused.
+      await pushAction('rematch', {
+        room_id: readiness.room_id,
+        ready_epoch: readiness.ready_epoch,
+      });
+    } finally {
+      rematchPendingRef.current = false;
+      setRematchPending(false);
+    }
   }, [pushAction, readiness, isChannelJoined, role]);
 
   // Clear optimistic card when server state updates (confirms the play)
@@ -533,6 +546,7 @@ export function GamePage() {
                 onBackToLobby={handleBackToLobby}
                 onPlayAgain={handlePlayAgain}
                 rematch={rematchVote(readiness, youPositionAbs)}
+                rematchPending={rematchPending}
               />
             )}
           </div>

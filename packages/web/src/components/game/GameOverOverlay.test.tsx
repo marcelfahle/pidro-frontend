@@ -148,10 +148,41 @@ describe('GameOverOverlay', () => {
         serverState={makeServerState({ north_south: 62, east_west: 38 })}
         onBackToLobby={vi.fn()}
         onPlayAgain={onPlayAgain}
+        rematch={{ needed: 4, agreed: 0, youAgreed: false }}
       />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: 'Play Again' }));
     expect(onPlayAgain).toHaveBeenCalled();
+  });
+
+  it('shows the rematch vote and waits once you have asked', () => {
+    render(
+      <GameOverOverlay
+        viewModel={makeViewModel()}
+        serverState={makeServerState({ north_south: 62, east_west: 38 })}
+        onBackToLobby={vi.fn()}
+        onPlayAgain={vi.fn()}
+        rematch={{ needed: 4, agreed: 2, youAgreed: true }}
+      />,
+    );
+
+    expect(screen.getByText('2 of 4 want to play again')).toBeTruthy();
+    const button = screen.getByRole('button', { name: 'Waiting for the others' });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('keeps Play Again disabled until the rematch vote has arrived', () => {
+    render(
+      <GameOverOverlay
+        viewModel={makeViewModel()}
+        serverState={makeServerState({ north_south: 62, east_west: 38 })}
+        onBackToLobby={vi.fn()}
+        onPlayAgain={vi.fn()}
+      />,
+    );
+
+    const button = screen.getByRole('button', { name: 'Play Again' });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
   });
 });

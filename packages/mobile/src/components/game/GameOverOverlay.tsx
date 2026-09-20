@@ -21,6 +21,8 @@ interface GameOverOverlayProps {
   onPlayAgain: () => void;
   /** The rematch vote of a finished room; absent in fixtures and before the snapshot arrives. */
   rematch?: RematchVote | null;
+  /** A rematch request is in flight. */
+  rematchPending?: boolean;
   backLabel?: string;
 }
 
@@ -38,6 +40,7 @@ export function GameOverOverlay({
   onBackToLobby,
   onPlayAgain,
   rematch,
+  rematchPending = false,
   backLabel = 'Back to lobby',
 }: GameOverOverlayProps) {
   const { width, height } = useWindowDimensions();
@@ -187,7 +190,9 @@ export function GameOverOverlay({
               <BevelButton
                 testID="play-again"
                 label={rematch?.youAgreed ? 'Waiting for the others' : 'Play again'}
-                disabled={rematch?.youAgreed}
+                // No vote yet means nothing to send: the press would be a no-op.
+                disabled={!rematch || rematch.youAgreed}
+                loading={rematchPending}
                 fullWidth={portrait}
                 onPress={onPlayAgain}
                 style={styles.actionButton}
