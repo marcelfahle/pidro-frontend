@@ -4,7 +4,7 @@
  * are animated, draggable sprites driven by useCardSprites.
  * Self-contained for window/insets; web callers load CanvasKit before import.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -28,6 +28,9 @@ import { T } from './tokens';
 import type { CardTextures } from './cardTextures';
 import type { TableModel } from './tableModel';
 import { useCardSprites } from './useCardSprites';
+import { PidroText } from '@/components/ui/PidroText';
+import { dealerPresentationAt } from './animationTiming';
+import type { TableLayout } from './layout';
 
 type Props = {
   model: TableModel;
@@ -117,6 +120,7 @@ export default function GameCanvas({
     <GestureDetector gesture={gesture}>
       <View style={{ flex: 1 }}>
         {canvas}
+        {model.phase === 'dealer_selection' && <DealerSelectionTitle model={model} L={L} />}
         <View
           testID="player-hand-top"
           pointerEvents="none"
@@ -153,6 +157,53 @@ export default function GameCanvas({
         ) : null}
       </View>
     </GestureDetector>
+  );
+}
+
+function DealerSelectionTitle({ model, L }: { model: TableModel; L: TableLayout }) {
+  const [now, setNow] = useState(() => Date.now());
+  const selected = dealerPresentationAt(
+    model.dealerPresentation,
+    Math.max(now, model.dealerPresentation?.receivedAtMs ?? 0)
+  ).selected;
+  useEffect(() => {
+    if (selected) return;
+    const id = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(id);
+  }, [selected, model.dealerPresentation]);
+  const dealer = model.dealerRelative ? model.seats[model.dealerRelative] : null;
+  const showResult = selected && dealer;
+  const title = showResult
+    ? dealer.isYou
+      ? 'You are the dealer'
+      : `${dealer.username ?? dealer.absolutePosition} is the dealer`
+    : 'Choosing the dealer';
+  const titleWidth = (L.trick.r - L.cardH * 0.41 - 6) * 2;
+  return (
+    <View
+      testID={showResult ? 'dealer-selection-result' : 'dealer-selection-active'}
+      accessible
+      accessibilityRole="text"
+      accessibilityLiveRegion="polite"
+      accessibilityLabel={`${title}. ${showResult ? 'Bidding is next.' : 'Each player draws a card.'}`}
+      pointerEvents="none"
+      className="absolute items-center"
+      style={{
+        top: L.trick.cy - 34,
+        left: L.trick.cx - titleWidth / 2,
+        width: titleWidth,
+      }}>
+      <PidroText
+        role="label"
+        tone={showResult ? 'gold' : 'default'}
+        align="center"
+        numberOfLines={2}>
+        {title}
+      </PidroText>
+      <PidroText role="metadata" tone="soft" align="center" className="mt-1">
+        {showResult ? 'Bidding next' : 'Drawing cards'}
+      </PidroText>
+    </View>
   );
 }
 

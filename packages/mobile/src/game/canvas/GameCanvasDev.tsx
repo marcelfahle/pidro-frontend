@@ -87,7 +87,7 @@ const DEALER_CUTS: Record<Position, Card> = {
 const DEALER_CUT_STATUS = Object.fromEntries(
   Object.entries(DEALER_CUTS).map(([position, card]) => [
     position,
-    `Draws ${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`,
+    `Drew ${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`,
   ])
 ) as Record<RelativePosition, string>;
 
@@ -188,6 +188,7 @@ export default function GameCanvasDev({
     () =>
       buildTableModel({
         phase,
+        dealer: 'east',
         trumpSuit: trump,
         players,
         yourHand: hand,

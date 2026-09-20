@@ -35,7 +35,7 @@ import type { Card } from '@/types/game';
 import type { RelativePosition, TableLayout } from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
-import { DEAL_CARD_STAGGER_MS, DEAL_CARD_TRAVEL_MS } from './animationTiming';
+import { DEAL_CARD_STAGGER_MS, DEAL_CARD_TRAVEL_MS, dealerPresentationAt } from './animationTiming';
 import { T } from './tokens';
 
 const MAX = 36;
@@ -145,6 +145,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     if (!enabled || !model) return;
     const prev = prevModel.current;
     const firstLoad = prev === null;
+    const selection = dealerPresentationAt(model.dealerPresentation, Date.now());
     const n = model.yourHand.length;
     const handSlot = handSlotFn(L, n);
 
@@ -255,6 +256,13 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     // tricks remain in `playedCards`, so they stay visible for the full hand.
     for (const [key, sl] of Array.from(keyToSlot.current.entries())) {
       if (!desiredKeys.has(key)) {
+        // Never leave selection cards fading over the authoritative bidding hand.
+        if (slots[sl]?.kind === 'cut') {
+          cancelAnimation(sop[sl]);
+          sop[sl].value = 0;
+          keyToSlot.current.delete(key);
+          continue;
+        }
         nextSlots[sl] = slots[sl];
         if (retirementTimers.current.has(key)) continue;
 
@@ -330,7 +338,20 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
       };
 
       const dragging = dragSlot.value === sl;
-      if (firstLoad) {
+      if (d.kind === 'cut') {
+        cancelAnimation(sx[sl]);
+        cancelAnimation(sy[sl]);
+        sx[sl].value = d.ox + (d.tx - d.ox) * selection.progress;
+        sy[sl].value = d.oy + (d.ty - d.oy) * selection.progress;
+        srot[sl].value = d.trot;
+        sscale[sl].value = d.tscale;
+        sop[sl].value = d.topacity;
+        if (selection.travelMs > 0) {
+          const cutCfg = { duration: selection.travelMs, easing: Easing.linear };
+          sx[sl].value = withTiming(d.tx, cutCfg);
+          sy[sl].value = withTiming(d.ty, cutCfg);
+        }
+      } else if (firstLoad) {
         sx[sl].value = d.tx;
         sy[sl].value = d.ty;
         srot[sl].value = d.trot;

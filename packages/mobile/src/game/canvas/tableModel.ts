@@ -5,6 +5,8 @@
  * view model's relativePosition; canvas code never computes it.
  */
 import { useMemo } from 'react';
+import type { DealerPresentation } from '@pidro/shared';
+import { useGameStore } from '@/stores/game';
 import type {
   Card,
   GamePhase,
@@ -43,6 +45,8 @@ export type TableSeat = {
 };
 export type TableModel = {
   phase: GamePhase;
+  dealerPresentation?: DealerPresentation | null;
+  dealerRelative?: RelativePosition | null;
   trumpSuit: Suit | null;
   seats: Record<RelativePosition, TableSeat | null>;
   yourHand: TableCard[];
@@ -59,6 +63,8 @@ const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 export type TableModelInput = {
   phase: GamePhase;
+  dealerPresentation?: DealerPresentation | null;
+  dealer?: Position | null;
   trumpSuit: Suit | null;
   players: RelativePlayerView[];
   yourHand: Card[] | null;
@@ -182,6 +188,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
 
   return {
     phase: input.phase,
+    dealerPresentation: input.dealerPresentation,
+    dealerRelative: input.dealer ? (absToRel.get(input.dealer) ?? null) : null,
     trumpSuit,
     seats,
     yourHand,
@@ -196,10 +204,13 @@ export function buildTableModel(input: TableModelInput): TableModel {
 }
 
 export function useTableModel(c: GameTableController): TableModel {
+  const dealerPresentation = useGameStore((state) => state.dealerPresentation);
   return useMemo(
     () =>
       buildTableModel({
         phase: c.phase,
+        dealerPresentation,
+        dealer: c.serverState?.dealer,
         trumpSuit: c.trumpSuit,
         players: c.players,
         yourHand: c.yourHand,
@@ -214,6 +225,8 @@ export function useTableModel(c: GameTableController): TableModel {
       }),
     [
       c.phase,
+      dealerPresentation,
+      c.serverState?.dealer,
       c.trumpSuit,
       c.players,
       c.yourHand,

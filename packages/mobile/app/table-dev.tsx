@@ -164,6 +164,7 @@ function TableDevHarness() {
     safeArea?: string;
     pass?: string;
     viewer?: string;
+    selection?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -185,6 +186,16 @@ function TableDevHarness() {
         : params.safeArea === 'android-gesture'
           ? { top: 24, bottom: 24, left: 0, right: 0 }
           : { top: 0, bottom: 0, left: 0, right: 0 };
+
+  if (params.selection) {
+    return (
+      <SafeAreaProvider>
+        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+          <DealerPreview scenario={params.selection} />
+        </SafeAreaInsetsContext.Provider>
+      </SafeAreaProvider>
+    );
+  }
 
   if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
     return (
@@ -350,6 +361,99 @@ function TableDevHarness() {
 }
 
 /** Exercise the production controller/store, not the animation-only mock model. */
+function DealerPreview({ scenario }: { scenario: string }) {
+  const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
+  useEffect(() => {
+    let active = true;
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    void loadGameCanvasTable().then((component) => {
+      if (!active) return;
+      const store = useGameStore.getState();
+      store.reset();
+      const room = {
+        ...WAITING_ROOM,
+        positions: { north: 'p-north', east: 'p-east', south: 'p-south', west: 'p-west' },
+        seats: WAITING_ROOM.seats?.map((seat) =>
+          seat.position === 'east' ? { ...seat, player: { id: 'p-east', username: 'Eli' } } : seat
+        ),
+      };
+      store.initFromRoom({ room, youPlayerId: 'p-south' });
+      store.setRole('player');
+      store.setYouPosition('south');
+      store.setChannelStatus(true);
+      const elapsed =
+        scenario === 'near'
+          ? 2950
+          : scenario === 'selected'
+            ? 1800
+            : scenario === 'network'
+              ? 400
+              : 0;
+      const snapshot = {
+        game_instance_id: 'dealer-preview',
+        state_revision: 1,
+        server_time_ms: 10000 + elapsed,
+        presentation: { dealer_selection: { started_at_ms: 10000, ends_at_ms: 13000 } },
+        legal_actions: [],
+        state: {
+          phase: 'dealer_selection',
+          current_dealer: 'east',
+          current_player: null,
+          scores: { north_south: 0, east_west: 0 },
+          hand_number: 1,
+          players: {
+            north: { hand: 0 },
+            east: { hand: 0 },
+            south: { hand: [] },
+            west: { hand: 0 },
+          },
+          dealer_selection_cuts: {
+            north: { rank: 9, suit: 'clubs' },
+            east: { rank: 14, suit: 'spades' },
+            south: { rank: 5, suit: 'hearts' },
+            west: { rank: 7, suit: 'diamonds' },
+          },
+        },
+      };
+      const bidding = {
+        ...snapshot,
+        state_revision: 2,
+        server_time_ms: 13000,
+        presentation: null,
+        legal_actions: [{ type: 'bid', amount: 6 }, { type: 'pass' }],
+        state: {
+          ...snapshot.state,
+          phase: 'bidding',
+          current_player: 'south',
+          dealer_selection_cuts: null,
+          players: { ...snapshot.state.players, south: { hand: [{ rank: 14, suit: 'spades' }] } },
+        },
+      };
+      store.applyGameSnapshot(scenario === 'bidding' ? bidding : snapshot);
+      const transition = setTimeout(
+        () => {
+          store.applyGameSnapshot(bidding);
+          if (scenario === 'stale') store.applyGameSnapshot(snapshot);
+        },
+        Math.max(0, 3000 - elapsed)
+      );
+      const render = setTimeout(
+        () => {
+          if (active) setTable(() => component);
+        },
+        scenario === 'delayed' ? 1600 : 0
+      );
+      timers.push(transition, render);
+    });
+    return () => {
+      active = false;
+      timers.forEach(clearTimeout);
+      useGameStore.getState().reset();
+    };
+  }, [scenario]);
+  return Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />;
+}
+
 function RolePreview({
   role,
   phase,
