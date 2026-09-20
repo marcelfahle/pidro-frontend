@@ -73,7 +73,6 @@ async function main() {
     await api('/api/v1/rooms/current/leave', 'DELETE', token).catch(() => {});
     const created = await api('/api/v1/rooms', 'POST', token, {
       name: `Autoplay ${Date.now().toString().slice(-6)}`,
-      settings: { min_games: 1, time_limit: 0, private: false },
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
       bot_difficulty: 'basic',
     });

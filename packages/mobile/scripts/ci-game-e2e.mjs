@@ -176,7 +176,6 @@ async function stageTwoMultiplayerVideo() {
   await api('/api/v1/rooms/current/leave', 'DELETE', hostToken).catch(() => {});
   const created = await api('/api/v1/rooms', 'POST', hostToken, {
     name: `CI e2e ${suffix}`,
-    settings: { min_games: 1, time_limit: 0, private: false },
     seats: { seat_2: 'ai', seat_4: 'ai' },
     bot_difficulty: 'basic',
   });

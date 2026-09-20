@@ -83,13 +83,10 @@ Lobby Screen
 Create Room Modal
     ├─ Room Name (optional, default: "Player's Game")
     ├─ Seat Configuration for 3 other seats:
-    │   ├─ Seat 2: [Open | Private | AI]
-    │   ├─ Seat 3: [Open | Private | AI]
-    │   └─ Seat 4: [Open | Private | AI]
-    ├─ Advanced Settings (collapsible):
-    │   ├─ Minimum Games Played (0, 10, 100, 1000)
-    │   ├─ Time Limit per Turn (30s, 60s, 90s, No Limit)
-    │   └─ Private Room (password protected)
+    │   ├─ Seat 2: [Open | AI]
+    │   ├─ Seat 3: [Open | AI]
+    │   └─ Seat 4: [Open | AI]
+    ├─ Bot Difficulty: [Casual | Regular | Strong] (default: Regular)
     └─ [Cancel] [Create]
         ↓ [Tap "Create"]
     API Call: POST /api/v1/rooms
@@ -118,7 +115,7 @@ Room Preview Modal (optional)
     ├─ Room Name
     ├─ Host: PlayerName
     ├─ Players: 2/4
-    ├─ Settings: Min Games 100, Time 60s
+    ├─ Bot Difficulty: Regular
     └─ [Cancel] [Join]
         ↓ [Tap "Join"]
     API Call: POST /api/v1/rooms/:code/join
@@ -217,12 +214,7 @@ Content-Type: application/json
 
 {
   "name": "Marcel's Game",
-  "settings": {
-    "min_games": 100,
-    "time_limit": 60,
-    "private": false,
-    "password": null
-  },
+  "bot_difficulty": "basic",
   "seats": {
     "seat_2": "open",
     "seat_3": "open",
@@ -251,10 +243,10 @@ Content-Type: application/json
       }
     ],
     "status": "waiting",
-    "settings": {
-      "min_games": 100,
-      "time_limit": 60,
-      "private": false
+    "config": {
+      "name": "Marcel's Game",
+      "bot_difficulty": "basic",
+      "solo": false
     },
     "created_at": "2025-11-23T10:00:00Z"
   }
@@ -282,9 +274,10 @@ Authorization: Bearer {jwt}
       "players_count": 2,
       "max_players": 4,
       "status": "waiting",
-      "settings": {
-        "min_games": 100,
-        "time_limit": 60
+      "config": {
+        "name": "Marcel's Game",
+        "bot_difficulty": "basic",
+        "solo": false
       },
       "created_at": "2025-11-23T10:00:00Z"
     },
@@ -295,9 +288,10 @@ Authorization: Bearer {jwt}
       "players_count": 3,
       "max_players": 4,
       "status": "waiting",
-      "settings": {
-        "min_games": 0,
-        "time_limit": 30
+      "config": {
+        "name": "Quick Game",
+        "bot_difficulty": "random",
+        "solo": false
       },
       "created_at": "2025-11-23T10:05:00Z"
     }
@@ -524,14 +518,6 @@ channel.push('ready', {});
   <Text className="text-gray-500 text-sm mb-2">
     Host: {room.host}
   </Text>
-  <View className="flex-row gap-3">
-    <Text className="text-xs text-gray-600">
-      ⚙️ Min: {room.settings.min_games} games
-    </Text>
-    <Text className="text-xs text-gray-600">
-      ⏱ {room.settings.time_limit}s
-    </Text>
-  </View>
 </Pressable>
 
 // Floating Action Button
@@ -570,7 +556,10 @@ channel.push('ready', {});
 │  │ Seat 4: [AI ▼]               │ │
 │  └──────────────────────────────┘ │
 │                                    │
-│  ▶ Advanced Settings               │ ← Collapsible
+│  Bot Difficulty                    │
+│  ┌──────────────────────────────┐ │
+│  │ [Casual] [Regular] [Strong]  │ │ ← Segmented Control
+│  └──────────────────────────────┘ │
 │                                    │
 │  ┌────────────┐  ┌──────────────┐ │
 │  │  Cancel    │  │   Create     │ │
@@ -578,32 +567,10 @@ channel.push('ready', {});
 └────────────────────────────────────┘
 ```
 
-**Expanded Advanced Settings**:
-
-```
-│  ▼ Advanced Settings               │
-│                                    │
-│  Minimum Games Played              │
-│  ┌──────────────────────────────┐ │
-│  │ [0] [10] [100] [1000]        │ │ ← Segmented Control
-│  └──────────────────────────────┘ │
-│                                    │
-│  Time Limit per Turn               │
-│  ┌──────────────────────────────┐ │
-│  │ [30s] [60s] [90s] [None]     │ │
-│  └──────────────────────────────┘ │
-│                                    │
-│  🔒 Private Room                   │
-│  ┌──────────────────────────────┐ │
-│  │ Password: ●●●●●●●●           │ │
-│  └──────────────────────────────┘ │
-```
-
 **Seat Options**:
 
 - **Open**: Anyone can join
-- **Private**: Invite link only (not MVP)
-- **AI**: Bot player (not MVP, but show disabled)
+- **AI**: Bot player
 
 **Validation**:
 
@@ -638,9 +605,7 @@ channel.push('ready', {});
 │  │      Marcel ✓                │ │
 │  └──────────────────────────────┘ │
 │                                    │
-│  Game Settings:                    │
-│  • Min Games: 100                  │
-│  • Time Limit: 60s per turn        │
+│  Bot Difficulty: Regular           │
 │                                    │
 │  ┌──────────────────────────────┐ │
 │  │         I'm Ready!           │ │ ← Ready Button
@@ -1028,7 +993,7 @@ describe('Lobby Store', () => {
       players_count: 1,
       max_players: 4,
       status: 'waiting',
-      settings: {},
+      config: { name: 'Test Room', bot_difficulty: 'basic', solo: false },
     };
 
     useLobbyStore.getState().addRoom(room);
@@ -1043,7 +1008,7 @@ describe('Lobby Store', () => {
       players_count: 1,
       max_players: 4,
       status: 'waiting',
-      settings: {},
+      config: { name: 'Test Room', bot_difficulty: 'basic', solo: false },
     };
 
     useLobbyStore.getState().addRoom(room);
@@ -1063,7 +1028,7 @@ describe('Lobby Store', () => {
       players_count: 1,
       max_players: 4,
       status: 'waiting',
-      settings: {},
+      config: { name: 'Test Room', bot_difficulty: 'basic', solo: false },
     };
 
     useLobbyStore.getState().addRoom(room);
@@ -1094,7 +1059,7 @@ jest.mock('@/api/rooms', () => ({
           players_count: 2,
           max_players: 4,
           status: 'waiting',
-          settings: {},
+          config: { name: 'Test Room', bot_difficulty: 'basic', solo: false },
         },
       ],
       meta: {
@@ -1325,7 +1290,7 @@ export interface Room {
   players_count: number;
   max_players: number;
   status: 'waiting' | 'ready' | 'playing' | 'finished' | 'closed';
-  settings: RoomSettings;
+  config: RoomConfig;
   created_at: string;
   updated_at: string;
 }
@@ -1337,21 +1302,19 @@ export interface Player {
   ready?: boolean;
 }
 
-export interface RoomSettings {
-  min_games?: number;
-  time_limit?: number; // seconds
-  private?: boolean;
-  password?: string;
-  variant?: 'finnish' | 'louisiana' | 'california';
+export interface RoomConfig {
+  name: string;
+  bot_difficulty: 'random' | 'basic' | 'smart';
+  solo: boolean;
 }
 
 export interface CreateRoomInput {
   name?: string;
-  settings?: Partial<RoomSettings>;
+  bot_difficulty?: 'random' | 'basic' | 'smart';
   seats?: {
-    seat_2?: 'open' | 'private' | 'ai';
-    seat_3?: 'open' | 'private' | 'ai';
-    seat_4?: 'open' | 'private' | 'ai';
+    seat_2?: 'open' | 'ai';
+    seat_3?: 'open' | 'ai';
+    seat_4?: 'open' | 'ai';
   };
 }
 ```
