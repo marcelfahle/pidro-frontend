@@ -103,6 +103,9 @@ async function main() {
     if (!snapshot) return; // Older backends start immediately and send no snapshot.
     if (readiness && snapshot.snapshot_revision <= readiness.snapshot_revision) return;
     readiness = snapshot;
+    // Game over clears readiness and bumps the epoch: that snapshot opens the
+    // rematch vote, it does not change the roster this player confirmed.
+    if (finished || snapshot.status === 'finished') return;
     if (confirmedEpoch !== null && snapshot.ready_epoch !== confirmedEpoch) {
       console.error('Readiness epoch reset after confirmation; refusing to confirm a new roster');
       process.exit(1);
