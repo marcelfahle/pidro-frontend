@@ -46,7 +46,13 @@ From the frontend repository root:
 bun run mobile:ios
 ```
 
-This is the normal rapid loop for layout, portrait/landscape behavior, menus, cards, windows, buttons, and animation work. `packages/mobile/.env` controls the API and WebSocket endpoints for local simulator development.
+This explicitly opens Expo Go for the rapid loop: layout, portrait/landscape behavior, menus, cards, windows, buttons, and animation work. When using the package command directly, `packages/mobile/.env` controls the API and WebSocket endpoints.
+
+From the parent `code-ralph` workspace, prefer `just dev` (iOS + local backend),
+`just ios prod` (iOS + production), or `just android [local|prod]`. These commands
+also build/watch shared code, start the local backend when selected, and override
+the API/WebSocket endpoints without editing `.env`. `just sim` is an alias for
+`just ios`; the isolated table harness is now `just table-sim`.
 
 ### 2. Physical iPhone with live reload
 
