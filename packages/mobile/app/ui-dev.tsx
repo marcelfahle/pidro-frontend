@@ -1,6 +1,11 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
+import { CtaBadge } from '@/components/home/CtaBadge';
+import { LeagueProgress } from '@/components/home/LeagueProgress';
+import { LevelRing } from '@/components/home/LevelRing';
+import { RatingPlaque } from '@/components/home/RatingPlaque';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
@@ -10,7 +15,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 
 /**
  * The DS v2 living gallery. CI screenshots this route and pixel-diffs it
@@ -40,9 +45,103 @@ const SWATCHES: { name: string; value: string }[] = [
   { name: 'panel-deep', value: PidroBevel.panelDeep },
 ];
 
+const ICON_NAMES: IconName[] = ['star', 'play', 'friends'];
+
+// A PNG data URI, not SVG: react-native Image loads PNG on both platforms,
+// while an SVG data URI silently falls back to the placeholder on native.
+const GALLERY_AVATAR =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR42mNwrp1HEmIY1TCqYfhqAAC3aV4Q0c128AAAAABJRU5ErkJggg==';
+
+/**
+ * Progression HUD sheet. These primitives carry mocked numbers until leagues
+ * and levels land server-side — the point of the sheet is that their *shape*
+ * is settled, so real data drops in without moving anything.
+ */
+function ProgressionGallery() {
+  return (
+    <ScreenShell scroll testID="ui-dev-screen" contentStyle={styles.shell}>
+      <ScreenHeader
+        title="Progression & HUD"
+        subtitle="Identity, earned numbers, and the one badged CTA. Mock values, real layout."
+      />
+
+      <Surface testID="ui-progression-panel" variant="window" style={styles.section} padded>
+        <PidroText role="title">Identity — level ring</PidroText>
+        <View style={styles.row}>
+          <LevelRing uri={GALLERY_AVATAR} size={36} accessibilityLabel="Small level ring" />
+          <LevelRing uri={GALLERY_AVATAR} accessibilityLabel="Default level ring" />
+          <LevelRing uri={GALLERY_AVATAR} size={64} accessibilityLabel="Large level ring" />
+          <LevelRing uri={null} accessibilityLabel="Level ring with no photo" />
+        </View>
+        <PidroText role="metadata" tone="muted">
+          The rim keeps its proportion at every size; the last one has no photo.
+        </PidroText>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">Earned numbers — rating plaque</PidroText>
+        <View style={styles.row}>
+          <RatingPlaque rating={1487} />
+          <RatingPlaque rating={12} />
+          <RatingPlaque rating={20481} />
+        </View>
+        <PidroText role="metadata" tone="muted">
+          Read-only furniture — never give a plaque press physics.
+        </PidroText>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">League progress</PidroText>
+        <LeagueProgress progress={0.64} label="LEAGUE III · 9 WINS TO LEAGUE IV" />
+        <LeagueProgress progress={0} label="LEAGUE I · 12 WINS TO LEAGUE II" />
+        <LeagueProgress progress={1} label="LEAGUE V · TOP OF THE TABLE" />
+        <PidroText role="metadata" tone="muted">
+          A carved-in well, because progress is recorded, not operated. Clamped to 0–1.
+        </PidroText>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">Badged CTA</PidroText>
+        <CtaBadge label="FIND A TABLE">
+          <BevelButton
+            label="PLAY"
+            material="wood"
+            size="hero"
+            weight="hero"
+            fullWidth
+            onPress={noop}
+          />
+        </CtaBadge>
+        <PidroText role="metadata" tone="muted">
+          The badge wraps the control so it anchors to the capped button, not the column.
+        </PidroText>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">Icons</PidroText>
+        <View style={styles.row}>
+          {ICON_NAMES.map((name) => (
+            <View key={name} style={styles.swatch}>
+              <Icon name={name} size={22} color={PidroColors.iconOnGlass} />
+              <PidroText role="metadata" tone="muted">
+                {name}
+              </PidroText>
+            </View>
+          ))}
+        </View>
+        <PidroText role="metadata" tone="muted">
+          Screens never inline an SVG path — add the glyph to `Icon` instead.
+        </PidroText>
+      </Surface>
+    </ScreenShell>
+  );
+}
+
 function UiDevHarness() {
   const params = useLocalSearchParams<{ state?: string }>();
   const state = typeof params.state === 'string' ? params.state : 'components';
+
+  if (state === 'progression') return <ProgressionGallery />;
 
   return (
     <>

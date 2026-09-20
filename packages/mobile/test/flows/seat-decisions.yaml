@@ -1,0 +1,43 @@
+# Device twin of scripts/verify-seat-decisions.mjs, which can only run in a
+# browser. Same fixture, same decisions — but on a real simulator, where the
+# safe-area clearance and real touch targets are the point.
+#
+# Use extendedWaitUntil, not assertVisible, wherever something has to arrive:
+# a cold Metro bundle can take ~30s, and the decision card animates in. A bare
+# assertVisible races both and fails intermittently.
+appId: host.exp.Exponent
+---
+# Always stop first. Opening a deep link for the route the app is ALREADY on
+# does not remount it, so a rerun would silently inherit the previous run's
+# state and assert against it.
+- stopApp
+- openLink: exp://127.0.0.1:8081/--/table-dev?lifecycle=permanent_bot&feedback=owner&notice=true
+
+- extendedWaitUntil:
+    visible: 'Review seats (3)'
+    timeout: 45000
+- takeScreenshot: artifacts/seat-decisions-queued
+
+- tapOn: 'Review seats (3)'
+- extendedWaitUntil:
+    visible: 'Keep bot'
+    timeout: 10000
+# The queue is explicit and non-modal: all three choices are on the card.
+- assertVisible: 'Open seat for a player'
+- assertVisible: 'Review seats later'
+- takeScreenshot: artifacts/seat-decisions-open
+
+# Keeping the bot consumes one decision; the card stays open on the NEXT one
+# rather than closing, so the queue counter is what moves.
+- tapOn: 'Keep bot'
+- extendedWaitUntil:
+    visible: '2 pending'
+    timeout: 10000
+
+# "Later" closes review without choosing, and preserves the queue — the chip
+# comes back carrying the remaining count.
+- tapOn: 'Review seats later'
+- extendedWaitUntil:
+    visible: 'Review seats (2)'
+    timeout: 10000
+- takeScreenshot: artifacts/seat-decisions-requeued

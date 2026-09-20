@@ -4,6 +4,8 @@ import { createPendingInviteStore } from '../../../shared/src/stores/pendingInvi
 import { redirectSystemPath } from '../../app/+native-intent.tsx';
 import { canAccessProtectedRoutes, initialRoute } from '../../src/navigation/initialRoute.ts';
 
+globalThis.__DEV__ = true;
+
 const require = createRequire(import.meta.url);
 const configPath = require.resolve('../../app.config.js');
 const baseConfig = {
@@ -29,6 +31,33 @@ describe('native invite intent', () => {
   it('returns a safe local fallback for malformed or unrelated paths', () => {
     expect(redirectSystemPath({ path: 'https://evil.example/j/7KQ4M2XB' })).toBe('/+not-found');
     expect(redirectSystemPath({ path: 'pidro-mobile://j/%37KQ4M2XB' })).toBe('/+not-found');
+  });
+
+  it('opens dev harness routes from simulator deep links', () => {
+    expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/table-dev?phase=bidding' })).toBe(
+      '/table-dev?phase=bidding'
+    );
+    expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/ui-dev?state=components' })).toBe(
+      '/ui-dev?state=components'
+    );
+    expect(redirectSystemPath({ path: 'pidro-mobile-dev://auth-flow-dev' })).toBe('/auth-flow-dev');
+    expect(redirectSystemPath({ path: '/table-dev?phase=game_over' })).toBe(
+      '/table-dev?phase=game_over'
+    );
+  });
+
+  it('never lets an outside origin or a release build reach a harness route', () => {
+    expect(redirectSystemPath({ path: 'https://evil.example/--/table-dev' })).toBe('/+not-found');
+    expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/settings' })).toBe('/+not-found');
+
+    globalThis.__DEV__ = false;
+    try {
+      expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/table-dev?phase=bidding' })).toBe(
+        '/+not-found'
+      );
+    } finally {
+      globalThis.__DEV__ = true;
+    }
   });
 
   it('preserves ordinary app and development-client startup paths', () => {

@@ -1,0 +1,138 @@
+# Pidro fixture routes — cheatsheet
+
+Dev-only routes (`__DEV__` guarded; they redirect to `/home` in release). No login,
+no backend, no playing a game to reach a state. Print and tape.
+
+## Open one
+
+```bash
+# Simulator (Metro already running via `just ios` / `just mobile`)
+xcrun simctl openurl booted "exp://127.0.0.1:8081/--/table-dev?phase=bidding"
+just table-sim "iPhone 17 Pro" bidding     # boots one sim, shuts the others down
+
+# Expo web
+bun run web        # then http://localhost:8081/table-dev?phase=bidding
+```
+
+Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/--/`.
+
+---
+
+## `/table-dev` — the table
+
+### `phase=` (default `playing`)
+
+| Value              | Shows                             | testID                  |
+| ------------------ | --------------------------------- | ----------------------- |
+| `waiting`          | WaitingTable, 3 seated + 1 free   | `waiting-table`         |
+| `waiting-host`     | …with host controls (Manage/Lock) | `waiting-table`         |
+| `ready`            | Full table, ready-up flow         | `waiting-table`         |
+| `ready-host`       | Full table + host controls        | `waiting-table`         |
+| `dealer_selection` | Skia table, dealer cut cards      | `seat-north`            |
+| `playing`          | Skia table + trick overlay        | `seat-north`            |
+| `bidding`          | Bidding window                    | `bidding-window`        |
+| `declaring`        | Trump declaration                 | `trump-window`          |
+| `second_deal`      | Hand-selection window             | `hand-selection-window` |
+| `game_over`        | Game-over summary                 | `game-over-window`      |
+
+### Params
+
+| Param        | Values                                                                                    | Effect                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `phase`      | see above                                                                                 | which overlay                                                                     |
+| `safeArea`   | `island` (59/34) · `android`/`android-buttons` (24/48) · `android-gesture` (24/24)        | **fakes insets** — the one way to test notch clearance on web                     |
+| `role`       | `player` · `spectator`                                                                    | non-waiting phases: renders via the **real store/controller**, not the mock model |
+| `lifecycle`  | `normal` · `reconnecting` · `bot_substitute` · `permanent_bot` · `vacant`                 | seat lifecycle badge state                                                        |
+| `feedback`   | `owner` (3 queued seat decisions) · `notice` · `timed` (dedupe + success at 0.8/1.0/1.2s) | TableFeedback / TableSeatDecision                                                 |
+| `notice`     | `true`                                                                                    | same as `feedback=notice`                                                         |
+| `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                       |
+| `names`      | `long`                                                                                    | west seat → "Alexandria the Long-Named Player" (wrapping)                         |
+| `playerName` | any string                                                                                | name in the first seat decision                                                   |
+| `viewer`     | `east`                                                                                    | you are east instead of south                                                     |
+| `pass`       | `disabled`                                                                                | removes the pass action from legal actions                                        |
+| `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                       |
+
+### Recipes
+
+```
+/table-dev?phase=bidding
+/table-dev?phase=playing&safeArea=island          # notch clearance
+/table-dev?phase=waiting-host&invite=true         # invite modal
+/table-dev?lifecycle=permanent_bot&feedback=owner&notice=true    # decision + notice together
+/table-dev?phase=waiting&names=long               # long-name wrapping
+/table-dev?phase=bidding&role=player&pass=disabled   # real store, no pass
+/table-dev?phase=ready-host&role=spectator        # spectator sees no controls
+/table-dev?phase=playing&autoplay=true            # played-card persistence
+```
+
+---
+
+## `/ui-dev` — DS v2 gallery
+
+| URL                        | Shows                                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/ui-dev?state=components` | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
+| `/ui-dev?state=create`     | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
+
+This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
+refresh with `bun run ui:baselines <runId>`.
+
+## `/auth-flow-dev` — guest-first auth
+
+No params. In-page toggles: platform (**iOS** Apple-first / **Android** Google-first),
+gates that open `AuthSheet` (`multiplayer`, `friends`, invite link), and the post-game
+`KeepProgressPrompt`. Deliberately outside the auth guard. testID `auth-flow-dev`.
+
+## `/join/<code>?fixture=open`
+
+Renders the invite preview with no backend.
+Canonical: `/join/7KQ4M2XB?source=copy&fixture=open` — testID `join-invite-window`.
+
+---
+
+## Scripted checks (Playwright against Expo web)
+
+Needs Expo web running (`bun run web`) and, once per machine,
+`bunx playwright install chromium`.
+
+```bash
+bun run test:ui            # verify-ui-grammar: 3 viewports, touch targets, containment
+UI_CASES=table-bidding,home bun run test:ui      # just these
+UI_SHOT_DIR=/tmp/shots bun run test:ui           # where screenshots land
+MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-seat-decisions.mjs
+node scripts/verify-waiting-seats.mjs   # 6 viewports incl. safeArea variants
+node scripts/verify-profile.mjs
+```
+
+`bun run test:ui:diff` (pixel diff) is **CI-only** — baselines are Linux Chromium
+renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
+`bun run ui:baselines <runId>`.
+
+`UI_CASES` names: `home` `lobby` `login` `register` `join-code` `join-invite`
+`ui-components` `create-table` `table-waiting` `table-ready` `table-ready-host`
+`table-host-controls` `table-invite` `table-playing` `table-dealer-selection`
+`table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`
+`table-game-over`
+
+Grammar viewports: portrait 390×844 · landscape 844×390 · compact-landscape 667×375.
+
+---
+
+## Simulator
+
+```bash
+just table-sim "iPhone 17 Pro" bidding   # one sim, deep-linked
+just table-matrix bidding                # iPhone 16e, 17 Pro Max, iPad mini, iPad Pro 13 (heavy)
+just table-shots [outdir]                # screenshot every booted sim → screenshots/matrix/
+xcrun simctl io booted screenshot out.png
+bash scripts/table-matrix.sh rotate left bidding   # rotate + remount so layout follows
+```
+
+Rotation needs the remount — Expo Go keeps `useWindowDimensions` stale otherwise.
+`simctl io screenshot` always captures device-native orientation, so a landscape
+capture comes out portrait-shaped; rotate the PNG.
+
+> **Web has zero safe-area insets.** `safeArea=` fakes them so a browser can approximate
+> a device. On a simulator `/table-dev` uses the REAL insets — never pass `safeArea=`
+> there, it would hide the clearance you are checking. Overlay clearance, gestures and
+> rotation are only proven on a device.

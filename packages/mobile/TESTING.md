@@ -29,6 +29,14 @@ This needs only one terminal; a local Phoenix server is not required. Manual act
 
 To switch back to a local backend, run `just env-lan` from the repository root, start Phoenix with `just backend` in one terminal, and restart Metro with `just mobile` in another.
 
+## Fixture routes
+
+Every dev harness route, its params and the scripted checks are in
+[`docs/FIXTURE-ROUTES.md`](docs/FIXTURE-ROUTES.md). What web can and cannot prove
+about the native client is in [`docs/WEB-PARITY.md`](docs/WEB-PARITY.md), and
+tapping/typing on a real simulator is in
+[`docs/DEVICE-FLOWS.md`](docs/DEVICE-FLOWS.md).
+
 ## Useful commands
 
 From `packages/mobile`:

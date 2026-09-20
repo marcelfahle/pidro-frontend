@@ -20,7 +20,9 @@ treatments in screens.
   `BevelPressable`/`BevelSurface` (custom beveled controls/surfaces), `Input`
   (carved-in wells), `PidroText`, `Surface`, `ScreenShell`, `DecisionWindow`, `Modal`,
   `PressableFX`, `TabPill` (the floating shell pill), `LogoGlow`, `AuthProviderButtons`, `AuthSheet`,
-  `KeepProgressPrompt`. Legacy `Button` is utility-only on old screens — do not add
+  `KeepProgressPrompt`, `Icon` (never inline `<Svg><Path>` in a screen), and the
+  progression HUD — `LevelRing`, `RatingPlaque`, `LeagueProgress`, `CtaBadge`
+  (sheet: `/ui-dev?state=progression`). Legacy `Button` is utility-only on old screens — do not add
   call sites; migrate to `BevelButton` when touching a screen. `MenuAction` and
   `PrimaryButton` are compatibility-only.
 - **The living gallery** is `/ui-dev?state=components` — it is screenshotted by CI and
@@ -34,12 +36,29 @@ treatments in screens.
 - The separate `packages/web` client is not the visual reference for the React Native
   client. Verify mobile UI in the React Native app (native or its Expo web rendering).
 - **Verify overlays/clearances on a simulator, not just web** — web has zero safe-area
-  insets. Fast loop: Metro running, then load Expo Go on a booted sim via
-  `xcrun simctl openurl booted "exp://localhost:8081"`; rotate through Simulator's
-  Device menu (AppleScript works); screenshot with `xcrun simctl io booted screenshot`.
-  Known quirk: rotating while Expo Go's JS is paused can leave `useWindowDimensions`
-  stale (portrait layout at landscape size) — reload fixes it; production builds are
-  unaffected.
+  insets. Fast loop: `just table-sim "iPhone 17 Pro" bidding`, or with Metro already
+  running `xcrun simctl openurl booted "exp://127.0.0.1:8081/--/table-dev?phase=bidding"`;
+  screenshot with `xcrun simctl io booted screenshot`. Every fixture route and its
+  params are in `docs/FIXTURE-ROUTES.md`; the web/native division of labour is in
+  `docs/WEB-PARITY.md`.
+- **Rotation is scriptable**: `bash scripts/table-matrix.sh rotate [left|right] [phase]`.
+  It rotates via the Simulator's Device menu (AppleScript) and then re-opens the deep
+  link, because Expo Go keeps `useWindowDimensions` stale until the route remounts —
+  that staleness is what made rotation look unscriptable. Note `simctl io screenshot`
+  always captures device-NATIVE orientation, so a landscape capture still comes out
+  portrait-shaped; rotate the PNG, not the expectation. Production builds are unaffected.
+- **Driving the simulator** (tap/type/assert) is Maestro, registered as an MCP
+  server in `.mcp.json` at the monorepo root — use `inspect_screen` to read the
+  real accessibility labels, then `run` a flow from `test/flows/`. Never tap by
+  coordinate. Full guide and the four gotchas (Expo Go `appId`, mandatory
+  `stopApp`, `extendedWaitUntil` over `assertVisible`, labels as selectors) are
+  in `docs/DEVICE-FLOWS.md`.
+- **A device flow is expensive** (~30s of simulator + bundle). Spend it on
+  safe-area clearance, touch targets, gestures and rotation. Grammar, wrapping
+  and containment stay on `bun run test:ui`.
+- **`/table-dev` inherits the device's real insets.** `?safeArea=island|android|
+android-gesture` only _fakes_ them, so a browser can approximate a device. Never add
+  `safeArea=` to a simulator check — it would hide the clearance you are there to see.
 - Keep behavior fixes focused; visual changes ride the DS, not ad-hoc styling.
 
 ## Architecture Principle: Dumb Client, Smart Server
