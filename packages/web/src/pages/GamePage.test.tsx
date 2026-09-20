@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { pushGameAction } from '../channels/useGameChannel';
 import { GamePage } from './GamePage';
 
 // Mock auth store
@@ -150,6 +151,17 @@ beforeEach(() => {
     delete mockGameStoreState[key];
   }
 });
+
+const humanSeat = { occupant_type: 'human', status: 'connected', user_id: 'u' };
+const finishedReadiness = {
+  room_id: 'room-1',
+  ready_epoch: 7,
+  snapshot_revision: 12,
+  status: 'finished',
+  ready_players: [],
+  positions: { north: 'a', east: 'b', south: 'c', west: 'd' },
+  seats: { north: humanSeat, east: humanSeat, south: humanSeat, west: humanSeat },
+};
 
 describe('GamePage', () => {
   it('shows loading spinner while fetching room data', () => {
@@ -331,7 +343,7 @@ describe('GamePage', () => {
     expect(mockReset).toHaveBeenCalled();
   });
 
-  it('creates a new room with same seat config when Play Again is clicked', async () => {
+  it('asks the server for a rematch in this room when Play Again is clicked', async () => {
     setupDefaults();
 
     // Room has 2 bots (east and west) and 1 human (south), set up with smart bots
@@ -417,6 +429,8 @@ describe('GamePage', () => {
       },
       legalActions: [],
       isChannelJoined: true,
+      role: 'player',
+      readiness: finishedReadiness,
       _viewModel: gameOverViewModel,
     });
 
@@ -426,20 +440,15 @@ describe('GamePage', () => {
     const playAgainBtn = await screen.findByRole('button', { name: 'Play Again' });
     await userEvent.click(playAgainBtn);
 
-    // Should create room preserving bot seats and bot difficulty from original room
+    // The client says only "again": the server derives the next game from the room.
     await waitFor(() => {
-      expect(mockCreateRoom).toHaveBeenCalledWith({
-        name: 'Fun Game',
-        seats: { seat_2: 'ai', seat_3: 'open', seat_4: 'ai' },
-        bot_difficulty: 'smart',
-      });
+      expect(pushGameAction).toHaveBeenCalledWith('rematch', { room_id: 'room-1', ready_epoch: 7 });
     });
-    expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('settings');
-
-    expect(mockNavigate).toHaveBeenCalledWith('/game/NEW1');
+    expect(mockCreateRoom).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining('/game/'));
   });
 
-  it('shows toast when Play Again room creation fails', async () => {
+  it('shows the server reason when the rematch is refused', async () => {
     setupDefaults();
 
     const mockRoom = {
@@ -514,17 +523,18 @@ describe('GamePage', () => {
       },
       legalActions: [],
       isChannelJoined: true,
+      role: 'player',
+      readiness: finishedReadiness,
       _viewModel: gameOverViewModel,
     });
 
+    vi.mocked(pushGameAction).mockRejectedValueOnce({ reason: 'table_not_full' });
     renderGamePage();
 
     const playAgainBtn = await screen.findByRole('button', { name: 'Play Again' });
     await userEvent.click(playAgainBtn);
 
-    // Should show error toast, not navigate
-    const errorToast = await screen.findByText('Failed to create new game');
-    expect(errorToast).toBeTruthy();
+    expect(await screen.findByText('table_not_full')).toBeTruthy();
     expect(mockNavigate).not.toHaveBeenCalledWith(expect.stringContaining('/game/'));
   });
 });

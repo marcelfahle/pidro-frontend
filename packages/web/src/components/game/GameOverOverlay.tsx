@@ -1,4 +1,4 @@
-import type { GameViewModel, ServerGameState } from '@pidro/shared';
+import type { GameViewModel, RematchVote, ServerGameState } from '@pidro/shared';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@pidro/shared';
 import { PlayerAvatar } from '../profile/PlayerAvatar';
 import { PostGameStrip } from '../profile/PostGameStrip';
@@ -12,6 +12,8 @@ interface GameOverOverlayProps {
   progressionSummary?: ProgressionSummary | null;
   onBackToLobby: () => void;
   onPlayAgain: () => void;
+  /** The rematch vote of a finished room; absent before the snapshot arrives. */
+  rematch?: RematchVote | null;
 }
 
 export function GameOverOverlay({
@@ -20,6 +22,7 @@ export function GameOverOverlay({
   progressionSummary,
   onBackToLobby,
   onPlayAgain,
+  rematch,
 }: GameOverOverlayProps) {
   const rawScores = serverState.scores ?? { north_south: 0, east_west: 0 };
   const youPlayer = viewModel.players.find((p) => p.isYou);
@@ -163,8 +166,17 @@ export function GameOverOverlay({
           <Button variant="secondary" onClick={onBackToLobby}>
             Back to Lobby
           </Button>
-          <Button onClick={onPlayAgain}>Play Again</Button>
+          {viewerIsSpectator ? null : (
+            <Button onClick={onPlayAgain} disabled={rematch?.youAgreed}>
+              {rematch?.youAgreed ? 'Waiting for the others' : 'Play Again'}
+            </Button>
+          )}
         </div>
+        {rematch && rematch.needed > 1 && rematch.agreed > 0 && (
+          <p className="mt-3 text-center text-sm text-white/70" data-testid="rematch-status">
+            {rematch.agreed} of {rematch.needed} want to play again
+          </p>
+        )}
       </div>
     </div>
   );

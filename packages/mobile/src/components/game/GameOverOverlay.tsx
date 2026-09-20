@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import type { RematchVote } from '@pidro/shared';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 import { Avatar } from '@/components/ui/Avatar';
@@ -18,6 +19,8 @@ interface GameOverOverlayProps {
   } | null;
   onBackToLobby: () => void;
   onPlayAgain: () => void;
+  /** The rematch vote of a finished room; absent in fixtures and before the snapshot arrives. */
+  rematch?: RematchVote | null;
   backLabel?: string;
 }
 
@@ -34,6 +37,7 @@ export function GameOverOverlay({
   progressionSummary,
   onBackToLobby,
   onPlayAgain,
+  rematch,
   backLabel = 'Back to lobby',
 }: GameOverOverlayProps) {
   const { width, height } = useWindowDimensions();
@@ -56,6 +60,12 @@ export function GameOverOverlay({
     !spectator &&
     winningTeam != null &&
     isNorthSouthTeam(viewModel.viewerPositionAbsolute) === northSouthWon;
+
+  const othersVoting = rematch != null && rematch.needed > 1;
+  const rematchStatus =
+    othersVoting && rematch.agreed > 0
+      ? `${rematch.agreed} of ${rematch.needed} want to play again`
+      : null;
 
   const outcome = tied
     ? 'The game ends in a tie'
@@ -159,6 +169,12 @@ export function GameOverOverlay({
             </Surface>
           ) : null}
 
+          {rematchStatus ? (
+            <PidroText testID="rematch-status" role="metadata" tone="soft" align="center">
+              {rematchStatus}
+            </PidroText>
+          ) : null}
+
           <View style={[styles.actions, portrait && styles.actionsPortrait]}>
             <Button
               label={backLabel}
@@ -166,7 +182,15 @@ export function GameOverOverlay({
               onPress={onBackToLobby}
               style={styles.actionButton}
             />
-            <Button label="Play again" onPress={onPlayAgain} style={styles.actionButton} />
+            {spectator ? null : (
+              <Button
+                testID="play-again"
+                label={rematch?.youAgreed ? 'Waiting for the others' : 'Play again'}
+                disabled={rematch?.youAgreed}
+                onPress={onPlayAgain}
+                style={styles.actionButton}
+              />
+            )}
           </View>
         </Surface>
       </ScrollView>
