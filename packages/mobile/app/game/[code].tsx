@@ -20,12 +20,12 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/stores/lobby';
 import { useGameStore } from '@/stores/game';
-import { roomWithReadiness } from '@pidro/shared';
+import { rematchVote, roomWithReadiness, type RematchVote } from '@pidro/shared';
 import { useAuthStore } from '@/stores/auth';
 import { lobbyApi } from '@/api/lobby';
 import { api } from '@/api/client';
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
-import type { Position, Room, SeatType } from '@/types/lobby';
+import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { WaitingTable } from '@/components/game/WaitingTable';
 import { InviteModal } from '@/components/invites/InviteModal';
@@ -35,7 +35,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
-import { gameExitPath, gameRoute, parseGameOrigin } from '@/navigation/gameRoute';
+import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
@@ -45,7 +45,9 @@ type SkiaTableProps = {
   room: Room;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
-  onPlayAgain?: (room: Room) => void;
+  onPlayAgain?: () => void;
+  rematch?: RematchVote | null;
+  rematchPending?: boolean;
   backLabel?: string;
 };
 
@@ -448,40 +450,37 @@ export default function GameScreen() {
     };
   }, [accessToken, applyRoomSnapshot, authHydrated, code]);
 
-  const handlePlayAgain = useCallback(
-    async (oldRoom: Room) => {
-      const seats = oldRoom.seats ?? [];
-      const seatType = (index: number): SeatType => {
-        const seat = seats.find((s) => s.seat_index === index);
-        if (seat?.player?.is_bot) return 'ai';
-        return 'open';
-      };
-      const seatConfig = {
-        seat_2: seatType(1),
-        seat_3: seatType(2),
-        seat_4: seatType(3),
-      };
-      const hasBot =
-        seatConfig.seat_2 === 'ai' || seatConfig.seat_3 === 'ai' || seatConfig.seat_4 === 'ai';
-
-      try {
-        const result = await lobbyApi.createRoom({
-          name: oldRoom.name ?? 'Game Room',
-          seats: seatConfig,
-          ...(hasBot && { bot_difficulty: oldRoom.config?.bot_difficulty ?? 'basic' }),
-        });
-        const newCode = result?.code;
-        if (newCode) {
-          router.replace(gameRoute(newCode, origin));
-          return;
-        }
-      } catch {
-        console.error('[GameScreen] Failed to create a new game.');
-      }
-      router.replace(exitPath);
-    },
-    [exitPath, origin, router]
-  );
+  // A rematch is an intent on the game channel: the server restarts the game
+  // in this room once every human has asked. Nothing navigates; the next
+  // game's state arrives on the channel we are already joined to.
+  const rematchPendingRef = useRef(false);
+  const [rematchPending, setRematchPending] = useState(false);
+  const handlePlayAgain = useCallback(() => {
+    if (!readiness || !isChannelJoined || role !== 'player' || rematchPendingRef.current) return;
+    rematchPendingRef.current = true;
+    setRematchPending(true);
+    pushGameAction('rematch', {
+      room_id: readiness.room_id,
+      ready_epoch: readiness.ready_epoch,
+    })
+      .catch((error: unknown) => {
+        // A stale epoch reply carries the current snapshot, already applied by
+        // pushGameAction, so pressing again sends the right epoch.
+        const reason = (error as { reason?: string } | null)?.reason;
+        const key =
+          reason === 'table_not_full'
+            ? 'table.rematch.tableNotFull'
+            : reason === 'stale_readiness'
+              ? 'table.rematch.tableChanged'
+              : 'table.rematch.failed';
+        handleSeatEvent({ message: t(key), variant: 'warning' });
+      })
+      .finally(() => {
+        rematchPendingRef.current = false;
+        setRematchPending(false);
+      });
+  }, [readiness, isChannelJoined, role, handleSeatEvent]);
+  const rematch = rematchVote(readiness, youPositionAbs);
 
   const handleLeaveGame = () => {
     const roomCode = room?.code ?? code;
@@ -649,6 +648,8 @@ export default function GameScreen() {
           progressionSummary={progressionSummary}
           onLeave={handleLeaveGame}
           onPlayAgain={handlePlayAgain}
+          rematch={rematch}
+          rematchPending={rematchPending}
           backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
         />
         <TableFeedback notice={notice} />

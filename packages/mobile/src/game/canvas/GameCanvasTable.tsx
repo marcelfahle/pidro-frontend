@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import type { RematchVote } from '@pidro/shared';
 import type { Room } from '@/types/lobby';
 import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } from '@/types/game';
 import { useGameTableController } from '@/game/useGameTableController';
@@ -35,7 +36,9 @@ type Props = {
   room: Room;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
-  onPlayAgain?: (room: Room) => void;
+  onPlayAgain?: () => void;
+  rematch?: RematchVote | null;
+  rematchPending?: boolean;
   backLabel?: string;
 };
 
@@ -188,6 +191,8 @@ export function GameCanvasTable({
   progressionSummary,
   onLeave,
   onPlayAgain,
+  rematch,
+  rematchPending,
   backLabel,
 }: Props) {
   const controller = useGameTableController(room);
@@ -319,7 +324,9 @@ export function GameCanvasTable({
           serverState={serverState}
           progressionSummary={progressionSummary}
           onBackToLobby={onLeave}
-          onPlayAgain={() => onPlayAgain?.(room) ?? onLeave()}
+          onPlayAgain={onPlayAgain ?? onLeave}
+          rematch={rematch}
+          rematchPending={rematchPending}
           backLabel={backLabel}
         />
       )}

@@ -103,6 +103,16 @@ const allCases = [
     protectNorthSeat: true,
   },
   { name: 'table-game-over', path: '/table-dev?phase=game_over', testId: 'game-over-window' },
+  {
+    name: 'table-game-over-rematch-waiting',
+    path: '/table-dev?phase=game_over&rematch=waiting',
+    testId: 'rematch-status',
+  },
+  {
+    name: 'table-game-over-rematch-asked',
+    path: '/table-dev?phase=game_over&rematch=asked',
+    testId: 'rematch-status',
+  },
 ];
 
 function selectCases() {

@@ -1,8 +1,9 @@
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import type { RematchVote } from '@pidro/shared';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 import { Avatar } from '@/components/ui/Avatar';
@@ -18,6 +19,10 @@ interface GameOverOverlayProps {
   } | null;
   onBackToLobby: () => void;
   onPlayAgain: () => void;
+  /** The rematch vote of a finished room; absent in fixtures and before the snapshot arrives. */
+  rematch?: RematchVote | null;
+  /** A rematch request is in flight. */
+  rematchPending?: boolean;
   backLabel?: string;
 }
 
@@ -34,6 +39,8 @@ export function GameOverOverlay({
   progressionSummary,
   onBackToLobby,
   onPlayAgain,
+  rematch,
+  rematchPending = false,
   backLabel = 'Back to lobby',
 }: GameOverOverlayProps) {
   const { width, height } = useWindowDimensions();
@@ -56,6 +63,12 @@ export function GameOverOverlay({
     !spectator &&
     winningTeam != null &&
     isNorthSouthTeam(viewModel.viewerPositionAbsolute) === northSouthWon;
+
+  const othersVoting = rematch != null && rematch.needed > 1;
+  const rematchStatus =
+    othersVoting && rematch.agreed > 0
+      ? `${rematch.agreed} of ${rematch.needed} want to play again`
+      : null;
 
   const outcome = tied
     ? 'The game ends in a tie'
@@ -159,14 +172,32 @@ export function GameOverOverlay({
             </Surface>
           ) : null}
 
+          {rematchStatus ? (
+            <PidroText testID="rematch-status" role="metadata" tone="soft" align="center">
+              {rematchStatus}
+            </PidroText>
+          ) : null}
+
           <View style={[styles.actions, portrait && styles.actionsPortrait]}>
-            <Button
+            <BevelButton
               label={backLabel}
-              variant="outline"
+              material="glass"
+              fullWidth={portrait}
               onPress={onBackToLobby}
               style={styles.actionButton}
             />
-            <Button label="Play again" onPress={onPlayAgain} style={styles.actionButton} />
+            {spectator ? null : (
+              <BevelButton
+                testID="play-again"
+                label={rematch?.youAgreed ? 'Waiting for the others' : 'Play again'}
+                // No vote yet means nothing to send: the press would be a no-op.
+                disabled={!rematch || rematch.youAgreed}
+                loading={rematchPending}
+                fullWidth={portrait}
+                onPress={onPlayAgain}
+                style={styles.actionButton}
+              />
+            )}
           </View>
         </Surface>
       </ScrollView>

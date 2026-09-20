@@ -1,5 +1,11 @@
-import type { BotDifficulty, Card, Room, SeatType, Suit } from '@pidro/shared';
-import { useGameStore, useGameViewModel, useLobbyStore, useSeatDecisions } from '@pidro/shared';
+import type { Card, Room, Suit } from '@pidro/shared';
+import {
+  rematchVote,
+  useGameStore,
+  useGameViewModel,
+  useLobbyStore,
+  useSeatDecisions,
+} from '@pidro/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
@@ -27,20 +33,6 @@ function getHttpStatus(err: unknown): number | undefined {
 }
 
 const ROOM_POLL_INTERVAL = 3000;
-
-function deriveSeatConfig(room: Room): {
-  seat_2: SeatType;
-  seat_3: SeatType;
-  seat_4: SeatType;
-} {
-  const seats = room.seats ?? [];
-  const seatType = (index: number): SeatType => {
-    const seat = seats.find((s) => s.seat_index === index);
-    if (seat?.player?.is_bot) return 'ai';
-    return 'open';
-  };
-  return { seat_2: seatType(1), seat_3: seatType(2), seat_4: seatType(3) };
-}
 
 /**
  * The REST room payload carries seat occupancy but no usernames. The lobby
@@ -186,13 +178,6 @@ export function GamePage() {
   const [optimisticCard, setOptimisticCard] = useState<Card | null>(null);
   const fetchIdRef = useRef(0);
 
-  const roomConfigRef = useRef<{
-    name: string;
-    hostId: string | null;
-    seats: { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType };
-    botDifficulty: BotDifficulty;
-  } | null>(null);
-
   const { messages: toastMessages, addToast, dismissToast } = useToast();
 
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
@@ -207,13 +192,6 @@ export function GamePage() {
       try {
         const room = enrichRoomWithKnownNames(await lobbyApi.getRoom(roomCode), you);
         if (fetchIdRef.current !== currentFetchId) return;
-
-        roomConfigRef.current = {
-          name: room.name ?? 'Game Room',
-          hostId: room.host_id ?? null,
-          seats: deriveSeatConfig(room),
-          botDifficulty: room.config?.bot_difficulty ?? 'basic',
-        };
 
         initFromRoom({ room, youPlayerId: playerId });
         setChannelEnabled(true);
@@ -394,29 +372,25 @@ export function GamePage() {
     }
   }, [code, userId, setError, fetchRoom]);
 
+  // A rematch is an intent on the game channel: the server restarts the game in
+  // this room once every human has asked, and the next game's state arrives here.
+  const rematchPendingRef = useRef(false);
+  const [rematchPending, setRematchPending] = useState(false);
   const handlePlayAgain = useCallback(async () => {
-    const config = roomConfigRef.current;
-    if (!config) {
-      navigate('/home');
-      return;
-    }
-
-    const hasBot =
-      config.seats.seat_2 === 'ai' || config.seats.seat_3 === 'ai' || config.seats.seat_4 === 'ai';
-
+    if (!readiness || !isChannelJoined || role !== 'player' || rematchPendingRef.current) return;
+    rematchPendingRef.current = true;
+    setRematchPending(true);
     try {
-      const result = await lobbyApi.createRoom({
-        name: config.name,
-        seats: config.seats,
-        ...(hasBot && { bot_difficulty: config.botDifficulty }),
+      // pushAction toasts the server's reason when the rematch is refused.
+      await pushAction('rematch', {
+        room_id: readiness.room_id,
+        ready_epoch: readiness.ready_epoch,
       });
-      const newCode = result?.code;
-      if (!newCode) throw new Error('No room code returned');
-      navigate(`/game/${newCode}`);
-    } catch {
-      addToast('Failed to create new game', 'error');
+    } finally {
+      rematchPendingRef.current = false;
+      setRematchPending(false);
     }
-  }, [navigate, addToast]);
+  }, [pushAction, readiness, isChannelJoined, role]);
 
   // Clear optimistic card when server state updates (confirms the play)
   const prevServerStateRef = useRef(serverState);
@@ -571,6 +545,8 @@ export function GamePage() {
                 progressionSummary={progressionSummary}
                 onBackToLobby={handleBackToLobby}
                 onPlayAgain={handlePlayAgain}
+                rematch={rematchVote(readiness, youPositionAbs)}
+                rematchPending={rematchPending}
               />
             )}
           </div>

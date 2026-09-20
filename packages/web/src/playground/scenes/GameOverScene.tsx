@@ -66,6 +66,7 @@ export function GameOverScene({
         progressionSummary={showProgression ? MOCK_PROGRESSION : null}
         onBackToLobby={() => {}}
         onPlayAgain={() => {}}
+        rematch={{ needed: 4, agreed: 0, youAgreed: false }}
       />
     </div>
   );
