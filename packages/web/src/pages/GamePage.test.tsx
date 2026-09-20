@@ -334,10 +334,11 @@ describe('GamePage', () => {
   it('creates a new room with same seat config when Play Again is clicked', async () => {
     setupDefaults();
 
-    // Room has 2 bots (east and west) and 1 human (south)
+    // Room has 2 bots (east and west) and 1 human (south), set up with smart bots
     const mockRoom = {
       code: 'TEST1',
       name: 'Fun Game',
+      config: { name: 'Fun Game', bot_difficulty: 'smart', solo: false },
       status: 'playing',
       seats: [
         { seat_index: 0, status: 'occupied', player: { id: 'user-1', username: 'testplayer' } },
@@ -425,16 +426,15 @@ describe('GamePage', () => {
     const playAgainBtn = await screen.findByRole('button', { name: 'Play Again' });
     await userEvent.click(playAgainBtn);
 
-    // Should create room preserving bot seats from original room
+    // Should create room preserving bot seats and bot difficulty from original room
     await waitFor(() => {
-      expect(mockCreateRoom).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: 'Fun Game',
-          seats: { seat_2: 'ai', seat_3: 'open', seat_4: 'ai' },
-          bot_difficulty: 'basic',
-        }),
-      );
+      expect(mockCreateRoom).toHaveBeenCalledWith({
+        name: 'Fun Game',
+        seats: { seat_2: 'ai', seat_3: 'open', seat_4: 'ai' },
+        bot_difficulty: 'smart',
+      });
     });
+    expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('settings');
 
     expect(mockNavigate).toHaveBeenCalledWith('/game/NEW1');
   });

@@ -47,7 +47,7 @@ function filterByQuery(rooms: Room[], query: string): Room[] {
   const normalized = query.trim().toLowerCase();
   if (!normalized) return rooms;
   return rooms.filter((room) => {
-    const haystack = `${room.name ?? ''} ${room.metadata?.name ?? ''} ${room.code}`.toLowerCase();
+    const haystack = `${room.name ?? ''} ${room.code}`.toLowerCase();
     return haystack.includes(normalized);
   });
 }
@@ -468,7 +468,7 @@ function ActionRoomRow({
   onPress: () => void;
   primary?: boolean;
 }) {
-  const roomName = room.name || room.metadata?.name || `Table ${room.code}`;
+  const roomName = room.name || `Table ${room.code}`;
   const players =
     room.player_count ??
     room.players_count ??

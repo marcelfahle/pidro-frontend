@@ -1,3 +1,4 @@
+import { clampRoomName } from '@pidro/shared';
 import { BarChart3, CircleHelp, LogOut, Settings, Spade, Star, Trophy } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -61,8 +62,7 @@ export function HomePage() {
 
     try {
       const result = await lobbyApi.createRoom({
-        name: `${user?.username ?? 'Player'}'s solo table`,
-        settings: { min_games: 1, time_limit: 0, private: false },
+        name: clampRoomName(`${user?.username ?? 'Player'}'s solo table`),
         seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
         bot_difficulty: 'basic',
       });

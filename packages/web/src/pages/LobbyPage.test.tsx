@@ -12,7 +12,8 @@ vi.mock('../stores/auth', () => ({
 }));
 
 const mockUseLobbyStore = vi.fn();
-vi.mock('@pidro/shared', () => ({
+vi.mock('@pidro/shared', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@pidro/shared')>()),
   useLobbyStore: (selector: (state: Record<string, unknown>) => unknown) =>
     mockUseLobbyStore(selector),
 }));
@@ -220,9 +221,9 @@ describe('LobbyPage', () => {
 
     expect(mockCreateRoom).toHaveBeenCalledWith({
       name: "testuser's game",
-      settings: { min_games: 1, time_limit: 0, private: false },
       seats: { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
     });
+    expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('settings');
     expect(mockNavigate).toHaveBeenCalledWith('/game/NEW123');
   });
 

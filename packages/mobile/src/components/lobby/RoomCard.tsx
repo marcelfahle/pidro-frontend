@@ -30,7 +30,7 @@ export function RoomCard({
   const maxPlayers = room.max_players ?? 4;
   const isFull = playersCount >= maxPlayers;
   const isPlaying = ['playing', 'ready', 'finished'].includes(room.status);
-  const roomName = room.name || room.metadata?.name || `Room ${room.code}`;
+  const roomName = room.name || `Room ${room.code}`;
   const statusLabel = room.status === 'waiting' ? 'Open' : room.status;
 
   return (
@@ -62,16 +62,6 @@ export function RoomCard({
         currentUserId={currentUserId}
         currentUsername={currentUsername}
       />
-
-      <PidroText role="metadata" tone="muted" numberOfLines={1}>
-        {room.settings?.min_games && room.settings.min_games > 0
-          ? `${room.settings.min_games} ${room.settings.min_games === 1 ? 'game' : 'games'} minimum`
-          : 'No game minimum'}
-        {' · '}
-        {room.settings?.time_limit && room.settings.time_limit > 0
-          ? `${room.settings.time_limit}-second turns`
-          : 'No turn timer'}
-      </PidroText>
     </Surface>
   );
 }

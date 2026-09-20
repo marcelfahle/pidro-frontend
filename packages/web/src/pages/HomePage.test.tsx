@@ -79,11 +79,25 @@ describe('HomePage', () => {
 
     expect(mockCreateRoom).toHaveBeenCalledWith({
       name: "testuser's solo table",
-      settings: { min_games: 1, time_limit: 0, private: false },
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
       bot_difficulty: 'basic',
     });
+    expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('settings');
     expect(mockNavigate).toHaveBeenCalledWith('/game/SOLO1');
+  });
+
+  it('caps the generated solo table name at 60 characters', async () => {
+    const username = 'u'.repeat(70);
+    mockAuthenticated({ user: { id: '1', username, email: 'test@test.com' } });
+    mockCreateRoom.mockResolvedValue({ code: 'SOLO2' });
+    renderHomePage();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Single Player' }));
+
+    const request = mockCreateRoom.mock.calls[0][0] as { name: string };
+    expect(request.name.length).toBeLessThanOrEqual(60);
+    expect(request.name.startsWith('u'.repeat(60))).toBe(true);
+    expect(mockNavigate).toHaveBeenCalledWith('/game/SOLO2');
   });
 
   it('clears the session and returns to login when logging out', async () => {

@@ -1,5 +1,5 @@
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished';
-export type SeatType = 'open' | 'private' | 'ai';
+export type SeatType = 'open' | 'ai';
 export type BotDifficulty = 'random' | 'basic' | 'smart';
 export type Position = 'north' | 'east' | 'south' | 'west';
 export type PositionPreference = Position | 'north_south' | 'east_west';
@@ -23,10 +23,14 @@ export interface ReadinessSnapshot {
   ready_players: Position[];
 }
 
-export interface RoomSettings {
-  min_games: number;
-  time_limit: number;
-  private: boolean;
+/**
+ * How a table was set up. The server stores it on the room and sends the same
+ * shape over REST and over the lobby channel.
+ */
+export interface RoomConfig {
+  name: string | null;
+  bot_difficulty: BotDifficulty;
+  solo: boolean;
 }
 
 export interface Player {
@@ -48,11 +52,9 @@ export interface Seat {
 export interface Room {
   id?: string;
   code: string;
+  /** Lifted from `config.name` by `normalizeRoom`, falling back to the room code. */
   name?: string;
-  metadata?: {
-    name?: string;
-    [key: string]: unknown;
-  };
+  config?: RoomConfig;
   host_id?: string | null;
   locked?: boolean;
   status: RoomStatus;
@@ -61,7 +63,6 @@ export interface Room {
   max_players?: number;
   created_at?: string;
   last_activity?: string;
-  settings?: RoomSettings;
   seats?: Seat[];
   player_ids?: string[];
   positions?: {
@@ -83,10 +84,10 @@ export interface LobbyCategories {
   spectatable: Room[];
 }
 
+/** Everything the server accepts when creating a room. Any other key is rejected. */
 export interface CreateRoomRequest {
-  name: string;
-  settings: RoomSettings & { password?: string };
-  seats: {
+  name?: string;
+  seats?: {
     seat_2: SeatType;
     seat_3: SeatType;
     seat_4: SeatType;

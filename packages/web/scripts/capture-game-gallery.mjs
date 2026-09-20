@@ -158,7 +158,6 @@ async function createBotRoom(apiUrl, token, username) {
     `${apiUrl}/api/v1/rooms`,
     {
       name: `${username}'s gallery table`,
-      settings: { min_games: 1, time_limit: 0, private: false },
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
       bot_difficulty: 'basic',
     },

@@ -63,7 +63,7 @@ export function useGameTableController(room?: Room): GameTableController {
     }))
   );
 
-  const roomTitle = room ? room.name || room.metadata?.name || room.code : '';
+  const roomTitle = room ? room.name || room.code : '';
   const phase = viewModel?.phase ?? 'bidding';
   const trumpSuit = viewModel?.trumpSuit ?? null;
   const players = useMemo(() => viewModel?.players ?? [], [viewModel]);

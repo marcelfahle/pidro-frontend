@@ -1,4 +1,4 @@
-import type { Card, Room, SeatType, Suit } from '@pidro/shared';
+import type { BotDifficulty, Card, Room, SeatType, Suit } from '@pidro/shared';
 import { useGameStore, useGameViewModel, useLobbyStore, useSeatDecisions } from '@pidro/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -190,6 +190,7 @@ export function GamePage() {
     name: string;
     hostId: string | null;
     seats: { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType };
+    botDifficulty: BotDifficulty;
   } | null>(null);
 
   const { messages: toastMessages, addToast, dismissToast } = useToast();
@@ -211,6 +212,7 @@ export function GamePage() {
           name: room.name ?? 'Game Room',
           hostId: room.host_id ?? null,
           seats: deriveSeatConfig(room),
+          botDifficulty: room.config?.bot_difficulty ?? 'basic',
         };
 
         initFromRoom({ room, youPlayerId: playerId });
@@ -405,9 +407,8 @@ export function GamePage() {
     try {
       const result = await lobbyApi.createRoom({
         name: config.name,
-        settings: { min_games: 1, time_limit: 0, private: false },
         seats: config.seats,
-        ...(hasBot && { bot_difficulty: 'basic' }),
+        ...(hasBot && { bot_difficulty: config.botDifficulty }),
       });
       const newCode = result?.code;
       if (!newCode) throw new Error('No room code returned');
