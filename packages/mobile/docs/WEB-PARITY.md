@@ -59,13 +59,13 @@ Fixture deep links work again; `table-matrix.sh rotate [left|right] [phase]`
 rotates and remounts so layout follows. One command to a real state on a real
 device is the whole game.
 
-### 2. Close the input asymmetry — the biggest remaining gap
+### 2. Close the input asymmetry (done: Maestro)
 
-Playwright can click the web build; nothing can tap the simulator. Install
-`idb` (`brew tap facebook/fb && brew install idb-companion`) and add a thin
-`scripts/sim-tap.mjs`. This is what lets the _device_ loop verify interaction,
-not just appearance — and it is what lets an agent iterate on iOS UI
-autonomously instead of screenshot-and-guess.
+Playwright clicks the web build; Maestro taps the simulator. Flows live in
+`test/flows/` and run through `scripts/device-flow.sh` or the Maestro MCP server;
+`docs/DEVICE-FLOWS.md` is the guide. This is what lets the _device_ loop verify
+interaction, not just appearance, and lets an agent iterate on iOS UI instead of
+screenshot-and-guess.
 
 ### 3. Add a device gate beside the web gate
 

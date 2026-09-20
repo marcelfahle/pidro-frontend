@@ -122,6 +122,11 @@ if [[ "${1:-}" == "rotate" ]]; then
   esac
   udid=$(booted_sims | head -1 | cut -f1)
   [[ -z "$udid" ]] && { echo "✗ no booted simulator — run: just table-sim"; exit 1; }
+  # The Device menu rotates the frontmost window, which need not be $udid.
+  if (( $(booted_sims | wc -l) > 1 )); then
+    echo "✗ several simulators are booted — rotate needs exactly one" >&2
+    exit 1
+  fi
   osascript -e 'tell application "Simulator" to activate' >/dev/null
   osascript -e "tell application \"System Events\" to tell process \"Simulator\" \
     to click menu item \"$item\" of menu 1 of menu bar item \"Device\" of menu bar 1" >/dev/null
