@@ -140,6 +140,12 @@ export function createLobbyApi(api: ApiClient) {
       const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/kick`, { position });
       return normalizeRoom(response.data?.data?.room ?? response.data?.room);
     },
+
+    /** Host only: seats a bot in a vacant seat at the room's bot difficulty. */
+    seatBot: async (code: string, position: Position): Promise<Room> => {
+      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/bot`, { position });
+      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
+    },
   };
 }
 

@@ -140,6 +140,8 @@ interface Props {
   onToggleLock?: () => void;
   onMovePlayer?: (userId: string, position: Position) => void;
   onKickPlayer?: (position: Position) => void;
+  /** Host only: fill a vacant seat with a bot. */
+  onSeatBot?: (position: Position) => void;
 }
 
 export function WaitingTable({
@@ -157,6 +159,7 @@ export function WaitingTable({
   onToggleLock,
   onMovePlayer,
   onKickPlayer,
+  onSeatBot,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -327,6 +330,18 @@ export function WaitingTable({
                     : `${readyPlayers.length} of 4 ready`}
               </PidroText>
             </View>
+            {canManageTable && openSeats > 0 && onSeatBot && (
+              <Button
+                testID="waiting-seat-bot"
+                label={t('table.seatBot')}
+                variant="outline"
+                disabled={controlsBusy}
+                onPress={() => {
+                  const open = seats.find((seat) => !seat.occupied);
+                  if (open) onSeatBot(open.absolute);
+                }}
+              />
+            )}
             {!isSpectator && openSeats === 0 && onReady && (
               <Button
                 label={isYouReady ? "You're ready" : readyBusy ? 'Confirming…' : "I'm ready"}

@@ -32,6 +32,9 @@ const maxMinutes = Number(argValue('--max-minutes', '20'));
 const rematchMode = argValue('--rematch', null);
 const rematchDelayMs = Number(argValue('--rematch-delay-ms', '0'));
 const rematchLingerMs = Number(argValue('--rematch-linger-ms', '0'));
+// With --leave-after-rematch the player plays the rematch to its end and then
+// leaves the room over REST, which is how the others get an open seat to fill.
+const leaveAfterRematch = args.includes('--leave-after-rematch');
 if (rematchMode && !['now', 'after-others'].includes(rematchMode)) {
   console.error(`--rematch takes now or after-others, got ${rematchMode}`);
   process.exit(1);
@@ -116,8 +119,19 @@ async function main() {
 
   // Game over is where a plain run ends. A rematch run stays on the channel.
   function gameOverConfirmed() {
+    if (rematchStarted && leaveAfterRematch) return leaveRoom();
     if (!rematchMode || rematchStarted) process.exit(0);
     maybeAskForRematch();
+  }
+
+  async function leaveRoom() {
+    const left = await api(`/api/v1/rooms/${roomCode}/leave`, 'DELETE', token);
+    if (!left.ok) {
+      console.error(`leaving ${roomCode} after the rematch failed: ${left.status}`);
+      process.exit(5);
+    }
+    log(`LEFT ${roomCode} after the rematch game`);
+    process.exit(0);
   }
 
   function maybeAskForRematch() {
@@ -257,7 +271,7 @@ async function main() {
       finished = false;
       progressionReceived = false;
       log(`REMATCH STARTED in ${roomCode} phase=${state.phase} scores=${scores}`);
-      setTimeout(() => process.exit(0), rematchLingerMs);
+      if (!leaveAfterRematch) setTimeout(() => process.exit(0), rematchLingerMs);
     }
 
     if (!actions.length || acting) return;
