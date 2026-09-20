@@ -179,6 +179,7 @@ export function GameOverOverlay({
             <BevelButton
               label={backLabel}
               material="glass"
+              fullWidth={portrait}
               onPress={onBackToLobby}
               style={styles.actionButton}
             />
@@ -187,6 +188,7 @@ export function GameOverOverlay({
                 testID="play-again"
                 label={rematch?.youAgreed ? 'Waiting for the others' : 'Play again'}
                 disabled={rematch?.youAgreed}
+                fullWidth={portrait}
                 onPress={onPlayAgain}
                 style={styles.actionButton}
               />
