@@ -69,10 +69,11 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 
 ## `/ui-dev` — DS v2 gallery
 
-| URL                        | Shows                                                                                                                                                                                       |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/ui-dev?state=components` | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
-| `/ui-dev?state=create`     | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
+| URL                         | Shows                                                                                                                                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/ui-dev?state=components`  | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
+| `/ui-dev?state=create`      | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
+| `/ui-dev?state=progression` | Progression HUD primitives: LevelRing (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                              |
 
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
