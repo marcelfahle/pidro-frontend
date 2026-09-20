@@ -1,4 +1,7 @@
 import { expect, test } from 'bun:test';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const script = fileURLToPath(new URL('../../scripts/autoplay-full-game.mjs', import.meta.url));
@@ -44,21 +47,27 @@ for (const initialError of [null, 'ALREADY_SEATED', 'ROOM_NOT_AVAILABLE', 'ALREA
         },
       },
     });
+    // Capture to files, not pipes. node's process.stdout is asynchronous when
+    // it is a pipe (synchronous to a TTY or a file), and this script exits via
+    // process.exit() as soon as the game ends — so a piped read intermittently
+    // comes back empty even though the child ran correctly and exited 0.
+    // Files make the capture deterministic.
+    const logDir = mkdtempSync(join(tmpdir(), 'pidro-autoplay-'));
+    const outPath = join(logDir, 'stdout.log');
+    const errPath = join(logDir, 'stderr.log');
     const child = Bun.spawn(['node', script, '--room', 'TEST', '--max-minutes', '0.02'], {
       env: {
         ...process.env,
         API_BASE_URL: `http://127.0.0.1:${server.port}`,
         WS_BASE_URL: `ws://127.0.0.1:${server.port}/socket`,
       },
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: Bun.file(outPath),
+      stderr: Bun.file(errPath),
     });
     try {
-      const [code, stdout, stderr] = await Promise.all([
-        child.exited,
-        new Response(child.stdout).text(),
-        new Response(child.stderr).text(),
-      ]);
+      const code = await child.exited;
+      const stdout = readFileSync(outPath, 'utf8');
+      const stderr = readFileSync(errPath, 'utf8');
       expect({ code, stderr }).toEqual({ code: 0, stderr: '' });
       expect(stdout).toContain('GAME OVER');
       expect(requests).toEqual([
@@ -72,6 +81,7 @@ for (const initialError of [null, 'ALREADY_SEATED', 'ROOM_NOT_AVAILABLE', 'ALREA
     } finally {
       child.kill();
       server.stop(true);
+      rmSync(logDir, { recursive: true, force: true });
     }
   });
 }
