@@ -95,11 +95,51 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
 | Screen scaffold                | `ScreenShell` (+ `ScreenHeader` for sub-screens)                     |
 | Choice with confirm/cancel     | `DecisionWindow` / `Modal`                                           |
 | Home navigation                | `HomeTabBar` (bottom bar portrait, right rail landscape)             |
+| Player identity                | `LevelRing` (avatar in a gold rim)                                   |
+| An earned number               | `RatingPlaque` (gold rim, carved face, Bree Serif figure)            |
+| Progress toward something      | `LeagueProgress` (carved well + gold fill + quiet caption)           |
+| Labelling the one hero CTA     | `CtaBadge` (wraps the control so the badge anchors to it)            |
+| Any icon                       | `Icon` — never inline `<Svg><Path>` in a screen                      |
 | Sign-in surfaces               | `AuthProviderButtons`, `AuthSheet`, `KeepProgressPrompt`             |
 | Selectable custom control      | `PressableFX` (RN 0.85 drops style-function styles)                  |
 
 Legacy: `Button` (old flat variants) is utility-only on unmigrated screens — no new
 call sites. `MenuAction`, `PrimaryButton` are compatibility-only.
+
+## The progression HUD
+
+Home's corner HUD is its own small grammar, and it follows the material rule
+rather than inventing a third treatment.
+
+- **Identity is framed, numbers are mounted, progress is carved.** `LevelRing`
+  frames the avatar in the same gold gradient a wood control uses — the player
+  is part of the furniture, not a photo pasted on top. `RatingPlaque` mounts an
+  earned number like brass: gold rim, carved navy face, Bree Serif figure with
+  the usual 1px optical lift. `LeagueProgress` is a **well** (dark, inset,
+  hairline border), because progress is something the table records, not a
+  control the player operates.
+- **HUD objects are read-only.** A plaque or a ring never takes press physics.
+  If it must be tappable — the identity block opens the profile — the _wrapper_
+  is the `PressableFX`, and the HUD object inside stays inert.
+- **One badge, on the hero.** `CtaBadge` wraps its control instead of sitting
+  beside it, because a `fullWidth` `BevelButton` caps at 380 and centers; a
+  badge anchored to a wider column drifts off the button it labels. Badges are
+  decoration and are always `pointerEvents="none"`.
+- **Progress values are clamped at the primitive.** `LeagueProgress` clamps to
+  0–1 so a server that overshoots cannot overflow the track.
+- **Accessibility labels are part of the primitive, not an afterthought.** They
+  are how a device flow addresses a control (`docs/DEVICE-FLOWS.md`), so a
+  primitive that renders a number or a state exposes it: `RatingPlaque` says
+  `Rating 1487`, `LeagueProgress` reports its percentage. A control that only a
+  human eye can find is not finished.
+- **Icons are system objects.** Geometry lives once in `Icon` on a 24×24 grid;
+  stroke glyphs keep a 2px stroke so they survive chip sizes. A new glyph is an
+  edit to `Icon`, never an inline path in a screen.
+- The sheet is `/ui-dev?state=progression`, screenshotted by CI like the rest.
+
+The numbers behind these are mocked until leagues and levels land server-side.
+That is deliberate: the _shape_ is settled, so real data drops in without
+moving anything.
 
 ## How changes trickle down
 
@@ -116,8 +156,6 @@ call sites. `MenuAction`, `PrimaryButton` are compatibility-only.
 
 - Marquee banner (gold rim / wood band / navy panel plaque) — designed on the canvas,
   not yet a `react-native-svg` primitive.
-- Rating plaque / league progress / level ring on home are screen-local until real
-  progression data lands — promote to primitives then.
 - Danger material for `BevelButton` (designed on the canvas Buttons sheet).
 - In-game windows (bid grid, trump, hand selection) still on legacy surfaces.
 

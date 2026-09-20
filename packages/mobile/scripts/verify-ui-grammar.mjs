@@ -41,6 +41,11 @@ const allCases = [
     testId: 'join-invite-window',
   },
   { name: 'ui-components', path: '/ui-dev?state=components', testId: 'ui-foundation-panel' },
+  {
+    name: 'ui-progression',
+    path: '/ui-dev?state=progression',
+    testId: 'ui-progression-panel',
+  },
   { name: 'create-table', path: '/ui-dev?state=create', testId: 'create-room-window' },
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {

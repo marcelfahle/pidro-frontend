@@ -1,21 +1,23 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { clampRoomName } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
-import { Avatar } from '@/components/ui/Avatar';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
-import { gradientBg } from '@/components/ui/Bevel';
+import { CtaBadge } from '@/components/home/CtaBadge';
+import { LeagueProgress } from '@/components/home/LeagueProgress';
+import { LevelRing } from '@/components/home/LevelRing';
 import { LogoGlow } from '@/components/home/LogoGlow';
+import { RatingPlaque } from '@/components/home/RatingPlaque';
+import { Icon } from '@/components/ui/Icon';
 import { usePillClearance } from '@/components/shell/TabPill';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
-import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
@@ -102,14 +104,7 @@ export default function HomeScreen() {
         accessibilityLabel="Open your profile"
         onPress={() => router.push('/profile')}
         style={styles.identity}>
-        <View style={[styles.levelRing, gradientBg(PidroBevel.goldRimGradient)]}>
-          <Avatar
-            uri={user?.avatar_url}
-            style={styles.avatar}
-            resizeMode="cover"
-            accessibilityLabel="Your profile picture"
-          />
-        </View>
+        <LevelRing uri={user?.avatar_url} accessibilityLabel="Your profile picture" />
         <View style={styles.identityCopy}>
           <PidroText role="label" numberOfLines={1}>
             {user?.username ?? 'Player'}
@@ -121,24 +116,8 @@ export default function HomeScreen() {
       </PressableFX>
 
       <View style={styles.progression}>
-        <View style={[styles.ratingRim, gradientBg(PidroBevel.goldRimGradient)]}>
-          <View
-            style={[
-              styles.ratingFace,
-              gradientBg(
-                `linear-gradient(180deg, ${PidroBevel.panelHi}, ${PidroBevel.panelMid} 60%, ${PidroBevel.panelDeep})`
-              ),
-            ]}>
-            <Svg width={14} height={14} viewBox="0 0 24 24" fill={PidroBevel.textGold}>
-              <Path d="M12 2l2.4 5.7 6.1.5-4.6 4 1.4 6L12 15l-5.3 3.2 1.4-6-4.6-4 6.1-.5z" />
-            </Svg>
-            <PidroText style={styles.ratingValue}>{MOCK_RATING}</PidroText>
-          </View>
-        </View>
-        <View style={styles.leagueBar}>
-          <View style={[styles.leagueFill, { width: `${MOCK_LEAGUE_PROGRESS * 100}%` }]} />
-        </View>
-        <PidroText style={styles.leagueLabel}>{MOCK_LEAGUE}</PidroText>
+        <RatingPlaque rating={MOCK_RATING} />
+        <LeagueProgress progress={MOCK_LEAGUE_PROGRESS} label={MOCK_LEAGUE} align="flex-end" />
       </View>
     </View>
   );
@@ -160,7 +139,7 @@ export default function HomeScreen() {
         </Surface>
       ) : null}
 
-      <View style={styles.playWrap}>
+      <CtaBadge label="FIND A TABLE">
         <BevelButton
           label="PLAY"
           material="wood"
@@ -169,10 +148,7 @@ export default function HomeScreen() {
           fullWidth
           onPress={() => router.push('/lobby')}
         />
-        <View style={styles.playBadge} pointerEvents="none">
-          <PidroText style={styles.playBadgeLabel}>FIND A TABLE</PidroText>
-        </View>
-      </View>
+      </CtaBadge>
 
       <View style={styles.chips}>
         <BevelButton
@@ -181,35 +157,20 @@ export default function HomeScreen() {
           accessibilityLabel="Solo practice. Start immediately with three bots."
           loading={singlePlayerLoading}
           onPress={handleSinglePlayer}>
-          <Svg
-            width={15}
-            height={15}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#CFEFFF"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round">
-            <Path d="M6 4.5l13 7.5-13 7.5z" />
-          </Svg>
-          <PidroText style={styles.chipLabel}>Solo practice</PidroText>
+          <Icon name="play" />
+          <PidroText role="label" style={PidroBevel.glassLabelShadow}>
+            Solo practice
+          </PidroText>
         </BevelButton>
         <BevelButton
           material="glass"
           size="sm"
           accessibilityLabel="Play with friends. Create a table and invite them."
           onPress={() => router.push('/lobby')}>
-          <Svg
-            width={15}
-            height={15}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="#CFEFFF"
-            strokeWidth={2}
-            strokeLinecap="round">
-            <Path d="M9 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM3 20a6 6 0 0 1 12 0M16.5 5.5a3.2 3.2 0 0 1 0 5.6M21 20a6 6 0 0 0-4-5.6" />
-          </Svg>
-          <PidroText style={styles.chipLabel}>Play with friends</PidroText>
+          <Icon name="friends" />
+          <PidroText role="label" style={PidroBevel.glassLabelShadow}>
+            Play with friends
+          </PidroText>
         </BevelButton>
       </View>
     </View>
@@ -294,18 +255,6 @@ const styles = StyleSheet.create({
     gap: PidroSpacing.xs,
     minHeight: 46,
   },
-  levelRing: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    padding: 2.5,
-    boxShadow: '0px 2px 6px rgba(0,0,0,0.4)',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 21,
-  },
   identityCopy: {
     minWidth: 0,
     maxWidth: 170,
@@ -313,52 +262,6 @@ const styles = StyleSheet.create({
   progression: {
     alignItems: 'flex-end',
     gap: 4,
-  },
-  ratingRim: {
-    borderRadius: 12,
-    padding: 1.5,
-    boxShadow: '0px 2px 6px rgba(0,0,0,0.4)',
-  },
-  ratingFace: {
-    borderRadius: 10.5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 13,
-    boxShadow: 'inset 0px 1px 3px rgba(0,0,0,0.35)',
-  },
-  ratingValue: {
-    fontFamily: PidroFonts.display,
-    fontWeight: '400',
-    fontSize: 16,
-    lineHeight: 21,
-    color: PidroBevel.textGold,
-    textShadowColor: 'rgba(0, 0, 0, 0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-    transform: [{ translateY: -0.5 }],
-  },
-  leagueBar: {
-    width: 172,
-    height: 6,
-    borderRadius: 6,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    overflow: 'hidden',
-  },
-  leagueFill: {
-    height: '100%',
-    borderRadius: 6,
-    backgroundColor: PidroBevel.rim,
-  },
-  leagueLabel: {
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-    color: 'rgba(214, 238, 250, 0.65)',
   },
   logoStage: {
     flex: 1,
@@ -383,44 +286,10 @@ const styles = StyleSheet.create({
     borderColor: PidroColors.dangerBorder,
     padding: PidroSpacing.sm,
   },
-  // Match the hero's own width cap so the badge hugs the button at any
-  // container width instead of anchoring to a wider wrapper.
-  playWrap: {
-    position: 'relative',
-    alignSelf: 'center',
-    width: '100%',
-    maxWidth: 340,
-  },
-  playBadge: {
-    position: 'absolute',
-    top: -9,
-    right: 6,
-    borderRadius: 999,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-    backgroundColor: PidroColors.cyan,
-    boxShadow: '0px 2px 6px rgba(0,0,0,0.4)',
-  },
-  playBadgeLabel: {
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '900',
-    letterSpacing: 0.6,
-    color: '#06263f',
-  },
   chips: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
     gap: PidroSpacing.sm,
-  },
-  chipLabel: {
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '800',
-    color: '#ffffff',
-    textShadowColor: 'rgba(0, 10, 20, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
 });

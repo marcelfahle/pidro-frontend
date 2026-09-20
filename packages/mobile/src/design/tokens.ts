@@ -13,6 +13,7 @@ export const PidroColors = {
   cyan: '#46dcff',
   cyanText: '#8beaff',
   cyanSoft: 'rgba(70, 220, 255, 0.42)',
+  iconOnGlass: '#CFEFFF',
   cyanBorder: 'rgba(91, 221, 255, 0.42)',
   cyanBorderStrong: 'rgba(91, 221, 255, 0.68)',
   gold: '#e1ad3a',
