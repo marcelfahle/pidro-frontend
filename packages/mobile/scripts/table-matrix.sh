@@ -9,11 +9,13 @@
 #                                             deep-link all (heavy! occasional sweeps)
 #   table-matrix.sh shots [outdir]            screenshot every booted sim
 #                                             (default: <repo>/screenshots/matrix)
+#   table-matrix.sh rotate [left|right] [phase]
+#                                             rotate the booted sim and remount
+#                                             the route so layout follows
 #   table-matrix.sh list                      show resolved simulator UDIDs
 #
 # phase: playing (default) | bidding | declaring | second_deal | game_over
 # Metro port: METRO_PORT env var (default 8081).
-# Rotation can't be scripted — press Cmd+← in the simulator (it remembers).
 set -euo pipefail
 
 METRO_PORT="${METRO_PORT:-8081}"
@@ -45,17 +47,28 @@ booted_sims() { # "<udid>\t<name>" per line
   xcrun simctl list -j devices booted | jq -r '.devices[][] | "\(.udid)\t\(.name)"'
 }
 
+# An OUTDATED Expo Go fails with "Project is incompatible with this version of
+# Expo Go", which reads like a code error and costs an hour. Match the newest
+# cached client every time — don't just fill a gap when it's missing entirely.
 ensure_expo_go() {
-  local udid="$1" expo_go
-  if ! xcrun simctl get_app_container "$udid" host.exp.Exponent >/dev/null 2>&1; then
-    expo_go=$(ls -d "$HOME/.expo/ios-simulator-app-cache/"*.app 2>/dev/null | sort -V | tail -1 || true)
-    if [[ -n "$expo_go" ]]; then
-      echo "… installing $(basename "$expo_go")"
-      xcrun simctl install "$udid" "$expo_go"
-    else
-      echo "⚠ Expo Go missing and no cache found — press shift+i in the Expo CLI once"
-    fi
+  local udid="$1" expo_go newest installed container
+  expo_go=$(ls -d "$HOME/.expo/ios-simulator-app-cache/"*.app 2>/dev/null | sort -V | tail -1 || true)
+  container=$(xcrun simctl get_app_container "$udid" host.exp.Exponent 2>/dev/null || true)
+  if [[ -n "$container" ]]; then
+    installed=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \
+      "$container/Info.plist" 2>/dev/null || true)
   fi
+
+  if [[ -z "$expo_go" ]]; then
+    [[ -z "$container" ]] && echo "⚠ Expo Go missing and no cache found — press shift+i in the Expo CLI once"
+    return
+  fi
+
+  newest=$(basename "$expo_go" | sed -E 's/^Expo-Go-(.+)\.tar\.app$/\1/')
+  [[ -n "$installed" && "$installed" == "$newest" ]] && return
+
+  echo "… installing Expo Go $newest${installed:+ (replacing $installed)}"
+  xcrun simctl install "$udid" "$expo_go"
 }
 
 wait_for_metro() {
@@ -64,7 +77,7 @@ wait_for_metro() {
   until curl -sf "http://127.0.0.1:${METRO_PORT}/status" >/dev/null 2>&1; do
     tries=$((tries - 1))
     if [[ $tries -le 0 ]]; then
-      echo "✗ Metro never came up on :${METRO_PORT} — start it: cd pidro_frontend/packages/mobile && bun run start"
+      echo "✗ Metro never came up on :${METRO_PORT} — start it with: just mobile"
       exit 1
     fi
     sleep 2
@@ -91,6 +104,32 @@ if [[ "${1:-}" == "solo" ]]; then
   wait_for_metro
   link "$udid" "$phase"
   echo "✓ $name → /table-dev?phase=$phase   (Cmd+← = landscape, sim remembers)"
+  exit 0
+fi
+
+# ── rotate ───────────────────────────────────────────────────────────────────
+# AppleScript really does rotate the simulator. Two gotchas make it look broken:
+# Expo Go keeps stale useWindowDimensions until the route remounts, and
+# `simctl io screenshot` always captures device-NATIVE orientation (so a
+# landscape shot still comes out portrait-shaped). Rotate, remount, then shoot.
+if [[ "${1:-}" == "rotate" ]]; then
+  dir="${2:-left}"
+  phase="${3:-playing}"
+  case "$dir" in
+    left) item="Rotate Left" ;;
+    right) item="Rotate Right" ;;
+    *) echo "usage: table-matrix.sh rotate [left|right] [phase]" >&2; exit 1 ;;
+  esac
+  udid=$(booted_sims | head -1 | cut -f1)
+  [[ -z "$udid" ]] && { echo "✗ no booted simulator — run: just table-sim"; exit 1; }
+  osascript -e 'tell application "Simulator" to activate' >/dev/null
+  osascript -e "tell application \"System Events\" to tell process \"Simulator\" \
+    to click menu item \"$item\" of menu 1 of menu bar item \"Device\" of menu bar 1" >/dev/null
+  sleep 1
+  wait_for_metro
+  link "$udid" "$phase"
+  echo "✓ rotated $dir, remounted /table-dev?phase=$phase"
+  echo "  screenshots come out device-native — rotate the PNG, not the expectation"
   exit 0
 fi
 
@@ -151,4 +190,4 @@ done
 echo ""
 echo "✓ ${#UDIDS[@]} simulators → /table-dev?phase=${PHASE}"
 echo "  landscape: Cmd+← in each simulator (once — sims remember orientation)"
-echo "  screenshots: just shots   →  screenshots/matrix/*.png"
+echo "  screenshots: just table-shots   →  screenshots/matrix/*.png"

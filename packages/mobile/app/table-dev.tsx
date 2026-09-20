@@ -4,9 +4,13 @@
  * overlay to show with mock data. Native renders directly; web lazy-loads CanvasKit.
  * DevOverlays is pure RN (no Skia) so it's safe to import statically. Throwaway.
  */
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { Text, View } from 'react-native';
-import { SafeAreaInsetsContext, SafeAreaProvider } from 'react-native-safe-area-context';
+import {
+  SafeAreaInsetsContext,
+  SafeAreaProvider,
+  type EdgeInsets,
+} from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
@@ -145,6 +149,26 @@ function SkiaDevTable({
   );
 }
 
+const FIXTURE_INSETS: Record<string, EdgeInsets> = {
+  island: { top: 59, bottom: 34, left: 0, right: 0 },
+  android: { top: 24, bottom: 48, left: 0, right: 0 },
+  'android-buttons': { top: 24, bottom: 48, left: 0, right: 0 },
+  'android-gesture': { top: 24, bottom: 24, left: 0, right: 0 },
+  none: { top: 0, bottom: 0, left: 0, right: 0 },
+};
+
+/**
+ * `?safeArea=` fakes insets so a browser can stand in for a device. Without it
+ * the harness inherits the REAL ones — a simulator must show real clearances,
+ * not reproduce the browser's zero-inset blindness. (Web has no insets either
+ * way, so the captured baselines are unaffected.)
+ */
+function FixtureInsets({ preset, children }: { preset?: string; children: ReactNode }) {
+  if (!preset) return <>{children}</>;
+  const insets = FIXTURE_INSETS[preset] ?? FIXTURE_INSETS.none;
+  return <SafeAreaInsetsContext.Provider value={insets}>{children}</SafeAreaInsetsContext.Provider>;
+}
+
 export default function TableDevRoute() {
   if (!__DEV__) return <Redirect href="/home" />;
   return <TableDevHarness />;
@@ -177,26 +201,18 @@ function TableDevHarness() {
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
-  const fixtureInsets =
-    params.safeArea === 'island'
-      ? { top: 59, bottom: 34, left: 0, right: 0 }
-      : params.safeArea === 'android-buttons' || params.safeArea === 'android'
-        ? { top: 24, bottom: 48, left: 0, right: 0 }
-        : params.safeArea === 'android-gesture'
-          ? { top: 24, bottom: 24, left: 0, right: 0 }
-          : { top: 0, bottom: 0, left: 0, right: 0 };
 
   if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
     return (
       <SafeAreaProvider>
-        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+        <FixtureInsets preset={params.safeArea}>
           <RolePreview
             role={params.role === 'player' ? 'player' : 'spectator'}
             phase={phase}
             feedback={params.feedback}
             canPass={params.pass !== 'disabled'}
           />
-        </SafeAreaInsetsContext.Provider>
+        </FixtureInsets>
       </SafeAreaProvider>
     );
   }
@@ -241,7 +257,7 @@ function TableDevHarness() {
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
-          <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+          <FixtureInsets preset={params.safeArea}>
             <WaitingTable
               room={fixtureRoom}
               isSpectator={params.role === 'spectator'}
@@ -273,7 +289,7 @@ function TableDevHarness() {
                 setReadyPlayers(['north']);
               }}
             />
-          </SafeAreaInsetsContext.Provider>
+          </FixtureInsets>
           {hostControls ? (
             <InviteModal
               isOpen={inviteOpen}
@@ -290,7 +306,7 @@ function TableDevHarness() {
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
       <SafeAreaProvider>
-        <SafeAreaInsetsContext.Provider value={fixtureInsets}>
+        <FixtureInsets preset={params.safeArea}>
           <SkiaDevTable
             onHandPresentationReadyChange={setIsHandReady}
             autoPlay={autoPlay}
@@ -343,7 +359,7 @@ function TableDevHarness() {
               }
             />
           )}
-        </SafeAreaInsetsContext.Provider>
+        </FixtureInsets>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
