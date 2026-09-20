@@ -49,6 +49,6 @@ This three-device setup covers one human playing with three bots and live host d
 
 Record mobile build numbers, backend commit, room code, departure order/method, current phase/turn, and whether the next hand started. Capture a screen recording if play stops. A queued build or passing server test does not count as a completed physical-device test.
 
-Production games and departures can affect the test accounts' statistics. The mobile **Private table** setting currently is not enforced by the backend's room creation path, so do not assume a QA table is hidden from the public lobby.
+Production games and departures can affect the test accounts' statistics. The mobile **Private table** setting no longer exists, so a QA table is visible in the public lobby unless it is a solo table (all three other seats are bots).
 
 References: [Expo TestFlight distribution](https://docs.expo.dev/submit/testflight/), [Expo automated submission tracks](https://docs.expo.dev/build/automate-submissions/).
