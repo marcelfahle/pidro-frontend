@@ -48,6 +48,7 @@ type SkiaTableProps = {
   onPlayAgain?: () => void;
   rematch?: RematchVote | null;
   rematchPending?: boolean;
+  roomFinished?: boolean;
   backLabel?: string;
 };
 
@@ -291,7 +292,7 @@ export default function GameScreen() {
   const hasGameState = !!serverPhase;
   const canJoinGameChannel =
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
-  const { notice, addNotice: handleSeatEvent } = useTableNotices(code);
+  const { notice, addNotice: handleSeatEvent, clearNotices } = useTableNotices(code);
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
 
   const handleProgressionSummary = useCallback(
@@ -481,6 +482,15 @@ export default function GameScreen() {
       });
   }, [readiness, isChannelJoined, role, handleSeatEvent]);
   const rematch = rematchVote(readiness, youPositionAbs);
+  const gameIsOver = serverPhase === 'complete' || serverPhase === 'game_over';
+  const tableReopened =
+    gameIsOver && (readiness?.status === 'waiting' || readiness?.status === 'ready');
+  useEffect(() => {
+    if (!tableReopened) return;
+    // Notices still queued belong to the game that just ended.
+    clearNotices();
+    handleSeatEvent({ message: t('table.reopened'), variant: 'warning' });
+  }, [tableReopened, handleSeatEvent, clearNotices]);
 
   const handleLeaveGame = () => {
     const roomCode = room?.code ?? code;
@@ -530,6 +540,14 @@ export default function GameScreen() {
       void runRoomControl(() => lobbyApi.movePlayer(room.code, position, userId));
     },
     [canManage, room, runRoomControl]
+  );
+
+  const handleSeatBot = useCallback(
+    (position: Position) => {
+      if (!room) return;
+      void runRoomControl(() => lobbyApi.seatBot(room.code, position));
+    },
+    [room, runRoomControl]
   );
 
   const handleKickPlayer = useCallback(
@@ -640,7 +658,10 @@ export default function GameScreen() {
   ];
   const isInGamePhase = serverPhase && inGamePhases.includes(serverPhase);
 
-  if (room.status === 'playing' || isInGamePhase) {
+  // After a game somebody may leave; the server then reopens the room as a
+  // waiting table with that seat free. The finished game's state is still in
+  // the store, so the room's live status decides, not the last phase seen.
+  if (!tableReopened && (room.status === 'playing' || isInGamePhase)) {
     return (
       <View className="flex-1">
         <SkiaGameTable
@@ -650,6 +671,7 @@ export default function GameScreen() {
           onPlayAgain={handlePlayAgain}
           rematch={rematch}
           rematchPending={rematchPending}
+          roomFinished={readiness ? readiness.status === 'finished' : true}
           backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
         />
         <TableFeedback notice={notice} />
@@ -675,7 +697,9 @@ export default function GameScreen() {
         onToggleLock={handleToggleLock}
         onMovePlayer={handleMovePlayer}
         onKickPlayer={handleKickPlayer}
+        onSeatBot={handleSeatBot}
       />
+      <TableFeedback notice={notice} />
       {canManage ? (
         <InviteModal
           key={room.code}

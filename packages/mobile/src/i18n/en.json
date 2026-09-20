@@ -80,6 +80,8 @@
   "table.kick": "Remove from table",
   "table.actionErrorTitle": "Table action failed",
   "table.actionError": "The server did not accept that change. Refresh and try again.",
+  "table.seatBot": "Fill an open seat with a bot",
+  "table.reopened": "A player left. Invite someone or add a bot.",
   "table.rematch.tableNotFull": "A seat is empty. A rematch needs all four seats taken.",
   "table.rematch.tableChanged": "The table changed. Press Play again once more.",
   "table.rematch.failed": "The rematch did not go through. Try again."

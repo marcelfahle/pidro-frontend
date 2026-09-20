@@ -23,13 +23,14 @@ export function useTableNotices(roomCode: string) {
     [roomCode]
   );
   const dismissNotice = useCallback(() => setNotices((current) => current.slice(1)), []);
+  const clearNotices = useCallback(() => setNotices([]), []);
   const notice = notices[0]?.roomCode === roomCode ? notices[0] : null;
   useEffect(() => {
     if (!notice) return;
     const timer = setTimeout(dismissNotice, 4500);
     return () => clearTimeout(timer);
   }, [notice, dismissNotice]);
-  return { notice, addNotice, dismissNotice };
+  return { notice, addNotice, dismissNotice, clearNotices };
 }
 
 /** Explicit review, not a blocking alert. Deferring never resolves a server decision. */

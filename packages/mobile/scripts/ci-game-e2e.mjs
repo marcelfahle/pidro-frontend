@@ -15,7 +15,9 @@
  * the game while the guest watches in the client, recorded on video. At game
  * over the guest presses Play again in the UI, the window shows the vote, the
  * host agrees, and the second game starts in the same room without anybody
- * navigating.
+ * navigating. When that game ends the host leaves: the guest's screen goes
+ * back to the waiting table with the seat open, the guest (now the host) fills
+ * it with a bot, readies up, and a third game starts in the same room.
  *
  * Requires a running backend (API_BASE_URL/WS_BASE_URL) and Expo web
  * (MOBILE_BASE_URL). Artifacts land in E2E_ARTIFACT_DIR.
@@ -38,7 +40,7 @@ const apiBaseUrl = process.env.API_BASE_URL ?? 'http://127.0.0.1:4000';
 const wsBaseUrl = process.env.WS_BASE_URL ?? 'ws://127.0.0.1:4000/socket';
 const mobileBaseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const artifactDir = process.env.E2E_ARTIFACT_DIR ?? resolve(repoRoot, 'screenshots/agent-game-e2e');
-const globalTimeoutMs = Number(process.env.E2E_TIMEOUT_MINUTES ?? '12') * 60_000;
+const globalTimeoutMs = Number(process.env.E2E_TIMEOUT_MINUTES ?? '20') * 60_000;
 
 const suffix = Date.now().toString(36).slice(-6);
 const soloUser = `ci_${suffix}a`;
@@ -174,6 +176,48 @@ async function rematchThroughUi(page, roomCode, seen) {
   await shot('rematch-started');
 }
 
+// The host played the rematch to its end and left. The room must come back as
+// a waiting table on the same URL, with the guest in charge of it: they seat a
+// bot in the open seat, ready up, and a third game starts.
+async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
+  const shot = async (name) => {
+    await page.screenshot({ path: resolve(artifactDir, `${name}.png`) });
+    seen.add(name);
+    log(`milestone: ${name}`);
+  };
+  const sameRoom = () => new RegExp(`/game/${roomCode}$`).test(new URL(page.url()).pathname);
+
+  await page.getByTestId('waiting-table').waitFor({ timeout: 60_000 });
+  if (!sameRoom()) throw new Error(`the open seat navigated away from the room: ${page.url()}`);
+  const seatBot = page.getByTestId('waiting-seat-bot');
+  await seatBot.waitFor({ timeout: 15_000 });
+  await shot('seat-open');
+
+  await seatBot.click();
+  const ready = page.getByRole('button', { name: "I'm ready" });
+  await ready.waitFor({ timeout: 15_000 });
+  await shot('seat-filled');
+  await ready.click();
+
+  await page.getByTestId('waiting-table').waitFor({ state: 'hidden', timeout: 30_000 });
+  await page.getByTestId('game-table').first().waitFor({ timeout: 15_000 });
+  if (!sameRoom()) throw new Error(`the third game navigated away from the room: ${page.url()}`);
+  // Still a seated player in the new game: the scoreboard reads Us/Them for a
+  // player and N/S – E/W for anybody else. Headless Chromium drops the socket
+  // now and then, so allow a rejoin before judging.
+  await page.getByText('THEM', { exact: true }).first().waitFor({ timeout: 30_000 });
+  await page.waitForTimeout(3_000);
+  if (
+    await page
+      .getByTestId('game-over-window')
+      .isVisible()
+      .catch(() => false)
+  ) {
+    throw new Error("the third game started under the finished game's game-over window");
+  }
+  await shot('third-game-started');
+}
+
 async function verifyUiLogin(browser, username) {
   const context = await browser.newContext({ viewport: { width: 844, height: 390 } });
   const page = await context.newPage();
@@ -290,13 +334,13 @@ async function stageTwoMultiplayerVideo() {
     });
     // Guest confirms first; the registered host confirms on its joined autoplay channel.
     // After game over the host agrees to a rematch only once the guest has
-    // asked in the UI, a few seconds later so the recording shows the vote, and
-    // then keeps playing so the second game is seen moving.
+    // asked in the UI, a few seconds later so the recording shows the vote. It
+    // then plays the rematch to its end and leaves the room.
     const autoplayDone = runAutoplayer(
       [
         ...['--room', roomCode, '--user', hostUser, '--password', password],
-        ...['--max-minutes', '10', '--rematch', 'after-others'],
-        ...['--rematch-delay-ms', '4000', '--rematch-linger-ms', '20000'],
+        ...['--max-minutes', '16', '--rematch', 'after-others'],
+        ...['--rematch-delay-ms', '4000', '--leave-after-rematch'],
       ],
       'multi'
     );
@@ -318,7 +362,10 @@ async function stageTwoMultiplayerVideo() {
     }
     await rematchThroughUi(page, roomCode, seen);
     await autoplayDone;
-    log(`stage 2 passed: game over, then a rematch (milestones: ${[...seen].join(', ')})`);
+    await fillTheOpenSeatThroughUi(page, roomCode, seen);
+    log(
+      `stage 2 passed: game over, a rematch, then a bot in the seat the host left (milestones: ${[...seen].join(', ')})`
+    );
     if (pageErrors.length) {
       log(`note: ${pageErrors.length} page error(s) during the game (non-fatal):`);
       for (const err of pageErrors.slice(0, 5)) log(`  ${err}`);
@@ -349,7 +396,7 @@ function writeStepSummary(result, elapsedSeconds) {
   const lines = [
     '## Game e2e',
     '',
-    `Full solo game (protocol) and invite-to-guest multiplayer game (real UI, room \`${result.roomCode}\`) both reached game over and then started a rematch in the same room, in ${elapsedSeconds}s.`,
+    `Full solo game (protocol) and invite-to-guest multiplayer game (real UI, room \`${result.roomCode}\`): game over, a rematch in the same room, then the host left and a bot filled the seat for a third game, in ${elapsedSeconds}s.`,
     '',
     `- UI milestones captured: ${result.milestones.join(', ')}`,
     `- Page errors during the UI game: ${result.pageErrors}`,

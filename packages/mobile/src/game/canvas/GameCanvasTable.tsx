@@ -39,6 +39,8 @@ type Props = {
   onPlayAgain?: () => void;
   rematch?: RematchVote | null;
   rematchPending?: boolean;
+  /** False once the room has moved on from the finished game (next game starting). */
+  roomFinished?: boolean;
   backLabel?: string;
 };
 
@@ -193,6 +195,7 @@ export function GameCanvasTable({
   onPlayAgain,
   rematch,
   rematchPending,
+  roomFinished = true,
   backLabel,
 }: Props) {
   const controller = useGameTableController(room);
@@ -318,7 +321,7 @@ export function GameCanvasTable({
       />
 
       {/* Game over */}
-      {isGameOver && viewModel && serverState && (
+      {isGameOver && roomFinished && viewModel && serverState && (
         <GameOverOverlay
           viewModel={viewModel}
           serverState={serverState}
