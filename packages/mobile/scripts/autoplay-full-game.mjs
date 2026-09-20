@@ -25,6 +25,17 @@ const username = argValue('--user', 'skiatest1');
 const password = argValue('--password', 'hallohallo');
 const fixedRoom = argValue('--room', null);
 const maxMinutes = Number(argValue('--max-minutes', '20'));
+// After game over, ask for a rematch instead of exiting: `now`, or
+// `after-others` to wait until another human has asked (then `--rematch-delay-ms`
+// more, so a UI recording can show the waiting state). Exits 0 once the next
+// game has started in the same room and `--rematch-linger-ms` of play has passed.
+const rematchMode = argValue('--rematch', null);
+const rematchDelayMs = Number(argValue('--rematch-delay-ms', '0'));
+const rematchLingerMs = Number(argValue('--rematch-linger-ms', '0'));
+if (rematchMode && !['now', 'after-others'].includes(rematchMode)) {
+  console.error(`--rematch takes now or after-others, got ${rematchMode}`);
+  process.exit(1);
+}
 
 function log(...parts) {
   console.log(new Date().toISOString().slice(11, 19), ...parts);
@@ -98,6 +109,50 @@ async function main() {
   let readiness = null;
   let confirmedEpoch = null;
   let readinessDeadline = null;
+  let myPosition = null;
+  let rematchAsked = false;
+  let rematchStarted = false;
+  let rematchDeadline = null;
+
+  // Game over is where a plain run ends. A rematch run stays on the channel.
+  function gameOverConfirmed() {
+    if (!rematchMode || rematchStarted) process.exit(0);
+    maybeAskForRematch();
+  }
+
+  function maybeAskForRematch() {
+    if (!rematchMode || rematchAsked || !finished || !progressionReceived) return;
+    const vote = readiness;
+    if (!vote || vote.status !== 'finished') return;
+    if (rematchMode === 'after-others') {
+      const others = (vote.ready_players ?? []).filter(
+        (position) => position !== myPosition && vote.seats?.[position]?.occupant_type === 'human'
+      );
+      if (!others.length) return;
+    }
+    rematchAsked = true;
+    setTimeout(() => {
+      // Send the epoch of the newest vote, not the one that triggered the wait.
+      const current = readiness;
+      // Asking for a rematch confirms this roster for the next game.
+      confirmedEpoch = current.ready_epoch;
+      rematchDeadline = setTimeout(() => {
+        console.error('rematch was accepted but no new game started within 30s');
+        process.exit(4);
+      }, 30_000);
+      channel
+        .push('rematch', { room_id: current.room_id, ready_epoch: current.ready_epoch })
+        .receive('ok', () => log(`asked for a rematch epoch=${current.ready_epoch}`))
+        .receive('error', (error) => {
+          console.error('rematch rejected', error);
+          process.exit(4);
+        })
+        .receive('timeout', () => {
+          console.error('rematch timed out');
+          process.exit(4);
+        });
+    }, rematchDelayMs);
+  }
 
   function handleReadiness(snapshot) {
     if (!snapshot) return; // Older backends start immediately and send no snapshot.
@@ -105,7 +160,10 @@ async function main() {
     readiness = snapshot;
     // Game over clears readiness and bumps the epoch: that snapshot opens the
     // rematch vote, it does not change the roster this player confirmed.
-    if (finished || snapshot.status === 'finished') return;
+    if (finished || snapshot.status === 'finished') {
+      maybeAskForRematch();
+      return;
+    }
     if (confirmedEpoch !== null && snapshot.ready_epoch !== confirmedEpoch) {
       console.error('Readiness epoch reset after confirmation; refusing to confirm a new roster');
       process.exit(1);
@@ -179,12 +237,27 @@ async function main() {
       if (finished) return;
       log('GAME OVER', scores);
       finished = true;
-      if (progressionReceived) process.exit(0);
+      if (progressionReceived) return gameOverConfirmed();
       progressionDeadline = setTimeout(() => {
         console.error('game finished without the required progression_summary event');
         process.exit(3);
       }, 8000);
       return;
+    }
+
+    if (finished && rematchAsked && !rematchStarted) {
+      // Same channel, same room code: the rematch is a new game in place.
+      const total = Object.values(state.scores ?? {}).reduce((sum, value) => sum + value, 0);
+      if (total !== 0) {
+        console.error(`rematch started with scores ${scores}; expected a fresh game`);
+        process.exit(4);
+      }
+      if (rematchDeadline) clearTimeout(rematchDeadline);
+      rematchStarted = true;
+      finished = false;
+      progressionReceived = false;
+      log(`REMATCH STARTED in ${roomCode} phase=${state.phase} scores=${scores}`);
+      setTimeout(() => process.exit(0), rematchLingerMs);
     }
 
     if (!actions.length || acting) return;
@@ -215,7 +288,7 @@ async function main() {
     log('PROGRESSION_SUMMARY', JSON.stringify(payload));
     if (finished) {
       if (progressionDeadline) clearTimeout(progressionDeadline);
-      process.exit(0);
+      gameOverConfirmed();
     }
   });
 
@@ -228,6 +301,7 @@ async function main() {
         process.exit(1);
       }
       joined = true;
+      myPosition = resp?.position ?? null;
       // Reconcile any event received before the join ack, then confirm only once.
       const snapshot =
         readiness && readiness.snapshot_revision > resp?.readiness?.snapshot_revision

@@ -4,13 +4,18 @@
  * Stage 1 — solo gate: registers a throwaway account and runs
  * autoplay-full-game.mjs (3-bot room, protocol client) to game_over. This
  * exercises room creation, the game channel, legal_actions and progression
- * against the live server with zero UI variables.
+ * against the live server with zero UI variables. It then asks for a rematch:
+ * the bots are still seated, so a fresh game must start in the same room on
+ * the human's word alone.
  *
  * Stage 2 — invite guest video: a registered host creates a room and invite.
  * The registered host first signs in through the real UI. A clean Chromium
  * profile then opens the join route, creates a guest, redeems the invite, and
  * sits at the table. The host's protocol client and server turn timers finish
- * the game while the guest watches in the client, recorded on video.
+ * the game while the guest watches in the client, recorded on video. At game
+ * over the guest presses Play again in the UI, the window shows the vote, the
+ * host agrees, and the second game starts in the same room without anybody
+ * navigating.
  *
  * Requires a running backend (API_BASE_URL/WS_BASE_URL) and Expo web
  * (MOBILE_BASE_URL). Artifacts land in E2E_ARTIFACT_DIR.
@@ -134,6 +139,41 @@ async function captureMilestones(page, seen) {
   }
 }
 
+// The guest asks for a rematch from the game-over window. Two humans sit at
+// this table, so the window must show one of two agreed until the host's
+// protocol client agrees; then the same URL shows a fresh game.
+async function rematchThroughUi(page, roomCode, seen) {
+  const shot = async (name) => {
+    await page.screenshot({ path: resolve(artifactDir, `${name}.png`) });
+    seen.add(name);
+    log(`milestone: ${name}`);
+  };
+
+  const playAgain = page.getByTestId('play-again');
+  await playAgain.waitFor({ timeout: 15_000 });
+  await playAgain.click();
+
+  const status = page.getByTestId('rematch-status');
+  await status.waitFor({ timeout: 15_000 });
+  const statusText = (await status.textContent())?.trim();
+  if (statusText !== '1 of 2 want to play again') {
+    throw new Error(`rematch vote read "${statusText}", expected "1 of 2 want to play again"`);
+  }
+  if (await playAgain.isEnabled()) {
+    throw new Error('Play again stayed enabled after the guest asked for a rematch');
+  }
+  await shot('rematch-waiting');
+
+  await page.getByTestId('game-over-window').waitFor({ state: 'hidden', timeout: 45_000 });
+  await page.getByTestId('game-table').first().waitFor({ timeout: 15_000 });
+  if (!new RegExp(`/game/${roomCode}$`).test(new URL(page.url()).pathname)) {
+    throw new Error(`the rematch navigated away from the room: ${page.url()}`);
+  }
+  // Let the dealer cut and the first deal land so the shot shows the new game.
+  await page.waitForTimeout(6_000);
+  await shot('rematch-started');
+}
+
 async function verifyUiLogin(browser, username) {
   const context = await browser.newContext({ viewport: { width: 844, height: 390 } });
   const page = await context.newPage();
@@ -166,8 +206,14 @@ async function verifyUiLogin(browser, username) {
 async function stageOneSoloGame() {
   log(`stage 1: solo full game as ${soloUser}`);
   await registerOrLogin(soloUser);
-  await runAutoplayer(['--user', soloUser, '--password', password, '--max-minutes', '8'], 'solo');
-  log('stage 1 passed: solo game reached game_over with progression summary');
+  const lines = await runAutoplayer(
+    ['--user', soloUser, '--password', password, '--max-minutes', '8', '--rematch', 'now'],
+    'solo'
+  );
+  if (!lines.some((line) => line.includes('REMATCH STARTED'))) {
+    throw new Error('solo autoplayer exited without starting a rematch');
+  }
+  log('stage 1 passed: solo game reached game_over, then a rematch started in the same room');
 }
 
 async function stageTwoMultiplayerVideo() {
@@ -243,8 +289,15 @@ async function stageTwoMultiplayerVideo() {
       onWaiting: () => captureMilestones(page, seen),
     });
     // Guest confirms first; the registered host confirms on its joined autoplay channel.
+    // After game over the host agrees to a rematch only once the guest has
+    // asked in the UI, a few seconds later so the recording shows the vote, and
+    // then keeps playing so the second game is seen moving.
     const autoplayDone = runAutoplayer(
-      ['--room', roomCode, '--user', hostUser, '--password', password, '--max-minutes', '10'],
+      [
+        ...['--room', roomCode, '--user', hostUser, '--password', password],
+        ...['--max-minutes', '10', '--rematch', 'after-others'],
+        ...['--rematch-delay-ms', '4000', '--rematch-linger-ms', '20000'],
+      ],
       'multi'
     );
 
@@ -260,11 +313,12 @@ async function stageTwoMultiplayerVideo() {
       }
       await page.waitForTimeout(1_500);
     }
-    await autoplayDone;
     if (!uiGameOver) {
-      throw new Error('autoplayer finished but the UI never showed game-over-window');
+      throw new Error('the UI never showed game-over-window');
     }
-    log(`stage 2 passed: UI reached game over (milestones: ${[...seen].join(', ')})`);
+    await rematchThroughUi(page, roomCode, seen);
+    await autoplayDone;
+    log(`stage 2 passed: game over, then a rematch (milestones: ${[...seen].join(', ')})`);
     if (pageErrors.length) {
       log(`note: ${pageErrors.length} page error(s) during the game (non-fatal):`);
       for (const err of pageErrors.slice(0, 5)) log(`  ${err}`);
@@ -295,7 +349,7 @@ function writeStepSummary(result, elapsedSeconds) {
   const lines = [
     '## Game e2e',
     '',
-    `Full solo game (protocol) and invite-to-guest multiplayer game (real UI, room \`${result.roomCode}\`) both reached game over in ${elapsedSeconds}s.`,
+    `Full solo game (protocol) and invite-to-guest multiplayer game (real UI, room \`${result.roomCode}\`) both reached game over and then started a rematch in the same room, in ${elapsedSeconds}s.`,
     '',
     `- UI milestones captured: ${result.milestones.join(', ')}`,
     `- Page errors during the UI game: ${result.pageErrors}`,

@@ -37,20 +37,21 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 
 ### Params
 
-| Param        | Values                                                                                    | Effect                                                                            |
-| ------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `phase`      | see above                                                                                 | which overlay                                                                     |
-| `safeArea`   | `island` (59/34) · `android`/`android-buttons` (24/48) · `android-gesture` (24/24)        | **fakes insets** — the one way to test notch clearance on web                     |
-| `role`       | `player` · `spectator`                                                                    | non-waiting phases: renders via the **real store/controller**, not the mock model |
-| `lifecycle`  | `normal` · `reconnecting` · `bot_substitute` · `permanent_bot` · `vacant`                 | seat lifecycle badge state                                                        |
-| `feedback`   | `owner` (3 queued seat decisions) · `notice` · `timed` (dedupe + success at 0.8/1.0/1.2s) | TableFeedback / TableSeatDecision                                                 |
-| `notice`     | `true`                                                                                    | same as `feedback=notice`                                                         |
-| `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                       |
-| `names`      | `long`                                                                                    | west seat → "Alexandria the Long-Named Player" (wrapping)                         |
-| `playerName` | any string                                                                                | name in the first seat decision                                                   |
-| `viewer`     | `east`                                                                                    | you are east instead of south                                                     |
-| `pass`       | `disabled`                                                                                | removes the pass action from legal actions                                        |
-| `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                       |
+| Param        | Values                                                                                    | Effect                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `phase`      | see above                                                                                 | which overlay                                                                             |
+| `safeArea`   | `island` (59/34) · `android`/`android-buttons` (24/48) · `android-gesture` (24/24)        | **fakes insets** — the one way to test notch clearance on web                             |
+| `role`       | `player` · `spectator`                                                                    | non-waiting phases: renders via the **real store/controller**, not the mock model         |
+| `lifecycle`  | `normal` · `reconnecting` · `bot_substitute` · `permanent_bot` · `vacant`                 | seat lifecycle badge state                                                                |
+| `feedback`   | `owner` (3 queued seat decisions) · `notice` · `timed` (dedupe + success at 0.8/1.0/1.2s) | TableFeedback / TableSeatDecision                                                         |
+| `notice`     | `true`                                                                                    | same as `feedback=notice`                                                                 |
+| `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                               |
+| `names`      | `long`                                                                                    | west seat → "Alexandria the Long-Named Player" (wrapping)                                 |
+| `playerName` | any string                                                                                | name in the first seat decision                                                           |
+| `viewer`     | `east`                                                                                    | you are east instead of south                                                             |
+| `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you |
+| `pass`       | `disabled`                                                                                | removes the pass action from legal actions                                                |
+| `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                               |
 
 ### Recipes
 

@@ -188,6 +188,7 @@ function TableDevHarness() {
     safeArea?: string;
     pass?: string;
     viewer?: string;
+    rematch?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -317,6 +318,7 @@ function TableDevHarness() {
             phase={phase}
             isHandReady={isHandReady}
             canPass={params.pass !== 'disabled'}
+            rematch={params.rematch}
           />
           {params.feedback === 'owner' && (
             <TableSeatDecision

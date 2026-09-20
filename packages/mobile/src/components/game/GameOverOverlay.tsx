@@ -1,5 +1,5 @@
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
@@ -176,14 +176,14 @@ export function GameOverOverlay({
           ) : null}
 
           <View style={[styles.actions, portrait && styles.actionsPortrait]}>
-            <Button
+            <BevelButton
               label={backLabel}
-              variant="outline"
+              material="glass"
               onPress={onBackToLobby}
               style={styles.actionButton}
             />
             {spectator ? null : (
-              <Button
+              <BevelButton
                 testID="play-again"
                 label={rematch?.youAgreed ? 'Waiting for the others' : 'Play again'}
                 disabled={rematch?.youAgreed}
