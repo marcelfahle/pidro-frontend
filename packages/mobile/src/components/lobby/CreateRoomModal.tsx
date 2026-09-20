@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Modal, StyleSheet, Switch, useWindowDimensions, View } from 'react-native';
+import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { clampRoomName, ROOM_NAME_MAX_LENGTH } from '@pidro/shared';
 import type { BotDifficulty, CreateRoomRequest, SeatType } from '@/types/lobby';
 import { Button } from '@/components/ui/Button';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
@@ -40,8 +41,6 @@ export function CreateRoomModal({
   const reduceMotion = useReducedMotion();
   const landscape = width > height;
   const [name, setName] = useState('');
-  const [isPrivate, setIsPrivate] = useState(false);
-  const [password, setPassword] = useState('');
   const [seat2, setSeat2] = useState<SeatToggle>('open');
   const [seat3, setSeat3] = useState<SeatToggle>('open');
   const [seat4, setSeat4] = useState<SeatToggle>('open');
@@ -51,8 +50,6 @@ export function CreateRoomModal({
     if (!isOpen) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- reset hidden form after dismissal
       setName('');
-      setIsPrivate(false);
-      setPassword('');
       setSeat2('open');
       setSeat3('open');
       setSeat4('open');
@@ -66,13 +63,7 @@ export function CreateRoomModal({
   const handleSubmit = () => {
     if (isLoading) return;
     onSubmit({
-      name: name.trim() || `${username ?? 'Player'}'s table`,
-      settings: {
-        min_games: 1,
-        time_limit: 0,
-        private: isPrivate,
-        password: isPrivate ? password : undefined,
-      },
+      name: clampRoomName(name.trim() || `${username ?? 'Player'}'s table`),
       seats: {
         seat_2: seat2 as SeatType,
         seat_3: seat3 as SeatType,
@@ -126,6 +117,7 @@ export function CreateRoomModal({
                 value={name}
                 onChangeText={setName}
                 placeholder={`${username ?? 'Player'}'s table`}
+                maxLength={ROOM_NAME_MAX_LENGTH}
                 editable={!isLoading}
                 returnKeyType="done"
                 onSubmitEditing={handleSubmit}
@@ -191,35 +183,6 @@ export function CreateRoomModal({
                   </PidroText>
                 </Surface>
               )}
-
-              <Surface variant="subtle" style={styles.privateRow}>
-                <View style={styles.privateCopy}>
-                  <PidroText role="label">Private table</PidroText>
-                  <PidroText role="metadata" tone="muted">
-                    Require a password to join.
-                  </PidroText>
-                </View>
-                <Switch
-                  accessibilityLabel="Private table"
-                  value={isPrivate}
-                  onValueChange={setIsPrivate}
-                  disabled={isLoading}
-                  trackColor={{ false: PidroColors.switchTrackOff, true: PidroColors.cyan }}
-                  thumbColor={isPrivate ? PidroColors.ink : PidroColors.text}
-                  style={styles.switch}
-                />
-              </Surface>
-
-              {isPrivate ? (
-                <Input
-                  label="Password"
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter a table password"
-                  secureTextEntry
-                  editable={!isLoading}
-                />
-              ) : null}
 
               {error ? (
                 <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
@@ -424,21 +387,6 @@ const styles = StyleSheet.create({
   },
   hint: {
     padding: PidroSpacing.sm,
-  },
-  privateRow: {
-    minHeight: 64,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: PidroSpacing.sm,
-    padding: PidroSpacing.sm,
-  },
-  privateCopy: {
-    minWidth: 0,
-    flex: 1,
-  },
-  switch: {
-    minWidth: PidroLayout.touchTarget,
-    minHeight: PidroLayout.touchTarget,
   },
   error: {
     borderColor: PidroColors.dangerBorder,

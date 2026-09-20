@@ -467,9 +467,8 @@ export default function GameScreen() {
       try {
         const result = await lobbyApi.createRoom({
           name: oldRoom.name ?? 'Game Room',
-          settings: { min_games: 1, time_limit: 0, private: false },
           seats: seatConfig,
-          ...(hasBot && { bot_difficulty: 'basic' }),
+          ...(hasBot && { bot_difficulty: oldRoom.config?.bot_difficulty ?? 'basic' }),
         });
         const newCode = result?.code;
         if (newCode) {

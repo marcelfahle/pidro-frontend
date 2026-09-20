@@ -1,4 +1,4 @@
-import type { SeatType } from '@pidro/shared';
+import { clampRoomName, ROOM_NAME_MAX_LENGTH, type SeatType } from '@pidro/shared';
 import { useState } from 'react';
 import { useAuthStore } from '../../stores/auth';
 import { GlassButton, PidroButton } from '../ds';
@@ -86,7 +86,7 @@ export function CreateGameModal({
   const submit = () => {
     if (loading) return;
     onSubmit({
-      name: name.trim() || `${username}'s game`,
+      name: clampRoomName(name.trim() || `${username}'s game`),
       seats: { seat_2: seat2, seat_3: seat3, seat_4: seat4 },
       botDifficulty,
     });
@@ -134,6 +134,7 @@ export function CreateGameModal({
             type="text"
             placeholder={`${username}'s game`}
             value={name}
+            maxLength={ROOM_NAME_MAX_LENGTH}
             onChange={(e) => setName(e.target.value)}
             className="pidro-input"
           />

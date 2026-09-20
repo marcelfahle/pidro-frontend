@@ -99,6 +99,24 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
   });
 }
 
+/** The server rejects a room name longer than this. */
+export const ROOM_NAME_MAX_LENGTH = 60;
+
+/**
+ * Cuts a room name down to the server's limit. Default names embed the
+ * username, which has no maximum length. Cuts on a code point boundary so an
+ * emoji is dropped whole rather than split.
+ */
+export function clampRoomName(name: string): string {
+  if (name.length <= ROOM_NAME_MAX_LENGTH) return name;
+  let clamped = '';
+  for (const char of name) {
+    if (clamped.length + char.length > ROOM_NAME_MAX_LENGTH) break;
+    clamped += char;
+  }
+  return clamped.trimEnd();
+}
+
 export function normalizeRoom(raw: any): Room {
   const rawSeats =
     raw?.seats && !Array.isArray(raw.seats) && typeof raw.seats === 'object'
@@ -128,14 +146,14 @@ export function normalizeRoom(raw: any): Room {
 
   const status: RoomStatus = (raw?.status as RoomStatus | undefined) ?? 'waiting';
 
-  const name = raw?.name ?? raw?.metadata?.name ?? raw?.code ?? 'Game Room';
+  const name = raw?.name ?? raw?.config?.name ?? raw?.code ?? 'Game Room';
 
   return {
     ...raw,
     id: raw?.id ?? raw?.room_id ?? undefined,
     code: raw?.code ?? raw?.room_code ?? raw?.id ?? '',
     name,
-    metadata: raw?.metadata,
+    config: raw?.config,
     host_id: raw?.host_id ?? raw?.hostId ?? raw?.host?.id ?? null,
     locked: raw?.locked ?? false,
     status,

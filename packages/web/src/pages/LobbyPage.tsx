@@ -89,7 +89,6 @@ export function LobbyPage() {
           config.seats.seat_4 === 'ai';
         const result = await lobbyApi.createRoom({
           name: config.name,
-          settings: { min_games: 1, time_limit: 0, private: false },
           seats: config.seats,
           ...(hasBot && { bot_difficulty: config.botDifficulty as BotDifficulty }),
         });

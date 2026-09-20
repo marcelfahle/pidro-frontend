@@ -3,6 +3,7 @@ import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { clampRoomName } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { Avatar } from '@/components/ui/Avatar';
 import { Background } from '@/components/ui/Background';
@@ -47,8 +48,7 @@ export default function HomeScreen() {
 
   const createSinglePlayerRoom = async () => {
     const response = await lobbyApi.createRoom({
-      name: `${user?.username ?? 'Player'}'s solo table`,
-      settings: { min_games: 1, time_limit: 0, private: false },
+      name: clampRoomName(`${user?.username ?? 'Player'}'s solo table`),
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
       bot_difficulty: 'basic',
     });
