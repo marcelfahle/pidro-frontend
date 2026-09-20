@@ -104,8 +104,9 @@ export const ROOM_NAME_MAX_LENGTH = 60;
 
 /**
  * Cuts a room name down to the server's limit. Default names embed the
- * username, which has no maximum length. Cuts on a code point boundary so an
- * emoji is dropped whole rather than split.
+ * username, which has no maximum length. Cuts on a code point boundary, so a
+ * surrogate pair is never split; a multi-code-point sequence such as a flag or
+ * a family emoji on the boundary can still lose part of itself.
  */
 export function clampRoomName(name: string): string {
   if (name.length <= ROOM_NAME_MAX_LENGTH) return name;
@@ -146,7 +147,11 @@ export function normalizeRoom(raw: any): Room {
 
   const status: RoomStatus = (raw?.status as RoomStatus | undefined) ?? 'waiting';
 
-  const name = raw?.name ?? raw?.config?.name ?? raw?.code ?? 'Game Room';
+  // `metadata.name` is what a backend that predates the room config sends over
+  // the lobby channel. This client ships before that backend is replaced, so
+  // keep reading it until the config-emitting backend is deployed everywhere.
+  const name =
+    raw?.name ?? raw?.config?.name ?? raw?.metadata?.name ?? raw?.code ?? 'Game Room';
 
   return {
     ...raw,

@@ -50,3 +50,21 @@ test('a generated name is cut to the server limit without splitting an emoji', (
   expect(clamped).toBe('u'.repeat(59));
   expect(clamped.length).toBeLessThanOrEqual(ROOM_NAME_MAX_LENGTH);
 });
+
+test('a lobby room from a backend that predates the config keeps its name', () => {
+  const room = normalizeRoom({
+    code: 'E4W2',
+    metadata: { name: 'Friday night' },
+    seats: positions.map((position) => ({ position, player: null })),
+  });
+  expect(room.name).toBe('Friday night');
+});
+
+test('a config name wins over a leftover metadata name', () => {
+  const room = normalizeRoom({
+    code: 'E4W2',
+    config: { name: 'Friday night', bot_difficulty: 'basic', solo: false },
+    metadata: { name: 'Old name' },
+  });
+  expect(room.name).toBe('Friday night');
+});
