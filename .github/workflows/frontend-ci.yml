@@ -101,29 +101,35 @@ jobs:
         env:
           CI: '1'
           EXPO_NO_DOTENV: '1'
-          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+          # The full fixture matrix retains Metro/SSR modules across many navigations.
+          NODE_OPTIONS: --max-old-space-size=4096 --require ./scripts/tailwind-v3-resolve.cjs
           UI_SHOT_DIR: /tmp/ui-grammar-screens
         run: |
-          bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
-          expo_pid=$!
           cleanup() {
             kill "$expo_pid" 2>/dev/null || true
+            wait "$expo_pid" 2>/dev/null || true
           }
-          trap cleanup EXIT
+          start_expo() {
+            # Track the server itself, not a package-manager wrapper.
+            ../../node_modules/.bin/expo start --web --port 8081 >> /tmp/pidro-expo.log 2>&1 &
+            expo_pid=$!
+            trap cleanup EXIT
 
-          ready=false
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
-              ready=true
-              break
+            ready=false
+            for attempt in $(seq 1 60); do
+              if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
+                ready=true
+                break
+              fi
+              sleep 1
+            done
+
+            if [ "$ready" != "true" ]; then
+              cat /tmp/pidro-expo.log
+              exit 1
             fi
-            sleep 1
-          done
-
-          if [ "$ready" != "true" ]; then
-            cat /tmp/pidro-expo.log
-            exit 1
-          fi
+          }
+          start_expo
 
           bun run test:ui
           UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
@@ -131,6 +137,10 @@ jobs:
           node scripts/verify-dealing.mjs
           UI_SHOT_DIR=/tmp/lobby-screens node scripts/verify-lobby.mjs
           UI_SHOT_DIR=/tmp/ui-grammar-screens/creation node scripts/verify-create-room.mjs
+          # Bound Metro/SSR retention: the preceding matrix approaches the heap limit.
+          # Waiting-seat checks are independent and need no state from earlier suites.
+          cleanup
+          start_expo
           # Additional sizes/scales are assertion-gated; their captures are diagnostic artifacts.
           # The waiting-room pixel baselines come from test:ui above (three standard viewports).
           UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs
@@ -155,7 +165,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lobby-screenshots
-          path: /tmp/lobby-screens/
+          path: |
+            /tmp/lobby-screens/
+            /tmp/pidro-expo.log
           if-no-files-found: ignore
           retention-days: 14
 

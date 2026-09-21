@@ -1,7 +1,8 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
-import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-context';
+import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
@@ -197,11 +198,38 @@ function LobbySeatGallery() {
 }
 
 function UiDevHarness() {
-  const params = useLocalSearchParams<{ state?: string }>();
+  const params = useLocalSearchParams<{ state?: string; safeArea?: string }>();
   const state = typeof params.state === 'string' ? params.state : 'components';
 
   if (state === 'progression') return <ProgressionGallery />;
   if (state === 'lobby-seats') return <LobbySeatGallery />;
+  if (state === 'create-safe-area') {
+    // Browser-only layout simulation, not evidence of native modal inset measurement.
+    // Native checks must use the real Modal + its real provider without fake metrics.
+    if (Platform.OS !== 'web') {
+      return <CreateRoomModal isOpen onClose={noop} onSubmit={noop} username="Alex" />;
+    }
+    const presets: Record<string, EdgeInsets> = {
+      island: { top: 59, bottom: 34, left: 0, right: 0 },
+      'island-left': { top: 0, bottom: 21, left: 59, right: 0 },
+      'island-right': { top: 0, bottom: 21, left: 0, right: 59 },
+      legacy: { top: 20, bottom: 0, left: 0, right: 0 },
+      'android-buttons': { top: 24, bottom: 48, left: 0, right: 0 },
+      'android-right': { top: 24, bottom: 0, left: 0, right: 48 },
+      'android-gesture': { top: 24, bottom: 24, left: 0, right: 0 },
+    };
+    const insets = presets[params.safeArea ?? 'island'] ?? presets.island;
+    return (
+      <SafeAreaInsetsContext.Provider value={insets}>
+        <CreateRoomForm
+          isOpen
+          onClose={noop}
+          onSubmit={noop}
+          username="Alexandria the Long-Named Player"
+        />
+      </SafeAreaInsetsContext.Provider>
+    );
+  }
 
   return (
     <>

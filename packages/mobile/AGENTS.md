@@ -60,6 +60,11 @@ treatments in screens.
 android-gesture` only _fakes_ them, so a browser can approximate a device. Never add
   `safeArea=` to a simulator check — it would hide the clearance you are there to see.
 - Keep behavior fixes focused; visual changes ride the DS, not ad-hoc styling.
+- **Native modals need their own `SafeAreaProvider` inside the modal root.** The
+  app provider is not a native ancestor across that boundary. Never use cached
+  initial window metrics for a remounting modal. Follow the safe-area rules in
+  `src/design/README.md`; check all four edges and both landscape directions.
+  Zero-inset browser screenshots cannot certify notch/camera or system-bar clearance.
 
 ## Architecture Principle: Dumb Client, Smart Server
 

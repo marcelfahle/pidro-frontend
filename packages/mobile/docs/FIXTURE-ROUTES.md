@@ -106,6 +106,14 @@ to `/tmp/pidro-create` (or `UI_SHOT_DIR`). These browser checks do not verify na
 keyboard avoidance or safe-area behavior. `/ui-dev?state=create` is interactive,
 but its Create and Back callbacks intentionally do nothing.
 
+`/ui-dev?state=create-safe-area&safeArea=island` tests the real creation form with
+synthetic **browser-only** insets. Presets: `island`, `island-left`, `island-right`,
+`legacy`, `android-buttons`, `android-right`, `android-gesture`. The creation script
+checks all of these plus a reduced-height input-entry case. These numbers are test
+inputs, not a device database or production padding. Native opens the real modal
+without overrides. The unit test `create-modal-safe-area.test.mjs` separately guards
+provider placement inside that native modal; neither test replaces device testing.
+
 ## `/auth-flow-dev` — guest-first auth
 
 No params. In-page toggles: platform (**iOS** Apple-first / **Android** Google-first),
