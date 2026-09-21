@@ -93,10 +93,8 @@ try {
       const path = new URL(route.request().url()).pathname;
       if (path.endsWith('/join')) {
         joins.push({ path, body: route.request().postDataJSON() });
-        // Keep the lobby visible; a rejected join must not navigate away.
         await route.fulfill({
-          status: 409,
-          json: { error: { code: 'ROOM_FULL', detail: 'That seat was taken.' } },
+          json: { data: { room: rooms[0], assigned_position: 'west' } },
         });
       } else if (path.endsWith('/lobby')) {
         await route.fulfill(
@@ -141,13 +139,13 @@ try {
       'seats must share one row'
     );
     await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
-    const rejectedJoin = page.waitForResponse((response) =>
-      response.url().endsWith('/rooms/MEK/join')
-    );
     await first.getByRole('button', { name: /^Join west/ }).click();
-    assert.equal((await rejectedJoin).status(), 409);
-    assert.equal(new URL(page.url()).pathname, '/lobby');
+    await page.waitForURL((url) => url.pathname === '/game/MEK');
     assert.deepEqual(joins, [{ path: '/api/v1/rooms/MEK/join', body: { position: 'west' } }]);
+    // Fresh lobby state after proving the join response was processed and routed.
+    await page.goto(`${baseUrl}/lobby`);
+    await page.getByTestId('lobby-table-MEK').waitFor();
+    await suppressDevOverlays(page);
     await page.getByRole('textbox', { name: 'Search tables' }).fill('sues');
     assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 1);
     await page.getByRole('textbox', { name: 'Search tables' }).fill('no matching table');
