@@ -95,6 +95,27 @@ try {
     console.log(
       `PASS dealer ${dealer}: clockwise 3×3, receive order, settle/read/sort, bidding gate`
     );
+    if (dealer === 'north') {
+      await page.evaluate(() => {
+        window.sameDocument = true;
+        const url = new URL(location.href);
+        url.searchParams.set('dealer', 'east');
+        history.pushState(null, '', url);
+        dispatchEvent(new PopStateEvent('popstate'));
+      });
+      await page.getByTestId('bidding-window').waitFor({ state: 'hidden', timeout: 5000 });
+      await page.waitForFunction(
+        () =>
+          JSON.parse(
+            document
+              .querySelector('[data-testid="deal-presentation"]')
+              ?.getAttribute('aria-label') ?? '{}'
+          ).stage === 'dealing'
+      );
+      await page.getByTestId('bidding-window').waitFor({ timeout: 15000 });
+      assert.equal(await page.evaluate(() => window.sameDocument), true);
+      console.log('PASS same-document dealer change: deal restarts and reaches bidding');
+    }
     await page.close();
   }
 

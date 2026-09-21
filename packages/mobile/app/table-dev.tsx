@@ -494,7 +494,8 @@ function RolePreview({
     };
     const timer = setTimeout(() => store.setServerState(dealt), 900);
     return () => clearTimeout(timer);
-  }, [Table, deal]);
+    // Re-arm whenever the initialization effect above resets the fixture.
+  }, [Table, deal, dealer, role, phase, canPass]);
   return (
     <View className="flex-1">
       {Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />}
