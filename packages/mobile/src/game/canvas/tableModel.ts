@@ -46,6 +46,9 @@ export type TableModel = {
   trumpSuit: Suit | null;
   seats: Record<RelativePosition, TableSeat | null>;
   yourHand: TableCard[];
+  /** Server deal order, before the display-only suit sort. */
+  dealtHand: TableCard[];
+  dealStage?: 'dealing' | 'sorting';
   yourCardCount: number | null;
   dealerCuts: Partial<Record<RelativePosition, TableCard>>;
   currentTrick: Partial<Record<RelativePosition, TableCard>>;
@@ -185,6 +188,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
     trumpSuit,
     seats,
     yourHand,
+    dealtHand: (input.yourHand ?? []).map((card) => toCard(card)),
     yourCardCount: input.yourCardCount,
     dealerCuts,
     currentTrick,

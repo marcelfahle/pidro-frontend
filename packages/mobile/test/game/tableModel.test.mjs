@@ -46,6 +46,31 @@ const build = (overrides = {}) =>
     ...overrides,
   });
 
+describe('deal order', () => {
+  it('preserves server receive order separately from the sorted display, without mutating the hand', () => {
+    const hand = Object.freeze([
+      { suit: 'clubs', rank: 8 },
+      { suit: 'spades', rank: 2 },
+      { suit: 'hearts', rank: 12 },
+      { suit: 'spades', rank: 14 },
+    ]);
+    const model = build({ phase: 'bidding', yourHand: hand });
+    expect(model.dealtHand.map((card) => card.key)).toEqual([
+      'clubs_8',
+      'spades_2',
+      'hearts_12',
+      'spades_14',
+    ]);
+    expect(model.yourHand.map((card) => card.key)).toEqual([
+      'spades_14',
+      'spades_2',
+      'hearts_12',
+      'clubs_8',
+    ]);
+    expect(model.dealtHand.map((card) => card.card)).toEqual(hand);
+  });
+});
+
 describe('dealer selection table model', () => {
   it('carries authoritative lifecycle status through seat rotation', () => {
     const players = rotatedPlayers.map((p, index) => ({

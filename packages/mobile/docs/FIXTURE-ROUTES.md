@@ -62,6 +62,8 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 /table-dev?lifecycle=permanent_bot&feedback=owner&notice=true    # decision + notice together
 /table-dev?phase=waiting&names=long               # long-name wrapping
 /table-dev?phase=bidding&role=player&pass=disabled   # real store, no pass
+/table-dev?phase=bidding&role=player&deal=true&dealer=north # clockwise packets, unsorted hand → sort → bid
+/table-dev?phase=bidding&role=player&deal=cold      # reconnect: already-dealt hand, no replay
 /table-dev?phase=ready-host&role=spectator        # spectator sees no controls
 /table-dev?phase=playing&autoplay=true            # played-card persistence
 ```
@@ -104,6 +106,7 @@ UI_SHOT_DIR=/tmp/shots bun run test:ui           # where screenshots land
 MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-seat-decisions.mjs
 node scripts/verify-waiting-seats.mjs   # 6 viewports incl. safeArea variants
 node scripts/verify-profile.mjs
+node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/bidding timing, reconnect, reduced motion
 ```
 
 `bun run test:ui:diff` (pixel diff) is **CI-only** — baselines are Linux Chromium
