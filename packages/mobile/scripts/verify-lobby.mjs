@@ -53,6 +53,19 @@ async function equalRows(page, selector) {
     boxes.every((box) => box.x >= 0 && box.x + box.width <= page.viewportSize().width),
     'row exceeds viewport'
   );
+  for (const [index, row] of rows.entries()) {
+    const box = boxes[index];
+    for (const button of await row.getByRole('button').all()) {
+      const control = await button.boundingBox();
+      assert.ok(
+        control.x >= box.x &&
+          control.x + control.width <= box.x + box.width &&
+          control.y >= box.y &&
+          control.y + control.height <= box.y + box.height,
+        'seat control exceeds its row'
+      );
+    }
+  }
 }
 
 await mkdir(output, { recursive: true });
@@ -128,8 +141,12 @@ try {
       'seats must share one row'
     );
     await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
+    const rejectedJoin = page.waitForResponse((response) =>
+      response.url().endsWith('/rooms/MEK/join')
+    );
     await first.getByRole('button', { name: /^Join west/ }).click();
-    await page.waitForTimeout(200);
+    assert.equal((await rejectedJoin).status(), 409);
+    assert.equal(new URL(page.url()).pathname, '/lobby');
     assert.deepEqual(joins, [{ path: '/api/v1/rooms/MEK/join', body: { position: 'west' } }]);
     await page.getByRole('textbox', { name: 'Search tables' }).fill('sues');
     assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 1);

@@ -148,6 +148,15 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+      - name: Upload lobby diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lobby-screenshots
+          path: /tmp/lobby-screens/
+          if-no-files-found: ignore
+          retention-days: 14
+
   game-e2e:
     name: Game e2e
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
