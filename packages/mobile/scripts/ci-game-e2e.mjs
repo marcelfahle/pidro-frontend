@@ -15,8 +15,9 @@
  * the game while the guest watches in the client, recorded on video. At game
  * over the guest presses Play again in the UI, the window shows the vote, the
  * host agrees, and the second game starts in the same room without anybody
- * navigating. When that game ends the host leaves: the guest's screen goes
- * back to the waiting table with the seat open, the guest (now the host) fills
+ * navigating. Before that game ends, the guest loses its socket and misses
+ * completion and the host's leave. On rejoin it must return to the waiting
+ * table with the seat open. The guest (now the host) fills
  * it with a bot, readies up, and a third game starts in the same room.
  *
  * Requires a running backend (API_BASE_URL/WS_BASE_URL) and Expo web
@@ -300,6 +301,51 @@ async function stageTwoMultiplayerVideo() {
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
+  // PID-108: miss completion AND the host's leave, then hydrate a waiting
+  // room over a cached nonterminal game. Intercept transport, not app state.
+  let interruptCompletion = false;
+  let interrupted = false;
+  let hostHasLeft = false;
+  let lastPhase;
+  let rejoinedWaiting = false;
+  const terminalPhases = ['complete', 'game_over', 'finished'];
+  await page.routeWebSocket(/\/socket\/websocket/, (socket) => {
+    if (interrupted && !hostHasLeft) {
+      void socket.close({ code: 1012, reason: 'Hold reconnect until host leaves' });
+      return;
+    }
+    const server = socket.connectToServer();
+    server.onMessage((message) => {
+      const [, , topic, event, payload] = JSON.parse(String(message));
+      if (topic === `game:${roomCode}`) {
+        const state = payload.state ?? payload.game_state;
+        if (
+          interruptCompletion &&
+          !interrupted &&
+          (event === 'game_over' ||
+            terminalPhases.includes(state?.phase) ||
+            (event === 'readiness_updated' && payload.status === 'finished'))
+        ) {
+          interrupted = true;
+          log(`PID-108: dropping guest socket before ${event}; cached phase=${lastPhase}`);
+          void server.close();
+          void socket.close({ code: 1012, reason: 'Miss completion and host leave' });
+          return;
+        }
+        if (interrupted && !hostHasLeft) return;
+        if (event === 'game_state') lastPhase = state?.phase;
+        if (interrupted && event === 'ph_reply' && payload.status === 'ok') {
+          const reply = payload.response;
+          if (reply.readiness?.status === 'waiting' && !reply.state && !reply.game_state) {
+            rejoinedWaiting = true;
+            log('PID-108: rejoined waiting room without game state');
+          }
+        }
+      }
+      socket.send(message);
+    });
+  });
+
   try {
     await verifyUiLogin(browser, hostUser);
     await page.goto(`${mobileBaseUrl}/join/${inviteCode}?source=copy`, {
@@ -361,7 +407,20 @@ async function stageTwoMultiplayerVideo() {
       throw new Error('the UI never showed game-over-window');
     }
     await rematchThroughUi(page, roomCode, seen);
+    interruptCompletion = true;
     await autoplayDone;
+    if (!interrupted || !lastPhase || terminalPhases.includes(lastPhase)) {
+      throw new Error(`PID-108: did not interrupt a nonterminal game (phase=${lastPhase})`);
+    }
+    const reopened = await api(`/api/v1/rooms/${roomCode}`, 'GET', hostToken);
+    if (!reopened.ok || reopened.payload?.data?.status !== 'waiting') {
+      throw new Error('PID-108: host leave did not reopen the room');
+    }
+    hostHasLeft = true;
+    await page.getByTestId('waiting-table').waitFor({ timeout: 60_000 });
+    if (!rejoinedWaiting || (await page.getByTestId('game-table').first().isVisible())) {
+      throw new Error('PID-108: waiting rejoin did not replace the stale game canvas');
+    }
     await fillTheOpenSeatThroughUi(page, roomCode, seen);
     log(
       `stage 2 passed: game over, a rematch, then a bot in the seat the host left (milestones: ${[...seen].join(', ')})`
