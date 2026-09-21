@@ -26,6 +26,8 @@ export function AppUpdateSection() {
     try {
       if (nextAction === 'restart') {
         await Updates.reloadAsync();
+        // Expo resolves before the runtime reloads. Keep the control locked.
+        return;
       } else if (nextAction === 'download') {
         const result = await Updates.fetchUpdateAsync();
         if (!result.isNew && !result.isRollBackToEmbedded) {
@@ -45,10 +47,9 @@ export function AppUpdateSection() {
           ? 'Could not restart. Close and reopen the app to apply the downloaded update.'
           : 'Could not reach the update service. Check your connection and try again.'
       );
-    } finally {
-      inFlight.current = false;
-      setAction(null);
     }
+    inFlight.current = false;
+    setAction(null);
   }
 
   const status = !enabled
