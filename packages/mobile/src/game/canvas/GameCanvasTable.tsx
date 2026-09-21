@@ -252,7 +252,9 @@ export function GameCanvasTable({
       {/* Seat furniture (avatars, names, dealer chip, turn rings, opponent backs) over the canvas */}
       <TimedSeatLayer
         seats={model.seats}
-        dealerRel={viewModel?.dealerRelative ?? null}
+        dealerRel={
+          controller.phase === 'dealer_selection' ? null : (viewModel?.dealerRelative ?? null)
+        }
         dealing={model.dealStage === 'dealing'}
         topReserve={topReserve}
         bottomReserve={bottomReserve}

@@ -21,9 +21,11 @@ import { Gesture } from 'react-native-gesture-handler';
 import { BlurMask, Group, Image, RoundedRect, type SkImage } from '@shopify/react-native-skia';
 import {
   Easing,
+  ReduceMotion,
   cancelAnimation,
   runOnJS,
   useDerivedValue,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withSequence,
@@ -46,6 +48,9 @@ import { T } from './tokens';
 
 const MAX = 36;
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
+const CUT_CARD_STAGGER_MS = 620;
+const CUT_CARD_TRAVEL_MS = 520;
+const CUT_WINNER_PAUSE_MS = 900;
 
 function handSlotFn(L: TableLayout, n: number) {
   const step = n > 1 ? Math.min(L.cardW * 0.72, (L.hand.maxWidth - L.cardW) / (n - 1)) : 0;
@@ -72,6 +77,7 @@ type SlotInfo = {
   z: number;
   legal: boolean;
   blocked: boolean;
+  winner: boolean;
 } | null;
 
 type Opts = {
@@ -92,9 +98,11 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   /* eslint-enable react-hooks/rules-of-hooks */
 
   const [slots, setSlots] = useState<SlotInfo[]>(() => Array(MAX).fill(null));
+  const reduceMotion = useReducedMotion();
 
   const keyToSlot = useRef<Map<string, number>>(new Map());
   const retirementTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const cutSequenceKey = useRef<string | null>(null);
   const prevModel = useRef<TableModel | null>(null);
   const prevLayout = useRef(L);
   const modelRef = useRef<TableModel | undefined>(model);
@@ -118,6 +126,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
 
   // ── M3 shared values ──────────────────────────────────────────────
   const trumpPop = useSharedValue(0); // 0..1 flourish on trump declare
+  const winnerReveal = useSharedValue(0);
   const cardW = L.cardW;
   const cardH = L.cardH;
   const handScale = L.profile.endsWith('landscape') ? 0.9 : 1;
@@ -188,7 +197,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         topacity: 1,
       });
     });
-    REL.forEach((rel) => {
+    REL.forEach((rel, cutIndex) => {
       const tc = model.dealerCuts[rel];
       if (!tc) return;
       const target = playedCardTarget(L, rel, 0, 1);
@@ -198,7 +207,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         textureKey: tc.textureKey,
         kind: 'cut',
         z: 90,
-        delayOrder: 0,
+        delayOrder: cutIndex,
         tx: target.x,
         ty: target.y,
         trot: target.rot,
@@ -235,6 +244,19 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     });
 
     const desiredKeys = new Set(desired.map((d) => d.key));
+    const winnerCutKey = model.dealerRelative
+      ? model.dealerCuts[model.dealerRelative]?.key
+      : undefined;
+    const nextCutSequenceKey =
+      model.phase === 'dealer_selection'
+        ? desired
+            .filter((card) => card.kind === 'cut')
+            .map((card) => `${card.key}:${card.tx}:${card.ty}`)
+            .join('|')
+        : null;
+    const animateCutSequence =
+      !reduceMotion && !!nextCutSequenceKey && nextCutSequenceKey !== cutSequenceKey.current;
+    cutSequenceKey.current = nextCutSequenceKey;
     const nextSlots: SlotInfo[] = Array(MAX).fill(null);
 
     // Retire slots only when cards leave the server's round history. Completed
@@ -289,13 +311,30 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
       let sl = keyToSlot.current.get(d.key);
       const isNew = sl === undefined;
       const dealCard = isDeal && d.kind === 'hand';
+      const cutCard = d.kind === 'cut' && animateCutSequence;
       if (sl === undefined) {
         sl = allocate();
         if (sl < 0) continue;
         keyToSlot.current.set(d.key, sl);
         const comesFromSeat = d.kind === 'played' || d.kind === 'cut';
-        const startX = firstLoad ? d.tx : dealCard ? deckX : comesFromSeat ? d.ox : d.tx;
-        const startY = firstLoad ? d.ty : dealCard ? deckY : comesFromSeat ? d.oy : d.ty;
+        const startX = cutCard
+          ? d.ox
+          : firstLoad
+            ? d.tx
+            : dealCard
+              ? deckX
+              : comesFromSeat
+                ? d.ox
+                : d.tx;
+        const startY = cutCard
+          ? d.oy
+          : firstLoad
+            ? d.ty
+            : dealCard
+              ? deckY
+              : comesFromSeat
+                ? d.oy
+                : d.ty;
         cancelAnimation(sx[sl]);
         cancelAnimation(sy[sl]);
         cancelAnimation(srot[sl]);
@@ -303,8 +342,14 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         sx[sl].value = startX;
         sy[sl].value = startY;
         srot[sl].value = dealCard ? 0 : d.trot;
-        sscale[sl].value = dealCard ? 0.6 : !firstLoad && comesFromSeat ? 1 : d.tscale;
-        sop[sl].value = dealCard ? 0 : d.topacity;
+        sscale[sl].value = dealCard
+          ? 0.6
+          : cutCard
+            ? 0.72
+            : !firstLoad && comesFromSeat
+              ? 1
+              : d.tscale;
+        sop[sl].value = dealCard || cutCard ? 0 : d.topacity;
       }
       nextSlots[sl] = {
         key: d.key,
@@ -313,15 +358,36 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         z: d.z,
         legal: d.legal,
         blocked: d.blocked,
+        winner: d.kind === 'cut' && d.key === winnerCutKey,
       };
 
       const dragging = dragSlot.value === sl;
-      if (firstLoad) {
+      if (cutCard && !reduceMotion) {
+        const delay = d.delayOrder * CUT_CARD_STAGGER_MS;
+        const cutCfg = {
+          duration: CUT_CARD_TRAVEL_MS,
+          easing: Easing.out(Easing.back(1.35)),
+          reduceMotion: ReduceMotion.System,
+        };
+        sx[sl].value = withDelay(delay, withTiming(d.tx, cutCfg));
+        sy[sl].value = withDelay(delay, withTiming(d.ty, cutCfg));
+        srot[sl].value = withDelay(delay, withTiming(d.trot, cutCfg));
+        sscale[sl].value = withDelay(delay, withTiming(d.tscale, cutCfg));
+        sop[sl].value = withDelay(
+          delay,
+          withTiming(d.topacity, { duration: 150, reduceMotion: ReduceMotion.System })
+        );
+      } else if (firstLoad || (d.kind === 'cut' && reduceMotion)) {
         sx[sl].value = d.tx;
         sy[sl].value = d.ty;
         srot[sl].value = d.trot;
         sscale[sl].value = d.tscale;
         sop[sl].value = d.topacity;
+      } else if (d.kind === 'cut' && model.phase === 'dealer_selection') {
+        // A dealer snapshot can re-render while this sequence is in flight
+        // (notably React Strict Mode and when the dealer field arrives). Keep
+        // the original delayed animations instead of collapsing all cards to
+        // their targets on that second pass.
       } else if (isNew && dealCard) {
         const delay = packetDeal
           ? (d.delayOrder % 3) * DEAL_PACKET_CARD_STAGGER_MS
@@ -392,7 +458,39 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     prevModel.current = model;
     prevLayout.current = L;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, L, enabled]);
+  }, [model, L, enabled, reduceMotion]);
+
+  useEffect(() => {
+    cancelAnimation(winnerReveal);
+    winnerReveal.value = 0;
+    const cutCount = model ? Object.keys(model.dealerCuts).length : 0;
+    if (
+      !enabled ||
+      model?.phase !== 'dealer_selection' ||
+      !model.dealerRelative ||
+      !model.dealerCuts[model.dealerRelative]
+    ) {
+      return;
+    }
+    if (reduceMotion) {
+      winnerReveal.value = 1;
+      return;
+    }
+    const revealDelay =
+      Math.max(0, cutCount - 1) * CUT_CARD_STAGGER_MS + CUT_CARD_TRAVEL_MS + CUT_WINNER_PAUSE_MS;
+    winnerReveal.value = withDelay(
+      revealDelay,
+      withSequence(
+        withTiming(1, {
+          duration: 260,
+          easing: Easing.out(Easing.back(1.8)),
+          reduceMotion: ReduceMotion.System,
+        }),
+        withTiming(0.78, { duration: 180, reduceMotion: ReduceMotion.System }),
+        withTiming(1, { duration: 220, reduceMotion: ReduceMotion.System })
+      )
+    );
+  }, [enabled, model, reduceMotion, winnerReveal]);
 
   const playByKey = useCallback((key: string) => {
     const card = modelRef.current?.yourHand.find((c) => c.key === key)?.card;
@@ -502,6 +600,8 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
             w={cardW}
             h={cardH}
             dimmed={s.blocked}
+            winner={s.winner}
+            winnerReveal={winnerReveal}
           />
         ))}
       </>
@@ -542,6 +642,8 @@ function CardSprite({
   w,
   h,
   dimmed,
+  winner,
+  winnerReveal,
 }: {
   img: SkImage | null;
   x: SharedValue<number>;
@@ -552,16 +654,29 @@ function CardSprite({
   w: number;
   h: number;
   dimmed: boolean;
+  winner: boolean;
+  winnerReveal: SharedValue<number>;
 }) {
   const transform = useDerivedValue(() => [
     { translateX: x.value },
     { translateY: y.value },
     { rotate: rot.value },
-    { scale: scale.value },
+    { scale: scale.value * (winner ? 1 + winnerReveal.value * 0.1 : 1) },
   ]);
+  const winnerOpacity = useDerivedValue(() => (winner ? winnerReveal.value : 0));
   const r = Math.min(10, w * 0.12);
   return (
     <Group transform={transform} opacity={opacity}>
+      <RoundedRect
+        x={-w / 2 - 5}
+        y={-h / 2 - 5}
+        width={w + 10}
+        height={h + 10}
+        r={r + 5}
+        color={T.gold}
+        opacity={winnerOpacity}>
+        <BlurMask blur={14} style="normal" />
+      </RoundedRect>
       {/* Soft drop shadow grounds the card on the felt. */}
       <RoundedRect
         x={-w / 2 + 1}
@@ -588,6 +703,17 @@ function CardSprite({
           color="rgba(6, 22, 38, 0.52)"
         />
       )}
+      <RoundedRect
+        x={-w / 2 - 2}
+        y={-h / 2 - 2}
+        width={w + 4}
+        height={h + 4}
+        r={r + 2}
+        color={T.goldLight}
+        style="stroke"
+        strokeWidth={3}
+        opacity={winnerOpacity}
+      />
     </Group>
   );
 }

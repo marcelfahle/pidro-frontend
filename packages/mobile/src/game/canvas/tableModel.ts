@@ -44,6 +44,8 @@ export type TableSeat = {
 export type TableModel = {
   phase: GamePhase;
   trumpSuit: Suit | null;
+  /** Server-selected dealer, already mapped into the viewer's seat orientation. */
+  dealerRelative: RelativePosition | null;
   seats: Record<RelativePosition, TableSeat | null>;
   yourHand: TableCard[];
   /** Server deal order, before the display-only suit sort. */
@@ -63,6 +65,7 @@ const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 export type TableModelInput = {
   phase: GamePhase;
   trumpSuit: Suit | null;
+  dealerRelative?: RelativePosition | null;
   players: RelativePlayerView[];
   yourHand: Card[] | null;
   yourCardCount: number | null;
@@ -186,6 +189,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
   return {
     phase: input.phase,
     trumpSuit,
+    dealerRelative: input.dealerRelative ?? null,
     seats,
     yourHand,
     dealtHand: (input.yourHand ?? []).map((card) => toCard(card)),
@@ -205,6 +209,7 @@ export function useTableModel(c: GameTableController): TableModel {
       buildTableModel({
         phase: c.phase,
         trumpSuit: c.trumpSuit,
+        dealerRelative: c.viewModel?.dealerRelative ?? null,
         players: c.players,
         yourHand: c.yourHand,
         yourCardCount: c.yourCardCount,
@@ -219,6 +224,7 @@ export function useTableModel(c: GameTableController): TableModel {
     [
       c.phase,
       c.trumpSuit,
+      c.viewModel?.dealerRelative,
       c.players,
       c.yourHand,
       c.yourCardCount,
