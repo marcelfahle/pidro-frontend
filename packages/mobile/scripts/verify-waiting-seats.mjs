@@ -187,6 +187,17 @@ try {
   await page.getByText('4 of 4 ready', { exact: true }).waitFor();
   assert.equal(await page.getByTestId('waiting-ready-south').count(), 1);
 
+  await page.goto(`${baseUrl}/table-dev?phase=ready-solo&viewer=east`);
+  await page
+    .getByTestId('waiting-seat-east')
+    .getByRole('button', { name: /Alex, You, Pending/ })
+    .waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-east').count(), 0);
+  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+  await page.getByText('4 of 4 ready', { exact: true }).waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-east').count(), 1);
+
   await page.goto(`${baseUrl}/table-dev?phase=ready&viewer=east`);
   await page
     .getByTestId('waiting-seat-east')

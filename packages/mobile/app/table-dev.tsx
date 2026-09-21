@@ -213,8 +213,13 @@ function TableDevHarness() {
   const [busy, setBusy] = useState(false);
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
+  const viewerPosition = params.viewer === 'east' ? 'east' : 'south';
   const [readyPlayers, setReadyPlayers] = useState<Position[]>(
-    phase === 'ready-solo' ? ['north', 'east', 'west'] : ['north', 'west']
+    phase === 'ready-solo'
+      ? (['north', 'east', 'south', 'west'] as Position[]).filter(
+          (position) => position !== viewerPosition
+        )
+      : ['north', 'west']
   );
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
@@ -275,8 +280,8 @@ function TableDevHarness() {
               ...seat,
               player: {
                 id: seat.player.id,
-                username: seat.position === 'south' ? 'Alex' : 'Bot',
-                is_bot: seat.position !== 'south',
+                username: seat.position === viewerPosition ? 'Alex' : 'Bot',
+                is_bot: seat.position !== viewerPosition,
               },
             }
           : params.names === 'long' && seat.player?.id === 'p-west'
@@ -296,12 +301,9 @@ function TableDevHarness() {
               onReady={async () => {
                 if (params.readyResult === 'error') throw new Error('Fixture readiness failure');
                 await new Promise((resolve) => setTimeout(resolve, 500));
-                setReadyPlayers((current) => [
-                  ...current,
-                  params.viewer === 'east' ? 'east' : 'south',
-                ]);
+                setReadyPlayers((current) => [...current, viewerPosition]);
               }}
-              youPlayerId={params.viewer === 'east' ? 'p-east' : 'p-south'}
+              youPlayerId={`p-${viewerPosition}`}
               onLeave={() => {}}
               canManage={hostControls}
               onOpenInvite={() => setInviteOpen(true)}
