@@ -125,22 +125,11 @@ export function DealerSecondDeal({
   );
 }
 
-function AutomaticCard({
-  card,
-  index,
-  step,
-}: {
-  card: Card;
-  index: number;
-  step: number;
-}) {
+function AutomaticCard({ card, index, step }: { card: Card; index: number; step: number }) {
   return (
     <View
       testID="automatic-pool-card"
-      style={[
-        styles.automaticCard,
-        { marginLeft: index === 0 ? 0 : step - 52, zIndex: index },
-      ]}>
+      style={[styles.automaticCard, { marginLeft: index === 0 ? 0 : step - 52, zIndex: index }]}>
       <Image source={getCardImage(card)} style={styles.automaticCardImage} resizeMode="contain" />
     </View>
   );

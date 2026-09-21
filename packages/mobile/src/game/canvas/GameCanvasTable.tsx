@@ -208,8 +208,7 @@ export function GameCanvasTable({
   const role = useGameStore((state) => state.role);
   const dealerRobPresentation = useGameStore((state) => state.presentation?.dealer_rob ?? null);
   const isPrivateDealerRob =
-    controller.youPositionAbs === dealerRobPresentation?.dealer &&
-    !!dealerRobPresentation.pool;
+    controller.youPositionAbs === dealerRobPresentation?.dealer && !!dealerRobPresentation.pool;
   const isSpectator = role === 'spectator';
   const textures = useCardTextures();
   const serverModel = useTableModel(

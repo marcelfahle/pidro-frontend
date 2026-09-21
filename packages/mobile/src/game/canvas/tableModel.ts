@@ -76,7 +76,6 @@ export type TableModelInput = {
   tricks: unknown;
   legalActions: LegalAction[];
   currentTurnRelative: RelativePosition | null;
-  dealerRelative: RelativePosition | null;
   canPlay: boolean;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
 };
@@ -214,10 +213,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
   };
 }
 
-export function useTableModel(
-  c: GameTableController,
-  presentationHand?: Card[]
-): TableModel {
+export function useTableModel(c: GameTableController, presentationHand?: Card[]): TableModel {
   return useMemo(
     () =>
       buildTableModel({
@@ -232,7 +228,6 @@ export function useTableModel(
         tricks: c.completedTricks,
         legalActions: c.legalActions,
         currentTurnRelative: c.currentTurnRelative,
-        dealerRelative: c.viewModel?.dealerRelative ?? null,
         canPlay: c.isPlayingTurn && !c.isPlayingCard,
         getCardCountForPlayer: c.getCardCountForPlayer,
       }),
@@ -249,7 +244,6 @@ export function useTableModel(
       c.completedTricks,
       c.legalActions,
       c.currentTurnRelative,
-      c.viewModel?.dealerRelative,
       c.isPlayingTurn,
       c.isPlayingCard,
       c.getCardCountForPlayer,

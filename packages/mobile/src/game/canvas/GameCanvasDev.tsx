@@ -215,7 +215,6 @@ export default function GameCanvasDev({
         tricks,
         legalActions,
         currentTurnRelative: turn,
-        dealerRelative: phase === 'dealer_selection' ? 'east' : 'south',
         canPlay,
         getCardCountForPlayer: (abs) => (abs ? (COUNTS[abs] ?? null) : null),
       }),

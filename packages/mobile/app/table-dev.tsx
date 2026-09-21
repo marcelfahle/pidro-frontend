@@ -507,14 +507,14 @@ function RolePreview({
               ? DEALER_POOL
               : phase === 'auto_rob'
                 ? automaticKept
-              : deal === 'true'
-                ? []
-                : deal === 'cold'
-                  ? DEAL_HAND
-                  : [
-                      { rank: 14, suit: 'spades' },
-                      { rank: 13, suit: 'hearts' },
-                    ],
+                : deal === 'true'
+                  ? []
+                  : deal === 'cold'
+                    ? DEAL_HAND
+                    : [
+                        { rank: 14, suit: 'spades' },
+                        { rank: 13, suit: 'hearts' },
+                      ],
         },
       },
       current_trick:
