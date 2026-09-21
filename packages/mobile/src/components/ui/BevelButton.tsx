@@ -124,7 +124,8 @@ const styles = StyleSheet.create({
     maxWidth: 340,
   },
   face: {
-    flexGrow: 1,
+    // Content owns height. Growing inside the auto-height wood keyline can
+    // consume the ancestor's available height in native Yoga measurement.
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
