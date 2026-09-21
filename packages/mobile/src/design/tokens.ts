@@ -130,6 +130,13 @@ export const PidroFonts = {
 } as const;
 
 export const PidroType = {
+  score: {
+    fontFamily: PidroFonts.ui,
+    fontSize: 56,
+    lineHeight: 64,
+    fontWeight: '900' as const,
+    fontVariant: ['tabular-nums'] as ['tabular-nums'],
+  },
   display: {
     fontFamily: PidroFonts.ui,
     fontSize: 32,

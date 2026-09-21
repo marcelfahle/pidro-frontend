@@ -251,15 +251,19 @@ export default function GameCanvasDev({
         }
       />
       <TableChromeBars reserves={reserves} />
-      <Scoreboard
-        scores={scores}
-        youPosition="south"
-        handNumber={4}
-        roomCode="DEV01"
-        top={insets.top}
-        left={insets.left}
-      />
-      <TableSettings onLeave={() => {}} />
+      {phase !== 'game_over' && (
+        <>
+          <Scoreboard
+            scores={scores}
+            youPosition="south"
+            handNumber={4}
+            roomCode="DEV01"
+            top={insets.top}
+            left={insets.left}
+          />
+          <TableSettings onLeave={() => {}} />
+        </>
+      )}
     </View>
   );
 }

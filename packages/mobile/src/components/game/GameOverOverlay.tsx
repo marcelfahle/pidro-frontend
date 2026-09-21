@@ -1,12 +1,15 @@
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LevelRing } from '@/components/home/LevelRing';
 import { BevelButton } from '@/components/ui/BevelButton';
+import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroSpacing } from '@/design/tokens';
 import type { RematchVote } from '@pidro/shared';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
-import { Avatar } from '@/components/ui/Avatar';
+import { VictoryConfetti } from './VictoryConfetti';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
@@ -17,13 +20,10 @@ interface GameOverOverlayProps {
     leveled_up: boolean;
     veteran_title?: string;
   } | null;
-  onBackToLobby: () => void;
+  onHome: () => void;
   onPlayAgain: () => void;
-  /** The rematch vote of a finished room; absent in fixtures and before the snapshot arrives. */
   rematch?: RematchVote | null;
-  /** A rematch request is in flight. */
   rematchPending?: boolean;
-  backLabel?: string;
 }
 
 function displayName(player: RelativePlayerView): string {
@@ -37,204 +37,156 @@ export function GameOverOverlay({
   viewModel,
   serverState,
   progressionSummary,
-  onBackToLobby,
+  onHome,
   onPlayAgain,
   rematch,
   rematchPending = false,
-  backLabel = 'Back to lobby',
 }: GameOverOverlayProps) {
   const { width, height } = useWindowDimensions();
-  const portrait = height >= width;
-  const compact = height < 520;
+  const insets = useSafeAreaInsets();
+  const compact = height - insets.top - insets.bottom < 520;
+  const wide = width - insets.left - insets.right >= 600;
   const rawScores = serverState.scores ?? { north_south: 0, east_west: 0 };
-  const youPlayer = viewModel.players.find((player) => player.isYou);
-  const spectator = !youPlayer;
+  const spectator = !viewModel.players.some((player) => player.isYou);
   const relativeScores = getTeamScores(rawScores, viewModel.viewerPositionAbsolute);
-  const scores = spectator
-    ? { first: rawScores.north_south, second: rawScores.east_west }
-    : { first: relativeScores.us, second: relativeScores.them };
-  const labels = spectator
-    ? { first: 'North / South', second: 'East / West' }
-    : { first: 'Us', second: 'Them' };
+  const firstIsNorthSouth = spectator || isNorthSouthTeam(viewModel.viewerPositionAbsolute);
   const winningTeam = resolveWinningTeam(serverState.winner, rawScores);
   const tied = winningTeam == null;
-  const northSouthWon = winningTeam === 'north_south';
-  const viewerWon =
-    !spectator &&
-    winningTeam != null &&
-    isNorthSouthTeam(viewModel.viewerPositionAbsolute) === northSouthWon;
-
-  const othersVoting = rematch != null && rematch.needed > 1;
+  const firstWon = !tied && (winningTeam === 'north_south') === firstIsNorthSouth;
+  const viewerWon = !spectator && firstWon;
+  const outcome = tied
+    ? 'A tie!'
+    : spectator
+      ? `${winningTeam === 'north_south' ? 'North / South' : 'East / West'} win!`
+      : viewerWon
+        ? 'You won!'
+        : 'Opponents win';
   const rematchStatus =
-    othersVoting && rematch.agreed > 0
+    rematch && rematch.needed > 1 && rematch.agreed > 0
       ? `${rematch.agreed} of ${rematch.needed} want to play again`
       : null;
 
-  const outcome = tied
-    ? 'The game ends in a tie'
-    : spectator
-      ? `${northSouthWon ? 'North / South' : 'East / West'} wins!`
-      : viewerWon
-        ? 'Your team wins!'
-        : 'The other team wins';
-  const winners =
-    winningTeam == null
-      ? []
-      : viewModel.players.filter(
-          (player) => isNorthSouthTeam(player.absolutePosition) === northSouthWon
-        );
-
   return (
-    <View style={styles.overlay}>
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Surface
-          testID="game-over-window"
-          variant="window"
-          style={[styles.panel, { maxWidth: portrait ? 520 : 760 }]}>
-          <View style={[styles.celebration, compact && styles.celebrationCompact]}>
-            <PidroText role="metadata" tone="gold" align="center">
-              GAME OVER
+    <View testID="game-over-overlay" style={styles.overlay} accessibilityViewIsModal>
+      <View
+        style={[
+          styles.safeContent,
+          {
+            paddingTop: insets.top + PidroSpacing.md,
+            paddingBottom: insets.bottom + PidroSpacing.md,
+            paddingLeft: insets.left + PidroSpacing.md,
+            paddingRight: insets.right + PidroSpacing.md,
+          },
+        ]}>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          <Surface
+            testID="game-over-window"
+            variant="window"
+            style={[styles.panel, compact && styles.panelCompact]}>
+            <PidroText
+              role={compact ? 'title' : 'display'}
+              accessibilityRole="header"
+              align="center">
+              {outcome}
             </PidroText>
-            <PidroText role="display" align="center" style={compact && styles.outcomeCompact}>
-              {viewerWon ? `🎉 ${outcome} 🎉` : outcome}
-            </PidroText>
-          </View>
-
-          <View style={[styles.summary, portrait && styles.summaryPortrait]}>
-            <View style={styles.scoreSection}>
-              <PidroText role="label" tone="soft" align="center">
-                Final score
-              </PidroText>
-              <View style={styles.scoreRow}>
-                <Score
-                  value={scores.first}
-                  label={labels.first}
-                  highlighted={scores.first >= scores.second}
-                />
-                <PidroText role="title" tone="muted">
-                  –
-                </PidroText>
-                <Score
-                  value={scores.second}
-                  label={labels.second}
-                  highlighted={scores.second >= scores.first}
-                />
-              </View>
-            </View>
-
-            {!tied ? (
-              <View style={styles.teamSection}>
-                <PidroText role="label" tone="soft">
-                  Winning team
-                </PidroText>
-                <View style={styles.playerList}>
-                  {winners.map((player) => (
-                    <Surface
-                      key={player.absolutePosition}
-                      variant="subtle"
-                      style={styles.playerChip}>
-                      <View style={styles.avatar}>
-                        {player.avatar_url ? (
-                          <Avatar uri={player.avatar_url} style={styles.avatarImage} />
-                        ) : (
-                          <PidroText
-                            role="label"
-                            style={styles.avatarText}
-                            maxFontSizeMultiplier={1}>
-                            {displayName(player)[0]?.toUpperCase() ?? '?'}
+            <View style={styles.teams}>
+              {[true, false].map((first) => (
+                <View
+                  key={String(first)}
+                  testID={first ? 'result-team-first' : 'result-team-second'}
+                  style={[styles.team, !first && styles.secondTeam]}>
+                  <PidroText role="label" tone="soft" align="center">
+                    {spectator
+                      ? first
+                        ? 'North / South'
+                        : 'East / West'
+                      : first
+                        ? 'Your team'
+                        : 'Opponents'}
+                  </PidroText>
+                  <PidroText
+                    testID={first ? 'result-score-first' : 'result-score-second'}
+                    role={compact ? 'display' : 'score'}
+                    tone={!tied && first === firstWon ? 'gold' : 'default'}
+                    align="center">
+                    {spectator
+                      ? first
+                        ? rawScores.north_south
+                        : rawScores.east_west
+                      : first
+                        ? relativeScores.us
+                        : relativeScores.them}
+                  </PidroText>
+                  <View style={[styles.players, wide && styles.playersWide]}>
+                    {viewModel.players
+                      .filter(
+                        (player) =>
+                          (isNorthSouthTeam(player.absolutePosition) === firstIsNorthSouth) ===
+                          first
+                      )
+                      .map((player) => (
+                        <View
+                          key={player.absolutePosition}
+                          style={[styles.player, wide && styles.playerWide]}>
+                          <LevelRing uri={player.avatar_url} size={compact ? 32 : 44} />
+                          <PidroText role="label" numberOfLines={2} style={styles.playerName}>
+                            {displayName(player)}
                           </PidroText>
-                        )}
-                      </View>
-                      <PidroText role="metadata" numberOfLines={1} style={styles.playerName}>
-                        {displayName(player)}
-                      </PidroText>
-                    </Surface>
-                  ))}
+                        </View>
+                      ))}
+                  </View>
                 </View>
-              </View>
-            ) : null}
-          </View>
-
-          {progressionSummary ? (
-            <Surface variant="subtle" style={styles.progression}>
-              <ProgressStat label="XP earned" value={progressionSummary.xp_earned.toString()} />
-              <View style={styles.progressionDivider} />
-              <ProgressStat
-                label="Level"
-                value={`${progressionSummary.veteran_level}${progressionSummary.leveled_up ? ' ↑' : ''}`}
-              />
-              {progressionSummary.veteran_title ? (
-                <>
-                  <View style={styles.progressionDivider} />
-                  <ProgressStat label="Title" value={progressionSummary.veteran_title} />
-                </>
-              ) : null}
-            </Surface>
-          ) : null}
-
-          {rematchStatus ? (
-            <PidroText testID="rematch-status" role="metadata" tone="soft" align="center">
+              ))}
+            </View>
+            {!spectator && progressionSummary && (
+              <Surface variant="subtle" style={styles.progression}>
+                <PidroText role="label" tone="gold" align="center">
+                  +{progressionSummary.xp_earned} XP
+                  {progressionSummary.leveled_up
+                    ? ` · Level ${progressionSummary.veteran_level}!`
+                    : ''}
+                </PidroText>
+              </Surface>
+            )}
+          </Surface>
+        </ScrollView>
+        <View style={styles.footer}>
+          {rematchStatus && !spectator ? (
+            <PidroText
+              testID="rematch-status"
+              accessibilityLiveRegion="polite"
+              role="metadata"
+              tone="soft"
+              align="center">
               {rematchStatus}
             </PidroText>
           ) : null}
-
-          <View style={[styles.actions, portrait && styles.actionsPortrait]}>
+          <View style={styles.actions}>
             <BevelButton
-              label={backLabel}
+              testID="game-over-home"
+              accessibilityLabel="Home"
               material="glass"
-              fullWidth={portrait}
-              onPress={onBackToLobby}
-              style={styles.actionButton}
-            />
-            {spectator ? null : (
+              size="icon"
+              onPress={onHome}>
+              <Icon name="home" size={24} />
+            </BevelButton>
+            {!spectator && (
               <BevelButton
                 testID="play-again"
-                label={rematch?.youAgreed ? 'Waiting for the others' : 'Play again'}
-                // No vote yet means nothing to send: the press would be a no-op.
+                label={rematch?.youAgreed ? 'Waiting…' : 'Rematch'}
+                leadingIcon={<Icon name="rematch" size={22} color={PidroBevel.textGold} />}
                 disabled={!rematch || rematch.youAgreed}
                 loading={rematchPending}
-                fullWidth={portrait}
                 onPress={onPlayAgain}
-                style={styles.actionButton}
               />
             )}
           </View>
-        </Surface>
-      </ScrollView>
-    </View>
-  );
-}
-
-function Score({
-  value,
-  label,
-  highlighted,
-}: {
-  value: number;
-  label: string;
-  highlighted: boolean;
-}) {
-  return (
-    <View style={styles.score}>
-      <PidroText role="display" tone={highlighted ? 'gold' : 'default'} style={styles.scoreValue}>
-        {value}
-      </PidroText>
-      <PidroText role="metadata" tone="muted" align="center">
-        {label}
-      </PidroText>
-    </View>
-  );
-}
-
-function ProgressStat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.progressStat}>
-      <PidroText role="metadata" tone="muted" align="center">
-        {label}
-      </PidroText>
-      <PidroText role="label" tone="gold" align="center" numberOfLines={2}>
-        {value}
-      </PidroText>
+        </View>
+      </View>
+      {viewerWon && <VictoryConfetti />}
     </View>
   );
 }
@@ -245,119 +197,37 @@ const styles = StyleSheet.create({
     zIndex: 100,
     backgroundColor: PidroColors.backdrop,
   },
-  scrollContent: {
-    minHeight: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: PidroSpacing.md,
-  },
+  safeContent: { flex: 1, gap: PidroSpacing.sm },
+  scroll: { flex: 1 },
+  scrollContent: { flexGrow: 1, alignItems: 'center', justifyContent: 'center' },
   panel: {
     width: '100%',
-    gap: PidroSpacing.md,
-    padding: PidroSpacing.md,
+    maxWidth: 680,
+    flexShrink: 0,
+    paddingVertical: PidroSpacing.xxl,
+    paddingHorizontal: PidroSpacing.md,
+    gap: PidroSpacing.xl,
   },
-  celebration: {
-    alignItems: 'center',
-    gap: PidroSpacing.xs,
-    paddingVertical: PidroSpacing.xs,
-  },
-  celebrationCompact: {
-    paddingVertical: 0,
-  },
-  outcomeCompact: {
-    fontSize: 24,
-    lineHeight: 29,
-  },
-  summary: {
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    gap: PidroSpacing.md,
-  },
-  summaryPortrait: {
-    flexDirection: 'column',
-  },
-  scoreSection: {
+  panelCompact: { paddingVertical: PidroSpacing.md, gap: PidroSpacing.sm },
+  teams: { flexDirection: 'row' },
+  team: { flex: 1, minWidth: 0, gap: PidroSpacing.xs, paddingHorizontal: PidroSpacing.xs },
+  secondTeam: { borderLeftWidth: 1, borderLeftColor: PidroColors.border },
+  players: { gap: PidroSpacing.sm, marginTop: PidroSpacing.xs },
+  playersWide: { flexDirection: 'row' },
+  player: {
     minWidth: 0,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: PidroSpacing.sm,
-  },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: PidroSpacing.md,
-  },
-  score: {
-    minWidth: 92,
-    alignItems: 'center',
-  },
-  scoreValue: {
-    fontVariant: ['tabular-nums'],
-  },
-  teamSection: {
-    minWidth: 0,
-    flex: 1,
-    gap: PidroSpacing.sm,
-  },
-  playerList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: PidroSpacing.xs,
-  },
-  playerChip: {
-    minWidth: 118,
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.xs,
-    padding: PidroSpacing.xs,
   },
-  avatar: {
-    width: 34,
-    height: 34,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: PidroRadii.tight,
-    backgroundColor: PidroColors.gold,
-  },
-  avatarImage: { width: '100%', height: '100%', borderRadius: PidroRadii.full },
-  avatarText: {
-    color: PidroColors.ink,
-  },
-  playerName: {
-    minWidth: 0,
-    flex: 1,
-  },
-  progression: {
-    minHeight: 62,
-    flexDirection: 'row',
-    alignItems: 'stretch',
-    justifyContent: 'center',
-    gap: PidroSpacing.sm,
-    padding: PidroSpacing.sm,
-  },
-  progressStat: {
-    minWidth: 72,
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  progressionDivider: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: PidroColors.border,
-  },
+  playerWide: { flex: 1 },
+  playerName: { flex: 1, minWidth: 0 },
+  progression: { padding: PidroSpacing.sm },
+  footer: { gap: PidroSpacing.xs },
   actions: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: PidroSpacing.sm,
-  },
-  actionsPortrait: {
-    flexDirection: 'column',
-  },
-  actionButton: {
-    minWidth: 150,
-    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: PidroSpacing.md,
   },
 });

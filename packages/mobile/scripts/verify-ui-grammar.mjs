@@ -589,6 +589,11 @@ async function main() {
             await assertDealerCutCards(page, viewport);
           }
           await assertTargetGeometry(page, testCase, viewport);
+          if (testCase.name.startsWith('table-game-over')) {
+            await page
+              .getByTestId('victory-confetti')
+              .waitFor({ state: 'detached', timeout: 5000 });
+          }
           await page.waitForTimeout(testCase.path.startsWith('/table-dev') ? 1_200 : 150);
           if (pageErrors.length) {
             throw new Error(`${testCase.name} page errors: ${pageErrors.join(' | ')}`);

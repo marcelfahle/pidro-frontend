@@ -42,7 +42,7 @@ type Props = {
   rematchPending?: boolean;
   /** False once the room has moved on from the finished game (next game starting). */
   roomFinished?: boolean;
-  backLabel?: string;
+  onHome?: () => void;
 };
 
 function cardLabel(card: Card): string {
@@ -200,7 +200,7 @@ export function GameCanvasTable({
   rematch,
   rematchPending,
   roomFinished = true,
-  backLabel,
+  onHome,
 }: Props) {
   const controller = useGameTableController(room);
   const role = useGameStore((state) => state.role);
@@ -263,14 +263,16 @@ export function GameCanvasTable({
       <TableChromeBars reserves={reserves} />
 
       {/* Gold scoreboard plaque (top-left) — matches the original */}
-      <Scoreboard
-        scores={serverState?.scores ?? null}
-        youPosition={youPositionAbs}
-        handNumber={serverState?.hand_number ?? serverState?.round_number ?? null}
-        roomCode={viewModel?.roomCode ?? room.code}
-        top={insets.top}
-        left={insets.left}
-      />
+      {!(isGameOver && roomFinished) && (
+        <Scoreboard
+          scores={serverState?.scores ?? null}
+          youPosition={youPositionAbs}
+          handNumber={serverState?.hand_number ?? serverState?.round_number ?? null}
+          roomCode={viewModel?.roomCode ?? room.code}
+          top={insets.top}
+          left={insets.left}
+        />
+      )}
 
       {/* Connection banner (top-centre) */}
       {!isGameOver && (
@@ -279,8 +281,12 @@ export function GameCanvasTable({
         </View>
       )}
 
-      <TableSettings onLeave={onLeave} isSpectator={isSpectator} isGameOver={isGameOver} />
-      {isSpectator && <WatchingBadge />}
+      {!(isGameOver && roomFinished) && (
+        <>
+          <TableSettings onLeave={onLeave} isSpectator={isSpectator} isGameOver={isGameOver} />
+          {isSpectator && <WatchingBadge />}
+        </>
+      )}
 
       {/* Second-deal hand selection */}
       {isSecondDeal && viewModel && yourHand && (
@@ -323,11 +329,10 @@ export function GameCanvasTable({
           viewModel={viewModel}
           serverState={serverState}
           progressionSummary={progressionSummary}
-          onBackToLobby={onLeave}
+          onHome={onHome ?? onLeave}
           onPlayAgain={onPlayAgain ?? onLeave}
           rematch={rematch}
           rematchPending={rematchPending}
-          backLabel={backLabel}
         />
       )}
     </GestureHandlerRootView>

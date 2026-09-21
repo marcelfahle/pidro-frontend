@@ -49,7 +49,7 @@ type SkiaTableProps = {
   rematch?: RematchVote | null;
   rematchPending?: boolean;
   roomFinished?: boolean;
-  backLabel?: string;
+  onHome?: () => void;
 };
 
 /**
@@ -491,7 +491,7 @@ export default function GameScreen() {
     handleSeatEvent({ message: t('table.reopened'), variant: 'warning' });
   }, [tableReopened, handleSeatEvent, clearNotices]);
 
-  const handleLeaveGame = () => {
+  const handleLeaveGame = (destination = exitPath) => {
     const roomCode = room?.code ?? code;
 
     if (roomCode) {
@@ -502,7 +502,7 @@ export default function GameScreen() {
       });
     }
 
-    router.replace(exitPath);
+    router.replace(destination);
   };
 
   const runRoomControl = useCallback(
@@ -627,7 +627,7 @@ export default function GameScreen() {
           <View className="flex-1 items-center justify-center p-4">
             <Text className="text-xl font-bold text-white">Room not found</Text>
             <TouchableOpacity
-              onPress={handleLeaveGame}
+              onPress={() => handleLeaveGame()}
               className="mt-4 rounded-lg bg-white/10 px-6 py-3">
               <Text className="font-semibold text-white">Go Back</Text>
             </TouchableOpacity>
@@ -665,12 +665,12 @@ export default function GameScreen() {
         <SkiaGameTable
           room={room}
           progressionSummary={progressionSummary}
-          onLeave={handleLeaveGame}
+          onLeave={() => handleLeaveGame()}
           onPlayAgain={handlePlayAgain}
           rematch={rematch}
           rematchPending={rematchPending}
           roomFinished={readiness ? readiness.status === 'finished' : true}
-          backLabel={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
+          onHome={() => handleLeaveGame('/home')}
         />
         <TableFeedback notice={notice} />
         <TableSeatDecision key={room.code} decisions={decisions} />
@@ -687,7 +687,7 @@ export default function GameScreen() {
         readyPlayers={readiness?.ready_players}
         readyDisabled={!isChannelJoined || !readiness}
         onReady={role === 'player' && youPositionAbs ? handleReady : undefined}
-        onLeave={handleLeaveGame}
+        onLeave={() => handleLeaveGame()}
         canManage={canManage && origin !== 'single-player'}
         joiningName={joiningName}
         controlsBusy={controlsBusy}
