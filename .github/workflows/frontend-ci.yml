@@ -101,7 +101,8 @@ jobs:
         env:
           CI: '1'
           EXPO_NO_DOTENV: '1'
-          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+          # The full fixture matrix retains Metro/SSR modules across many navigations.
+          NODE_OPTIONS: --max-old-space-size=4096 --require ./scripts/tailwind-v3-resolve.cjs
           UI_SHOT_DIR: /tmp/ui-grammar-screens
         run: |
           bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
@@ -155,7 +156,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: lobby-screenshots
-          path: /tmp/lobby-screens/
+          path: |
+            /tmp/lobby-screens/
+            /tmp/pidro-expo.log
           if-no-files-found: ignore
           retention-days: 14
 
