@@ -690,7 +690,7 @@ export default function GameScreen() {
         readyDisabled={!isChannelJoined || !readiness}
         onReady={role === 'player' && youPositionAbs ? handleReady : undefined}
         onLeave={handleLeaveGame}
-        canManage={canManage}
+        canManage={canManage && origin !== 'single-player'}
         joiningName={joiningName}
         controlsBusy={controlsBusy}
         onOpenInvite={() => setInviteOpen(true)}

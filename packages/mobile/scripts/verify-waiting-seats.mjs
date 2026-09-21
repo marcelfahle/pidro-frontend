@@ -80,12 +80,7 @@ try {
             assert(!overlaps(boxes[i], boxes[j]), 'Seat/panel overlap');
         }
         await assertMinimumTouchTargets(page, phase, viewport);
-        assert(
-          await page
-            .getByTestId('waiting-room-code')
-            .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
-          `${viewport.name}/${scale}: room code is truncated`
-        );
+        assert.equal(await page.getByTestId('waiting-toolbar').getByText('DEV01').count(), 0);
         assert.equal(await page.getByRole('button', { name: /^Manage / }).count(), 0);
         assert.equal(
           await page
@@ -152,7 +147,11 @@ try {
   const westAvatar = await avatar('west');
   const eastAvatar = await avatar('east');
   assert.notEqual(westAvatar, eastAvatar);
+  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
+  await page.getByTestId('waiting-seat-south').getByText('Not ready', { exact: true }).waitFor();
   await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+  await page.getByRole('button', { name: 'Confirming…', exact: true }).waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
   await page.getByRole('button', { name: "You're ready", exact: true }).waitFor();
   assert.equal(await avatar('west'), westAvatar, 'Readiness changed avatar');
   assert.equal(await page.getByTestId('waiting-ready-south').count(), 1);
@@ -166,6 +165,38 @@ try {
   await page.getByTestId('waiting-seat-east').getByText('mfios1', { exact: true }).waitFor();
   assert.equal(await avatar('east'), westAvatar, 'Moved player lost avatar');
   await page.getByTestId('waiting-seat-west').getByText('Open seat', { exact: true }).waitFor();
+
+  await page.goto(`${baseUrl}/table-dev?phase=ready-solo&readyResult=error`);
+  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+  await page.getByText('Readiness was not confirmed.', { exact: false }).waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
+  assert.equal(
+    await page.getByRole('button', { name: "I'm ready", exact: true }).isEnabled(),
+    true
+  );
+
+  await page.goto(`${baseUrl}/table-dev?phase=ready-solo`);
+  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Table', exact: true }).count(), 0);
+  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
+  for (const position of ['north', 'east', 'west']) {
+    assert.equal(await page.getByTestId(`waiting-ready-${position}`).count(), 1);
+  }
+  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+  await page.getByText('4 of 4 ready', { exact: true }).waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-south').count(), 1);
+
+  await page.goto(`${baseUrl}/table-dev?phase=ready-solo&viewer=east`);
+  await page
+    .getByTestId('waiting-seat-east')
+    .getByRole('button', { name: /Alex, You, Pending/ })
+    .waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-east').count(), 0);
+  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+  await page.getByText('4 of 4 ready', { exact: true }).waitFor();
+  assert.equal(await page.getByTestId('waiting-ready-east').count(), 1);
 
   await page.goto(`${baseUrl}/table-dev?phase=ready&viewer=east`);
   await page
