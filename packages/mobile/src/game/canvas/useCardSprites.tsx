@@ -32,7 +32,7 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import type { Card } from '@/types/game';
-import type { RelativePosition, TableLayout } from './layout';
+import { playedCardTarget, type RelativePosition, type TableLayout } from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
 import { DEAL_CARD_STAGGER_MS, DEAL_CARD_TRAVEL_MS } from './animationTiming';
@@ -40,32 +40,6 @@ import { T } from './tokens';
 
 const MAX = 36;
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
-
-function playedCardTarget(L: TableLayout, rel: RelativePosition, index: number, count: number) {
-  const portrait = L.profile.endsWith('portrait');
-  const pileScale = portrait ? 0.82 : 0.8;
-  const spacing = Math.min(L.cardW * 0.38, portrait ? 24 : 32);
-  const off = index - (count - 1) / 2;
-  // Side cards face their owner: the card's top edge points at the table
-  // center (east top→left, west top→right), matching the seat rot in layout.ts.
-  const rot = rel === 'east' ? -Math.PI / 2 : rel === 'west' ? Math.PI / 2 : 0;
-
-  // Each pile center lands on a cardinal point of the trick circle. Multiple
-  // cards spread along the tangent so the ring remains the visual ruler.
-  const x =
-    rel === 'west'
-      ? L.trick.cx - L.trick.r
-      : rel === 'east'
-        ? L.trick.cx + L.trick.r
-        : L.trick.cx + off * spacing;
-  const y =
-    rel === 'north'
-      ? L.trick.cy - L.trick.r
-      : rel === 'south'
-        ? L.trick.cy + L.trick.r
-        : L.trick.cy + off * spacing;
-  return { x, y, rot, scale: pileScale };
-}
 
 function handSlotFn(L: TableLayout, n: number) {
   const step = n > 1 ? Math.min(L.cardW * 0.72, (L.hand.maxWidth - L.cardW) / (n - 1)) : 0;

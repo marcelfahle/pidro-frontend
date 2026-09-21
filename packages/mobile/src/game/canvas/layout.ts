@@ -37,6 +37,39 @@ export type TableLayout = {
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const CARD_RATIO = 110 / 78; // from the legacy card art (spike)
 
+export function playedCardTarget(
+  L: TableLayout,
+  rel: RelativePosition,
+  index: number,
+  count: number
+) {
+  const portrait = L.profile.endsWith('portrait');
+  const pileScale = portrait ? 0.82 : 0.8;
+  const spacing = Math.min(L.cardW * 0.38, portrait ? 24 : 32);
+  const off = index - (count - 1) / 2;
+  // Side cards face their owner: the card's top edge points at the table
+  // center (east top→left, west top→right), matching the seat rot below.
+  const rot = rel === 'east' ? -Math.PI / 2 : rel === 'west' ? Math.PI / 2 : 0;
+
+  // Each pile center lands on a cardinal point of the trick circle. Multiple
+  // cards spread along the tangent so the ring remains the visual ruler.
+  const x =
+    rel === 'west'
+      ? L.trick.cx - L.trick.r
+      : rel === 'east'
+        ? L.trick.cx + L.trick.r
+        : L.trick.cx + off * spacing;
+  // East's -90° rotation puts its rank edge at the bottom. Spread upward
+  // so newer cards (drawn on top) leave that edge visible on older cards.
+  const y =
+    rel === 'north'
+      ? L.trick.cy - L.trick.r
+      : rel === 'south'
+        ? L.trick.cy + L.trick.r
+        : L.trick.cy + off * spacing * (rel === 'east' ? -1 : 1);
+  return { x, y, rot, scale: pileScale };
+}
+
 export function pickProfile(w: number, h: number): Profile {
   const tablet = Math.min(w, h) >= 600; // shortest-side breakpoint; browser window counts as tablet
   const landscape = w > h;
