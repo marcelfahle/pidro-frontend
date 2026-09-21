@@ -189,6 +189,7 @@ function TableDevHarness() {
     pass?: string;
     viewer?: string;
     rematch?: string;
+    readyResult?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -198,7 +199,9 @@ function TableDevHarness() {
   const [busy, setBusy] = useState(false);
   const names = ['Nora', 'Eli', 'Wynn'];
   const positions = ['north', 'east', 'west'] as const;
-  const [readyPlayers, setReadyPlayers] = useState<Position[]>(['north', 'west']);
+  const [readyPlayers, setReadyPlayers] = useState<Position[]>(
+    phase === 'ready-solo' ? ['north', 'east', 'west'] : ['north', 'west']
+  );
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
@@ -222,9 +225,11 @@ function TableDevHarness() {
     phase === 'waiting' ||
     phase === 'waiting-host' ||
     phase === 'ready' ||
-    phase === 'ready-host'
+    phase === 'ready-host' ||
+    phase === 'ready-solo'
   ) {
-    const hostControls = phase === 'waiting-host' || phase === 'ready-host';
+    const hostControls =
+      phase === 'waiting-host' || phase === 'ready-host' || phase === 'ready-solo';
     const full = phase.startsWith('ready');
     const waitingRoom: Room = full
       ? {
@@ -250,9 +255,18 @@ function TableDevHarness() {
       locked: waitingLocked,
       positions: waitingPositions ?? waitingRoom.positions,
       seats: waitingRoom.seats?.map((seat) =>
-        params.names === 'long' && seat.player?.id === 'p-west'
-          ? { ...seat, player: { ...seat.player, username: 'Alexandria the Long-Named Player' } }
-          : seat
+        phase === 'ready-solo' && seat.player
+          ? {
+              ...seat,
+              player: {
+                id: seat.player.id,
+                username: seat.position === 'south' ? 'Alex' : 'Bot',
+                is_bot: seat.position !== 'south',
+              },
+            }
+          : params.names === 'long' && seat.player?.id === 'p-west'
+            ? { ...seat, player: { ...seat.player, username: 'Alexandria the Long-Named Player' } }
+            : seat
       ),
     };
     return (
@@ -264,12 +278,14 @@ function TableDevHarness() {
               isSpectator={params.role === 'spectator'}
               readyPlayers={full ? readyPlayers : ['north']}
               readyDisabled={false}
-              onReady={async () =>
+              onReady={async () => {
+                if (params.readyResult === 'error') throw new Error('Fixture readiness failure');
+                await new Promise((resolve) => setTimeout(resolve, 500));
                 setReadyPlayers((current) => [
                   ...current,
                   params.viewer === 'east' ? 'east' : 'south',
-                ])
-              }
+                ]);
+              }}
               youPlayerId={params.viewer === 'east' ? 'p-east' : 'p-south'}
               onLeave={() => {}}
               canManage={hostControls}

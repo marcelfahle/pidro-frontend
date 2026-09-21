@@ -28,6 +28,7 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 | `waiting-host`     | …with host controls (Manage/Lock) | `waiting-table`         |
 | `ready`            | Full table, ready-up flow         | `waiting-table`         |
 | `ready-host`       | Full table + host controls        | `waiting-table`         |
+| `ready-solo`       | You + three ready bots            | `waiting-table`         |
 | `dealer_selection` | Skia table, dealer cut cards      | `seat-north`            |
 | `playing`          | Skia table + trick overlay        | `seat-north`            |
 | `bidding`          | Bidding window                    | `bidding-window`        |
@@ -54,6 +55,9 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 | `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                               |
 
 ### Recipes
+
+For waiting-screen failure feedback, append `readyResult=error` to a ready fixture.
+The normal ready fixtures delay confirmation briefly to expose the pending state.
 
 ```
 /table-dev?phase=bidding

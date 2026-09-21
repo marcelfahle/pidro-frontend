@@ -1,16 +1,17 @@
-import { ScrollView, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Fragment, useRef, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Background } from '@/components/ui/Background';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
+import { Surface } from '@/components/ui/Surface';
+import { LevelRing } from '@/components/home/LevelRing';
 import { PidroText } from '@/components/ui/PidroText';
 import { Modal } from '@/components/ui/Modal';
-import { PidroColors } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
 import type { Position, Room } from '@/types/lobby';
-import { Avatar } from '@/components/ui/Avatar';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { WatchingBadge } from './WatchingBadge';
@@ -59,34 +60,28 @@ function SeatPlate({
   ready,
   relationship,
   onProfile,
+  compact,
 }: {
   seat: SeatInfo;
   ready: boolean;
   relationship: string;
   onProfile?: () => void;
+  compact: boolean;
 }) {
   const status = seat.occupied ? (ready ? 'Ready' : 'Pending') : 'Available';
   const identity = (
-    <View className="items-center gap-2 py-2">
-      <View className="relative">
-        <View className="h-20 w-20 items-center justify-center overflow-hidden rounded-full border-2 border-white/20 bg-black/10">
+    <View style={styles.identity}>
+      <View>
+        <View style={[styles.avatar, compact && styles.avatarCompact]}>
           {seat.occupied ? (
-            <Avatar
-              key={seat.playerId}
-              uri={seat.avatarUrl}
-              // Bundled RN Web images need explicit dimensions instead of intrinsic size.
-              style={{ width: 72, height: 72 }}
-              resizeMode="cover"
-            />
+            <LevelRing key={seat.playerId} uri={seat.avatarUrl} size={compact ? 48 : 64} />
           ) : (
             <Feather name="user-plus" size={28} color={PidroColors.textSoft} />
           )}
         </View>
         {seat.occupied && ready && (
-          <View
-            testID={`waiting-ready-${seat.absolute}`}
-            className="absolute right-0 bottom-0 h-6 w-6 items-center justify-center rounded-full border-2 border-[#12344c] bg-[#87ddd1]">
-            <Feather name="check" size={14} color="#082738" />
+          <View testID={`waiting-ready-${seat.absolute}`} style={styles.readyBadge}>
+            <Feather name="check" size={12} color={PidroColors.ink} />
           </View>
         )}
       </View>
@@ -96,18 +91,19 @@ function SeatPlate({
         align="center"
         numberOfLines={1}
         ellipsizeMode="tail"
-        className="w-full">
+        style={styles.fullWidth}>
         {seat.name}
       </PidroText>
-      {(seat.isYou || (seat.isBot && seat.name !== 'Bot')) && (
-        <PidroText role="metadata" tone="soft">
-          {seat.isYou ? 'You' : 'Bot'}
-        </PidroText>
-      )}
+      <PidroText role="metadata" tone="soft">
+        {seat.isYou ? 'You' : ' '}
+      </PidroText>
+      <PidroText role="metadata" style={ready ? styles.readyText : styles.pendingText}>
+        {seat.occupied ? (ready ? 'Ready' : 'Not ready') : 'Available'}
+      </PidroText>
     </View>
   );
   return (
-    <View testID={`waiting-seat-${seat.absolute}`} className="min-w-0 flex-1">
+    <View testID={`waiting-seat-${seat.absolute}`} style={styles.seat}>
       {onProfile ? (
         <PressableFX
           accessibilityRole="button"
@@ -164,6 +160,7 @@ export function WaitingTable({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
+  const compact = height < PidroLayout.compactHeight;
   const canManageTable = canManage && !isSpectator;
   const seats = buildSeats(room, isSpectator ? '' : youPlayerId);
   const openSeats = seats.filter((seat) => !seat.occupied).length;
@@ -208,49 +205,35 @@ export function WaitingTable({
     <Background>
       <View
         testID="waiting-table"
-        className="flex-1"
         style={{
+          flex: 1,
           paddingTop: insets.top,
           paddingLeft: insets.left,
           paddingRight: insets.right,
           paddingBottom: insets.bottom + (isSpectator ? 64 : 0),
         }}>
-        <View
-          testID="waiting-toolbar"
-          className="flex-row items-center justify-between gap-2 px-4 py-2">
-          <Button
+        <View testID="waiting-toolbar" style={styles.toolbar}>
+          <BevelButton
             label={isSpectator ? 'Back to lobby' : 'Leave'}
-            variant="ghost"
+            material="glass"
             size="sm"
             onPress={onLeave}
           />
-          <View className="min-w-0 flex-1 flex-row items-center justify-center gap-1">
-            {room.locked && (
-              <Feather
-                name="lock"
-                size={12}
-                color={PidroColors.textSoft}
-                accessibilityLabel="Table locked"
-              />
-            )}
-            <PidroText testID="waiting-room-code" role="metadata" tone="soft" numberOfLines={1}>
-              {room.code}
-            </PidroText>
-          </View>
+          <View style={styles.toolbarSpace} />
           {canManageTable && openSeats > 0 && (
-            <Button
+            <BevelButton
               accessibilityLabel={t('table.invite')}
-              variant="outline"
+              material="glass"
               size="icon"
               onPress={onOpenInvite}
               disabled={controlsBusy}>
               <Feather name="user-plus" size={20} color={PidroColors.text} />
-            </Button>
+            </BevelButton>
           )}
           {canManageTable && (
-            <Button
+            <BevelButton
               label="Table"
-              variant="ghost"
+              material="glass"
               size="sm"
               onPress={() => setTableMenuOpen(true)}
             />
@@ -258,37 +241,50 @@ export function WaitingTable({
         </View>
         <ScrollView
           testID="waiting-seats-scroll"
-          className="flex-1"
-          contentContainerClassName="grow justify-center gap-6 px-4 py-4">
-          <View
-            className={
-              portrait
-                ? 'w-full max-w-md items-center gap-3 self-center'
-                : 'w-full max-w-4xl flex-row items-center gap-5 self-center'
-            }>
+          style={styles.scroll}
+          contentContainerStyle={[styles.content, compact && styles.compactContent]}>
+          {!compact && (
+            <View style={styles.heading}>
+              <PidroText role="display" align="center">
+                {openSeats > 0 ? 'Gather your table' : isYouReady ? 'All set!' : 'Ready to play?'}
+              </PidroText>
+              <PidroText role="metadata" tone="soft" align="center">
+                {openSeats > 0
+                  ? 'Four seats. Two teams. One great game.'
+                  : 'The game begins when everyone is ready.'}
+              </PidroText>
+            </View>
+          )}
+          <View style={[styles.matchup, !portrait && styles.matchupLandscape]}>
             {[
               ['bottom', 'top'],
               ['left', 'right'],
             ].map((relatives, index) => (
               <Fragment key={index}>
                 {index === 1 && (
-                  <PidroText role="title" tone="soft" align="center">
+                  <PidroText role="label" tone="soft" align="center" style={styles.versus}>
                     VS
                   </PidroText>
                 )}
-                <View
+                <Surface
+                  variant="panel"
                   testID={`waiting-team-${index}`}
-                  className={portrait ? 'w-full gap-3' : 'min-w-0 flex-1 gap-3'}>
-                  <PidroText role="label" tone={index === 0 ? 'gold' : 'cyan'} align="center">
+                  style={[styles.team, !portrait && styles.teamLandscape]}>
+                  <PidroText
+                    role="label"
+                    tone={index === 0 ? 'gold' : 'cyan'}
+                    align="center"
+                    style={styles.teamHeading}>
                     {teamName(seats.find((seat) => seat.rel === relatives[0])!)}
                   </PidroText>
-                  <View className="flex-row items-start gap-3">
+                  <View style={styles.roster}>
                     {relatives.map((rel) => {
                       const seat = seats.find((candidate) => candidate.rel === rel)!;
                       return (
                         <SeatPlate
                           key={seat.absolute}
                           seat={seat}
+                          compact={compact}
                           ready={readyPlayers.includes(seat.absolute)}
                           relationship={
                             seat.isYou
@@ -308,12 +304,12 @@ export function WaitingTable({
                       );
                     })}
                   </View>
-                </View>
+                </Surface>
               </Fragment>
             ))}
           </View>
-          <View testID="readiness-panel" className="w-full max-w-xs gap-3 self-center">
-            <View className="flex-row items-center justify-center gap-2">
+          <View testID="readiness-panel" style={styles.readiness}>
+            <View style={styles.status}>
               {openSeats === 0 && (
                 <Feather name="check-circle" size={16} color={PidroColors.cyanText} />
               )}
@@ -321,7 +317,7 @@ export function WaitingTable({
                 role="metadata"
                 tone="soft"
                 align="center"
-                className="shrink"
+                style={styles.statusText}
                 accessibilityLiveRegion="polite">
                 {joiningName
                   ? t('table.joining', { name: joiningName })
@@ -331,10 +327,11 @@ export function WaitingTable({
               </PidroText>
             </View>
             {canManageTable && openSeats > 0 && onSeatBot && (
-              <Button
+              <BevelButton
                 testID="waiting-seat-bot"
                 label={t('table.seatBot')}
-                variant="outline"
+                material="glass"
+                fullWidth
                 disabled={controlsBusy}
                 onPress={() => {
                   const open = seats.find((seat) => !seat.occupied);
@@ -343,8 +340,11 @@ export function WaitingTable({
               />
             )}
             {!isSpectator && openSeats === 0 && onReady && (
-              <Button
+              <BevelButton
                 label={isYouReady ? "You're ready" : readyBusy ? 'Confirming…' : "I'm ready"}
+                fullWidth
+                size={compact ? 'md' : 'lg'}
+                weight="hero"
                 onPress={confirmReady}
                 disabled={readyDisabled || isYouReady || readyBusy}
                 loading={readyBusy}
@@ -374,14 +374,15 @@ export function WaitingTable({
           style={{
             maxHeight: Math.min(320, Math.max(120, height - insets.top - insets.bottom - 160)),
           }}
-          contentContainerClassName="gap-3">
+          contentContainerStyle={styles.menu}>
           {selectedSeatIsCurrent ? (
             <>
               {moveTargets.map((position) => (
-                <Button
+                <BevelButton
                   key={position}
                   label={`${t('table.moveTo', { position: teamName(seats.find((seat) => seat.absolute === position)!) })} · ${t(`table.position.${position}`)}`}
-                  variant="secondary"
+                  material="glass"
+                  fullWidth
                   disabled={controlsBusy}
                   onPress={() => {
                     if (canManageTable && selectedSeat?.playerId && selectedSeatIsCurrent)
@@ -390,23 +391,33 @@ export function WaitingTable({
                   }}
                 />
               ))}
-              <Button
-                label={t('table.kick')}
-                variant="destructive"
+              <BevelButton
+                accessibilityLabel={t('table.kick')}
+                material="glass"
+                fullWidth
                 disabled={controlsBusy}
                 onPress={() => {
                   if (canManageTable && selectedSeatIsCurrent)
                     onKickPlayer?.(selectedSeat!.absolute);
                   setSelectedSeat(null);
-                }}
+                }}>
+                <PidroText role="label" tone="danger">
+                  {t('table.kick')}
+                </PidroText>
+              </BevelButton>
+              <BevelButton
+                label="Back"
+                material="glass"
+                fullWidth
+                onPress={() => setSelectedSeat(null)}
               />
-              <Button label="Back" variant="outline" onPress={() => setSelectedSeat(null)} />
             </>
           ) : (
             <>
-              <Button
+              <BevelButton
                 label={room.locked ? t('table.unlock') : t('table.lock')}
-                variant="outline"
+                material="glass"
+                fullWidth
                 onPress={onToggleLock}
                 loading={controlsBusy}
               />
@@ -416,18 +427,24 @@ export function WaitingTable({
               {seats
                 .filter((seat) => seat.occupied && !seat.isYou && !seat.isBot)
                 .map((seat) => (
-                  <Button
+                  <BevelButton
                     key={seat.playerId}
                     label={seat.name}
                     accessibilityLabel={t('table.managePlayer', { name: seat.name })}
-                    variant="secondary"
+                    material="glass"
+                    fullWidth
                     onPress={() => setSelectedSeat(seat)}
                   />
                 ))}
               <PidroText role="metadata" tone="muted">
                 Seat changes or disconnects reset readiness. Bots are ready automatically.
               </PidroText>
-              <Button label="Close" variant="outline" onPress={() => setTableMenuOpen(false)} />
+              <BevelButton
+                label="Close"
+                material="glass"
+                fullWidth
+                onPress={() => setTableMenuOpen(false)}
+              />
             </>
           )}
         </ScrollView>
@@ -436,3 +453,79 @@ export function WaitingTable({
     </Background>
   );
 }
+
+const styles = StyleSheet.create({
+  toolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+    paddingHorizontal: PidroSpacing.md,
+    paddingVertical: PidroSpacing.xs,
+  },
+  toolbarSpace: { flex: 1 },
+  scroll: { flex: 1 },
+  content: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    gap: PidroSpacing.lg,
+    padding: PidroSpacing.md,
+  },
+  compactContent: { gap: PidroSpacing.sm, paddingVertical: PidroSpacing.xs },
+  heading: { gap: PidroSpacing.xs },
+  matchup: {
+    width: '100%',
+    maxWidth: PidroLayout.contentMaxWidth,
+    alignSelf: 'center',
+    gap: PidroSpacing.xs,
+  },
+  matchupLandscape: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: PidroLayout.wideContentMaxWidth,
+  },
+  versus: { paddingHorizontal: PidroSpacing.xxs },
+  team: { padding: PidroSpacing.sm, gap: PidroSpacing.sm },
+  teamLandscape: { flex: 1, minWidth: 0 },
+  teamHeading: {
+    paddingBottom: PidroSpacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: PidroColors.border,
+  },
+  roster: { flexDirection: 'row', gap: PidroSpacing.xs },
+  seat: { flex: 1, minWidth: 0 },
+  identity: { alignItems: 'center', gap: PidroSpacing.xxs },
+  avatar: {
+    width: 64,
+    height: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: PidroRadii.full,
+    backgroundColor: PidroColors.panelSoft,
+  },
+  avatarCompact: { width: 48, height: 48 },
+  readyBadge: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: PidroRadii.full,
+    borderWidth: 2,
+    borderColor: PidroColors.ink,
+    backgroundColor: PidroColors.success,
+  },
+  fullWidth: { width: '100%' },
+  readyText: { color: PidroColors.success },
+  pendingText: { color: PidroColors.textMuted },
+  readiness: { width: '100%', maxWidth: 380, alignSelf: 'center', gap: PidroSpacing.sm },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: PidroSpacing.xs,
+  },
+  statusText: { flexShrink: 1 },
+  menu: { gap: PidroSpacing.sm },
+});
