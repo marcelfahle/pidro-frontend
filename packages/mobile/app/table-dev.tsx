@@ -203,6 +203,8 @@ function TableDevHarness() {
     pass?: string;
     viewer?: string;
     rematch?: string;
+    result?: string;
+    xp?: string;
     readyResult?: string;
     deal?: string;
     dealer?: string;
@@ -346,7 +348,7 @@ function TableDevHarness() {
           <SkiaDevTable
             onHandPresentationReadyChange={setIsHandReady}
             autoPlay={autoPlay}
-            phase={phase === 'dealer_selection' ? 'dealer_selection' : 'playing'}
+            phase={phase === 'dealer_selection' || phase === 'game_over' ? phase : 'playing'}
             lifecycle={params.lifecycle}
           />
           <DevOverlays
@@ -354,6 +356,9 @@ function TableDevHarness() {
             isHandReady={isHandReady}
             canPass={params.pass !== 'disabled'}
             rematch={params.rematch}
+            result={params.result}
+            xp={params.xp}
+            playerName={params.playerName}
           />
           {params.feedback === 'owner' && (
             <TableSeatDecision

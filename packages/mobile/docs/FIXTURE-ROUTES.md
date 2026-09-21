@@ -56,6 +56,13 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 
 ### Recipes
 
+Game-over checks: `phase=game_over` supports `result=loss|east|spectator|tie`,
+`xp=earned|level`, `rematch=waiting|asked|missing|pending`, and `playerName=` for
+the partner's long name. The default is a win with no XP. Rematch records a local
+fixture vote; Home navigates home. Run `node scripts/verify-game-over.mjs` for
+phone/tablet, simulated insets, outcome, voting, and reduced-motion checks.
+These browser checks do not certify native safe-area measurement.
+
 Top-bar checks: `scores=history` seeds two observed score changes (including a negative total)
 in the mock table. `safeArea=island-left` / `island-right` simulate landscape side cutouts.
 Run `MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-table-chrome.mjs` for

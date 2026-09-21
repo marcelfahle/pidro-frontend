@@ -10,6 +10,8 @@ import { PidroColors } from '@/design/tokens';
  * they stay legible at chip sizes; `fill` glyphs are solid shapes.
  */
 export type IconName =
+  | 'home'
+  | 'rematch'
   | 'star'
   | 'play'
   | 'friends'
@@ -22,6 +24,8 @@ export type IconName =
   | 'bot';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
+  home: { path: 'M3 11l9-8 9 8M5 9v12h5v-7h4v7h5V9', mode: 'stroke' },
+  rematch: { path: 'M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.7M20 7l-2.3-2', mode: 'stroke' },
   close: { path: 'M6 6l12 12M6 18L18 6', mode: 'stroke' },
   'chevron-down': { path: 'M6 9l6 6 6-6', mode: 'stroke' },
   settings: {

@@ -1,7 +1,7 @@
 import { Text, type TextProps, type TextStyle, StyleSheet } from 'react-native';
 import { PidroColors, PidroType } from '@/design/tokens';
 
-export type PidroTextRole = 'display' | 'title' | 'label' | 'body' | 'metadata';
+export type PidroTextRole = 'score' | 'display' | 'title' | 'label' | 'body' | 'metadata';
 export type PidroTextTone = 'default' | 'soft' | 'muted' | 'gold' | 'cyan' | 'danger';
 
 export interface PidroTextProps extends Omit<TextProps, 'role'> {
@@ -31,6 +31,7 @@ const styles = StyleSheet.create({
   base: {
     color: PidroColors.text,
   },
+  score: PidroType.score,
   display: PidroType.display,
   title: PidroType.title,
   label: PidroType.label,

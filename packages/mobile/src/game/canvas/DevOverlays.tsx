@@ -5,7 +5,8 @@
  * Throwaway scaffold.
  *   ?phase=playing|bidding|declaring|second_deal|game_over
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type {
@@ -130,14 +131,49 @@ export function DevOverlays({
   isHandReady,
   canPass = true,
   rematch,
+  result,
+  xp,
+  playerName,
 }: {
   phase: string;
   isHandReady: boolean;
   canPass?: boolean;
   rematch?: string;
+  result?: string;
+  xp?: string;
+  playerName?: string;
 }) {
+  const router = useRouter();
+  const [voted, setVoted] = useState(false);
   const insets = useSafeAreaInsets();
   const { topReserve, bottomReserve } = useTableReserves();
+  const eastViewer = result === 'east';
+  const spectator = result === 'spectator';
+  const vote = REMATCH_FIXTURES[rematch ?? 'open'];
+  const resultModel: GameViewModel = {
+    ...VM,
+    viewerPositionAbsolute: eastViewer ? 'east' : 'south',
+    players: PLAYERS.map((player) => ({
+      ...player,
+      username:
+        player.absolutePosition === 'south'
+          ? 'Alex'
+          : player.absolutePosition === 'north' && playerName
+            ? playerName
+            : player.username,
+      isYou: !spectator && player.absolutePosition === (eastViewer ? 'east' : 'south'),
+    })),
+  };
+  const resultState: ServerGameState = {
+    ...GAME_OVER_SERVER,
+    winner: result === 'tie' ? null : result === 'loss' || eastViewer ? 'east_west' : 'north_south',
+    scores:
+      result === 'tie'
+        ? { north_south: 64, east_west: 64 }
+        : result === 'loss' || eastViewer
+          ? { north_south: -12, east_west: 64 }
+          : { north_south: 64, east_west: 48 },
+  };
 
   // Seed the store so the store-driven BiddingActions shows in dev (no Phoenix).
   useEffect(() => {
@@ -190,11 +226,15 @@ export function DevOverlays({
 
       {phase === 'game_over' && (
         <GameOverOverlay
-          viewModel={VM}
-          serverState={GAME_OVER_SERVER}
-          onBackToLobby={noop}
-          onPlayAgain={noop}
-          rematch={REMATCH_FIXTURES[rematch ?? 'open']}
+          viewModel={resultModel}
+          serverState={resultState}
+          onHome={() => router.replace('/home')}
+          onPlayAgain={() => setVoted(true)}
+          rematch={voted && vote ? { ...vote, agreed: vote.agreed + 1, youAgreed: true } : vote}
+          rematchPending={rematch === 'pending'}
+          progressionSummary={
+            xp ? { xp_earned: 64, veteran_level: 12, leveled_up: xp === 'level' } : null
+          }
         />
       )}
     </>

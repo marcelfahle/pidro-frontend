@@ -18,6 +18,7 @@ export interface BevelButtonProps extends Omit<
   'children' | 'contentStyle' | 'radius'
 > {
   label?: string;
+  leadingIcon?: ReactNode;
   children?: ReactNode;
   material?: BevelMaterial;
   size?: BevelButtonSize;
@@ -60,6 +61,7 @@ const GLASS_LABEL_SIZES: Record<
 
 export function BevelButton({
   label,
+  leadingIcon,
   children,
   material = 'wood',
   size = 'md',
@@ -102,6 +104,7 @@ export function BevelButton({
       ]}
       contentStyle={[styles.face, FACE_SIZES[size]]}
       {...rest}>
+      {!loading && leadingIcon}
       {loading ? <ActivityIndicator color={wood ? PidroBevel.textGold : '#ffffff'} /> : content}
     </BevelPressable>
   );

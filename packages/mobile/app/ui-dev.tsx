@@ -284,6 +284,26 @@ function UiDevHarness() {
           </View>
         </Surface>
 
+        <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Match results</PidroText>
+          <View style={styles.row}>
+            <PidroText role="score" tone="gold">
+              64
+            </PidroText>
+            <PidroText role="score">−12</PidroText>
+          </View>
+          <View style={styles.row}>
+            <BevelButton accessibilityLabel="Home" material="glass" size="icon" onPress={noop}>
+              <Icon name="home" size={24} />
+            </BevelButton>
+            <BevelButton
+              label="Rematch"
+              leadingIcon={<Icon name="rematch" color={PidroBevel.textGold} size={22} />}
+              onPress={noop}
+            />
+          </View>
+        </Surface>
+
         <SwitchGallery />
 
         <Surface variant="panel" style={styles.section} padded>
