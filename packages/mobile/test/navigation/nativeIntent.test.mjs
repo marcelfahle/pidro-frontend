@@ -9,7 +9,7 @@ globalThis.__DEV__ = true;
 const require = createRequire(import.meta.url);
 const configPath = require.resolve('../../app.config.js');
 const baseConfig = {
-  name: 'Pidro 3',
+  name: 'Pidro',
   scheme: 'pidro-mobile',
   ios: { bundleIdentifier: 'com.oneapps.pidro' },
   android: { package: 'com.oneapps.pidro' },
@@ -120,48 +120,52 @@ describe('initial route', () => {
 
 describe('resolved variant configuration', () => {
   it.each([
-    ['production', 'pidro-mobile', 'com.oneapps.pidro', true],
-    ['development', 'pidro-mobile-dev', 'com.marcelfahle.pidro3.dev', false],
-    ['preview', 'pidro-mobile-preview', 'com.marcelfahle.pidro3.preview', false],
-  ])('keeps %s identifiers and intended links', (variant, scheme, identifier, verifiedAndroid) => {
-    process.env.APP_VARIANT = variant;
-    delete require.cache[configPath];
-    const configure = require(configPath);
-    const config = configure({ config: baseConfig });
+    ['production', 'Pidro', 'pidro-mobile', 'com.oneapps.pidro', true],
+    ['development', 'Pidro Dev', 'pidro-mobile-dev', 'com.marcelfahle.pidro3.dev', false],
+    ['preview', 'Pidro Preview', 'pidro-mobile-preview', 'com.marcelfahle.pidro3.preview', false],
+  ])(
+    'keeps %s identifiers and intended links',
+    (variant, name, scheme, identifier, verifiedAndroid) => {
+      process.env.APP_VARIANT = variant;
+      delete require.cache[configPath];
+      const configure = require(configPath);
+      const config = configure({ config: baseConfig });
 
-    expect(config.scheme).toBe(scheme);
-    expect(config.ios.bundleIdentifier).toBe(identifier);
-    expect(config.ios.associatedDomains).toEqual([
-      'applinks:www.pidro.online',
-      'applinks:pidro.online',
-    ]);
-    expect(config.android.package).toBe(identifier);
-    expect(config.android.allowBackup).toBe(false);
-    if (verifiedAndroid) {
-      expect(config.android.blockedPermissions).toEqual([
-        'android.permission.READ_EXTERNAL_STORAGE',
-        'android.permission.SYSTEM_ALERT_WINDOW',
-        'android.permission.WRITE_EXTERNAL_STORAGE',
+      expect(config.name).toBe(name);
+      expect(config.scheme).toBe(scheme);
+      expect(config.ios.bundleIdentifier).toBe(identifier);
+      expect(config.ios.associatedDomains).toEqual([
+        'applinks:www.pidro.online',
+        'applinks:pidro.online',
       ]);
-      expect(config.android.intentFilters).toEqual([
-        {
-          action: 'VIEW',
-          autoVerify: true,
-          data: [{ scheme: 'https', host: 'www.pidro.online', pathPrefix: '/j/' }],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
-        {
-          action: 'VIEW',
-          autoVerify: true,
-          data: [{ scheme: 'https', host: 'pidro.online', pathPrefix: '/j/' }],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
-      ]);
-    } else {
-      expect(config.android.blockedPermissions).toEqual([]);
-      expect(config.android.intentFilters).toEqual([]);
+      expect(config.android.package).toBe(identifier);
+      expect(config.android.allowBackup).toBe(false);
+      if (verifiedAndroid) {
+        expect(config.android.blockedPermissions).toEqual([
+          'android.permission.READ_EXTERNAL_STORAGE',
+          'android.permission.SYSTEM_ALERT_WINDOW',
+          'android.permission.WRITE_EXTERNAL_STORAGE',
+        ]);
+        expect(config.android.intentFilters).toEqual([
+          {
+            action: 'VIEW',
+            autoVerify: true,
+            data: [{ scheme: 'https', host: 'www.pidro.online', pathPrefix: '/j/' }],
+            category: ['BROWSABLE', 'DEFAULT'],
+          },
+          {
+            action: 'VIEW',
+            autoVerify: true,
+            data: [{ scheme: 'https', host: 'pidro.online', pathPrefix: '/j/' }],
+            category: ['BROWSABLE', 'DEFAULT'],
+          },
+        ]);
+      } else {
+        expect(config.android.blockedPermissions).toEqual([]);
+        expect(config.android.intentFilters).toEqual([]);
+      }
     }
-  });
+  );
 
   it.each(['prevew', 'prod', ''])('rejects an unsupported %j variant', (variant) => {
     process.env.APP_VARIANT = variant;
