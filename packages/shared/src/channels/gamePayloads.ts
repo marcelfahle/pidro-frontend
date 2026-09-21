@@ -1,5 +1,7 @@
 import type {
   ActiveTurnTimer,
+  Card,
+  DealerRobPresentation,
   GamePresentation,
   GamePhase,
   LegalAction,
@@ -10,6 +12,46 @@ import type { Position } from '../types/lobby';
 
 function asNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function isPosition(value: unknown): value is Position {
+  return value === 'north' || value === 'east' || value === 'south' || value === 'west';
+}
+
+function isCard(value: unknown): value is Card {
+  if (!value || typeof value !== 'object') return false;
+  const card = value as Partial<Card>;
+  return (
+    Number.isInteger(card.rank) &&
+    card.rank! >= 2 &&
+    card.rank! <= 14 &&
+    (card.suit === 'hearts' ||
+      card.suit === 'diamonds' ||
+      card.suit === 'clubs' ||
+      card.suit === 'spades')
+  );
+}
+
+function isCardArray(value: unknown): value is Card[] {
+  return Array.isArray(value) && value.every(isCard);
+}
+
+function parseDealerRob(value: unknown): DealerRobPresentation | null {
+  if (!value || typeof value !== 'object') return null;
+  const rob = value as Record<string, unknown>;
+  if (
+    !isPosition(rob.dealer) ||
+    typeof rob.automatic !== 'boolean' ||
+    asNumber(rob.started_at_ms) == null ||
+    asNumber(rob.ends_at_ms) == null
+  ) {
+    return null;
+  }
+
+  const cardFields = ['pool', 'kept', 'discarded'] as const;
+  if (cardFields.some((field) => field in rob && !isCardArray(rob[field]))) return null;
+
+  return rob as unknown as DealerRobPresentation;
 }
 
 export function normalizeTurnTimer(payload: unknown): ActiveTurnTimer | null {
@@ -89,7 +131,18 @@ export function extractGamePresentation(
   data: Record<string, unknown> | undefined,
 ): GamePresentation | null {
   if (!data?.presentation || typeof data.presentation !== 'object') return null;
-  return data.presentation as GamePresentation;
+  const presentation = data.presentation as Record<string, unknown>;
+
+  if (presentation.dealer_selection != null) {
+    if (typeof presentation.dealer_selection !== 'object') return null;
+    const selection = presentation.dealer_selection as Record<string, unknown>;
+    if (asNumber(selection.started_at_ms) == null || asNumber(selection.ends_at_ms) == null) {
+      return null;
+    }
+  }
+
+  if (presentation.dealer_rob != null && !parseDealerRob(presentation.dealer_rob)) return null;
+  return presentation as GamePresentation;
 }
 
 export function shouldAutoSelectDealer(
