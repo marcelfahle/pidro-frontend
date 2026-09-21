@@ -7,10 +7,8 @@ import { lobbyApi } from '@/api/lobby';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { CtaBadge } from '@/components/home/CtaBadge';
-import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { LevelRing } from '@/components/home/LevelRing';
 import { LogoGlow } from '@/components/home/LogoGlow';
-import { RatingPlaque } from '@/components/home/RatingPlaque';
 import { Icon } from '@/components/ui/Icon';
 import { usePillClearance } from '@/components/shell/TabPill';
 import { PidroLogo } from '@/components/ui/PidroLogo';
@@ -23,13 +21,6 @@ import { useLobbyStore } from '@/stores/lobby';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { gameRoute } from '@/navigation/gameRoute';
-
-// Progression is mocked until leagues/levels land server-side; the layout
-// is the real one so the numbers can go live without moving anything.
-const MOCK_LEVEL = 12;
-const MOCK_RATING = 1487;
-const MOCK_LEAGUE = 'LEAGUE III · 9 WINS TO LEAGUE IV';
-const MOCK_LEAGUE_PROGRESS = 0.64;
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -109,16 +100,8 @@ export default function HomeScreen() {
           <PidroText role="label" numberOfLines={1}>
             {user?.username ?? 'Player'}
           </PidroText>
-          <PidroText role="metadata" tone="muted">
-            Level {MOCK_LEVEL}
-          </PidroText>
         </View>
       </PressableFX>
-
-      <View style={styles.progression}>
-        <RatingPlaque rating={MOCK_RATING} />
-        <LeagueProgress progress={MOCK_LEAGUE_PROGRESS} label={MOCK_LEAGUE} align="flex-end" />
-      </View>
     </View>
   );
 
@@ -258,10 +241,6 @@ const styles = StyleSheet.create({
   identityCopy: {
     minWidth: 0,
     maxWidth: 170,
-  },
-  progression: {
-    alignItems: 'flex-end',
-    gap: 4,
   },
   logoStage: {
     flex: 1,
