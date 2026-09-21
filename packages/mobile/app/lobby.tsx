@@ -415,6 +415,7 @@ export default function LobbyScreen() {
         onSubmit={handleCreateRoom}
         isLoading={isCreating}
         username={user?.username}
+        avatarUrl={user?.avatar_url}
         error={createError}
       />
     </ScreenShell>

@@ -72,7 +72,7 @@ const SWATCHES: { name: string; value: string }[] = [
   { name: 'panel-deep', value: PidroBevel.panelDeep },
 ];
 
-const ICON_NAMES: IconName[] = ['star', 'play', 'friends'];
+const ICON_NAMES: IconName[] = ['star', 'play', 'friends', 'chevron-right', 'bot'];
 
 // A PNG data URI, not SVG: react-native Image loads PNG on both platforms,
 // while an SVG data URI silently falls back to the placeholder on native.

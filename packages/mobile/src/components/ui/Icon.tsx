@@ -10,7 +10,16 @@ import { PidroColors } from '@/design/tokens';
  * they stay legible at chip sizes; `fill` glyphs are solid shapes.
  */
 export type IconName =
-  'star' | 'play' | 'friends' | 'plus' | 'arrow-left' | 'settings' | 'close' | 'chevron-down';
+  | 'star'
+  | 'play'
+  | 'friends'
+  | 'plus'
+  | 'arrow-left'
+  | 'settings'
+  | 'close'
+  | 'chevron-down'
+  | 'chevron-right'
+  | 'bot';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   close: { path: 'M6 6l12 12M6 18L18 6', mode: 'stroke' },
@@ -19,6 +28,8 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     path: 'M10 2h4l.6 3.1 2.1 1.2 3-.9 2 3.4-2.4 2.2v2l2.4 2.2-2 3.4-3-.9-2.1 1.2L14 22h-4l-.6-3.1-2.1-1.2-3 .9-2-3.4L4.7 13v-2L2.3 8.8l2-3.4 3 .9 2.1-1.2L10 2z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',
     mode: 'stroke',
   },
+  'chevron-right': { path: 'm9 5 7 7-7 7', mode: 'stroke' },
+  bot: { path: 'M12 3v3M5 6h14v14H5zM9 11v2m6-2v2m-6 4h6M2 10v6m20-6v6', mode: 'stroke' },
   plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
   'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },
   star: {

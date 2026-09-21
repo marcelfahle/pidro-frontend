@@ -98,6 +98,14 @@ restrictions: the server does not yet supply or enforce minimum games.
 four phone sizes, including direct seat joins, search, create, empty/error states,
 and the badge gallery. Captures go to `/tmp/pidro-lobby` (or `UI_SHOT_DIR`).
 
+`node scripts/verify-create-room.mjs` checks creation at the same four phone sizes:
+partner-to-south mapping, public/bot defaults, shared difficulty, invitation notice,
+discarded password/minimum-games previews, reset on dismissal, keyboard Done,
+touch targets and horizontal containment. API responses are mocked; captures go
+to `/tmp/pidro-create` (or `UI_SHOT_DIR`). These browser checks do not verify native
+keyboard avoidance or safe-area behavior. `/ui-dev?state=create` is interactive,
+but its Create and Back callbacks intentionally do nothing.
+
 ## `/auth-flow-dev` — guest-first auth
 
 No params. In-page toggles: platform (**iOS** Apple-first / **Android** Google-first),
