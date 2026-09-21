@@ -43,6 +43,22 @@ export interface Card {
   suit: Suit;
 }
 
+export interface DealerRobPresentation {
+  dealer: Position;
+  automatic?: boolean;
+  started_at_ms: number;
+  ends_at_ms: number;
+  /** Present only for the dealer's private channel payload. */
+  pool?: Card[];
+  kept?: Card[];
+  discarded?: Card[];
+}
+
+export interface GamePresentation {
+  dealer_selection?: { started_at_ms: number; ends_at_ms: number } | null;
+  dealer_rob?: DealerRobPresentation | null;
+}
+
 export interface ServerPlayerView {
   hand?: Card[] | number;
   card_count?: number;

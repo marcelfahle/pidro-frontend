@@ -6,6 +6,7 @@ export * from './api';
 export {
   describeGameAction,
   extractGameState,
+  extractGamePresentation,
   normalizeTurnTimer,
   PhoenixSocket,
   shouldAutoSelectDealer,

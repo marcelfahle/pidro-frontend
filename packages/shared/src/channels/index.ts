@@ -5,6 +5,7 @@ export {
 } from './socket';
 export {
   describeGameAction,
+  extractGamePresentation,
   extractGameState,
   normalizeTurnTimer,
   shouldAutoSelectDealer,

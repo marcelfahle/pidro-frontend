@@ -33,7 +33,7 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 | `playing`          | Skia table + trick overlay        | `seat-north`            |
 | `bidding`          | Bidding window                    | `bidding-window`        |
 | `declaring`        | Trump declaration                 | `trump-window`          |
-| `second_deal`      | Hand-selection window             | `hand-selection-window` |
+| `second_deal`      | Dealer's private hand selection   | `hand-selection-window` |
 | `game_over`        | Game-over summary                 | `game-over-window`      |
 
 ### Params
@@ -81,6 +81,10 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 /table-dev?phase=bidding&role=player&pass=disabled   # real store, no pass
 /table-dev?phase=bidding&role=player&deal=true&dealer=north # clockwise packets, unsorted hand → sort → bid
 /table-dev?phase=bidding&role=player&deal=cold      # reconnect: already-dealt hand, no replay
+/table-dev?phase=second_deal&role=player&dealer=south # dealer sees the authoritative pool and keeps six
+/table-dev?phase=second_deal&role=player&dealer=north # public symbolic pack; dealer count stays concealed
+/table-dev?phase=auto_rob&role=player&dealer=south # automatic dealer-only combined pool
+/table-dev?phase=auto_rob&role=player&dealer=south&clear=true # reveal, then rebuild the sorted six-card hand
 /table-dev?phase=ready-host&role=spectator        # spectator sees no controls
 /table-dev?phase=playing&autoplay=true            # played-card persistence
 ```

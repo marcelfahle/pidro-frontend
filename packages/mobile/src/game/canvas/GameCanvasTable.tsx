@@ -19,7 +19,7 @@ import { TableSettings } from './TableSettings';
 import { WatchingBadge } from '@/components/game/WatchingBadge';
 import { BiddingActions } from '@/components/game/BiddingActions';
 import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
-import { HandSelector } from '@/components/game/HandSelector';
+import { DealerSecondDeal } from '@/components/game/DealerSecondDeal';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import type { ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
@@ -44,6 +44,8 @@ type Props = {
   roomFinished?: boolean;
   onHome?: () => void;
 };
+
+const HIDDEN_PRESENTATION_HAND: Card[] = [];
 
 function cardLabel(card: Card): string {
   return `${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`;
@@ -204,9 +206,15 @@ export function GameCanvasTable({
 }: Props) {
   const controller = useGameTableController(room);
   const role = useGameStore((state) => state.role);
+  const dealerRobPresentation = useGameStore((state) => state.presentation?.dealer_rob ?? null);
+  const isPrivateDealerRob =
+    controller.youPositionAbs === dealerRobPresentation?.dealer && !!dealerRobPresentation.pool;
   const isSpectator = role === 'spectator';
   const textures = useCardTextures();
-  const serverModel = useTableModel(controller);
+  const serverModel = useTableModel(
+    controller,
+    isPrivateDealerRob ? HIDDEN_PRESENTATION_HAND : undefined
+  );
   const model = useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
   const facesReady = useHandPresentationReady(serverModel.yourHand, textures, isBiddingTurn);
@@ -222,6 +230,7 @@ export function GameCanvasTable({
     isChannelJoined,
     isYourTurn,
     isSecondDeal,
+    canSelectHand,
     isGameOver,
     showTrumpSelection,
     viewModel,
@@ -290,21 +299,25 @@ export function GameCanvasTable({
         </>
       )}
 
-      {/* Second-deal hand selection */}
-      {isSecondDeal && viewModel && yourHand && (
+      {/* Dealer rob: symbolic for public views; selectable only with an authoritative private pool. */}
+      {(isSecondDeal || dealerRobPresentation) && viewModel && (
         <View
           style={[
-            styles.centerOverlay,
-            {
-              paddingTop: insets.top + 64,
-              paddingBottom: insets.bottom + 16,
-            },
+            isPrivateDealerRob ? styles.robbedCardsOverlay : styles.centerOverlay,
+            isPrivateDealerRob
+              ? { bottom: insets.bottom + bottomReserve + 116 }
+              : {
+                  paddingTop: insets.top + 64,
+                  paddingBottom: insets.bottom + 16,
+                },
           ]}
           pointerEvents="box-none">
-          <HandSelector
+          <DealerSecondDeal
             viewModel={viewModel}
             cards={yourHand}
             trumpSuit={trumpSuit}
+            canSelectHand={canSelectHand}
+            automaticPresentation={dealerRobPresentation}
             onSelectHand={handleSelectHand}
           />
         </View>
@@ -354,5 +367,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
+  },
+  robbedCardsOverlay: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    alignItems: 'center',
   },
 });

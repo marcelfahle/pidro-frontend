@@ -7,6 +7,7 @@ import type {
   PlayerMeta,
   PlayerRank,
   GameViewModel,
+  GamePresentation,
   RelativePlayerView,
   LegalAction,
   Suit,
@@ -34,6 +35,19 @@ function publicState(state: ServerGameState | null): ServerGameState | null {
         },
       ]),
     ) as ServerGameState['players'],
+  };
+}
+
+function publicPresentation(presentation: GamePresentation | null): GamePresentation | null {
+  if (!presentation?.dealer_rob) return presentation;
+  return {
+    ...presentation,
+    dealer_rob: {
+      dealer: presentation.dealer_rob.dealer,
+      automatic: presentation.dealer_rob.automatic,
+      started_at_ms: presentation.dealer_rob.started_at_ms,
+      ends_at_ms: presentation.dealer_rob.ends_at_ms,
+    },
   };
 }
 
@@ -67,6 +81,7 @@ interface GameState {
   role: 'player' | 'spectator' | null;
 
   serverState: ServerGameState | null;
+  presentation: GamePresentation | null;
   legalActions: LegalAction[];
   playerMeta: Record<Position, PlayerMeta>;
   readyPlayers: Position[];
@@ -83,6 +98,7 @@ interface GameState {
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
   refreshPlayerIdentities: (room: Room) => void;
   setServerState: (state: ServerGameState | Record<string, any>) => void;
+  setPresentation: (presentation: GamePresentation | null) => void;
   setLegalActions: (actions: LegalAction[]) => void;
   setTurnTimer: (timer: ActiveTurnTimer | null) => void;
   clearTurnTimer: (timerId?: number | null) => void;
@@ -114,6 +130,7 @@ export const useGameStore = create<GameState>((set, get) => ({
   youPositionAbs: null,
   role: null,
   serverState: null,
+  presentation: null,
   legalActions: [],
   playerMeta: { ...initialPlayerMeta },
   readyPlayers: [],
@@ -256,7 +273,9 @@ export const useGameStore = create<GameState>((set, get) => ({
         youPlayerId,
         youPositionAbs: youPos,
         playerMeta: baseMeta,
-        ...(!sameSession ? { role: null, serverState: null, legalActions: [] } : {}),
+        ...(!sameSession
+          ? { role: null, serverState: null, presentation: null, legalActions: [] }
+          : {}),
         ...(!sameSession ? { lifecycle: null } : {}),
         ...(!sameSession ? { readiness: null, readyPlayers: [] } : {}),
       };
@@ -330,6 +349,12 @@ export const useGameStore = create<GameState>((set, get) => ({
       };
     }),
 
+  setPresentation: (presentation) =>
+    set((current) => ({
+      presentation:
+        current.role === 'player' ? presentation : publicPresentation(presentation),
+    })),
+
   setYouPosition: (position) => {
     const curr = get();
     if (curr.role !== 'player' || curr.youPositionAbs === position) return;
@@ -357,6 +382,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             youPositionAbs: null,
             legalActions: [],
             serverState: publicState(current.serverState),
+            presentation: publicPresentation(current.presentation),
             playerMeta: Object.fromEntries(
               POSITIONS.map((position) => [
                 position,
@@ -488,6 +514,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       youPositionAbs: null,
       role: null,
       serverState: null,
+      presentation: null,
       legalActions: [],
       turnTimer: null,
       lifecycle: null,

@@ -100,9 +100,24 @@ const allCases = [
   },
   {
     name: 'table-hand-selection',
-    path: '/table-dev?phase=second_deal',
+    path: '/table-dev?phase=second_deal&role=player&dealer=south',
     testId: 'hand-selection-window',
     protectNorthSeat: true,
+    verifyDealerSelection: true,
+  },
+  {
+    name: 'table-dealer-waiting',
+    path: '/table-dev?phase=second_deal&role=player&dealer=north',
+    testId: 'dealer-second-deal-status',
+    protectNorthSeat: true,
+    verifyDealerPrivacy: true,
+  },
+  {
+    name: 'table-automatic-dealer-rob',
+    path: '/table-dev?phase=auto_rob&role=player&dealer=south',
+    testId: 'automatic-dealer-rob',
+    widths: [390],
+    heights: [844],
   },
   { name: 'table-game-over', path: '/table-dev?phase=game_over', testId: 'game-over-window' },
   {
@@ -363,6 +378,42 @@ async function assertDealerCutCards(page, viewport) {
   }
 }
 
+async function assertDealerSecondDeal(page, testCase, viewport) {
+  if (testCase.verifyDealerSelection) {
+    await page.getByText('Swipe to review all 12 cards', { exact: false }).waitFor();
+    await page.getByTestId('rendered-hand-card-count-0').waitFor({ state: 'attached' });
+    const keepButton = page.getByRole('button', { name: 'Keep selected cards' });
+    if ((await keepButton.count()) !== 1 || !(await keepButton.isDisabled())) {
+      throw new Error(`dealer hand selector is incomplete in ${viewport.name}`);
+    }
+
+    for (const label of [
+      '8 of clubs',
+      'A of spades, worth 1 point',
+      '3 of hearts',
+      'J of diamonds',
+      '10 of hearts',
+      '2 of spades, worth 1 point',
+    ]) {
+      const card = page.getByRole('button', { name: label, exact: true });
+      await card.scrollIntoViewIfNeeded();
+      await card.click();
+    }
+    await page.getByText('6 of 6 selected', { exact: false }).waitFor();
+    if (await keepButton.isDisabled()) {
+      throw new Error(`dealer cannot confirm six selected cards in ${viewport.name}`);
+    }
+  }
+
+  if (testCase.verifyDealerPrivacy) {
+    await page.getByTestId('dealer-card-count-concealed').waitFor({ state: 'attached' });
+    const symbolicCards = page.locator('[data-testid="dealer-pack-symbol"] img');
+    if ((await symbolicCards.count()) !== 3) {
+      throw new Error(`dealer pack must stay a fixed three-card symbol in ${viewport.name}`);
+    }
+  }
+}
+
 async function assertAbovePlayerHand(page, name, box, viewport) {
   const handBoundary = page.getByTestId('player-hand-top').first();
   await handBoundary.waitFor({ state: 'attached', timeout: 20_000 });
@@ -587,6 +638,9 @@ async function main() {
           }
           if (testCase.verifyDealerCutCards) {
             await assertDealerCutCards(page, viewport);
+          }
+          if (testCase.verifyDealerSelection || testCase.verifyDealerPrivacy) {
+            await assertDealerSecondDeal(page, testCase, viewport);
           }
           await assertTargetGeometry(page, testCase, viewport);
           if (testCase.name.startsWith('table-game-over')) {

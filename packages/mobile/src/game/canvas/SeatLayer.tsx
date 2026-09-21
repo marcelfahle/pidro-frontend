@@ -170,10 +170,11 @@ export function SeatLayer({
                   alignItems: 'center',
                 }}>
                 <BacksFan
-                  count={data.cardCount ?? 0}
+                  count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
                   cardW={L.cardW}
                   dealing={dealing}
                   originY={L.trick.cy - northBackTop}
+                  concealed={data.cardCountConcealed}
                 />
               </View>
               <View
@@ -244,7 +245,7 @@ export function SeatLayer({
                 backsEdge,
               ]}>
               <BacksStackV
-                count={data.cardCount ?? 0}
+                count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
                 cardW={L.cardW}
                 dealing={dealing}
                 originX={
@@ -252,6 +253,7 @@ export function SeatLayer({
                     ? L.felt.cx - insets.left + edgeOffset
                     : L.felt.cx - (width - insets.right + edgeOffset - sideBackW * (110 / 78))
                 }
+                concealed={data.cardCountConcealed}
               />
             </View>
           </View>
@@ -350,11 +352,13 @@ function BacksFan({
   cardW,
   dealing,
   originY,
+  concealed = false,
 }: {
   count: number;
   cardW: number;
   dealing: boolean;
   originY: number;
+  concealed?: boolean;
 }) {
   const n = clamp(count, 0, 9);
   if (n === 0) return null;
@@ -363,7 +367,9 @@ function BacksFan({
   const overlap = w * 0.52 * Math.min(1, 5 / Math.max(1, n - 1));
   const total = w + (n - 1) * overlap;
   return (
-    <View style={{ width: total, height: h }}>
+    <View
+      testID={concealed ? 'dealer-card-count-concealed' : undefined}
+      style={{ width: total, height: h }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
@@ -386,11 +392,13 @@ function BacksStackV({
   cardW,
   dealing,
   originX,
+  concealed = false,
 }: {
   count: number;
   cardW: number;
   dealing: boolean;
   originX: number;
+  concealed?: boolean;
 }) {
   const n = clamp(count, 0, 9);
   if (n === 0) return null;
@@ -400,7 +408,9 @@ function BacksStackV({
   const visH = cw;
   const overlap = cw * 0.48 * Math.min(1, 5 / Math.max(1, n - 1));
   return (
-    <View style={{ width: visW, height: visH + (n - 1) * overlap }}>
+    <View
+      testID={concealed ? 'dealer-card-count-concealed' : undefined}
+      style={{ width: visW, height: visH + (n - 1) * overlap }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
