@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Keyboard, Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { clampRoomName } from '@pidro/shared';
 import type { BotDifficulty, CreateRoomRequest } from '@/types/lobby';
 import { LevelRing } from '@/components/home/LevelRing';
@@ -41,12 +42,15 @@ export function CreateRoomModal(props: CreateRoomModalProps) {
       onRequestClose={() => {
         if (!props.isLoading) props.onClose();
       }}>
-      <CreateRoomForm {...props} />
+      {/* A native modal is a separate native root; the app provider is not its ancestor. */}
+      <SafeAreaProvider>
+        <CreateRoomForm {...props} />
+      </SafeAreaProvider>
     </Modal>
   );
 }
 
-function CreateRoomForm({
+export function CreateRoomForm({
   onClose,
   onSubmit,
   isLoading = false,

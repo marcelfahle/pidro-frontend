@@ -55,6 +55,28 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
   landscape keeps the hero material (thick rim, 6px lip, strong gloss) at lg
   proportions. Badges anchor to the capped control itself, never a wider wrapper.
 
+## Safe areas belong to each native presentation root
+
+- Keep the app-root `SafeAreaProvider`, and add a fresh `SafeAreaProvider` **inside
+  each native `Modal`**, above its safe-area consumers. React context crossing a
+  portal does not make the app provider a native ancestor of modal content.
+- Let that provider measure the OS insets. Do not seed a remounting modal with
+  `initialWindowMetrics`, cache inset values, detect phone models, or add fixed
+  notch/status-bar padding. Left and right can differ and swap after rotation.
+- Use `react-native-safe-area-context`'s native `SafeAreaView`, not React Native's
+  deprecated one. `ScreenShell` applies all four edges once. Keep backgrounds
+  full-bleed, but headers, touch targets and bottom actions inside the safe area.
+  Do not add a second inset to content already protected by the shell.
+- Keep the provider outside scrolling/animated content. Keep forms scrollable and
+  handle the keyboard separately; a safe bottom inset is not keyboard avoidance.
+- Verify portrait, both landscape directions, an older non-notched iPhone,
+  Android gesture/button navigation, keyboard entry, and reopening after rotation.
+  Synthetic browser insets test containment, **not native provider measurement**.
+  Native release checks must use real device insets, never fixture overrides.
+
+Sources: [provider placement](https://appandflow.github.io/react-native-safe-area-context/api/safe-area-provider/)
+and [native SafeAreaView / initial metrics guidance](https://appandflow.github.io/react-native-safe-area-context/optimizations/).
+
 ## Binary settings use inset glass switches
 
 Use `PidroSwitch` for immediate on/off preferences, not a native `Switch` or a

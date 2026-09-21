@@ -131,6 +131,55 @@ try {
     );
     await context.close();
   }
+  // These are synthetic layout cases. Native provider placement is separately guarded
+  // by create-modal-safe-area.test.mjs; a browser cannot test native modal measurement.
+  const safeCases = [
+    { preset: 'island', width: 390, height: 844, top: 59, bottom: 34, left: 0, right: 0 },
+    { preset: 'island-left', width: 844, height: 390, top: 0, bottom: 21, left: 59, right: 0 },
+    { preset: 'island-right', width: 844, height: 390, top: 0, bottom: 21, left: 0, right: 59 },
+    { preset: 'legacy', width: 320, height: 568, top: 20, bottom: 0, left: 0, right: 0 },
+    { preset: 'android-buttons', width: 360, height: 640, top: 24, bottom: 48, left: 0, right: 0 },
+    { preset: 'android-right', width: 640, height: 360, top: 24, bottom: 0, left: 0, right: 48 },
+    { preset: 'android-gesture', width: 360, height: 640, top: 24, bottom: 24, left: 0, right: 0 },
+    { preset: 'island', width: 390, height: 430, top: 59, bottom: 34, left: 0, right: 0 },
+  ];
+  for (const { preset, width, height, top, bottom, left, right } of safeCases) {
+    const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 2 });
+    await page.goto(`${baseUrl}/ui-dev?state=create-safe-area&safeArea=${preset}`);
+    const form = page.getByTestId('create-room-window');
+    await form.waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    await suppressDevOverlays(page);
+    const inside = async (locator) => {
+      const box = await locator.boundingBox();
+      assert.ok(
+        box &&
+          box.x >= left &&
+          box.y >= top &&
+          box.x + box.width <= width - right + 1 &&
+          box.y + box.height <= height - bottom + 1,
+        `${preset} ${width}x${height}: control escaped safe rectangle: ${JSON.stringify(box)}`
+      );
+    };
+    await inside(form);
+    await inside(form.getByRole('button', { name: 'Cancel creation', exact: true }));
+    await inside(form.getByRole('button', { name: 'Create table', exact: true }));
+    await page.screenshot({ path: resolve(output, `safe-${preset}-${height}.png`) });
+    await form
+      .getByRole('button', { name: 'Edit Your partner: Open to public', exact: true })
+      .click();
+    await form.getByRole('button', { name: 'Seat rules · Preview only', exact: true }).click();
+    const password = form.getByLabel('Password · preview only', { exact: true });
+    await password.fill('example');
+    await password.scrollIntoViewIfNeeded();
+    await inside(password);
+    await inside(form.getByRole('button', { name: 'Close preview', exact: true }));
+    await page.screenshot({ path: resolve(output, `safe-${preset}-${height}-preview.png`) });
+    console.log(
+      `safe-area layout ok: ${preset} ${width}x${height} — four edges, header/footer, scroll-to-input`
+    );
+    await page.close();
+  }
 } finally {
   await browser.close();
 }
