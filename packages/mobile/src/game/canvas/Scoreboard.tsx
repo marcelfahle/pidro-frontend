@@ -1,14 +1,15 @@
 /**
- * Gold/brass scoreboard plaque pinned top-left — matches the original Pidro game
- * (a hanging banner showing Us | Them totals). Tap to expand recent hand deltas.
+ * Mounted navy-and-brass score plaque. Tap for locally observed score changes.
  */
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Feather } from '@expo/vector-icons';
+import { gradientBg } from '@/components/ui/Bevel';
+import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
-import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Position } from '@/types/lobby';
+import { TableUtilityWindow } from './TableUtilityWindow';
 
 type Scores = { north_south: number; east_west: number } | null | undefined;
 type ConcreteScores = { north_south: number; east_west: number };
@@ -102,83 +103,88 @@ export function Scoreboard({
   }, [scores, handNumber]);
 
   return (
-    // Hangs from the top edge like the original: the plaque's top is cropped
-    // off-screen, only the rounded bottom shows.
-    <View style={[styles.wrap, { top: top - 10, left: left + 12 }]} pointerEvents="box-none">
+    <View
+      style={[styles.wrap, { top: top + PidroSpacing.xs, left: left + PidroSpacing.sm }]}
+      pointerEvents="box-none">
       <PressableFX
         accessibilityRole="button"
-        accessibilityLabel={`${usLabel} ${us}, ${themLabel} ${them}. Toggle hand scores.`}
+        accessibilityLabel={`${usLabel} ${us}, ${themLabel} ${them}. Recent scores.`}
         accessibilityState={{ expanded: isOpen }}
         onPress={() => setIsOpen((open) => !open)}
-        style={styles.plaque}
-        pressedStyle={styles.plaquePressed}>
+        style={[styles.plaque, gradientBg(PidroBevel.goldRimGradient)]}>
         <View style={styles.plaqueRow}>
           <View style={styles.col}>
-            <PidroText role="metadata" tone="gold" style={styles.label}>
+            <PidroText role="metadata" tone="gold" style={styles.label} maxFontSizeMultiplier={1}>
               {usLabel}
             </PidroText>
-            <PidroText role="title" style={styles.value}>
+            <PidroText role="title" style={styles.value} maxFontSizeMultiplier={1}>
               {us}
             </PidroText>
           </View>
           <View style={styles.divider} />
           <View style={styles.col}>
-            <PidroText role="metadata" tone="gold" style={styles.label}>
+            <PidroText role="metadata" tone="gold" style={styles.label} maxFontSizeMultiplier={1}>
               {themLabel}
             </PidroText>
-            <PidroText role="title" style={styles.value}>
+            <PidroText role="title" style={styles.value} maxFontSizeMultiplier={1}>
               {them}
             </PidroText>
           </View>
-          <Feather
-            name={isOpen ? 'chevron-up' : 'chevron-down'}
-            size={14}
-            color={PidroColors.goldLight}
-          />
+          <Icon name="chevron-down" size={14} color={PidroColors.goldLight} />
         </View>
       </PressableFX>
 
-      {isOpen && (
-        <View style={styles.history}>
-          <View style={styles.historyHeader}>
-            <PidroText role="metadata" tone="gold">
-              Hands
-            </PidroText>
-            <PidroText role="metadata" tone="muted">
-              {usLabel} / {themLabel}
-            </PidroText>
-          </View>
-          {scoreHistory.length === 0 ? (
-            <PidroText role="metadata" tone="muted" align="center" style={styles.historyEmpty}>
-              No completed hands yet
-            </PidroText>
-          ) : (
-            scoreHistory.map((entry) => {
-              const totalScores = teams(entry.totals, youPosition);
-              const deltaScores = teams(
-                {
-                  north_south: entry.totals.north_south - entry.previous.north_south,
-                  east_west: entry.totals.east_west - entry.previous.east_west,
-                },
-                youPosition
-              );
-              return (
-                <View
-                  key={`${entry.handNumber}-${entry.totals.north_south}-${entry.totals.east_west}`}
-                  style={styles.historyRow}>
-                  <PidroText role="metadata" tone="gold">{`H${entry.handNumber}`}</PidroText>
-                  <PidroText role="metadata" style={styles.historyDelta}>
-                    {formatDelta(deltaScores.us)} / {formatDelta(deltaScores.them)}
+      <TableUtilityWindow title="Recent scores" open={isOpen} onClose={() => setIsOpen(false)}>
+        <PidroText role="metadata" tone="muted">
+          Recorded while this table is open. Latest first.
+        </PidroText>
+        <View style={styles.historyHeader}>
+          <PidroText role="metadata" tone="gold" style={styles.historyDelta}>
+            {usLabel}
+          </PidroText>
+          <PidroText role="metadata" tone="gold" style={styles.historyDelta}>
+            {themLabel}
+          </PidroText>
+        </View>
+        {scoreHistory.length === 0 ? (
+          <PidroText role="metadata" tone="muted" align="center" style={styles.historyEmpty}>
+            No score changes recorded yet
+          </PidroText>
+        ) : (
+          [...scoreHistory].reverse().map((entry) => {
+            const totalScores = teams(entry.totals, youPosition);
+            const deltaScores = teams(
+              {
+                north_south: entry.totals.north_south - entry.previous.north_south,
+                east_west: entry.totals.east_west - entry.previous.east_west,
+              },
+              youPosition
+            );
+            return (
+              <View
+                key={`${entry.handNumber}-${entry.totals.north_south}-${entry.totals.east_west}`}
+                style={styles.historyRow}>
+                <View style={styles.historyDelta}>
+                  <PidroText role="label" align="center">
+                    {formatDelta(deltaScores.us)}
                   </PidroText>
-                  <PidroText role="metadata" tone="soft" style={styles.historyTotal}>
-                    {`${totalScores.us}-${totalScores.them}`}
+                  <PidroText role="metadata" tone="muted" align="center">
+                    Total {totalScores.us}
                   </PidroText>
                 </View>
-              );
-            })
-          )}
-        </View>
-      )}
+                <View style={styles.historyDelta}>
+                  <PidroText role="label" align="center">
+                    {formatDelta(deltaScores.them)}
+                  </PidroText>
+                  <PidroText role="metadata" tone="muted" align="center">
+                    Total {totalScores.them}
+                  </PidroText>
+                </View>
+              </View>
+            );
+          })
+        )}
+      </TableUtilityWindow>
     </View>
   );
 }
@@ -186,50 +192,43 @@ export function Scoreboard({
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', zIndex: 44 },
   plaque: {
-    paddingHorizontal: 16,
-    paddingTop: 17,
-    paddingBottom: 8,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    borderWidth: 2.5,
-    borderTopWidth: 0,
-    borderColor: PidroColors.goldDark,
-    backgroundColor: PidroColors.woodBottom,
-  },
-  plaquePressed: {
-    opacity: 0.86,
+    padding: 1.5,
+    borderRadius: PidroRadii.lg,
+    boxShadow: PidroBevel.glassDropShadow,
   },
   plaqueRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: PidroSpacing.sm,
+    gap: PidroSpacing.xs,
+    paddingHorizontal: PidroSpacing.sm,
+    paddingVertical: PidroSpacing.xxs,
+    backgroundColor: PidroBevel.panelDeep,
+    borderRadius: PidroRadii.lg - 1.5,
+    boxShadow: PidroBevel.glassFaceInset,
   },
-  col: { alignItems: 'center', minWidth: 34 },
+  col: { alignItems: 'center', minWidth: 52 },
   label: {
     fontSize: 10,
     lineHeight: 13,
   },
-  value: { color: PidroColors.text, fontSize: 22, lineHeight: 24 },
+  value: {
+    color: PidroColors.text,
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 22,
+    lineHeight: 29,
+  },
   divider: {
     width: 1,
     alignSelf: 'stretch',
     backgroundColor: PidroColors.goldSoft,
     marginVertical: 2,
   },
-  history: {
-    marginTop: 8,
-    width: 206,
-    borderRadius: PidroRadii.surface,
-    borderWidth: 1,
-    borderColor: PidroColors.cyanBorder,
-    backgroundColor: PidroColors.panelStrong,
-    padding: PidroSpacing.sm,
-  },
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,212,38,0.2)',
+    borderBottomColor: PidroColors.border,
     paddingBottom: 6,
   },
   historyEmpty: {
@@ -248,8 +247,5 @@ const styles = StyleSheet.create({
   historyDelta: {
     flex: 1,
     textAlign: 'center',
-  },
-  historyTotal: {
-    fontVariant: ['tabular-nums'],
   },
 });

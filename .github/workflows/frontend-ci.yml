@@ -126,6 +126,7 @@ jobs:
           fi
 
           bun run test:ui
+          UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
           node scripts/verify-seat-decisions.mjs
           node scripts/verify-dealing.mjs
           UI_SHOT_DIR=/tmp/lobby-screens node scripts/verify-lobby.mjs

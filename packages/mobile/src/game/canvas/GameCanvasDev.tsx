@@ -8,10 +8,12 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
 import { SeatLayer } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
+import { TableSettings } from './TableSettings';
 import { TableChromeBars, useTableReserves } from './TableChrome';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
@@ -119,6 +121,21 @@ export default function GameCanvasDev({
   const [turn, setTurn] = useState<RelativePosition>('south');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const playing = useRef(false);
+  const { scores: scoreFixture } = useLocalSearchParams<{ scores?: string }>();
+  const [scores, setScores] = useState(
+    scoreFixture === 'history'
+      ? { north_south: -21, east_west: 100 }
+      : { north_south: 36, east_west: 29 }
+  );
+  useEffect(() => {
+    if (scoreFixture !== 'history') return;
+    const first = setTimeout(() => setScores({ north_south: -12, east_west: 105 }), 500);
+    const second = setTimeout(() => setScores({ north_south: -21, east_west: 110 }), 1000);
+    return () => {
+      clearTimeout(first);
+      clearTimeout(second);
+    };
+  }, [scoreFixture]);
 
   const after = useCallback((ms: number, fn: () => void) => {
     timers.current.push(setTimeout(fn, ms));
@@ -235,13 +252,14 @@ export default function GameCanvasDev({
       />
       <TableChromeBars reserves={reserves} />
       <Scoreboard
-        scores={{ north_south: 36, east_west: 29 }}
+        scores={scores}
         youPosition="south"
         handNumber={4}
         roomCode="DEV01"
         top={insets.top}
         left={insets.left}
       />
+      <TableSettings onLeave={() => {}} />
     </View>
   );
 }
