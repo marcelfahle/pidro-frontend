@@ -26,6 +26,7 @@ import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { useCardTextures } from './cardTextures';
 import { useTableModel, type TableModel } from './tableModel';
 import { useHandPresentationReady } from './useHandPresentationReady';
+import { useDealPresentation } from './useDealPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer } from './SeatLayer';
@@ -150,6 +151,7 @@ function useTurnTimerProgress(
 function TimedSeatLayer({
   seats,
   dealerRel,
+  dealing,
   topReserve,
   bottomReserve,
   statusByRel,
@@ -157,6 +159,7 @@ function TimedSeatLayer({
 }: {
   seats: TableModel['seats'];
   dealerRel: RelativePosition | null;
+  dealing: boolean;
   topReserve: number;
   bottomReserve: number;
   statusByRel: Partial<Record<RelativePosition, string>> | undefined;
@@ -180,6 +183,7 @@ function TimedSeatLayer({
     <SeatLayer
       seats={seats}
       dealerRel={dealerRel}
+      dealing={dealing}
       topReserve={topReserve}
       bottomReserve={bottomReserve}
       statusByRel={statusByRel}
@@ -202,9 +206,11 @@ export function GameCanvasTable({
   const role = useGameStore((state) => state.role);
   const isSpectator = role === 'spectator';
   const textures = useCardTextures();
-  const model = useTableModel(controller);
+  const serverModel = useTableModel(controller);
+  const model = useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
-  const isHandReady = useHandPresentationReady(model.yourHand, textures, isBiddingTurn);
+  const facesReady = useHandPresentationReady(serverModel.yourHand, textures, isBiddingTurn);
+  const isHandReady = !model.dealStage && facesReady;
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
   const { topReserve, bottomReserve } = reserves;
@@ -227,7 +233,7 @@ export function GameCanvasTable({
 
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
-      acc[player.relativePosition] = statusText(player, serverState);
+      acc[player.relativePosition] = model.dealStage ? 'Dealing' : statusText(player, serverState);
       return acc;
     },
     {} as Partial<Record<RelativePosition, string>>
@@ -247,6 +253,7 @@ export function GameCanvasTable({
       <TimedSeatLayer
         seats={model.seats}
         dealerRel={viewModel?.dealerRelative ?? null}
+        dealing={model.dealStage === 'dealing'}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
         statusByRel={statusByRel}

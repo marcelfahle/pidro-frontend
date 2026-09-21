@@ -19,10 +19,22 @@ import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
-import type { Invite, SeatStatus } from '@pidro/shared';
+import type { Card, Invite, SeatStatus } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
+
+const DEAL_HAND: Card[] = [
+  { rank: 8, suit: 'clubs' },
+  { rank: 14, suit: 'spades' },
+  { rank: 3, suit: 'hearts' },
+  { rank: 11, suit: 'diamonds' },
+  { rank: 13, suit: 'clubs' },
+  { rank: 10, suit: 'hearts' },
+  { rank: 2, suit: 'spades' },
+  { rank: 6, suit: 'diamonds' },
+  { rank: 12, suit: 'hearts' },
+];
 
 const WAITING_ROOM: Room = {
   code: 'DEV01',
@@ -189,6 +201,8 @@ function TableDevHarness() {
     pass?: string;
     viewer?: string;
     rematch?: string;
+    deal?: string;
+    dealer?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -212,6 +226,8 @@ function TableDevHarness() {
             phase={phase}
             feedback={params.feedback}
             canPass={params.pass !== 'disabled'}
+            deal={params.deal}
+            dealer={params.dealer}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -373,11 +389,15 @@ function RolePreview({
   phase,
   feedback,
   canPass,
+  deal,
+  dealer,
 }: {
   role: 'player' | 'spectator';
   phase: string;
   feedback?: string;
   canPass: boolean;
+  deal?: string;
+  dealer?: string;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -391,21 +411,28 @@ function RolePreview({
     store.setYouPosition('south');
     store.setChannelStatus(true);
     store.setServerState({
-      phase: previewPhase,
+      phase: deal === 'true' ? 'dealing' : previewPhase,
       current_player: 'south',
       trump: previewPhase === 'playing' ? 'spades' : null,
-      dealer: 'north',
+      dealer: ['north', 'east', 'south', 'west'].includes(dealer ?? '')
+        ? (dealer as Position)
+        : 'north',
       scores: { north_south: 36, east_west: 29 },
       hand_number: 4,
       players: {
-        north: { hand: 6 },
-        east: { hand: 6 },
-        west: { hand: 6 },
+        north: { hand: deal === 'true' ? 0 : deal === 'cold' ? 9 : 6 },
+        east: { hand: deal === 'true' ? 0 : deal === 'cold' ? 9 : 6 },
+        west: { hand: deal === 'true' ? 0 : deal === 'cold' ? 9 : 6 },
         south: {
-          hand: [
-            { rank: 14, suit: 'spades' },
-            { rank: 13, suit: 'hearts' },
-          ],
+          hand:
+            deal === 'true'
+              ? []
+              : deal === 'cold'
+                ? DEAL_HAND
+                : [
+                    { rank: 14, suit: 'spades' },
+                    { rank: 13, suit: 'hearts' },
+                  ],
         },
       },
       current_trick:
@@ -446,7 +473,28 @@ function RolePreview({
       active = false;
       store.reset();
     };
-  }, [role, phase, canPass]);
+  }, [role, phase, canPass, deal, dealer]);
+
+  useEffect(() => {
+    if (!Table || deal !== 'true') return;
+    const store = useGameStore.getState();
+    const initial = store.serverState;
+    if (!initial) return;
+    const dealt = {
+      ...initial,
+      phase: 'bidding' as const,
+      players: {
+        north: { hand: 9 },
+        east: { hand: 9 },
+        west: { hand: 9 },
+        south: {
+          hand: DEAL_HAND,
+        },
+      },
+    };
+    const timer = setTimeout(() => store.setServerState(dealt), 900);
+    return () => clearTimeout(timer);
+  }, [Table, deal]);
   return (
     <View className="flex-1">
       {Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />}

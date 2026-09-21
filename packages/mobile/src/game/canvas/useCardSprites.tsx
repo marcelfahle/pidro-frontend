@@ -35,7 +35,13 @@ import type { Card } from '@/types/game';
 import { playedCardTarget, type RelativePosition, type TableLayout } from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
-import { DEAL_CARD_STAGGER_MS, DEAL_CARD_TRAVEL_MS } from './animationTiming';
+import {
+  DEAL_CARD_STAGGER_MS,
+  DEAL_CARD_TRAVEL_MS,
+  DEAL_PACKET_CARD_STAGGER_MS,
+  DEAL_PACKET_TRAVEL_MS,
+  DEAL_SORT_DURATION_MS,
+} from './animationTiming';
 import { T } from './tokens';
 
 const MAX = 36;
@@ -90,6 +96,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   const keyToSlot = useRef<Map<string, number>>(new Map());
   const retirementTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const prevModel = useRef<TableModel | null>(null);
+  const prevLayout = useRef(L);
   const modelRef = useRef<TableModel | undefined>(model);
   const onPlayRef = useRef(onPlayCard);
   modelRef.current = model;
@@ -124,7 +131,12 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
 
     // ── M3 diff triggers ────────────────────────────────────────────
     const prevHandLen = prev?.yourHand.length ?? 0;
-    const isDeal = !firstLoad && prevHandLen === 0 && n > 0;
+    const packetDeal = model.dealStage === 'dealing';
+    const isDeal = packetDeal || (!firstLoad && prevHandLen === 0 && n > 0);
+    const isSorting = model.dealStage === 'sorting' && prev?.dealStage !== 'sorting';
+    const sameHand =
+      prev?.yourHand.length === n &&
+      model.yourHand.every((card, i) => card.key === prev.yourHand[i].key);
 
     if (!firstLoad && !prev?.trumpSuit && model.trumpSuit) {
       trumpPop.value = 0;
@@ -264,7 +276,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     const ht: HandTarget[] = [];
     const cfg = { duration: 320, easing: Easing.out(Easing.cubic) };
     const dealCfg = {
-      duration: DEAL_CARD_TRAVEL_MS,
+      duration: packetDeal ? DEAL_PACKET_TRAVEL_MS : DEAL_CARD_TRAVEL_MS,
       easing: Easing.out(Easing.back(1.5)),
     };
 
@@ -311,13 +323,51 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         sscale[sl].value = d.tscale;
         sop[sl].value = d.topacity;
       } else if (isNew && dealCard) {
-        const delay = d.delayOrder * DEAL_CARD_STAGGER_MS;
+        const delay = packetDeal
+          ? (d.delayOrder % 3) * DEAL_PACKET_CARD_STAGGER_MS
+          : d.delayOrder * DEAL_CARD_STAGGER_MS;
         sx[sl].value = withDelay(delay, withTiming(d.tx, dealCfg));
-        sy[sl].value = withDelay(delay, withTiming(d.ty, dealCfg));
+        // Keep the landing above the south nameplate; put the soft overshoot
+        // in scale/x rather than diving past the hand's baseline.
+        sy[sl].value = withDelay(
+          delay,
+          withTiming(d.ty, {
+            ...dealCfg,
+            easing: Easing.out(Easing.cubic),
+          })
+        );
         srot[sl].value = withDelay(delay, withTiming(d.trot, dealCfg));
         sscale[sl].value = withDelay(delay, withTiming(d.tscale, dealCfg));
         sop[sl].value = withDelay(delay, withTiming(d.topacity, { duration: 140 }));
-      } else if (!dragging) {
+      } else if (isSorting && d.kind === 'hand' && prev?.yourHand[d.delayOrder]?.key !== d.key) {
+        // A small lift lets crossing cards read as a shuffle, then they nestle
+        // into the straight, suit-sorted row. No permanent fan or rotation.
+        const delay = d.delayOrder * 8;
+        sx[sl].value = withDelay(
+          delay,
+          withTiming(d.tx, {
+            duration: DEAL_SORT_DURATION_MS - 64,
+            easing: Easing.out(Easing.back(1.15)),
+          })
+        );
+        sy[sl].value = withSequence(
+          withTiming(d.ty - cardH * 0.12, { duration: 120 }),
+          withTiming(d.ty, { duration: 440, easing: Easing.out(Easing.back(1.2)) })
+        );
+        sscale[sl].value = withSequence(
+          withTiming(d.tscale * 1.035, { duration: 120 }),
+          withTiming(d.tscale, { duration: 440 })
+        );
+      } else if (
+        !dragging &&
+        !(
+          d.kind === 'hand' &&
+          model.dealStage &&
+          model.dealStage === prev?.dealStage &&
+          sameHand &&
+          prevLayout.current === L
+        )
+      ) {
         sx[sl].value = withTiming(d.tx, cfg);
         sy[sl].value = withTiming(d.ty, cfg);
         srot[sl].value = withTiming(d.trot, cfg);
@@ -340,6 +390,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     handTargets.value = ht;
     setSlots(nextSlots);
     prevModel.current = model;
+    prevLayout.current = L;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, L, enabled]);
 

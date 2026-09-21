@@ -7,7 +7,14 @@
  * canvas cards/fly origins. pointerEvents="none" so it never blocks gestures.
  * Skia-free (only the pure layout module), safe to import anywhere.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withTiming,
+} from 'react-native-reanimated';
 import {
   Image,
   Platform,
@@ -25,6 +32,7 @@ import { computeLayout, type RelativePosition } from './layout';
 import type { TableSeat } from './tableModel';
 import { T } from './tokens';
 import { Avatar } from '@/components/ui/Avatar';
+import { DEAL_PACKET_CARD_STAGGER_MS, DEAL_PACKET_TRAVEL_MS } from './animationTiming';
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -60,6 +68,7 @@ function statusFor(data: TableSeat, override?: string): string | null {
 
 type Props = {
   seats: Record<RelativePosition, TableSeat | null>;
+  dealing?: boolean;
   dealerRel?: RelativePosition | null;
   topReserve?: number;
   bottomReserve?: number;
@@ -69,6 +78,7 @@ type Props = {
 
 export function SeatLayer({
   seats,
+  dealing = false,
   dealerRel,
   topReserve = 0,
   bottomReserve = 0,
@@ -138,9 +148,11 @@ export function SeatLayer({
         }
         if (rel === 'north') {
           const northBackW = clamp(L.cardW * 0.66, 31, 58);
-          const northBackCount = clamp(data.cardCount ?? 0, 0, 6);
+          const northBackCount = clamp(data.cardCount ?? 0, 0, 9);
           const northFanWidth =
-            northBackCount > 0 ? northBackW * (1 + (northBackCount - 1) * 0.52) : northBackW;
+            northBackCount > 0
+              ? northBackW * (1 + (Math.min(6, northBackCount) - 1) * 0.52)
+              : northBackW;
           return (
             <View key={rel} style={StyleSheet.absoluteFill}>
               <View
@@ -151,7 +163,12 @@ export function SeatLayer({
                   right: 0,
                   alignItems: 'center',
                 }}>
-                <BacksFan count={data.cardCount ?? 0} cardW={L.cardW} />
+                <BacksFan
+                  count={data.cardCount ?? 0}
+                  cardW={L.cardW}
+                  dealing={dealing}
+                  originY={L.trick.cy - northBackTop}
+                />
               </View>
               <View
                 style={
@@ -220,7 +237,16 @@ export function SeatLayer({
                 },
                 backsEdge,
               ]}>
-              <BacksStackV count={data.cardCount ?? 0} cardW={L.cardW} />
+              <BacksStackV
+                count={data.cardCount ?? 0}
+                cardW={L.cardW}
+                dealing={dealing}
+                originX={
+                  rel === 'west'
+                    ? L.felt.cx - insets.left + edgeOffset
+                    : L.felt.cx - (width - insets.right + edgeOffset - sideBackW * (110 / 78))
+                }
+              />
             </View>
           </View>
         );
@@ -313,54 +339,140 @@ function Nameplate({
   );
 }
 
-function BacksFan({ count, cardW }: { count: number; cardW: number }) {
-  const n = clamp(count, 0, 6);
+function BacksFan({
+  count,
+  cardW,
+  dealing,
+  originY,
+}: {
+  count: number;
+  cardW: number;
+  dealing: boolean;
+  originY: number;
+}) {
+  const n = clamp(count, 0, 9);
   if (n === 0) return null;
   const w = clamp(cardW * 0.66, 31, 58);
   const h = w * (110 / 78);
-  const overlap = w * 0.52;
+  const overlap = w * 0.52 * Math.min(1, 5 / Math.max(1, n - 1));
   const total = w + (n - 1) * overlap;
   return (
     <View style={{ width: total, height: h }}>
       {Array.from({ length: n }, (_, i) => (
-        <Image
+        <FlyingBack
           key={i}
-          source={BACK}
-          style={[styles.back, { position: 'absolute', left: i * overlap, width: w, height: h }]}
+          index={i}
+          dealing={dealing}
+          x={i * overlap}
+          y={0}
+          originX={total / 2 - w / 2}
+          originY={originY - h / 2}
+          w={w}
+          h={h}
         />
       ))}
     </View>
   );
 }
 
-function BacksStackV({ count, cardW }: { count: number; cardW: number }) {
-  const n = clamp(count, 0, 6);
+function BacksStackV({
+  count,
+  cardW,
+  dealing,
+  originX,
+}: {
+  count: number;
+  cardW: number;
+  dealing: boolean;
+  originX: number;
+}) {
+  const n = clamp(count, 0, 9);
   if (n === 0) return null;
   const cw = clamp(cardW * 0.62, 30, 56); // portrait back
   const ch = cw * (110 / 78);
   const visW = ch; // after 90° rotation
   const visH = cw;
-  const overlap = cw * 0.48;
+  const overlap = cw * 0.48 * Math.min(1, 5 / Math.max(1, n - 1));
   return (
     <View style={{ width: visW, height: visH + (n - 1) * overlap }}>
       {Array.from({ length: n }, (_, i) => (
-        <View
+        <FlyingBack
           key={i}
-          style={{
-            position: 'absolute',
-            top: i * overlap,
-            width: visW,
-            height: visH,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-          <Image
-            source={BACK}
-            style={[styles.back, { width: cw, height: ch, transform: [{ rotate: '90deg' }] }]}
-          />
-        </View>
+          index={i}
+          dealing={dealing}
+          x={0}
+          y={i * overlap}
+          originX={originX - visW / 2}
+          originY={((n - 1) * overlap) / 2}
+          w={cw}
+          h={ch}
+          sideways
+        />
       ))}
     </View>
+  );
+}
+
+function FlyingBack({
+  index,
+  dealing,
+  x,
+  y,
+  originX,
+  originY,
+  w,
+  h,
+  sideways = false,
+}: {
+  index: number;
+  dealing: boolean;
+  x: number;
+  y: number;
+  originX: number;
+  originY: number;
+  w: number;
+  h: number;
+  sideways?: boolean;
+}) {
+  const first = useRef(true);
+  const tx = useSharedValue(dealing ? originX : x);
+  const ty = useSharedValue(dealing ? originY : y);
+  const opacity = useSharedValue(dealing ? 0 : 1);
+  const scale = useSharedValue(dealing ? 0.85 : 1);
+  useEffect(() => {
+    const delay = first.current && dealing ? (index % 3) * DEAL_PACKET_CARD_STAGGER_MS : 0;
+    const config = { duration: DEAL_PACKET_TRAVEL_MS, easing: Easing.out(Easing.back(1.15)) };
+    tx.value = withDelay(delay, withTiming(x, config));
+    ty.value = withDelay(delay, withTiming(y, config));
+    opacity.value = withDelay(delay, withTiming(1, { duration: 70 }));
+    scale.value = withDelay(delay, withTiming(1, config));
+    first.current = false;
+  }, [x, y, dealing, index, tx, ty, opacity, scale]);
+  const motion = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { scale: scale.value }],
+  }));
+  return (
+    <Animated.View
+      style={[
+        {
+          position: 'absolute',
+          width: sideways ? h : w,
+          height: sideways ? w : h,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        motion,
+      ]}>
+      <Image
+        source={BACK}
+        style={[
+          styles.back,
+          { width: w, height: h },
+          sideways && { transform: [{ rotate: '90deg' }] },
+        ]}
+      />
+    </Animated.View>
   );
 }
 
