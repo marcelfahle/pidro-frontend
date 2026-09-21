@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Pidro 3",
+    "name": "Pidro",
     "slug": "pidro-mobile",
     "version": "3.0.0",
     "scheme": "pidro-mobile",
@@ -29,8 +29,9 @@
         "expo-splash-screen",
         {
           "image": "./assets/splash.png",
+          "imageWidth": 280,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#07264c"
         }
       ]
     ],
@@ -54,7 +55,8 @@
       "softwareKeyboardLayoutMode": "resize",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundImage": "./assets/adaptive-icon-background.png",
+        "backgroundColor": "#07264c"
       }
     },
     "extra": {

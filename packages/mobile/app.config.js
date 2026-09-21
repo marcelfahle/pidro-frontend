@@ -2,12 +2,12 @@ const variant = process.env.APP_VARIANT ?? 'production';
 
 const variants = {
   development: {
-    name: 'Pidro 3 Dev',
+    name: 'Pidro Dev',
     scheme: 'pidro-mobile-dev',
     bundleIdentifier: 'com.marcelfahle.pidro3.dev',
   },
   preview: {
-    name: 'Pidro 3 Preview',
+    name: 'Pidro Preview',
     scheme: 'pidro-mobile-preview',
     bundleIdentifier: 'com.marcelfahle.pidro3.preview',
   },
