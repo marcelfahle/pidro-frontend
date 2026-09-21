@@ -268,7 +268,7 @@ export default function LobbyScreen() {
         </BevelButton>
         <View style={!landscape && styles.headerTitle}>
           <PidroText role="label" numberOfLines={1}>
-            Find a table
+            Tables
           </PidroText>
         </View>
         {landscape ? search : null}
@@ -309,7 +309,7 @@ export default function LobbyScreen() {
           </View>
         ) : isUnavailable ? (
           <LobbyEmptyState
-            title="Tables unavailable"
+            title="Couldn’t load tables"
             description="We couldn’t load the tables. Please try again."
             actionLabel="Try again"
             onAction={loadLobby}
@@ -317,7 +317,7 @@ export default function LobbyScreen() {
           />
         ) : isEmptyLobby ? (
           <LobbyEmptyState
-            title="No tables yet"
+            title="No tables available"
             description="Create a table and invite your friends."
             actionLabel="Create a table"
             onAction={handleNewTable}
@@ -436,10 +436,12 @@ function LobbyEmptyState({
 }) {
   return (
     <ScrollView style={styles.roomScroll} keyboardShouldPersistTaps="handled">
-      <Surface testID="lobby-empty-state" variant="panel" style={styles.emptyState}>
+      <View testID="lobby-empty-state" style={styles.emptyState}>
         <View style={styles.emptyCopy}>
-          <PidroText role="title">{title}</PidroText>
-          <PidroText role="body" tone="soft">
+          <PidroText role="title" align="center">
+            {title}
+          </PidroText>
+          <PidroText role="body" tone="soft" align="center">
             {description}
           </PidroText>
         </View>
@@ -448,8 +450,9 @@ function LobbyEmptyState({
           material={quiet ? 'glass' : 'wood'}
           size="sm"
           onPress={onAction}
+          style={styles.emptyAction}
         />
-      </Surface>
+      </View>
     </ScrollView>
   );
 }
@@ -559,9 +562,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: PidroSpacing.sm,
     padding: PidroSpacing.md,
+    paddingTop: PidroSpacing.lg,
   },
   emptyCopy: {
     gap: PidroSpacing.xxs,
+  },
+  emptyAction: {
+    alignSelf: 'center',
   },
   actionRoom: {
     minHeight: 68,

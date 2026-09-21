@@ -124,10 +124,10 @@ try {
             : {
                 json: {
                   data: {
-                    open_tables: state === 'empty' ? [] : rooms,
+                    open_tables: ['empty', 'busy'].includes(state) ? [] : rooms,
                     my_rejoinable: [],
                     substitute_needed: [],
-                    spectatable: [],
+                    spectatable: state === 'busy' ? [{ ...rooms[0], status: 'playing' }] : [],
                   },
                 },
               }
@@ -181,7 +181,9 @@ try {
       state = next;
       await page.reload();
       await page
-        .getByText(next === 'empty' ? 'No tables yet' : 'Tables unavailable', { exact: true })
+        .getByText(next === 'empty' ? 'No tables available' : 'Couldn’t load tables', {
+          exact: true,
+        })
         .waitFor();
       await suppressDevOverlays(page);
       await assertMinimumTouchTargets(page, `lobby-${next}`, viewport);
@@ -196,6 +198,14 @@ try {
         await page.getByTestId('lobby-table-MEK').waitFor();
       }
     }
+    state = 'busy';
+    await page.reload();
+    await page.getByRole('button', { name: 'Watch', exact: true }).waitFor();
+    assert.equal(
+      await page.getByTestId('lobby-empty-state').count(),
+      0,
+      'watchable games must not be described as an empty lobby'
+    );
     await page.goto(`${baseUrl}/ui-dev?state=lobby-seats`);
     await page.getByTestId('lobby-table-SAMPLE0').waitFor();
     await equalRows(page, '[data-testid^="lobby-table-"]');
