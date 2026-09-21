@@ -207,6 +207,9 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
   // player and N/S – E/W for anybody else. Headless Chromium drops the socket
   // now and then, so allow a rejoin before judging.
   await page.getByText('THEM', { exact: true }).first().waitFor({ timeout: 30_000 });
+  await page
+    .getByRole('button', { name: 'US 0, THEM 0. Recent scores.', exact: true })
+    .waitFor({ timeout: 15_000 });
   await page.waitForTimeout(3_000);
   if (
     await page
@@ -307,7 +310,9 @@ async function stageTwoMultiplayerVideo() {
   let interrupted = false;
   let hostHasLeft = false;
   let lastPhase;
+  let interruptedPhase;
   let rejoinedWaiting = false;
+  let freshGameReceived = false;
   const terminalPhases = ['complete', 'game_over', 'finished'];
   await page.routeWebSocket(/\/socket\/websocket/, (socket) => {
     if (interrupted && !hostHasLeft) {
@@ -315,31 +320,44 @@ async function stageTwoMultiplayerVideo() {
       return;
     }
     const server = socket.connectToServer();
+    let dropped = false;
     server.onMessage((message) => {
+      if (dropped) return;
       const [, , topic, event, payload] = JSON.parse(String(message));
       if (topic === `game:${roomCode}`) {
-        const state = payload.state ?? payload.game_state;
+        const data = event === 'phx_reply' && payload.status === 'ok' ? payload.response : payload;
+        const state = data.state ?? data.game_state;
         if (
           interruptCompletion &&
           !interrupted &&
           (event === 'game_over' ||
             terminalPhases.includes(state?.phase) ||
+            data.readiness?.status === 'finished' ||
             (event === 'readiness_updated' && payload.status === 'finished'))
         ) {
           interrupted = true;
+          interruptedPhase = lastPhase;
+          dropped = true;
           log(`PID-108: dropping guest socket before ${event}; cached phase=${lastPhase}`);
           void server.close();
           void socket.close({ code: 1012, reason: 'Miss completion and host leave' });
           return;
         }
         if (interrupted && !hostHasLeft) return;
-        if (event === 'game_state') lastPhase = state?.phase;
-        if (interrupted && event === 'ph_reply' && payload.status === 'ok') {
-          const reply = payload.response;
-          if (reply.readiness?.status === 'waiting' && !reply.state && !reply.game_state) {
+        if (state) lastPhase = state.phase;
+        if (interrupted && event === 'phx_reply' && payload.status === 'ok') {
+          if (data.readiness?.status === 'waiting' && !state) {
             rejoinedWaiting = true;
             log('PID-108: rejoined waiting room without game state');
           }
+        }
+        if (
+          rejoinedWaiting &&
+          state?.scores?.north_south === 0 &&
+          state?.scores?.east_west === 0 &&
+          !terminalPhases.includes(state.phase)
+        ) {
+          freshGameReceived = true;
         }
       }
       socket.send(message);
@@ -409,11 +427,15 @@ async function stageTwoMultiplayerVideo() {
     await rematchThroughUi(page, roomCode, seen);
     interruptCompletion = true;
     await autoplayDone;
-    if (!interrupted || !lastPhase || terminalPhases.includes(lastPhase)) {
-      throw new Error(`PID-108: did not interrupt a nonterminal game (phase=${lastPhase})`);
+    // The host process can exit before Playwright handles the guest's queued frames.
+    for (let attempt = 0; attempt < 150 && !interrupted; attempt += 1) {
+      await page.waitForTimeout(100);
+    }
+    if (!interrupted || !interruptedPhase || terminalPhases.includes(interruptedPhase)) {
+      throw new Error(`PID-108: did not interrupt a nonterminal game (phase=${interruptedPhase})`);
     }
     const reopened = await api(`/api/v1/rooms/${roomCode}`, 'GET', hostToken);
-    if (!reopened.ok || reopened.payload?.data?.status !== 'waiting') {
+    if (!reopened.ok || reopened.payload?.data?.room?.status !== 'waiting') {
       throw new Error('PID-108: host leave did not reopen the room');
     }
     hostHasLeft = true;
@@ -422,6 +444,7 @@ async function stageTwoMultiplayerVideo() {
       throw new Error('PID-108: waiting rejoin did not replace the stale game canvas');
     }
     await fillTheOpenSeatThroughUi(page, roomCode, seen);
+    if (!freshGameReceived) throw new Error('PID-108: no fresh game state after readying');
     log(
       `stage 2 passed: game over, a rematch, then a bot in the seat the host left (milestones: ${[...seen].join(', ')})`
     );
