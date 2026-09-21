@@ -103,6 +103,8 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   const keyToSlot = useRef<Map<string, number>>(new Map());
   const retirementTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const cutSequenceKey = useRef<string | null>(null);
+  const cutSequenceStartedAt = useRef(0);
+  const winnerRevealSequenceKey = useRef<string | null>(null);
   const prevModel = useRef<TableModel | null>(null);
   const prevLayout = useRef(L);
   const modelRef = useRef<TableModel | undefined>(model);
@@ -256,6 +258,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         : null;
     const animateCutSequence =
       !reduceMotion && !!nextCutSequenceKey && nextCutSequenceKey !== cutSequenceKey.current;
+    if (animateCutSequence) cutSequenceStartedAt.current = Date.now();
     cutSequenceKey.current = nextCutSequenceKey;
     const nextSlots: SlotInfo[] = Array(MAX).fill(null);
 
@@ -461,23 +464,34 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   }, [model, L, enabled, reduceMotion]);
 
   useEffect(() => {
-    cancelAnimation(winnerReveal);
-    winnerReveal.value = 0;
     const cutCount = model ? Object.keys(model.dealerCuts).length : 0;
-    if (
-      !enabled ||
-      model?.phase !== 'dealer_selection' ||
-      !model.dealerRelative ||
-      !model.dealerCuts[model.dealerRelative]
-    ) {
+    const sequenceKey = cutSequenceKey.current;
+    if (!enabled || model?.phase !== 'dealer_selection' || !sequenceKey || cutCount === 0) {
+      cancelAnimation(winnerReveal);
+      winnerReveal.value = 0;
+      winnerRevealSequenceKey.current = null;
       return;
     }
+    if (!model.dealerRelative || !model.dealerCuts[model.dealerRelative]) {
+      if (winnerRevealSequenceKey.current !== sequenceKey) {
+        cancelAnimation(winnerReveal);
+        winnerReveal.value = 0;
+        winnerRevealSequenceKey.current = null;
+      }
+      return;
+    }
+    if (winnerRevealSequenceKey.current === sequenceKey) return;
+
+    cancelAnimation(winnerReveal);
+    winnerReveal.value = 0;
+    winnerRevealSequenceKey.current = sequenceKey;
     if (reduceMotion) {
       winnerReveal.value = 1;
       return;
     }
-    const revealDelay =
+    const revealAtMs =
       Math.max(0, cutCount - 1) * CUT_CARD_STAGGER_MS + CUT_CARD_TRAVEL_MS + CUT_WINNER_PAUSE_MS;
+    const revealDelay = Math.max(0, revealAtMs - (Date.now() - cutSequenceStartedAt.current));
     winnerReveal.value = withDelay(
       revealDelay,
       withSequence(
