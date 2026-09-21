@@ -1,7 +1,8 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
+import { RoomCard } from '@/components/lobby/RoomCard';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { LevelRing } from '@/components/home/LevelRing';
@@ -163,11 +164,44 @@ function ProgressionGallery() {
   );
 }
 
+function LobbySeatGallery() {
+  const { width, height } = useWindowDimensions();
+  const [joined, setJoined] = useState('Choose a seat');
+  return (
+    <ScreenShell scroll contentStyle={styles.shell}>
+      <PidroText role="label">Seat requirement samples — not live restrictions</PidroText>
+      <PidroText testID="lobby-gallery-joined">{joined}</PidroText>
+      {[undefined, 100, 1000].map((minimum, index) => (
+        <RoomCard
+          key={index}
+          compact={width > height}
+          room={{
+            code: `SAMPLE${index}`,
+            name:
+              index === 2 ? 'A very long table name that must stay on one line' : 'Sample table',
+            status: 'waiting',
+            seats: [
+              {
+                seat_index: 0,
+                status: 'occupied',
+                player: { id: 'sample', username: 'AlexandriaLongName' },
+              },
+            ],
+          }}
+          minimumGames={minimum ? { west: minimum } : undefined}
+          onJoin={(code, position) => setJoined(`${code}: ${position}`)}
+        />
+      ))}
+    </ScreenShell>
+  );
+}
+
 function UiDevHarness() {
   const params = useLocalSearchParams<{ state?: string }>();
   const state = typeof params.state === 'string' ? params.state : 'components';
 
   if (state === 'progression') return <ProgressionGallery />;
+  if (state === 'lobby-seats') return <LobbySeatGallery />;
 
   return (
     <>

@@ -9,9 +9,11 @@ import { PidroColors } from '@/design/tokens';
  * All glyphs are drawn on a 24×24 grid. `stroke` glyphs keep a 2px stroke so
  * they stay legible at chip sizes; `fill` glyphs are solid shapes.
  */
-export type IconName = 'star' | 'play' | 'friends';
+export type IconName = 'star' | 'play' | 'friends' | 'plus' | 'arrow-left';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
+  plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
+  'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },
   star: {
     path: 'M12 2l2.4 5.7 6.1.5-4.6 4 1.4 6L12 15l-5.3 3.2 1.4-6-4.6-4 6.1-.5z',
     mode: 'fill',

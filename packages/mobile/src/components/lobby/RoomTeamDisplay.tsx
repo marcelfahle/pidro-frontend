@@ -1,11 +1,13 @@
 import { View, StyleSheet } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { Seat, Position } from '@/types/lobby';
 import { POSITION_TO_INDEX } from '@/utils/positions';
-import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroRadii, PidroSpacing, PidroType } from '@/design/tokens';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroText } from '@/components/ui/PidroText';
-import { Avatar } from '@/components/ui/Avatar';
+import { LevelRing } from '@/components/home/LevelRing';
+import { BevelPressable } from '@/components/ui/Bevel';
+import { Icon } from '@/components/ui/Icon';
+import { SeatRequirementBadge } from './SeatRequirementBadge';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { useState } from 'react';
 
@@ -23,6 +25,9 @@ interface RoomTeamDisplayProps {
   isPlaying: boolean;
   currentUserId?: string | null;
   currentUsername?: string | null;
+  tableName?: string;
+  /** Presentation only until the server supplies and enforces seat requirements. */
+  minimumGames?: Partial<Record<Position, number>>;
 }
 
 export function RoomTeamDisplay({
@@ -34,6 +39,8 @@ export function RoomTeamDisplay({
   isPlaying,
   currentUserId,
   currentUsername,
+  tableName,
+  minimumGames,
 }: RoomTeamDisplayProps) {
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const getSeat = (
@@ -98,22 +105,12 @@ export function RoomTeamDisplay({
     const seat = getSeat(position);
     const isOccupied = seat?.status === 'occupied' || !!seat?.player;
     const player = seat?.player;
-    const canJoin = isAvailable(position) && !isPlaying && !isFull;
+    const canJoin = !isOccupied && isAvailable(position) && !isPlaying && !isFull;
 
     if (isOccupied && player) {
       const content = (
         <>
-          <View style={[styles.avatar, player.is_bot && styles.botAvatar]}>
-            {player.is_bot ? (
-              <Feather name="cpu" size={16} color="#fff6d1" />
-            ) : player.avatar_url ? (
-              <Avatar uri={player.avatar_url} style={styles.avatarImage} resizeMode="cover" />
-            ) : (
-              <PidroText role="label" style={styles.avatarText}>
-                {player.username.charAt(0).toUpperCase()}
-              </PidroText>
-            )}
-          </View>
+          <LevelRing uri={player.avatar_url} size={48} />
           <PidroText role="metadata" style={styles.name} numberOfLines={1}>
             {player.username}
           </PidroText>
@@ -133,21 +130,25 @@ export function RoomTeamDisplay({
     }
 
     return (
-      <PressableFX
-        accessibilityRole="button"
-        accessibilityLabel={`Join ${position} seat`}
-        accessibilityState={{ disabled: !canJoin }}
-        onPress={() => onJoinSeat(position)}
-        disabled={!canJoin}
-        style={[styles.seat, styles.openSeat, !canJoin && styles.disabled]}
-        pressedStyle={canJoin ? styles.openSeatPressed : undefined}>
-        <View style={styles.openIcon}>
-          <Feather name="plus" size={16} color="rgba(221,246,255,0.72)" />
+      <View style={styles.seat}>
+        <View>
+          <BevelPressable
+            material="glass"
+            radius={PidroRadii.full}
+            accessibilityRole="button"
+            accessibilityLabel={`Join ${position} seat${tableName ? ` at ${tableName}` : ''}${minimumGames?.[position] ? `, minimum ${minimumGames[position]} games` : ''}`}
+            accessibilityState={{ disabled: !canJoin }}
+            onPress={() => onJoinSeat(position)}
+            disabled={!canJoin}
+            style={[styles.openSeat, !canJoin && styles.disabled]}
+            contentStyle={styles.openIcon}>
+            <Icon name="plus" size={24} />
+          </BevelPressable>
+          {minimumGames?.[position] ? (
+            <SeatRequirementBadge games={minimumGames[position]!} />
+          ) : null}
         </View>
-        <PidroText role="metadata" tone="soft">
-          Open
-        </PidroText>
-      </PressableFX>
+      </View>
     );
   };
 
@@ -159,7 +160,7 @@ export function RoomTeamDisplay({
       </View>
       <View style={styles.vsWrap}>
         <PidroText role="metadata" tone="muted">
-          vs.
+          vs
         </PidroText>
       </View>
       <View style={styles.team}>
@@ -184,6 +185,8 @@ const styles = StyleSheet.create({
   },
   team: {
     flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
     gap: PidroSpacing.xs,
   },
   vsWrap: {
@@ -191,54 +194,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   seat: {
-    minHeight: PidroLayout.touchTarget,
-    flexDirection: 'row',
+    flex: 1,
+    minWidth: 0,
+    // Reserve the same scaled name line for every seat, including vacant ones.
+    height: 48 + PidroSpacing.xxs + PidroType.metadata.lineHeight * 1.5,
     alignItems: 'center',
-    gap: PidroSpacing.xs,
-    borderRadius: PidroRadii.surface,
-    borderWidth: 1,
-    borderColor: PidroColors.border,
-    backgroundColor: PidroColors.panel,
-    paddingHorizontal: PidroSpacing.xs,
-    paddingVertical: PidroSpacing.xs,
-  },
-  avatar: {
-    width: 32,
-    height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: PidroRadii.tight,
-    borderWidth: 1,
-    borderColor: PidroColors.cyanBorder,
-    backgroundColor: PidroColors.glassHover,
-  },
-  avatarImage: { width: '100%', height: '100%', borderRadius: PidroRadii.full },
-  botAvatar: {
-    borderColor: PidroColors.goldDark,
-    backgroundColor: PidroColors.goldSoft,
-  },
-  avatarText: {
-    color: PidroColors.text,
+    gap: PidroSpacing.xxs,
   },
   name: {
-    minWidth: 0,
-    flex: 1,
+    width: '100%',
+    textAlign: 'center',
     color: PidroColors.text,
   },
   openSeat: {
-    borderStyle: 'dashed',
-  },
-  openSeatPressed: {
-    backgroundColor: PidroColors.glassHover,
+    width: 48,
+    height: 48,
   },
   openIcon: {
-    width: 32,
-    height: 32,
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: PidroRadii.tight,
-    borderWidth: 1,
-    borderColor: PidroColors.cyanBorder,
   },
   disabled: {
     opacity: 0.46,

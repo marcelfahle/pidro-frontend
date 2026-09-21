@@ -128,6 +128,7 @@ jobs:
           bun run test:ui
           node scripts/verify-seat-decisions.mjs
           node scripts/verify-dealing.mjs
+          UI_SHOT_DIR=/tmp/lobby-screens node scripts/verify-lobby.mjs
           # Additional sizes/scales are assertion-gated; their captures are diagnostic artifacts.
           # The waiting-room pixel baselines come from test:ui above (three standard viewports).
           UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs

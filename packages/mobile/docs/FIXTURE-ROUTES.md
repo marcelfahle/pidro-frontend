@@ -81,6 +81,13 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
 
+`/ui-dev?state=lobby-seats` shows equal-height lobby rows with no requirement, `100`,
+and `1000` badges plus long names. These are presentation samples, not live seat
+restrictions: the server does not yet supply or enforce minimum games.
+`node scripts/verify-lobby.mjs` checks the real lobby with mocked API responses at
+four phone sizes, including direct seat joins, search, create, empty/error states,
+and the badge gallery. Captures go to `/tmp/pidro-lobby` (or `UI_SHOT_DIR`).
+
 ## `/auth-flow-dev` — guest-first auth
 
 No params. In-page toggles: platform (**iOS** Apple-first / **Android** Google-first),
