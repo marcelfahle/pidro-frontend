@@ -1,12 +1,13 @@
 import { lifecycleFromReply } from '@pidro/shared';
 import { useEffect, useRef } from 'react';
 import { Channel, Presence } from 'phoenix';
-import type { ReadinessSnapshot } from '@pidro/shared';
 import {
   describeGameAction,
+  extractGamePresentation,
   extractGameState,
   normalizeTurnTimer,
   shouldAutoSelectDealer,
+  type ReadinessSnapshot,
   type SeatLifecycleSnapshot,
 } from '@pidro/shared';
 import { batchedUpdates as unstable_batchedUpdates } from '@/utils/batchedUpdates';
@@ -108,6 +109,7 @@ export const useGameChannel = ({
   onWaitingRoomEvent,
 }: UseGameChannelOptions) => {
   const setServerState = useGameStore((s) => s.setServerState);
+  const setPresentation = useGameStore((s) => s.setPresentation);
   const setLegalActions = useGameStore((s) => s.setLegalActions);
   const setTurnTimer = useGameStore((s) => s.setTurnTimer);
   const clearTurnTimer = useGameStore((s) => s.clearTurnTimer);
@@ -211,6 +213,7 @@ export const useGameChannel = ({
             if (gameState) {
               setServerState(gameState);
             }
+            setPresentation(extractGamePresentation(response));
 
             const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
             setLegalActions(legalActions);
@@ -241,6 +244,7 @@ export const useGameChannel = ({
           const legalActions = (data?.legal_actions as LegalAction[] | undefined) ?? [];
           unstable_batchedUpdates(() => {
             setServerState(gameState);
+            setPresentation(extractGamePresentation(data));
             setLegalActions(legalActions);
             maybeAutoSelectDealer(gameState, legalActions, youPositionRef.current);
           });
@@ -523,6 +527,7 @@ export const useGameChannel = ({
     roomCode,
     enabled,
     setServerState,
+    setPresentation,
     setLegalActions,
     setTurnTimer,
     clearTurnTimer,

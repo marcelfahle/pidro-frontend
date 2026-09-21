@@ -41,6 +41,7 @@ const build = (overrides = {}) =>
     tricks: null,
     legalActions: [],
     currentTurnRelative: null,
+    dealerRelative: null,
     canPlay: false,
     getCardCountForPlayer: () => null,
     ...overrides,
@@ -115,6 +116,54 @@ describe('dealer selection table model', () => {
 
     expect(model.dealerCuts.north).toBeUndefined();
     expect(Object.keys(model.dealerCuts)).toHaveLength(3);
+  });
+});
+
+describe('dealer second deal privacy', () => {
+  it('conceals the dealer pool count while preserving the other authoritative counts', () => {
+    const counts = { north: 6, east: 17, south: 6, west: 7 };
+    const model = build({
+      phase: 'second_deal',
+      dealerRelative: 'south',
+      getCardCountForPlayer: (position) => counts[position],
+    });
+
+    expect(model.seats.south.cardCount).toBeNull();
+    expect(model.seats.south.cardCountConcealed).toBe(true);
+    expect(model.seats.east.cardCount).toBe(6);
+    expect(model.seats.east.cardCountConcealed).toBe(false);
+  });
+
+  it('moves the dealer private pool into the selector instead of duplicating it on the table', () => {
+    const model = build({
+      phase: 'second_deal',
+      dealerRelative: 'south',
+      yourHand: [
+        { suit: 'spades', rank: 14 },
+        { suit: 'hearts', rank: 13 },
+        { suit: 'clubs', rank: 12 },
+        { suit: 'diamonds', rank: 11 },
+        { suit: 'spades', rank: 10 },
+        { suit: 'hearts', rank: 9 },
+        { suit: 'clubs', rank: 8 },
+      ],
+      yourCardCount: 7,
+    });
+
+    expect(model.yourHand).toEqual([]);
+    expect(model.dealtHand).toEqual([]);
+    expect(model.yourCardCount).toBeNull();
+  });
+
+  it('restores the dealer count after the private selection phase', () => {
+    const model = build({
+      phase: 'playing',
+      dealerRelative: 'south',
+      getCardCountForPlayer: () => 6,
+    });
+
+    expect(model.seats.south.cardCount).toBe(6);
+    expect(model.seats.south.cardCountConcealed).toBe(false);
   });
 });
 

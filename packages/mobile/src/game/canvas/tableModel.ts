@@ -39,6 +39,8 @@ export type TableSeat = {
   seatStatus: SeatStatus;
   isCurrentTurn: boolean;
   cardCount: number | null;
+  /** True when rendering the real count would reveal the dealer's private rob pool. */
+  cardCountConcealed: boolean;
   lastPlayedCard: TableCard | null;
 };
 export type TableModel = {
@@ -74,6 +76,7 @@ export type TableModelInput = {
   tricks: unknown;
   legalActions: LegalAction[];
   currentTurnRelative: RelativePosition | null;
+  dealerRelative: RelativePosition | null;
   canPlay: boolean;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
 };
@@ -98,6 +101,10 @@ function normalizeCompletedTricks(tricks: unknown): RawPlay[][] {
 
 export function buildTableModel(input: TableModelInput): TableModel {
   const { trumpSuit } = input;
+  const viewerIsDealer = input.players.some(
+    (player) => player.isYou && player.relativePosition === input.dealerRelative
+  );
+  const concealPrivateDealerPool = input.phase === 'second_deal' && viewerIsDealer;
 
   const legalPlayKeys = new Set<CardKey>();
   for (const a of input.legalActions) {
@@ -116,9 +123,9 @@ export function buildTableModel(input: TableModelInput): TableModel {
     };
   };
 
-  const yourHand = (input.yourHand ? sortCards(input.yourHand, trumpSuit) : []).map((card) =>
-    toCard(card)
-  );
+  const yourHand = concealPrivateDealerPool
+    ? []
+    : (input.yourHand ? sortCards(input.yourHand, trumpSuit) : []).map((card) => toCard(card));
 
   const absToRel = new Map<Position, RelativePosition>();
   for (const p of input.players) absToRel.set(p.absolutePosition, p.relativePosition);
@@ -180,7 +187,11 @@ export function buildTableModel(input: TableModelInput): TableModel {
           isConnected: p.isConnected,
           seatStatus: p.seatStatus,
           isCurrentTurn: p.isCurrentTurn,
-          cardCount: input.getCardCountForPlayer(p.absolutePosition),
+          cardCount:
+            input.phase === 'second_deal' && input.dealerRelative === rel
+              ? null
+              : input.getCardCountForPlayer(p.absolutePosition),
+          cardCountConcealed: input.phase === 'second_deal' && input.dealerRelative === rel,
           lastPlayedCard: currentTrick[rel] ?? null,
         }
       : null;
@@ -192,8 +203,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
     dealerRelative: input.dealerRelative ?? null,
     seats,
     yourHand,
-    dealtHand: (input.yourHand ?? []).map((card) => toCard(card)),
-    yourCardCount: input.yourCardCount,
+    dealtHand: concealPrivateDealerPool ? [] : (input.yourHand ?? []).map((card) => toCard(card)),
+    yourCardCount: concealPrivateDealerPool ? null : input.yourCardCount,
     dealerCuts,
     currentTrick,
     playedCards,
@@ -203,7 +214,10 @@ export function buildTableModel(input: TableModelInput): TableModel {
   };
 }
 
-export function useTableModel(c: GameTableController): TableModel {
+export function useTableModel(
+  c: GameTableController,
+  presentationHand?: Card[]
+): TableModel {
   return useMemo(
     () =>
       buildTableModel({
@@ -211,13 +225,14 @@ export function useTableModel(c: GameTableController): TableModel {
         trumpSuit: c.trumpSuit,
         dealerRelative: c.viewModel?.dealerRelative ?? null,
         players: c.players,
-        yourHand: c.yourHand,
-        yourCardCount: c.yourCardCount,
+        yourHand: presentationHand ?? c.yourHand,
+        yourCardCount: presentationHand?.length ?? c.yourCardCount,
         dealerSelectionCuts: c.serverState?.dealer_selection_cuts,
         currentTrick: c.currentTrick,
         tricks: c.completedTricks,
         legalActions: c.legalActions,
         currentTurnRelative: c.currentTurnRelative,
+        dealerRelative: c.viewModel?.dealerRelative ?? null,
         canPlay: c.isPlayingTurn && !c.isPlayingCard,
         getCardCountForPlayer: c.getCardCountForPlayer,
       }),
@@ -228,11 +243,13 @@ export function useTableModel(c: GameTableController): TableModel {
       c.players,
       c.yourHand,
       c.yourCardCount,
+      presentationHand,
       c.serverState?.dealer_selection_cuts,
       c.currentTrick,
       c.completedTricks,
       c.legalActions,
       c.currentTurnRelative,
+      c.viewModel?.dealerRelative,
       c.isPlayingTurn,
       c.isPlayingCard,
       c.getCardCountForPlayer,

@@ -87,8 +87,44 @@ test('a new room invalidates the old role and private cache', () => {
   const store = useGameStore.getState();
   store.setRole('player');
   store.setServerState(state);
+  store.setPresentation({
+    dealer_rob: {
+      dealer: 'north',
+      started_at_ms: 1,
+      ends_at_ms: 2,
+      pool: [{ rank: 14, suit: 'spades' }],
+      kept: [{ rank: 14, suit: 'spades' }],
+      discarded: [],
+    },
+  });
   store.initFromRoom({ room, youPlayerId: 'viewer' });
   expect(useGameStore.getState().role).toBeNull();
   expect(useGameStore.getState().serverState).toBeNull();
+  expect(useGameStore.getState().presentation).toBeNull();
   expect(useGameStore.getState().youPositionAbs).toBeNull();
+});
+
+test('spectator role strips private dealer rob cards while keeping public timing', () => {
+  const store = useGameStore.getState();
+  store.setRole('player');
+  store.setPresentation({
+    dealer_rob: {
+      dealer: 'south',
+      automatic: true,
+      started_at_ms: 10,
+      ends_at_ms: 20,
+      pool: [{ rank: 5, suit: 'hearts' }],
+      kept: [{ rank: 5, suit: 'hearts' }],
+      discarded: [],
+    },
+  });
+
+  store.setRole('spectator');
+
+  expect(useGameStore.getState().presentation?.dealer_rob).toEqual({
+    dealer: 'south',
+    automatic: true,
+    started_at_ms: 10,
+    ends_at_ms: 20,
+  });
 });

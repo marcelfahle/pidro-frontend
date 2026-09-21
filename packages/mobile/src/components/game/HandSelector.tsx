@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Image, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -75,11 +75,12 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
       }
       compact={landscape}
       footer={
-        <Button
+        <BevelButton
           label="Keep selected cards"
           onPress={handleConfirm}
           loading={isSubmitting}
           disabled={selected.size !== TARGET_COUNT}
+          size="sm"
           style={styles.confirmButton}
         />
       }

@@ -36,6 +36,13 @@ const DEAL_HAND: Card[] = [
   { rank: 12, suit: 'hearts' },
 ];
 
+const DEALER_POOL: Card[] = [
+  ...DEAL_HAND,
+  { rank: 5, suit: 'spades' },
+  { rank: 11, suit: 'spades' },
+  { rank: 4, suit: 'clubs' },
+];
+
 const WAITING_ROOM: Room = {
   code: 'DEV01',
   name: 'Friday friends',
@@ -208,6 +215,7 @@ function TableDevHarness() {
     readyResult?: string;
     deal?: string;
     dealer?: string;
+    clear?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -229,17 +237,22 @@ function TableDevHarness() {
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
 
-  if (params.role && !phase.startsWith('waiting') && !phase.startsWith('ready')) {
+  if (
+    (params.role || phase === 'second_deal') &&
+    !phase.startsWith('waiting') &&
+    !phase.startsWith('ready')
+  ) {
     return (
       <SafeAreaProvider>
         <FixtureInsets preset={params.safeArea}>
           <RolePreview
-            role={params.role === 'player' ? 'player' : 'spectator'}
+            role={params.role === 'spectator' ? 'spectator' : 'player'}
             phase={phase}
             feedback={params.feedback}
             canPass={params.pass !== 'disabled'}
             deal={params.deal}
             dealer={params.dealer}
+            autoClear={params.clear === 'true'}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -415,6 +428,7 @@ function RolePreview({
   canPass,
   deal,
   dealer,
+  autoClear,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -422,13 +436,46 @@ function RolePreview({
   canPass: boolean;
   deal?: string;
   dealer?: string;
+  autoClear?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
     const previewPhase =
-      phase === 'bidding' ? 'bidding' : phase === 'declaring' ? 'declaring' : 'playing';
+      phase === 'bidding'
+        ? 'bidding'
+        : phase === 'declaring'
+          ? 'declaring'
+          : phase === 'second_deal'
+            ? 'second_deal'
+            : 'playing';
+    const dealerPosition = ['north', 'east', 'south', 'west'].includes(dealer ?? '')
+      ? (dealer as Position)
+      : previewPhase === 'second_deal'
+        ? 'south'
+        : 'north';
+    const automaticExisting: Card[] = [
+      { rank: 14, suit: 'spades' },
+      { rank: 13, suit: 'spades' },
+    ];
+    const automaticRobbed: Card[] = [
+      { rank: 11, suit: 'spades' },
+      { rank: 10, suit: 'spades' },
+      { rank: 5, suit: 'spades' },
+      { rank: 5, suit: 'clubs' },
+      { rank: 2, suit: 'spades' },
+      { rank: 6, suit: 'diamonds' },
+    ];
+    const automaticPool = [...automaticExisting, ...automaticRobbed];
+    const automaticKept = [
+      automaticExisting[0],
+      automaticRobbed[0],
+      automaticRobbed[1],
+      automaticRobbed[2],
+      automaticRobbed[3],
+      automaticRobbed[4],
+    ];
     store.reset();
     store.initFromRoom({ room: WAITING_ROOM, youPlayerId: 'p-south' });
     store.setRole(role);
@@ -436,32 +483,64 @@ function RolePreview({
     store.setChannelStatus(true);
     store.setServerState({
       phase: deal === 'true' ? 'dealing' : previewPhase,
-      current_player: 'south',
-      trump: previewPhase === 'playing' ? 'spades' : null,
-      dealer: ['north', 'east', 'south', 'west'].includes(dealer ?? '')
-        ? (dealer as Position)
-        : 'north',
+      current_player: previewPhase === 'second_deal' ? dealerPosition : 'south',
+      trump: previewPhase === 'playing' || previewPhase === 'second_deal' ? 'spades' : null,
+      dealer: dealerPosition,
       scores: { north_south: 36, east_west: 29 },
       hand_number: 4,
       players: {
-        north: { hand: deal === 'true' ? 0 : deal === 'cold' ? 9 : 6 },
+        north: {
+          hand:
+            previewPhase === 'second_deal' && dealerPosition === 'north'
+              ? 17
+              : deal === 'true'
+                ? 0
+                : deal === 'cold'
+                  ? 9
+                  : 6,
+        },
         east: { hand: deal === 'true' ? 0 : deal === 'cold' ? 9 : 6 },
         west: { hand: deal === 'true' ? 0 : deal === 'cold' ? 9 : 6 },
         south: {
           hand:
-            deal === 'true'
-              ? []
-              : deal === 'cold'
-                ? DEAL_HAND
-                : [
-                    { rank: 14, suit: 'spades' },
-                    { rank: 13, suit: 'hearts' },
-                  ],
+            previewPhase === 'second_deal' && dealerPosition === 'south'
+              ? DEALER_POOL
+              : phase === 'auto_rob'
+                ? automaticKept
+              : deal === 'true'
+                ? []
+                : deal === 'cold'
+                  ? DEAL_HAND
+                  : [
+                      { rank: 14, suit: 'spades' },
+                      { rank: 13, suit: 'hearts' },
+                    ],
         },
       },
       current_trick:
         previewPhase === 'playing' ? [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }] : [],
     });
+    if (phase === 'auto_rob') {
+      store.setPresentation({
+        dealer_rob: {
+          dealer: dealerPosition,
+          automatic: true,
+          started_at_ms: Date.now(),
+          ends_at_ms: Date.now() + 60_000,
+          ...(role === 'player' && dealerPosition === 'south'
+            ? {
+                pool: automaticPool,
+                kept: automaticKept,
+                discarded: [automaticExisting[1], automaticRobbed[5]],
+              }
+            : {}),
+        },
+      });
+    }
+    const presentationTimer =
+      phase === 'auto_rob' && autoClear
+        ? setTimeout(() => store.setPresentation(null), 1_800)
+        : null;
     store.setLegalActions(
       previewPhase === 'bidding'
         ? [
@@ -474,7 +553,11 @@ function RolePreview({
           ? (['clubs', 'diamonds', 'hearts', 'spades'] as const).map(
               (suit) => ({ type: 'declare_trump', suit }) as const
             )
-          : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
+          : previewPhase === 'second_deal'
+            ? dealerPosition === 'south' && role === 'player'
+              ? [{ type: 'select_hand' as const, cards: [] }]
+              : []
+            : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
     );
     if (previewPhase === 'playing') {
       store.setTurnTimer({
@@ -495,9 +578,10 @@ function RolePreview({
     });
     return () => {
       active = false;
+      if (presentationTimer) clearTimeout(presentationTimer);
       store.reset();
     };
-  }, [role, phase, canPass, deal, dealer]);
+  }, [role, phase, canPass, deal, dealer, autoClear]);
 
   useEffect(() => {
     if (!Table || deal !== 'true') return;

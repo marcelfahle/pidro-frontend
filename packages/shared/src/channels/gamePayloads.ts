@@ -1,5 +1,6 @@
 import type {
   ActiveTurnTimer,
+  GamePresentation,
   GamePhase,
   LegalAction,
   ServerGameState,
@@ -82,6 +83,13 @@ export function extractGameState(
   }
 
   return null;
+}
+
+export function extractGamePresentation(
+  data: Record<string, unknown> | undefined,
+): GamePresentation | null {
+  if (!data?.presentation || typeof data.presentation !== 'object') return null;
+  return data.presentation as GamePresentation;
 }
 
 export function shouldAutoSelectDealer(

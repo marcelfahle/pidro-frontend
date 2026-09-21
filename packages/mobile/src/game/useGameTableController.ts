@@ -43,6 +43,7 @@ export type GameTableController = {
   showTrumpSelection: boolean;
   isGameOver: boolean;
   isSecondDeal: boolean;
+  canSelectHand: boolean;
   isPlayingCard: boolean;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
   handlePlayCard: (card: Card) => Promise<void> | void;
@@ -127,12 +128,13 @@ export function useGameTableController(room?: Room): GameTableController {
     legalActions.some((action) => action.type === 'declare_trump');
   const isGameOver =
     phase === 'complete' || phase === 'game_over' || (phase as string) === 'finished';
-  const isSecondDeal =
+  const isSecondDeal = phase === 'second_deal';
+  const canSelectHand =
     role === 'player' &&
     isChannelJoined &&
-    phase === 'second_deal' &&
-    !!yourHand &&
-    yourHand.length > 6;
+    isYourTurn &&
+    viewModel?.dealerAbsolute === youPositionAbs &&
+    legalActions.some((action) => action.type === 'select_hand');
 
   const [isPlayingCard, setIsPlayingCard] = useState(false);
 
@@ -210,6 +212,7 @@ export function useGameTableController(room?: Room): GameTableController {
     showTrumpSelection,
     isGameOver,
     isSecondDeal,
+    canSelectHand,
     isPlayingCard,
     getCardCountForPlayer,
     handlePlayCard,

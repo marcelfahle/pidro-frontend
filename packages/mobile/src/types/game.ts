@@ -3,6 +3,8 @@ export type {
   GamePhase,
   Suit,
   Card,
+  DealerRobPresentation,
+  GamePresentation,
   ServerPlayerView,
   ServerTrickPlay,
   ServerTrick,
