@@ -21,7 +21,17 @@ export function TableUtilityWindow({
 }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible={open} transparent animationType="none" onRequestClose={onClose}>
+    <Modal
+      visible={open}
+      transparent
+      animationType="none"
+      supportedOrientations={[
+        'portrait',
+        'portrait-upside-down',
+        'landscape-left',
+        'landscape-right',
+      ]}
+      onRequestClose={onClose}>
       <View
         style={[
           styles.backdrop,
