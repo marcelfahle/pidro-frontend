@@ -41,6 +41,27 @@ const viewports = [
   { name: 'compact-landscape', width: 667, height: 375 },
 ];
 
+async function compactEmptyState(page) {
+  const panel = page.getByTestId('lobby-empty-state');
+  const box = await panel.boundingBox();
+  const button = await panel.getByRole('button').boundingBox();
+  const viewport = page.viewportSize();
+  assert.ok(button.height >= 44 && button.height <= 60, 'empty action must stay content-height');
+  assert.ok(box.height <= 230, 'empty notice must not fill the screen');
+  assert.ok(box.y >= 0 && box.y + box.height <= viewport.height, 'notice exceeds viewport');
+  for (const child of await panel.locator('*').all()) {
+    const rect = await child.boundingBox();
+    assert.ok(
+      rect &&
+        rect.x >= box.x - 1 &&
+        rect.y >= box.y - 1 &&
+        rect.x + rect.width <= box.x + box.width + 1 &&
+        rect.y + rect.height <= box.y + box.height + 1,
+      'empty-state descendant is clipped'
+    );
+  }
+}
+
 async function equalRows(page, selector) {
   const rows = await page.locator(selector).all();
   assert.equal(rows.length, 3);
@@ -150,8 +171,10 @@ try {
     assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 1);
     await page.getByRole('textbox', { name: 'Search tables' }).fill('no matching table');
     await page.getByText('No matching tables', { exact: true }).waitFor();
+    await compactEmptyState(page);
     await page.screenshot({ path: resolve(output, `${viewport.name}-no-results.png`) });
     await page.getByRole('button', { name: 'Clear search' }).click();
+    await page.getByTestId('lobby-table-MEK').waitFor();
     await page.getByRole('button', { name: 'Create table', exact: true }).click();
     await page.getByTestId('create-room-window').waitFor();
     for (const next of ['empty', 'error']) {
@@ -162,7 +185,16 @@ try {
         .waitFor();
       await suppressDevOverlays(page);
       await assertMinimumTouchTargets(page, `lobby-${next}`, viewport);
+      await compactEmptyState(page);
       await page.screenshot({ path: resolve(output, `${viewport.name}-${next}.png`) });
+      if (next === 'empty') {
+        await page.getByRole('button', { name: 'Create a table', exact: true }).click();
+        await page.getByTestId('create-room-window').waitFor();
+      } else {
+        state = 'populated';
+        await page.getByRole('button', { name: 'Try again' }).click();
+        await page.getByTestId('lobby-table-MEK').waitFor();
+      }
     }
     await page.goto(`${baseUrl}/ui-dev?state=lobby-seats`);
     await page.getByTestId('lobby-table-SAMPLE0').waitFor();

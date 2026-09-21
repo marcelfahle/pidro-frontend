@@ -8,7 +8,6 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
@@ -20,7 +19,7 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
@@ -310,32 +309,26 @@ export default function LobbyScreen() {
           </View>
         ) : isUnavailable ? (
           <LobbyEmptyState
-            icon="wifi-off"
             title="Tables unavailable"
-            description="Check your connection, then try loading the lobby again."
+            description="We couldn’t load the tables. Please try again."
             actionLabel="Try again"
             onAction={loadLobby}
             quiet
-            compact={landscape}
           />
         ) : isEmptyLobby ? (
           <LobbyEmptyState
-            icon="users"
             title="No tables yet"
-            description="Create the first table and invite your friends."
+            description="Create a table and invite your friends."
             actionLabel="Create a table"
             onAction={handleNewTable}
-            compact={landscape}
           />
         ) : hasNoResults ? (
           <LobbyEmptyState
-            icon="search"
             title="No matching tables"
             description="Try a table name or code, or clear your search."
             actionLabel="Clear search"
             onAction={() => setQuery('')}
             quiet
-            compact={landscape}
           />
         ) : (
           <ScrollView
@@ -429,46 +422,35 @@ export default function LobbyScreen() {
 }
 
 function LobbyEmptyState({
-  icon,
   title,
   description,
   actionLabel,
   onAction,
   quiet = false,
-  compact = false,
 }: {
-  icon: keyof typeof Feather.glyphMap;
   title: string;
   description: string;
   actionLabel: string;
   onAction: () => void;
   quiet?: boolean;
-  compact?: boolean;
 }) {
   return (
-    <Surface variant="card" style={[styles.emptyState, compact && styles.emptyStateCompact]}>
-      <View style={styles.emptyIcon}>
-        <Feather name={icon} size={24} color={PidroColors.cyanText} />
-      </View>
-      <View style={[styles.emptyCopy, compact && styles.emptyCopyCompact]}>
-        <PidroText role="title" align={compact ? 'left' : 'center'}>
-          {title}
-        </PidroText>
-        <PidroText
-          role="body"
-          tone="soft"
-          align={compact ? 'left' : 'center'}
-          style={styles.emptyDescription}>
-          {description}
-        </PidroText>
-      </View>
-      <BevelButton
-        label={actionLabel}
-        material={quiet ? 'glass' : 'wood'}
-        onPress={onAction}
-        style={styles.emptyAction}
-      />
-    </Surface>
+    <ScrollView style={styles.roomScroll} keyboardShouldPersistTaps="handled">
+      <Surface testID="lobby-empty-state" variant="panel" style={styles.emptyState}>
+        <View style={styles.emptyCopy}>
+          <PidroText role="title">{title}</PidroText>
+          <PidroText role="body" tone="soft">
+            {description}
+          </PidroText>
+        </View>
+        <BevelButton
+          label={actionLabel}
+          material={quiet ? 'glass' : 'wood'}
+          size="sm"
+          onPress={onAction}
+        />
+      </Surface>
+    </ScrollView>
   );
 }
 
@@ -573,47 +555,13 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     width: '100%',
-    maxWidth: 460,
-    minHeight: 260,
+    maxWidth: PidroLayout.contentMaxWidth,
     alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center',
     gap: PidroSpacing.sm,
-    padding: PidroSpacing.xl,
-    marginTop: PidroSpacing.lg,
-  },
-  emptyStateCompact: {
-    minHeight: 0,
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
     padding: PidroSpacing.md,
-    marginTop: 0,
-  },
-  emptyIcon: {
-    width: 48,
-    height: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: PidroRadii.panel,
-    borderWidth: 1,
-    borderColor: PidroColors.cyanBorder,
-    backgroundColor: PidroColors.glass,
-  },
-  emptyDescription: {
-    maxWidth: 320,
   },
   emptyCopy: {
-    alignItems: 'center',
     gap: PidroSpacing.xxs,
-  },
-  emptyCopyCompact: {
-    minWidth: 0,
-    flex: 1,
-    alignItems: 'flex-start',
-  },
-  emptyAction: {
-    minWidth: 160,
-    marginTop: PidroSpacing.xs,
   },
   actionRoom: {
     minHeight: 68,
