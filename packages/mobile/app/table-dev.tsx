@@ -228,8 +228,7 @@ function TableDevHarness() {
     phase === 'ready-host' ||
     phase === 'ready-solo'
   ) {
-    const hostControls =
-      phase === 'waiting-host' || phase === 'ready-host' || phase === 'ready-solo';
+    const hostControls = phase === 'waiting-host' || phase === 'ready-host';
     const full = phase.startsWith('ready');
     const waitingRoom: Room = full
       ? {

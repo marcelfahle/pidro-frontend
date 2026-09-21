@@ -178,6 +178,7 @@ try {
 
   await page.goto(`${baseUrl}/table-dev?phase=ready-solo`);
   await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+  assert.equal(await page.getByRole('button', { name: 'Table', exact: true }).count(), 0);
   assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
   for (const position of ['north', 'east', 'west']) {
     assert.equal(await page.getByTestId(`waiting-ready-${position}`).count(), 1);
