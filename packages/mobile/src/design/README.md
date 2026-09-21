@@ -73,6 +73,15 @@ Disabled switches retain their state and cannot be changed.
 The `/ui-dev?state=components` switch sheet includes interactive on/off examples
 and disabled on/off examples. Focus the interactive examples to inspect the ring.
 
+## Team matchups
+
+Group the host and partner together, opposite the two opponents. Keep the lobby's
+quiet lowercase `vs` between teams: `PidroText` metadata, muted tone, no badge or
+ornamental plaque. In stacked portrait layouts it separates the groups vertically;
+in landscape it sits between columns. Creation labels the groups `Your team` and
+`Opponents`, uses read-only avatars, and makes each editable seat one row target.
+Table names are generated at creation, not an extra form step.
+
 ## Motion
 
 - **Press physics** (built into `BevelPressable`/`PressableFX`): 2px travel or 0.97

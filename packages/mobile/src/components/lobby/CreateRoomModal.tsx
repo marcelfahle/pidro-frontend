@@ -1,18 +1,16 @@
-import { useEffect, useState } from 'react';
-import { Modal, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useReducedMotion } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { clampRoomName, limitRoomNameInput } from '@pidro/shared';
-import type { BotDifficulty, CreateRoomRequest, SeatType } from '@/types/lobby';
-import { Button } from '@/components/ui/Button';
-import { DecisionWindow } from '@/components/ui/DecisionWindow';
+import { useState } from 'react';
+import { Keyboard, Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { clampRoomName } from '@pidro/shared';
+import type { BotDifficulty, CreateRoomRequest } from '@/types/lobby';
+import { LevelRing } from '@/components/home/LevelRing';
+import { BevelButton } from '@/components/ui/BevelButton';
+import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
+import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
-
-type SeatToggle = 'open' | 'ai';
 
 interface CreateRoomModalProps {
   isOpen: boolean;
@@ -20,382 +18,328 @@ interface CreateRoomModalProps {
   onSubmit: (data: CreateRoomRequest) => void;
   isLoading?: boolean;
   username?: string;
+  avatarUrl?: string | null;
   error?: string | null;
 }
 
+type SeatKey = 'seat_2' | 'seat_3' | 'seat_4';
+type SeatType = 'open' | 'ai';
 const DIFFICULTIES: { value: BotDifficulty; label: string }[] = [
   { value: 'random', label: 'Casual' },
   { value: 'basic', label: 'Regular' },
   { value: 'smart', label: 'Strong' },
 ];
 
-export function CreateRoomModal({
-  isOpen,
-  onClose,
-  onSubmit,
-  isLoading = false,
-  username,
-  error,
-}: CreateRoomModalProps) {
-  const { width, height } = useWindowDimensions();
-  const reduceMotion = useReducedMotion();
-  const landscape = width > height;
-  const [name, setName] = useState('');
-  const [seat2, setSeat2] = useState<SeatToggle>('open');
-  const [seat3, setSeat3] = useState<SeatToggle>('open');
-  const [seat4, setSeat4] = useState<SeatToggle>('open');
-  const [botDifficulty, setBotDifficulty] = useState<BotDifficulty>('basic');
-
-  useEffect(() => {
-    if (!isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset hidden form after dismissal
-      setName('');
-      setSeat2('open');
-      setSeat3('open');
-      setSeat4('open');
-      setBotDifficulty('basic');
-    }
-  }, [isOpen]);
-
-  const seats = [seat2, seat3, seat4];
-  const hasBot = seats.some((seat) => seat === 'ai');
-
-  const handleSubmit = () => {
-    if (isLoading) return;
-    onSubmit({
-      name: clampRoomName(name.trim() || `${username ?? 'Player'}'s table`),
-      seats: {
-        seat_2: seat2 as SeatType,
-        seat_3: seat3 as SeatType,
-        seat_4: seat4 as SeatType,
-      },
-      ...(hasBot ? { bot_difficulty: botDifficulty } : {}),
-    });
-  };
-
-  const footer = (
-    <>
-      <Button
-        label="Cancel"
-        variant="outline"
-        onPress={onClose}
-        disabled={isLoading}
-        style={styles.footerButton}
-      />
-      <Button
-        label="Create table"
-        onPress={handleSubmit}
-        loading={isLoading}
-        style={styles.footerButton}
-      />
-    </>
-  );
-
+export function CreateRoomModal(props: CreateRoomModalProps) {
+  // Unmount the draft on dismissal: no stale seat choices or preview passwords on reopen.
+  if (!props.isOpen) return null;
   return (
     <Modal
-      visible={isOpen}
-      transparent
-      animationType={reduceMotion ? 'none' : 'fade'}
+      visible
+      supportedOrientations={['portrait', 'landscape']}
+      animationType="none"
       onRequestClose={() => {
-        if (!isLoading) onClose();
+        if (!props.isLoading) props.onClose();
       }}>
-      <SafeAreaView style={styles.backdrop} edges={['top', 'right', 'bottom', 'left']}>
-        <DecisionWindow
-          testID="create-room-window"
-          title="Create a table"
-          description={
-            landscape ? undefined : 'Choose who takes each seat. You can change open seats to bots.'
-          }
-          footer={footer}
-          scrollable
-          compact={landscape}
-          style={[styles.window, { maxHeight: Math.max(280, height - PidroSpacing.md * 2) }]}>
-          <View style={[styles.columns, landscape && styles.columnsLandscape]}>
-            <View style={[styles.column, landscape && styles.columnLandscape]}>
-              <Input
-                label="Table name"
-                value={name}
-                onChangeText={(text) => setName(limitRoomNameInput(text))}
-                placeholder={`${username ?? 'Player'}'s table`}
-                editable={!isLoading}
-                returnKeyType="done"
-                onSubmitEditing={handleSubmit}
-              />
-
-              <View style={styles.section}>
-                <PidroText role="label">Seats</PidroText>
-                <View style={[styles.seatGrid, landscape && styles.seatGridLandscape]}>
-                  <SeatRow
-                    seatNumber={1}
-                    label={username ?? 'You'}
-                    value="host"
-                    compact={landscape}
-                  />
-                  <SeatRow
-                    seatNumber={2}
-                    label="Seat 2"
-                    value={seat2}
-                    onChange={setSeat2}
-                    disabled={isLoading}
-                    compact={landscape}
-                  />
-                  <SeatRow
-                    seatNumber={3}
-                    label="Seat 3"
-                    value={seat3}
-                    onChange={setSeat3}
-                    disabled={isLoading}
-                    compact={landscape}
-                  />
-                  <SeatRow
-                    seatNumber={4}
-                    label="Seat 4"
-                    value={seat4}
-                    onChange={setSeat4}
-                    disabled={isLoading}
-                    compact={landscape}
-                  />
-                </View>
-              </View>
-            </View>
-
-            <View style={[styles.column, landscape && styles.columnLandscape]}>
-              {hasBot ? (
-                <View style={styles.section}>
-                  <PidroText role="label">Bot strength</PidroText>
-                  <View style={styles.segmented}>
-                    {DIFFICULTIES.map(({ value, label }) => (
-                      <Segment
-                        key={value}
-                        label={label}
-                        selected={botDifficulty === value}
-                        onPress={() => setBotDifficulty(value)}
-                        disabled={isLoading}
-                      />
-                    ))}
-                  </View>
-                </View>
-              ) : (
-                <Surface variant="subtle" style={styles.hint}>
-                  <PidroText role="metadata" tone="muted">
-                    Choose Bot for any open seat to set the bot strength.
-                  </PidroText>
-                </Surface>
-              )}
-
-              {error ? (
-                <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
-                  <PidroText role="metadata" tone="danger">
-                    {error}
-                  </PidroText>
-                </Surface>
-              ) : null}
-            </View>
-          </View>
-        </DecisionWindow>
-      </SafeAreaView>
+      <CreateRoomForm {...props} />
     </Modal>
   );
 }
 
-function SeatRow({
-  seatNumber,
-  label,
-  value,
-  onChange,
-  disabled = false,
-  compact = false,
-}: {
-  seatNumber: number;
-  label: string;
-  value: SeatToggle | 'host';
-  onChange?: (value: SeatToggle) => void;
-  disabled?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <Surface variant="subtle" style={[styles.seatRow, compact && styles.seatRowCompact]}>
-      <View style={styles.seatNumber}>
-        <PidroText role="metadata" tone="cyan">
-          {seatNumber}
-        </PidroText>
-      </View>
-      {compact && value !== 'host' ? null : (
-        <View style={styles.seatCopy}>
+function CreateRoomForm({
+  onClose,
+  onSubmit,
+  isLoading = false,
+  username,
+  avatarUrl,
+  error,
+}: CreateRoomModalProps) {
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
+  const [seats, setSeats] = useState<Record<SeatKey, SeatType>>({
+    seat_2: 'open',
+    seat_3: 'open',
+    seat_4: 'open',
+  });
+  const [expanded, setExpanded] = useState<SeatKey | null>(null);
+  const [rules, setRules] = useState(false);
+  const [inviteNotice, setInviteNotice] = useState(false);
+  const [difficulty, setDifficulty] = useState<BotDifficulty>('basic');
+  const hasBot = Object.values(seats).includes('ai');
+
+  const submit = () => {
+    if (isLoading || rules) return;
+    Keyboard.dismiss();
+    onSubmit({
+      name: clampRoomName(`${username ?? 'Player'}'s table`),
+      seats,
+      ...(hasBot ? { bot_difficulty: difficulty } : {}),
+    });
+  };
+
+  const seat = (key: SeatKey, label: string) => (
+    <Surface variant="subtle" key={key}>
+      <PressableFX
+        accessibilityRole="button"
+        accessibilityLabel={`Edit ${label}: ${seats[key] === 'ai' ? 'Bot' : 'Open to public'}`}
+        accessibilityState={{ expanded: expanded === key, disabled: isLoading }}
+        aria-expanded={expanded === key}
+        disabled={isLoading}
+        onPress={() => {
+          Keyboard.dismiss();
+          setExpanded(expanded === key ? null : key);
+          setRules(false);
+          setInviteNotice(false);
+        }}
+        style={styles.seatRow}>
+        <View style={styles.placeholder}>
+          <Icon name={seats[key] === 'ai' ? 'bot' : 'friends'} size={24} />
+        </View>
+        <View style={styles.copy}>
           <PidroText role="label" numberOfLines={1}>
             {label}
           </PidroText>
-          {value === 'host' ? (
-            <PidroText role="metadata" tone="gold">
-              Host
+          <PidroText role="metadata" tone="soft" accessibilityLiveRegion="polite">
+            {seats[key] === 'ai' ? 'Bot' : 'Open to public'}
+          </PidroText>
+        </View>
+        <View style={expanded === key && styles.expandedChevron}>
+          <Icon name="chevron-right" size={20} />
+        </View>
+      </PressableFX>
+      {expanded === key ? (
+        <View style={styles.editor}>
+          <View style={styles.choices}>
+            {(['open', 'ai'] as const).map((value) => (
+              <BevelButton
+                key={value}
+                material="glass"
+                size="sm"
+                label={`${seats[key] === value ? '✓ ' : ''}${value === 'open' ? 'Public' : 'Bot'}`}
+                accessibilityLabel={`${label} ${value === 'open' ? 'public' : 'bot'}`}
+                accessibilityState={{ selected: seats[key] === value, disabled: isLoading }}
+                aria-selected={seats[key] === value}
+                disabled={isLoading}
+                onPress={() => {
+                  setSeats({ ...seats, [key]: value });
+                  setExpanded(null);
+                  setRules(false);
+                }}
+              />
+            ))}
+            <BevelButton
+              label="Invite…"
+              material="glass"
+              size="sm"
+              disabled={isLoading}
+              onPress={() => setInviteNotice(!inviteNotice)}
+            />
+          </View>
+          {inviteNotice ? (
+            <PidroText role="metadata" tone="soft" accessibilityLiveRegion="polite">
+              Create the table first, then use Invite at the waiting table to share its link.
+              Invitations do not reserve seats.
             </PidroText>
           ) : null}
-        </View>
-      )}
-      {value !== 'host' && onChange ? (
-        <View style={styles.seatOptions}>
-          <Segment
-            label="Open"
-            accessibilityLabel={`Seat ${seatNumber} open`}
-            compact={compact}
-            selected={value === 'open'}
-            onPress={() => onChange('open')}
-            disabled={disabled}
-          />
-          <Segment
-            label="Bot"
-            accessibilityLabel={`Seat ${seatNumber} bot`}
-            compact={compact}
-            selected={value === 'ai'}
-            onPress={() => onChange('ai')}
-            disabled={disabled}
-          />
+          {seats[key] === 'open' ? (
+            <>
+              <BevelButton
+                label={rules ? 'Close rules preview' : 'Seat rules · Preview only'}
+                material="glass"
+                size="sm"
+                disabled={isLoading}
+                accessibilityState={{ expanded: rules, disabled: isLoading }}
+                aria-expanded={rules}
+                onPress={() => {
+                  Keyboard.dismiss();
+                  setRules(!rules);
+                }}
+              />
+              {rules ? <SeatRulesPreview /> : null}
+            </>
+          ) : null}
         </View>
       ) : null}
     </Surface>
   );
+
+  return (
+    <ScreenShell testID="create-room-window" contentStyle={styles.shell}>
+      <View style={styles.header}>
+        <BevelButton
+          material="glass"
+          size="icon"
+          accessibilityLabel="Cancel creation"
+          disabled={isLoading}
+          onPress={onClose}>
+          <Icon name="arrow-left" size={22} />
+        </BevelButton>
+        <PidroText role="label">Create table</PidroText>
+      </View>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.form}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag">
+        <View style={[styles.teams, landscape && styles.landscape]}>
+          <View style={[styles.team, landscape && styles.teamLandscape]}>
+            <PidroText role="label">Your team</PidroText>
+            <Surface variant="subtle" style={styles.seatRow}>
+              <LevelRing uri={avatarUrl} size={40} />
+              <View style={styles.copy}>
+                <PidroText role="label" numberOfLines={1}>
+                  {username ?? 'You'}
+                </PidroText>
+                <PidroText role="metadata" tone="gold">
+                  You · Host
+                </PidroText>
+              </View>
+            </Surface>
+            {seat('seat_3', 'Your partner')}
+          </View>
+          <View style={styles.versus}>
+            <PidroText role="metadata" tone="muted">
+              vs
+            </PidroText>
+          </View>
+          <View style={[styles.team, landscape && styles.teamLandscape]}>
+            <PidroText role="label">Opponents</PidroText>
+            {seat('seat_2', 'Opponent 1')}
+            {seat('seat_4', 'Opponent 2')}
+          </View>
+        </View>
+        {hasBot ? (
+          <View style={styles.section}>
+            <PidroText role="label">
+              Bot strength{' '}
+              <PidroText role="metadata" tone="soft">
+                · all bots
+              </PidroText>
+            </PidroText>
+            <View style={styles.choices}>
+              {DIFFICULTIES.map(({ value, label }) => (
+                <BevelButton
+                  key={value}
+                  material="glass"
+                  size="sm"
+                  label={`${difficulty === value ? '✓ ' : ''}${label}`}
+                  accessibilityLabel={label}
+                  accessibilityState={{ selected: difficulty === value, disabled: isLoading }}
+                  aria-selected={difficulty === value}
+                  disabled={isLoading}
+                  onPress={() => setDifficulty(value)}
+                />
+              ))}
+            </View>
+          </View>
+        ) : null}
+        {error ? (
+          <PidroText role="body" tone="danger" accessibilityRole="alert">
+            {error}
+          </PidroText>
+        ) : null}
+      </ScrollView>
+      <View style={styles.footer}>
+        {rules ? (
+          <PidroText role="metadata" tone="soft">
+            Preview only · nothing is applied
+          </PidroText>
+        ) : null}
+        <BevelButton
+          label={rules ? 'Close preview' : 'Create table'}
+          material={rules ? 'glass' : 'wood'}
+          size="sm"
+          loading={isLoading}
+          onPress={
+            rules
+              ? () => {
+                  Keyboard.dismiss();
+                  setRules(false);
+                }
+              : submit
+          }
+          style={styles.createAction}
+        />
+      </View>
+    </ScreenShell>
+  );
 }
 
-function Segment({
-  label,
-  accessibilityLabel,
-  selected,
-  onPress,
-  disabled,
-  compact = false,
-}: {
-  label: string;
-  accessibilityLabel?: string;
-  selected: boolean;
-  onPress: () => void;
-  disabled?: boolean;
-  compact?: boolean;
-}) {
+function SeatRulesPreview() {
+  const [minimum, setMinimum] = useState(0);
+  const [password, setPassword] = useState('');
+  // Deliberately isolated from the creation draft and discarded on close.
   return (
-    <PressableFX
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ selected, disabled }}
-      onPress={onPress}
-      disabled={disabled}
-      style={[
-        styles.segment,
-        compact && styles.segmentCompact,
-        selected && styles.segmentSelected,
-        disabled && styles.disabled,
-      ]}
-      pressedStyle={styles.segmentPressed}>
-      <PidroText role="metadata" tone={selected ? 'gold' : 'soft'}>
-        {label}
-      </PidroText>
-    </PressableFX>
+    <View style={styles.section}>
+      <Surface variant="subtle" style={styles.notice} accessibilityRole="alert">
+        <PidroText role="metadata" tone="gold">
+          Preview only. Passwords and minimum games are not available yet. Nothing here is saved or
+          enforced; this seat stays public. Use an example password only.
+        </PidroText>
+      </Surface>
+      <PidroText role="metadata">Minimum completed games · preview</PidroText>
+      <View style={styles.choices}>
+        {[0, 100, 1000].map((value) => (
+          <BevelButton
+            key={value}
+            material="glass"
+            size="sm"
+            label={`${minimum === value ? '✓ ' : ''}${value || 'No limit'}`}
+            accessibilityLabel={`${value || 'No limit'} games preview`}
+            accessibilityState={{ selected: minimum === value }}
+            aria-selected={minimum === value}
+            onPress={() => setMinimum(value)}
+          />
+        ))}
+      </View>
+      <Input
+        label="Password · preview only"
+        placeholder="Example password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+        revealPassword
+        autoComplete="off"
+        autoCorrect={false}
+        autoCapitalize="none"
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: PidroColors.backdrop,
-    padding: PidroSpacing.xs,
-  },
-  window: {
-    maxWidth: 820,
-  },
-  columns: {
-    gap: PidroSpacing.md,
-  },
-  columnsLandscape: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  column: {
-    minWidth: 0,
-    gap: PidroSpacing.md,
-  },
-  columnLandscape: {
-    flex: 1,
-  },
-  section: {
-    gap: PidroSpacing.xs,
-  },
-  seatGrid: {
-    gap: PidroSpacing.xs,
-  },
-  seatGridLandscape: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  shell: { flex: 1, gap: PidroSpacing.sm },
+  header: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.sm },
+  scroll: { flex: 1, minHeight: 0 },
+  form: { gap: PidroSpacing.md, paddingBottom: PidroSpacing.sm },
+  teams: { gap: PidroSpacing.md },
+  landscape: { flexDirection: 'row', alignItems: 'flex-start' },
+  team: { minWidth: 0, gap: PidroSpacing.xs },
+  teamLandscape: { flex: 1 },
+  versus: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center' },
+  section: { gap: PidroSpacing.xs },
   seatRow: {
-    minHeight: PidroLayout.touchTarget + 6,
+    minHeight: PidroLayout.touchTarget,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: PidroSpacing.xs,
+    gap: PidroSpacing.sm,
     padding: PidroSpacing.xs,
   },
-  seatRowCompact: {
-    width: '48.8%',
-    minHeight: PidroLayout.touchTarget,
-    paddingVertical: PidroSpacing.xxs,
-  },
-  seatNumber: {
-    width: 28,
-    height: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: PidroRadii.tight,
-    backgroundColor: PidroColors.panel,
-  },
-  seatCopy: {
-    minWidth: 0,
-    flex: 1,
-  },
-  seatOptions: {
-    flexDirection: 'row',
-    overflow: 'hidden',
-    borderRadius: PidroRadii.surface,
-    borderWidth: 1,
-    borderColor: PidroColors.border,
-  },
-  segmented: {
-    flexDirection: 'row',
-    overflow: 'hidden',
-    borderRadius: PidroRadii.surface,
-    borderWidth: 1,
-    borderColor: PidroColors.border,
-  },
-  segment: {
-    minWidth: 66,
-    minHeight: PidroLayout.touchTarget,
-    flex: 1,
+  copy: { flex: 1, minWidth: 0 },
+  placeholder: {
+    width: 40,
+    height: 40,
+    borderRadius: PidroRadii.full,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: PidroColors.panel,
-    paddingHorizontal: PidroSpacing.xs,
   },
-  segmentCompact: {
-    minWidth: 44,
-    paddingHorizontal: PidroSpacing.xxs,
-  },
-  segmentSelected: {
-    backgroundColor: PidroColors.goldSoft,
-  },
-  segmentPressed: {
-    opacity: 0.76,
-  },
-  hint: {
-    padding: PidroSpacing.sm,
-  },
-  error: {
-    borderColor: PidroColors.dangerBorder,
-    padding: PidroSpacing.sm,
-  },
-  footerButton: {
-    minWidth: 128,
-    flex: 1,
-  },
-  disabled: {
-    opacity: 0.48,
-  },
+  expandedChevron: { transform: [{ rotate: '90deg' }] },
+  editor: { padding: PidroSpacing.xs, paddingTop: 0, gap: PidroSpacing.xs },
+  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
+  notice: { padding: PidroSpacing.sm, borderColor: PidroColors.goldDark },
+  footer: { alignItems: 'center', gap: PidroSpacing.xs },
+  createAction: { alignSelf: 'center' },
 });
