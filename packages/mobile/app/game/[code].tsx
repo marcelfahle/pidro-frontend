@@ -264,8 +264,9 @@ export default function GameScreen() {
 
   // Get current game phase from the game store
   const serverPhase = useGameStore((s) => s.serverState?.phase);
+  const tableIsWaiting = readiness?.status === 'waiting' || readiness?.status === 'ready';
   const shouldRestoreServerState =
-    (room?.status === 'playing' || room?.status === 'finished') && !serverPhase;
+    !tableIsWaiting && (room?.status === 'playing' || room?.status === 'finished') && !serverPhase;
 
   // Refetch the room once when the game starts: the snapshot fetched while
   // 'waiting' predates late joiners, so seat usernames would otherwise stay
@@ -482,9 +483,7 @@ export default function GameScreen() {
       });
   }, [readiness, isChannelJoined, role, handleSeatEvent]);
   const rematch = rematchVote(readiness, youPositionAbs);
-  const gameIsOver = serverPhase === 'complete' || serverPhase === 'game_over';
-  const tableReopened =
-    gameIsOver && (readiness?.status === 'waiting' || readiness?.status === 'ready');
+  const tableReopened = tableIsWaiting && hasGameState;
   useEffect(() => {
     if (!tableReopened) return;
     // Notices still queued belong to the game that just ended.
@@ -658,10 +657,9 @@ export default function GameScreen() {
   ];
   const isInGamePhase = serverPhase && inGamePhases.includes(serverPhase);
 
-  // After a game somebody may leave; the server then reopens the room as a
-  // waiting table with that seat free. The finished game's state is still in
-  // the store, so the room's live status decides, not the last phase seen.
-  if (!tableReopened && (room.status === 'playing' || isInGamePhase)) {
+  // A reconnect may miss both game completion and the host's leave. The
+  // versioned waiting snapshot wins even if the cached game still says playing.
+  if (!tableIsWaiting && (room.status === 'playing' || isInGamePhase)) {
     return (
       <View className="flex-1">
         <SkiaGameTable
