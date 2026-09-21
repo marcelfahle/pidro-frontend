@@ -31,7 +31,7 @@ export default function SettingsScreen() {
       <ScreenHeader
         title="Settings"
         subtitle="Adjust how the game feels on this device."
-        onBack={() => router.back()}
+        onBack={() => router.replace('/home')}
       />
       <Surface variant="window" style={styles.panel} padded>
         <SettingRow
