@@ -163,6 +163,8 @@ function SkiaDevTable({
 
 const FIXTURE_INSETS: Record<string, EdgeInsets> = {
   island: { top: 59, bottom: 34, left: 0, right: 0 },
+  'island-left': { top: 0, bottom: 21, left: 59, right: 0 },
+  'island-right': { top: 0, bottom: 21, left: 0, right: 59 },
   android: { top: 24, bottom: 48, left: 0, right: 0 },
   'android-buttons': { top: 24, bottom: 48, left: 0, right: 0 },
   'android-gesture': { top: 24, bottom: 24, left: 0, right: 0 },

@@ -56,6 +56,12 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 
 ### Recipes
 
+Top-bar checks: `scores=history` seeds two observed score changes (including a negative total)
+in the mock table. `safeArea=island-left` / `island-right` simulate landscape side cutouts.
+Run `MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-table-chrome.mjs` for
+five-size score/history/settings checks. Sound and haptics are marked Coming soon until
+their feedback implementations exist.
+
 For waiting-screen failure feedback, append `readyResult=error` to a ready fixture.
 The normal ready fixtures delay confirmation briefly to expose the pending state.
 

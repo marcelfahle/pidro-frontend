@@ -15,7 +15,7 @@ import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } f
 import { useGameTableController } from '@/game/useGameTableController';
 import { useGameStore } from '@/stores/game';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
-import { Button } from '@/components/ui/Button';
+import { TableSettings } from './TableSettings';
 import { WatchingBadge } from '@/components/game/WatchingBadge';
 import { BiddingActions } from '@/components/game/BiddingActions';
 import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
@@ -279,17 +279,7 @@ export function GameCanvasTable({
         </View>
       )}
 
-      {/* Leave button (top-right) */}
-      <View
-        style={[styles.topRight, { top: insets.top + 8, right: insets.right + 10 }]}
-        pointerEvents="box-none">
-        <Button
-          label={isSpectator ? 'Back to lobby' : 'Leave'}
-          variant="outline"
-          size="sm"
-          onPress={onLeave}
-        />
-      </View>
+      <TableSettings onLeave={onLeave} isSpectator={isSpectator} isGameOver={isGameOver} />
       {isSpectator && <WatchingBadge />}
 
       {/* Second-deal hand selection */}
@@ -351,11 +341,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     zIndex: 46,
-  },
-  topRight: {
-    position: 'absolute',
-    zIndex: 120,
-    elevation: 120,
   },
   centerOverlay: {
     ...StyleSheet.absoluteFill,

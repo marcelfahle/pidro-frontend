@@ -94,13 +94,18 @@ export function SeatLayer({
   );
   const portrait = L.profile.endsWith('portrait');
   const tableTop = insets.top + topReserve;
-  const northBackTop = tableTop - L.cardH * (portrait ? 0.3 : 0.36);
-  const northPlateTop = tableTop + (portrait ? 34 : 28);
+  // Floating portrait scores no longer mask the fan behind a header band.
+  const northBackTop = portrait ? tableTop + PidroSpacing.xs : tableTop - L.cardH * 0.36;
+  const northPlateTop = portrait
+    ? northBackTop + clamp(L.cardW * 0.66, 31, 58) * (110 / 78) + PidroSpacing.xs
+    : tableTop + 28;
   const sideBackW = clamp(L.cardW * 0.62, 30, 56);
   const sideStackMaxHeight = sideBackW * (1 + 5 * 0.48);
   // Both orientations form an opponent triangle: north centered below its fan,
   // with east/west symmetrically above their side stacks.
-  const sidePlateTop = portrait ? L.trick.cy - sideStackMaxHeight / 2 - 62 : tableTop + 66;
+  const sidePlateTop = portrait
+    ? Math.max(northPlateTop + 62, L.trick.cy - sideStackMaxHeight / 2 - 62)
+    : tableTop + 66;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -156,6 +161,7 @@ export function SeatLayer({
           return (
             <View key={rel} style={StyleSheet.absoluteFill}>
               <View
+                testID="seat-north-cards"
                 style={{
                   position: 'absolute',
                   top: northBackTop,

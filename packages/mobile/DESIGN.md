@@ -59,9 +59,9 @@ The required phone references are 390 × 844 portrait and 844 × 390 landscape.
 
 ## Table rules
 
-- Landscape retains the legacy full-felt composition with floating score and Leave controls.
+- Both orientations use floating navy-and-brass scores and a lite glass settings button. Tap scores for recent locally observed changes; settings contains Leave table with confirmation for active seated players. Utility windows use quiet navy surfaces, not glossy glass panels.
 - Portrait seating uses a centered north/south spine with the raised player hand leaving the south plaque unobstructed beneath it and above the utility dock. East and west plaques sit symmetrically above their card stacks. Landscape keeps the opponent triangle, but aligns the south plaque to the scoreboard divider rail beside the low hand to preserve scarce vertical space. Portrait uses the narrower plaque treatment because horizontal space is constrained.
-- Portrait has a compact translucent HUD reserve and a single 72-point bottom utility reserve. Multiplayer chat, an anchored adaptive ad, and table details are mutually exclusive dock modes; landscape does not reserve the dock.
+- Portrait retains top-control clearance without painting a full-width HUD band, and a single 72-point bottom utility reserve. Multiplayer chat, an anchored adaptive ad, and table details are mutually exclusive dock modes; landscape does not reserve the dock.
 - Played-card piles use the trick circle as their ruler in both orientations: each pile is centered on its north, east, south, or west cardinal point and grows along the tangent. Landscape reduces hand and trick-card scale, keeps the hand close to the bottom edge, and mirrors the north/south identity plaques to the right/left of their hands. The 667 × 375 iPhone SE viewport is the compact-landscape baseline.
 - Player plaques attach identity and status to opponent hands. Gold marks the active turn; cyan and green identify the player and teammate without turning every plaque into an accent.
 - Card textures, card backs, deal/play motion, and the legal-card bright/lift/dim behavior are protected visual anchors.
