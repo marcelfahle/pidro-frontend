@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   useWindowDimensions,
@@ -13,10 +14,10 @@ import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
+import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
@@ -241,38 +242,57 @@ export default function LobbyScreen() {
     setIsCreateModalOpen(true);
   };
 
+  const search = (
+    <View style={landscape && styles.search}>
+      <Input
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Search tables"
+        returnKeyType="search"
+        accessibilityLabel="Search tables"
+      />
+    </View>
+  );
+
   return (
     <ScreenShell testID="lobby-screen" contentStyle={styles.shell}>
-      <ScreenHeader
-        title="Multiplayer"
-        subtitle={`${stats.online_players} online · ${stats.active_games} active games`}
-        onBack={() => {
-          if (router.canGoBack()) router.back();
-          else router.replace('/home');
-        }}
-        trailing={<Button label="Create table" onPress={handleNewTable} size="sm" />}
-      />
+      <View style={styles.header}>
+        <BevelButton
+          material="glass"
+          size="icon"
+          accessibilityLabel="Go back"
+          onPress={() => {
+            if (router.canGoBack()) router.back();
+            else router.replace('/home');
+          }}>
+          <Icon name="arrow-left" size={22} />
+        </BevelButton>
+        <View style={!landscape && styles.headerTitle}>
+          <PidroText role="label" numberOfLines={1}>
+            Find a table
+          </PidroText>
+        </View>
+        {landscape ? search : null}
+        <PidroText
+          role="metadata"
+          tone="soft"
+          accessibilityLabel={`${stats.online_players} players online`}>
+          <PidroText role="metadata" style={styles.onlineDot}>
+            ●{' '}
+          </PidroText>
+          {stats.online_players} online
+        </PidroText>
+        <BevelButton
+          material="glass"
+          size="icon"
+          accessibilityLabel="Create table"
+          onPress={handleNewTable}>
+          <Icon name="plus" size={22} />
+        </BevelButton>
+      </View>
+      {!landscape ? search : null}
 
       <View style={styles.content}>
-        <View style={styles.searchRow}>
-          <Input
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Search tables"
-            returnKeyType="search"
-            accessibilityLabel="Search tables"
-            containerClassName="flex-1"
-          />
-          <Button
-            accessibilityLabel="Refresh tables"
-            variant="secondary"
-            size="icon"
-            onPress={loadLobby}
-            disabled={isLoading}>
-            <Feather name="refresh-cw" size={21} color={PidroColors.text} />
-          </Button>
-        </View>
-
         {error && !isUnavailable ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger">
@@ -321,6 +341,14 @@ export default function LobbyScreen() {
           <ScrollView
             style={styles.roomScroll}
             contentContainerStyle={styles.roomScrollContent}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                refreshing={isLoading}
+                onRefresh={loadLobby}
+                tintColor={PidroColors.cyan}
+              />
+            }
             showsVerticalScrollIndicator={false}>
             {rejoinableTables.length > 0 ? (
               <View style={styles.section}>
@@ -339,18 +367,16 @@ export default function LobbyScreen() {
 
             {openTables.length > 0 ? (
               <View style={styles.section}>
-                <SectionHeader title="Open tables" count={openTables.length} />
-                <View style={[styles.roomGrid, landscape && styles.roomGridLandscape]}>
+                <View style={styles.roomGrid}>
                   {openTables.map((room) => (
-                    <View key={room.code} style={landscape && styles.roomCellLandscape}>
-                      <RoomCard
-                        room={room}
-                        onJoin={handleJoinRoom}
-                        currentUserId={user?.id}
-                        currentUsername={user?.username}
-                        compact={landscape}
-                      />
-                    </View>
+                    <RoomCard
+                      key={room.code}
+                      room={room}
+                      onJoin={handleJoinRoom}
+                      currentUserId={user?.id}
+                      currentUsername={user?.username}
+                      compact={landscape}
+                    />
                   ))}
                 </View>
               </View>
@@ -436,9 +462,9 @@ function LobbyEmptyState({
           {description}
         </PidroText>
       </View>
-      <Button
+      <BevelButton
         label={actionLabel}
-        variant={quiet ? 'outline' : 'default'}
+        material={quiet ? 'glass' : 'wood'}
         onPress={onAction}
         style={styles.emptyAction}
       />
@@ -485,9 +511,9 @@ function ActionRoomRow({
           Table {room.code} · {room.status} · {players}/4
         </PidroText>
       </View>
-      <Button
+      <BevelButton
         label={label}
-        variant={primary ? 'default' : 'secondary'}
+        material={primary ? 'wood' : 'glass'}
         size="sm"
         onPress={onPress}
       />
@@ -505,11 +531,14 @@ const styles = StyleSheet.create({
     gap: PidroSpacing.sm,
     paddingTop: PidroSpacing.xxs,
   },
-  searchRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.xs,
   },
+  headerTitle: { flex: 1, minWidth: 0 },
+  search: { flex: 1, minWidth: 0 },
+  onlineDot: { color: PidroColors.cyan },
   error: {
     borderColor: PidroColors.dangerBorder,
     padding: PidroSpacing.sm,
@@ -541,13 +570,6 @@ const styles = StyleSheet.create({
   },
   roomGrid: {
     gap: PidroSpacing.sm,
-  },
-  roomGridLandscape: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  roomCellLandscape: {
-    width: '49%',
   },
   emptyState: {
     width: '100%',
