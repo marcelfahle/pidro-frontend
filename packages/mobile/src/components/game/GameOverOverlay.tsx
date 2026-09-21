@@ -155,14 +155,16 @@ export function GameOverOverlay({
         </ScrollView>
         <View style={styles.footer}>
           {rematchStatus && !spectator ? (
-            <PidroText
-              testID="rematch-status"
-              accessibilityLiveRegion="polite"
-              role="metadata"
-              tone="soft"
-              align="center">
-              {rematchStatus}
-            </PidroText>
+            <Surface variant="panel" style={styles.rematchStatus}>
+              <PidroText
+                testID="rematch-status"
+                accessibilityLiveRegion="polite"
+                role="metadata"
+                tone="soft"
+                align="center">
+                {rematchStatus}
+              </PidroText>
+            </Surface>
           ) : null}
           <View style={styles.actions}>
             <BevelButton
@@ -224,6 +226,11 @@ const styles = StyleSheet.create({
   playerName: { flex: 1, minWidth: 0 },
   progression: { padding: PidroSpacing.sm },
   footer: { gap: PidroSpacing.xs },
+  rematchStatus: {
+    alignSelf: 'center',
+    paddingVertical: PidroSpacing.xxs,
+    paddingHorizontal: PidroSpacing.sm,
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',

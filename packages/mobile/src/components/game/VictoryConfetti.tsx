@@ -9,6 +9,7 @@ const PIECES = Array.from({ length: 28 }, (_, index) => ({
   x: (index * 37) % 100,
   drift: ((index * 19) % 70) - 35,
   delay: (index % 7) * 0.025,
+  travel: 0.35 + (index % 7) * 0.05,
   turn: index % 2 === 0 ? 260 : -220,
   color: COLORS[index % COLORS.length],
 }));
@@ -57,7 +58,7 @@ export function VictoryConfetti() {
                 {
                   translateY: progress.interpolate({
                     inputRange: [piece.delay, 1],
-                    outputRange: [-24, height * 0.7],
+                    outputRange: [-24, height * piece.travel],
                     extrapolate: 'clamp',
                   }),
                 },

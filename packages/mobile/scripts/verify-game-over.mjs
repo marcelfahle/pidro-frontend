@@ -99,6 +99,20 @@ async function geometry(page, size) {
 
 try {
   const context = await browser.newContext({ reducedMotion: 'reduce', deviceScaleFactor: 2 });
+  // Home is protected; use the same inert auth fixture as the UI grammar suite.
+  await context.addInitScript(() => {
+    localStorage.setItem(
+      'auth-storage',
+      JSON.stringify({
+        state: {
+          accessToken: 'ui-grammar-token',
+          refreshToken: null,
+          user: { id: 'ui-grammar-user', username: 'Player' },
+        },
+        version: 0,
+      })
+    );
+  });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
