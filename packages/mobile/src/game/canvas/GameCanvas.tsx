@@ -4,8 +4,8 @@
  * are animated, draggable sprites driven by useCardSprites.
  * Self-contained for window/insets; web callers load CanvasKit before import.
  */
-import { useMemo } from 'react';
-import { useWindowDimensions, View } from 'react-native';
+import { useEffect, useMemo } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureDetector } from 'react-native-gesture-handler';
 import {
@@ -21,8 +21,19 @@ import {
   vec,
   type SkImage,
 } from '@shopify/react-native-skia';
-import { useDerivedValue, type SharedValue } from 'react-native-reanimated';
+import Animated, {
+  Easing,
+  ReduceMotion,
+  useAnimatedStyle,
+  useDerivedValue,
+  useReducedMotion,
+  useSharedValue,
+  withSequence,
+  withTiming,
+  type SharedValue,
+} from 'react-native-reanimated';
 import type { Card } from '@/types/game';
+import { DealerChip } from '@/components/game/DealerChip';
 import { computeLayout } from './layout';
 import { T } from './tokens';
 import type { CardTextures } from './cardTextures';
@@ -117,6 +128,9 @@ export default function GameCanvas({
     <GestureDetector gesture={gesture}>
       <View style={{ flex: 1 }}>
         {canvas}
+        {model.phase === 'dealer_selection' && (
+          <DealerSelectionMarker x={L.trick.cx} y={L.trick.cy} size={Math.max(58, L.cardW * 0.9)} />
+        )}
         <View
           testID="player-hand-top"
           pointerEvents="none"
@@ -165,6 +179,43 @@ export default function GameCanvas({
         ) : null}
       </View>
     </GestureDetector>
+  );
+}
+
+function DealerSelectionMarker({ x, y, size }: { x: number; y: number; size: number }) {
+  const reduceMotion = useReducedMotion();
+  const entrance = useSharedValue(reduceMotion ? 1 : 0);
+
+  useEffect(() => {
+    entrance.value = reduceMotion ? 1 : 0;
+    if (reduceMotion) return;
+    entrance.value = withSequence(
+      withTiming(1.12, {
+        duration: 300,
+        easing: Easing.out(Easing.back(1.7)),
+        reduceMotion: ReduceMotion.System,
+      }),
+      withTiming(1, { duration: 220, reduceMotion: ReduceMotion.System })
+    );
+  }, [entrance, reduceMotion]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: entrance.value,
+    transform: [{ scale: entrance.value }],
+  }));
+
+  return (
+    <Animated.View
+      testID="dealer-selection-chip"
+      accessibilityLabel="Selecting the dealer"
+      pointerEvents="none"
+      style={[
+        styles.dealerMarker,
+        { left: x - size / 2, top: y - size / 2, width: size, height: size },
+        animatedStyle,
+      ]}>
+      <DealerChip size={size} />
+    </Animated.View>
   );
 }
 
@@ -223,3 +274,11 @@ function SuitGlyph({
     </Group>
   );
 }
+
+const styles = StyleSheet.create({
+  dealerMarker: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

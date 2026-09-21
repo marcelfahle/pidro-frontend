@@ -206,6 +206,7 @@ export default function GameCanvasDev({
       buildTableModel({
         phase,
         trumpSuit: trump,
+        dealerRelative: phase === 'dealer_selection' ? 'east' : 'south',
         players,
         yourHand: hand,
         yourCardCount: hand.length,
@@ -241,7 +242,7 @@ export default function GameCanvasDev({
       />
       <SeatLayer
         seats={model.seats}
-        dealerRel={phase === 'dealer_selection' ? 'east' : 'south'}
+        dealerRel={phase === 'dealer_selection' ? null : 'south'}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
         statusByRel={

@@ -85,8 +85,9 @@ describe('dealer selection table model', () => {
   });
 
   it('maps absolute server seats to viewer-relative cut cards', () => {
-    const model = build();
+    const model = build({ dealerRelative: 'south' });
 
+    expect(model.dealerRelative).toBe('south');
     expect(model.dealerCuts.east).toMatchObject({
       key: 'dealer-cut-east-clubs_9',
       card: dealerSelectionCuts.north,
