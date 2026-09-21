@@ -132,6 +132,18 @@ export default function GameCanvas({
         {__DEV__ ? (
           <>
             <View
+              testID="deal-presentation"
+              accessibilityLabel={JSON.stringify({
+                stage: model.dealStage ?? 'ready',
+                hand: model.yourHand.map((card) => card.key),
+                counts: Object.fromEntries(
+                  Object.entries(model.seats).map(([rel, seat]) => [rel, seat?.cardCount])
+                ),
+              })}
+              pointerEvents="none"
+              className="absolute h-px w-px opacity-0"
+            />
+            <View
               testID={`rendered-hand-card-count-${renderedHandCardCount}`}
               pointerEvents="none"
               accessible={false}
