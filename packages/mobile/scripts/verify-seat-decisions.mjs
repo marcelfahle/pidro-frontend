@@ -20,7 +20,7 @@ try {
     await page.goto(`${baseUrl}/table-dev?lifecycle=permanent_bot&feedback=owner&notice=true`);
     const review = page.getByRole('button', { name: 'Review seats (3)', exact: true });
     await review.waitFor();
-    await page.getByRole('button', { name: /Toggle hand scores/ }).waitFor();
+    await page.getByRole('button', { name: /Recent scores\./ }).waitFor();
     await suppressDevOverlays(page);
     const north = page.locator('[data-testid="seat-north"]');
     const before = await north.boundingBox();
