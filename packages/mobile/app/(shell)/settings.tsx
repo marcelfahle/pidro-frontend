@@ -1,21 +1,33 @@
-import { StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { PidroText } from '@/components/ui/PidroText';
+import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { AppUpdateSection } from '@/components/settings/AppUpdateSection';
+import { usePillClearance } from '@/components/shell/TabPill';
+import { PidroSpacing } from '@/design/tokens';
 import { useSettingsStore } from '@/stores/settings';
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const pillClearance = usePillClearance();
   const soundEnabled = useSettingsStore((state) => state.soundEnabled);
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
   const toggleSound = useSettingsStore((state) => state.toggleSound);
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
 
   return (
-    <ScreenShell scroll compact testID="settings-screen" contentStyle={styles.shell}>
+    <ScreenShell
+      scroll
+      compact
+      testID="settings-screen"
+      contentStyle={{
+        ...styles.shell,
+        paddingBottom: pillClearance.bottom + PidroSpacing.md,
+        paddingRight: pillClearance.right + PidroSpacing.md,
+      }}>
       <ScreenHeader
         title="Settings"
         subtitle="Adjust how the game feels on this device."
@@ -35,6 +47,7 @@ export default function SettingsScreen() {
           onValueChange={toggleHaptic}
         />
       </Surface>
+      <AppUpdateSection />
     </ScreenShell>
   );
 }
@@ -58,14 +71,7 @@ function SettingRow({
           {subtitle}
         </PidroText>
       </View>
-      <Switch
-        accessibilityLabel={title}
-        value={value}
-        onValueChange={onValueChange}
-        trackColor={{ false: PidroColors.switchTrackOff, true: PidroColors.cyan }}
-        thumbColor={value ? PidroColors.ink : PidroColors.text}
-        style={styles.switch}
-      />
+      <PidroSwitch accessibilityLabel={title} value={value} onValueChange={onValueChange} />
     </Surface>
   );
 }
@@ -88,9 +94,5 @@ const styles = StyleSheet.create({
     minWidth: 0,
     flex: 1,
     gap: PidroSpacing.xxs,
-  },
-  switch: {
-    minWidth: PidroLayout.touchTarget,
-    minHeight: PidroLayout.touchTarget,
   },
 });

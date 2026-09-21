@@ -1,4 +1,5 @@
 import { mkdir } from 'node:fs/promises';
+import assert from 'node:assert/strict';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -31,6 +32,7 @@ const authFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
@@ -488,6 +490,50 @@ async function assertSeatPlacement(page, viewport) {
   }
 }
 
+async function assertSwitchInteractions(page, name, screenshotDir) {
+  if (name !== 'ui-components' && name !== 'settings') return;
+  const gallery = name === 'ui-components';
+  const first = page.getByRole('switch', {
+    name: gallery ? 'Enabled example' : 'Sound',
+    exact: true,
+  });
+  const second = page.getByRole('switch', {
+    name: gallery ? 'Off example' : 'Haptics',
+    exact: true,
+  });
+  const checked = (control) => control.getAttribute('aria-checked');
+  assert.equal(await checked(first), 'true');
+  assert.equal(await checked(second), gallery ? 'false' : 'true');
+  await first.click();
+  assert.equal(await checked(first), 'false');
+  assert.equal(await checked(second), gallery ? 'false' : 'true', 'Settings must be independent');
+  await first.press('Space');
+  assert.equal(await checked(first), 'true', 'Space must toggle exactly once');
+  await first.press('Enter');
+  assert.equal(await checked(first), 'false', 'Enter must toggle exactly once');
+  if (gallery) {
+    for (const [label, value] of [
+      ['Disabled on', 'true'],
+      ['Disabled off', 'false'],
+    ]) {
+      const control = page.getByRole('switch', { name: label, exact: true });
+      assert.equal(await control.isDisabled(), true);
+      await control.dispatchEvent('click');
+      assert.equal(await checked(control), value, 'Disabled switch must retain its state');
+    }
+    await first.press('Tab');
+    assert.equal(await second.evaluate((el) => el === document.activeElement), true);
+    await page
+      .getByTestId('ui-switch-panel')
+      .screenshot({ path: resolve(screenshotDir, 'ui-switches.png') });
+  } else {
+    await page.reload();
+    await first.waitFor();
+    assert.equal(await checked(first), 'false', 'Sound preference must survive reload');
+    assert.equal(await checked(second), 'true', 'Haptics must remain unchanged');
+  }
+}
+
 async function main() {
   const cases = selectCases();
   await mkdir(screenshotRoot, { recursive: true });
@@ -552,6 +598,7 @@ async function main() {
             fullPage: false,
           });
           await assertAuthFormInteractions(page, testCase.name, viewport);
+          await assertSwitchInteractions(page, testCase.name, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);
             for (const position of ['north', 'east', 'south', 'west']) {

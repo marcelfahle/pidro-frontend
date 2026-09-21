@@ -55,6 +55,24 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
   landscape keeps the hero material (thick rim, 6px lip, strong gloss) at lg
   proportions. Badges anchor to the capped control itself, never a wider wrapper.
 
+## Binary settings use inset glass switches
+
+Use `PidroSwitch` for immediate on/off preferences, not a native `Switch` or a
+wood action button. The navy track is a carved-in well; the pale glass thumb sits
+above it. On moves the thumb right and lights the track with restrained cyan;
+Off moves it left. The visible On/Off label means color is never the only cue.
+Geometry, gradients and shadows live in `PidroSwitchTokens`.
+
+The hit area surrounds the compact track and state label and is at least 44px;
+never stretch the track to make a larger touch target. Tap toggles the controlled
+value immediately. Only the thumb translates (140ms, honoring Reduce Motion),
+with no drag gesture, bounce, scaling or button press travel. Expose one labelled
+`switch` with checked/disabled state, keyboard operation and a visible focus ring.
+Disabled switches retain their state and cannot be changed.
+
+The `/ui-dev?state=components` switch sheet includes interactive on/off examples
+and disabled on/off examples. Focus the interactive examples to inspect the ring.
+
 ## Motion
 
 - **Press physics** (built into `BevelPressable`/`PressableFX`): 2px travel or 0.97
@@ -91,6 +109,7 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
 | Custom beveled control/surface | `BevelPressable` / `BevelSurface`                                    |
 | Text                           | `PidroText` roles                                                    |
 | Text entry                     | `Input` (label, error, `revealPassword`, full autofill markup)       |
+| Binary preference              | `PidroSwitch` (inset track, glass thumb, explicit On/Off state)      |
 | Panels, cards, plaques         | `Surface`                                                            |
 | Screen scaffold                | `ScreenShell` (+ `ScreenHeader` for sub-screens)                     |
 | Choice with confirm/cancel     | `DecisionWindow` / `Modal`                                           |
