@@ -100,6 +100,21 @@ export const PidroBevel = {
   },
 } as const;
 
+/** Inset switches: quiet glass, never the wood/gold primary-action treatment. */
+export const PidroSwitchTokens = {
+  width: 64,
+  height: 32,
+  thumbSize: 24,
+  inset: 4,
+  offGradient: 'linear-gradient(180deg, #08243d 0%, #163f63 100%)',
+  onGradient: 'linear-gradient(180deg, #23769c 0%, #389fc2 100%)',
+  thumbGradient: 'linear-gradient(180deg, #e4f6ff 0%, #9ac9e4 100%)',
+  trackShadow: 'inset 0px 2px 4px rgba(0,0,0,0.42), 0px 1px 0px rgba(255,255,255,0.12)',
+  thumbShadow: 'inset 0px 1px 0px rgba(255,255,255,0.75), 0px 2px 3px rgba(0,0,0,0.4)',
+  focusShadow: '0px 0px 0px 3px rgba(139,234,255,0.8)',
+  disabledOpacity: 0.45,
+} as const;
+
 export const PidroRadii = {
   tight: 6,
   surface: 8,

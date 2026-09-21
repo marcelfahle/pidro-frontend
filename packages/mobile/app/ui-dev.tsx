@@ -1,4 +1,5 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { CtaBadge } from '@/components/home/CtaBadge';
@@ -12,6 +13,7 @@ import { Button } from '@/components/ui/Button';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
+import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
@@ -29,6 +31,30 @@ export default function UiDevRoute() {
 }
 
 const noop = () => {};
+
+function SwitchGallery() {
+  const [on, setOn] = useState(true);
+  const [off, setOff] = useState(false);
+  return (
+    <Surface variant="panel" style={styles.section} padded testID="ui-switch-panel">
+      <PidroText role="title">Switches — inset glass</PidroText>
+      <PidroText role="metadata" tone="muted">
+        Tap to toggle. Tab to a switch to see its focus ring; Space changes its state.
+      </PidroText>
+      <View style={styles.row}>
+        <PidroSwitch accessibilityLabel="Enabled example" value={on} onValueChange={setOn} />
+        <PidroSwitch accessibilityLabel="Off example" value={off} onValueChange={setOff} />
+        <PidroSwitch accessibilityLabel="Disabled on" value onValueChange={noop} disabled />
+        <PidroSwitch
+          accessibilityLabel="Disabled off"
+          value={false}
+          onValueChange={noop}
+          disabled
+        />
+      </View>
+    </Surface>
+  );
+}
 
 const SWATCHES: { name: string; value: string }[] = [
   { name: 'rim-hi', value: PidroBevel.rimHi },
@@ -195,6 +221,8 @@ function UiDevHarness() {
             </BevelButton>
           </View>
         </Surface>
+
+        <SwitchGallery />
 
         <Surface variant="panel" style={styles.section} padded>
           <PidroText role="title">Inputs — carved-in wells</PidroText>
