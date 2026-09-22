@@ -5,6 +5,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { useReducedMotion } from 'react-native-reanimated';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AnalyticsProvider, AnalyticsTracker } from '../src/analytics/PostHogAnalytics';
 import { initRealtime } from '../src/bootstrap/realtime';
 import { initSentry } from '../src/bootstrap/sentry';
 import { canAccessProtectedRoutes } from '../src/navigation/initialRoute';
@@ -32,39 +33,42 @@ export default function RootLayout() {
   if (!fontsLoaded || !authHydrated) return null;
 
   return (
-    // Explicit provider: expo-router 56 no longer guarantees one, and every
-    // table surface positions itself off useSafeAreaInsets().
-    <SafeAreaProvider>
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          animation: 'none', // Instant transitions for game feel
-          // Felt behind every route so fades/swaps never reveal white.
-          contentStyle: { backgroundColor: PidroColors.feltBottom },
-        }}>
-        <Stack.Screen name="index" />
-        <Stack.Screen name="join-code" />
-        <Stack.Screen name="join/[code]" />
-        <Stack.Screen name="(auth)" />
-        <Stack.Protected guard={canAccessApp}>
-          <Stack.Screen name="(shell)" />
-          <Stack.Screen
-            name="lobby"
-            options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
-          />
-          <Stack.Screen
-            name="help"
-            options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
-          />
-          <Stack.Screen
-            name="game"
-            options={{
-              animation: 'none',
-              gestureEnabled: false,
-            }}
-          />
-        </Stack.Protected>
-      </Stack>
-    </SafeAreaProvider>
+    <AnalyticsProvider>
+      <AnalyticsTracker />
+      {/* Explicit provider: expo-router 56 no longer guarantees one, and every
+          table surface positions itself off useSafeAreaInsets(). */}
+      <SafeAreaProvider>
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            animation: 'none', // Instant transitions for game feel
+            // Felt behind every route so fades/swaps never reveal white.
+            contentStyle: { backgroundColor: PidroColors.feltBottom },
+          }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="join-code" />
+          <Stack.Screen name="join/[code]" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Protected guard={canAccessApp}>
+            <Stack.Screen name="(shell)" />
+            <Stack.Screen
+              name="lobby"
+              options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
+            />
+            <Stack.Screen
+              name="help"
+              options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
+            />
+            <Stack.Screen
+              name="game"
+              options={{
+                animation: 'none',
+                gestureEnabled: false,
+              }}
+            />
+          </Stack.Protected>
+        </Stack>
+      </SafeAreaProvider>
+    </AnalyticsProvider>
   );
 }

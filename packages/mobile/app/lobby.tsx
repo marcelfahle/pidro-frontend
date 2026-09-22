@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
@@ -150,6 +151,7 @@ export default function LobbyScreen() {
   const handleJoinRoom = async (code: string, position?: Position) => {
     try {
       const response = await lobbyApi.joinRoom(code, position);
+      captureAnalytics('room_joined', { join_source: 'lobby' });
       upsertLobbyRoom(response.room, 'my_rejoinable');
       router.push(`/game/${code}`);
     } catch (joinError: unknown) {
@@ -187,6 +189,10 @@ export default function LobbyScreen() {
     try {
       const response = await lobbyApi.createRoom(data);
       if (!response?.code) throw new Error('No room code returned');
+      captureAnalytics('room_created', {
+        creation_source: 'lobby',
+        has_bots: Object.values(data.seats ?? {}).some((seat) => seat === 'ai'),
+      });
       if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
       setIsCreateModalOpen(false);
       router.replace(`/game/${response.code}`);
@@ -202,6 +208,10 @@ export default function LobbyScreen() {
             await lobbyApi.leaveRoom('current');
             const retryResponse = await lobbyApi.createRoom(data);
             if (!retryResponse?.code) throw new Error('No room code returned after retry');
+            captureAnalytics('room_created', {
+              creation_source: 'lobby_retry',
+              has_bots: Object.values(data.seats ?? {}).some((seat) => seat === 'ai'),
+            });
             if (retryResponse.room) {
               upsertLobbyRoom(retryResponse.room, 'my_rejoinable');
             }

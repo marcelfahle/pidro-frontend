@@ -3,6 +3,7 @@ import { useLobbyStore } from '@pidro/shared';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { captureAnalytics } from '../analytics/PostHogAnalytics';
 import { lobbyApi } from '../api/lobby';
 import { useLobbyChannel } from '../channels/useLobbyChannel';
 import { CreateGameModal } from '../components/lobby/CreateGameModal';
@@ -94,6 +95,7 @@ export function LobbyPage() {
         });
         const code = result?.code;
         if (!code) throw new Error('No room code returned');
+        captureAnalytics('room_created', { creation_source: 'lobby', has_bots: hasBot });
         setCreateModalOpen(false);
         navigate(`/game/${code}`);
       } catch {
@@ -111,6 +113,7 @@ export function LobbyPage() {
       setActionError(null);
       try {
         await lobbyApi.joinRoom(code);
+        captureAnalytics('room_joined', { join_source: 'lobby' });
         navigate(`/game/${code}`);
       } catch (err: unknown) {
         const errorCode = (err as { response?: { data?: { errors?: { code?: string }[] } } })
@@ -120,6 +123,7 @@ export function LobbyPage() {
           try {
             await lobbyApi.leaveRoom(code);
             await lobbyApi.joinRoom(code);
+            captureAnalytics('room_joined', { join_source: 'lobby_retry' });
             navigate(`/game/${code}`);
             return;
           } catch {

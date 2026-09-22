@@ -3,6 +3,7 @@ import { AccessibilityInfo, StyleSheet, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import type { InviteArrivalSource, InvitePreview } from '@pidro/shared';
 import { normalizeInviteCode } from '@pidro/shared';
+import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { createGuest } from '@/api/auth';
 import { invitesApi } from '@/api/invites';
 import { lobbyApi } from '@/api/lobby';
@@ -86,6 +87,11 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       const result = await invitesApi.preview(code);
       if (!routeActiveRef.current) return;
       setPreview(result);
+      captureAnalytics('invite_previewed', {
+        invite_state: result.state,
+        arrival_source: source ?? 'direct',
+        authenticated: Boolean(useAuthStore.getState().user),
+      });
       if (!useAuthStore.getState().user && result.label) {
         const normalized = validateDisplayName(result.label);
         if (!normalized.error) setDisplayName((current) => current || normalized.value);
@@ -157,6 +163,12 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
           ...(source ? { source } : {}),
         });
         if (!routeActiveRef.current) return;
+        const currentUser = useAuthStore.getState().user;
+        captureAnalytics('invite_joined', {
+          arrival_source: source ?? 'direct',
+          account_type: currentUser?.guest ? 'guest' : 'registered',
+          seat_hint_honored: result.hint_honored,
+        });
         upsertRoom(result.room, 'my_rejoinable');
         clearPendingInvite();
         if (!result.hint_honored) {
@@ -221,6 +233,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
         ...(installId ? { install_id: installId } : {}),
       });
       if (!routeActiveRef.current) return;
+      captureAnalytics('guest_created', { arrival_source: source ?? 'direct' });
       autoRedeemedCodeRef.current = code;
       setSession({ accessToken: session.token, user: session.user });
       await redeem(false);
