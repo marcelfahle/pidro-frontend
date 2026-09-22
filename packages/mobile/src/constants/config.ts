@@ -20,5 +20,5 @@ export const STORAGE_KEYS = {
 
 export const APP_CONFIG = {
   name: 'Pidro',
-  version: '3.0.0',
+  version: '3.1.0',
 } as const;
