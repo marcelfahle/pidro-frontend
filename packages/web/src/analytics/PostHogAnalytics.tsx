@@ -1,5 +1,6 @@
 import { PostHogProvider, usePostHog } from '@posthog/react';
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth';
 
 const apiKey = import.meta.env.VITE_POSTHOG_KEY;
@@ -8,6 +9,7 @@ const options = {
   defaults: '2026-08-30' as const,
   person_profiles: 'identified_only' as const,
   autocapture: false,
+  capture_pageview: false,
   disable_session_recording: true,
 };
 
@@ -33,14 +35,10 @@ export function AnalyticsProvider({ children }: { children: ReactNode }) {
 
 function EnabledAnalyticsIdentity() {
   const posthog = usePostHog();
+  const location = useLocation();
   const user = useAuthStore((state) => state.user);
-  const previousUserId = useRef<string | null>(null);
 
   useEffect(() => {
-    posthog.register({
-      app_platform: 'web',
-      app_environment: import.meta.env.VITE_APP_ENV || import.meta.env.MODE,
-    });
     const capture: CaptureAnalytics = (event, properties) => posthog.capture(event, properties);
     captureWithPostHog = capture;
 
@@ -55,12 +53,20 @@ function EnabledAnalyticsIdentity() {
         username: user.username,
         account_type: user.guest ? 'guest' : 'registered',
       });
-    } else if (previousUserId.current) {
+    } else {
       posthog.reset();
     }
-
-    previousUserId.current = user?.id ?? null;
+    posthog.register({
+      app_platform: 'web',
+      app_environment: import.meta.env.VITE_APP_ENV || import.meta.env.MODE,
+    });
   }, [posthog, user]);
+
+  useEffect(() => {
+    posthog.capture('$pageview', {
+      $current_url: new URL(location.pathname, window.location.origin).href,
+    });
+  }, [location.pathname, posthog]);
 
   return null;
 }

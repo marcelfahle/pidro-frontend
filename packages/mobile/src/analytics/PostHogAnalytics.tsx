@@ -35,16 +35,10 @@ function EnabledAnalyticsTracker() {
   const posthog = usePostHog();
   const segments = useSegments();
   const user = useAuthStore((state) => state.user);
-  const previousUserId = useRef<string | null>(null);
   const previousScreen = useRef<string | null>(null);
   const screen = `/${segments.join('/')}`;
 
   useEffect(() => {
-    posthog.register({
-      app_platform: 'mobile',
-      app_environment:
-        process.env.EXPO_PUBLIC_APP_ENVIRONMENT || (__DEV__ ? 'development' : 'production'),
-    });
     const capture: CaptureAnalytics = (event, properties) => posthog.capture(event, properties);
     captureWithPostHog = capture;
 
@@ -54,24 +48,27 @@ function EnabledAnalyticsTracker() {
   }, [posthog]);
 
   useEffect(() => {
-    if (screen !== previousScreen.current) {
-      posthog.screen(screen);
-      previousScreen.current = screen;
-    }
-  }, [posthog, screen]);
-
-  useEffect(() => {
     if (user) {
       posthog.identify(user.id, {
         username: user.username,
         account_type: user.guest ? 'guest' : 'registered',
       });
-    } else if (previousUserId.current) {
+    } else {
       posthog.reset();
     }
-
-    previousUserId.current = user?.id ?? null;
+    posthog.register({
+      app_platform: 'mobile',
+      app_environment:
+        process.env.EXPO_PUBLIC_APP_ENVIRONMENT || (__DEV__ ? 'development' : 'production'),
+    });
   }, [posthog, user]);
+
+  useEffect(() => {
+    if (screen !== previousScreen.current) {
+      posthog.screen(screen);
+      previousScreen.current = screen;
+    }
+  }, [posthog, screen]);
 
   return null;
 }
