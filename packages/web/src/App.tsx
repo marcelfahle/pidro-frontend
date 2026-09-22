@@ -1,4 +1,5 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { AnalyticsIdentity } from './analytics/PostHogAnalytics';
 import { DesignSystemPage } from './pages/DesignSystemPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { GamePage } from './pages/GamePage';
@@ -33,6 +34,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 export function App() {
   return (
     <BrowserRouter>
+      <AnalyticsIdentity />
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/design-system" element={<DesignSystemPage />} />
