@@ -7,11 +7,12 @@
  */
 import type { ReactNode } from 'react';
 import { ActivityIndicator, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
-import { PidroBevel, PidroFonts, PidroLayout } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroLayout } from '@/design/tokens';
 import { PidroText } from './PidroText';
 import { BevelPressable, type BevelMaterial, type BevelPressableProps } from './Bevel';
 
 type BevelButtonSize = 'sm' | 'md' | 'lg' | 'hero' | 'icon';
+type BevelButtonTone = 'default' | 'danger';
 
 export interface BevelButtonProps extends Omit<
   BevelPressableProps,
@@ -21,6 +22,7 @@ export interface BevelButtonProps extends Omit<
   leadingIcon?: ReactNode;
   children?: ReactNode;
   material?: BevelMaterial;
+  tone?: BevelButtonTone;
   size?: BevelButtonSize;
   fullWidth?: boolean;
   loading?: boolean;
@@ -64,6 +66,7 @@ export function BevelButton({
   leadingIcon,
   children,
   material = 'wood',
+  tone = 'default',
   size = 'md',
   fullWidth = false,
   loading = false,
@@ -78,6 +81,7 @@ export function BevelButton({
         style={[
           wood ? styles.woodLabel : styles.glassLabel,
           wood ? WOOD_LABEL_SIZES[size] : GLASS_LABEL_SIZES[size],
+          tone === 'danger' && styles.dangerLabel,
         ]}
         numberOfLines={1}
         maxFontSizeMultiplier={1.3}>
@@ -148,5 +152,8 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     ...PidroBevel.glassLabelShadow,
     transform: [{ translateY: -0.5 }],
+  },
+  dangerLabel: {
+    color: PidroColors.danger,
   },
 });
