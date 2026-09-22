@@ -4,6 +4,7 @@ import {
   useGameChannel,
   type ProgressionSummary,
 } from '@/channels/hooks/useGameChannel';
+import { terminalGameJoinFailure } from '@/channels/gameJoinFailure';
 import type { WaitingRoomEvent } from '@/channels/gameRoomEvents';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { createCoalescedCallback } from '@/channels/gameRoomEvents';
@@ -27,6 +28,7 @@ import { api } from '@/api/client';
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
+import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
 import { WaitingTable } from '@/components/game/WaitingTable';
 import { InviteModal } from '@/components/invites/InviteModal';
 import { Background } from '@/components/ui/Background';
@@ -172,6 +174,7 @@ export default function GameScreen() {
   const role = useGameStore((s) => s.role);
   const readiness = useGameStore((s) => s.readiness);
   const isChannelJoined = useGameStore((s) => s.isChannelJoined);
+  const lastError = useGameStore((s) => s.lastError);
   const handleReady = useCallback(() => {
     if (!readiness || !isChannelJoined || role !== 'player') {
       return Promise.reject(new Error('Reconnect before confirming readiness.'));
@@ -559,6 +562,22 @@ export default function GameScreen() {
 
   if (authHydrated && !accessToken) {
     return <Redirect href="/(auth)/login" />;
+  }
+
+  const terminalJoinFailure = terminalGameJoinFailure(lastError);
+  if (terminalJoinFailure) {
+    const destination = exitPath;
+
+    return (
+      <GameJoinFailureScreen
+        failure={terminalJoinFailure}
+        exitLabel={destination === '/home' ? 'Back home' : 'Back to lobby'}
+        onExit={() => {
+          if (code) removeRoom(code);
+          router.replace(destination);
+        }}
+      />
+    );
   }
 
   if (!room && roomLookup?.roomCode !== code) {

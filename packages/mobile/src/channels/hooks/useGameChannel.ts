@@ -17,6 +17,7 @@ import { useGameStore } from '@/stores/game';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { waitingRoomEvent, type WaitingRoomEvent } from '../gameRoomEvents';
+import { terminalGameJoinFailure } from '../gameJoinFailure';
 
 let globalGameChannel: Channel | null = null;
 let notifySeatEvent: ((event: SeatEvent) => void) | undefined;
@@ -227,12 +228,32 @@ export const useGameChannel = ({
         .receive('error', (resp) => {
           if (disposed || globalGameChannel !== channel) return;
           console.error('[GameChannel] Unable to join', topic, resp);
-          // Phoenix marks the channel errored and schedules its own bounded
-          // rejoin. Keep this channel alive so a transient rejection recovers.
-          setChannelStatus(false, true);
-          clearTurnTimer();
           const reason =
             (resp as { reason?: string } | undefined)?.reason || 'Unable to join game room.';
+
+          if (terminalGameJoinFailure(reason)) {
+            // A rejected seat or room cannot recover through another Phoenix
+            // rejoin. Detach first so leave() cannot make onClose schedule the
+            // hook's replacement channel.
+            if (reconnectTimer) {
+              clearTimeout(reconnectTimer);
+              reconnectTimer = null;
+            }
+            globalGameChannel = null;
+            currentTopic = null;
+            notifySeatEvent = undefined;
+            setChannelStatus(false, false);
+            clearTurnTimer();
+            setLegalActions([]);
+            setRole(null);
+            setError(reason);
+            channel.leave();
+            return;
+          }
+
+          // Phoenix keeps retrying transient join failures with backoff.
+          setChannelStatus(false, true);
+          clearTurnTimer();
           setError(reason);
         });
 
