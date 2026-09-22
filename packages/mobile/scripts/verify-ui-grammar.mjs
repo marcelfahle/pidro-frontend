@@ -420,10 +420,11 @@ async function assertAbovePlayerHand(page, name, box, viewport) {
   const handBox = await getStableBox(handBoundary, page);
   if (!handBox) throw new Error(`${name} player-hand boundary has no geometry`);
   const handTop = handBox.y;
+  const minimumClearance = viewport.height >= viewport.width ? 28 : 8;
 
-  if (box.y + box.height > handTop - 8) {
+  if (box.y + box.height > handTop - minimumClearance) {
     throw new Error(
-      `${name} obscures the player hand in ${viewport.name}: window=${JSON.stringify(box)} protectedHandTop=${handTop}`
+      `${name} is too close to the player hand in ${viewport.name}: window=${JSON.stringify(box)} protectedHandTop=${handTop} minimumClearance=${minimumClearance}`
     );
   }
 }
@@ -464,6 +465,22 @@ async function assertBidGridLayout(page, viewport) {
     throw new Error(
       `Pass is not below the bidding grid in ${viewport.name}: pass=${JSON.stringify(passBox)} gridBottom=${gridBottom}`
     );
+  }
+
+  if (viewport.height >= viewport.width) {
+    const centerButton = await getStableBox(page.getByRole('button', { name: 'Bid 10' }), page);
+    const trickCenter = await getStableBox(page.getByTestId('table-trick-center').first(), page);
+    if (!centerButton || !trickCenter) {
+      throw new Error(`bidding center has no geometry in ${viewport.name}`);
+    }
+    const centerOffset = Math.abs(
+      centerButton.y + centerButton.height / 2 - (trickCenter.y + trickCenter.height / 2)
+    );
+    if (centerOffset > 2) {
+      throw new Error(
+        `Bid 10 is not centered on the trick marker in ${viewport.name}: offset=${centerOffset}`
+      );
+    }
   }
 }
 
@@ -604,6 +621,7 @@ async function main() {
       await mkdir(screenshotDir, { recursive: true });
 
       for (const testCase of cases) {
+        if (viewport.cases && !viewport.cases.includes(testCase.name)) continue;
         if (
           viewport.tableOnly &&
           !testCase.path.startsWith('/table-dev') &&
