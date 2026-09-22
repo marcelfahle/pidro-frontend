@@ -46,8 +46,14 @@ export function TableSettings({
         {panel === 'leave' ? (
           <>
             <PidroText tone="soft">You’ll leave your seat at this table.</PidroText>
-            <BevelButton label="Stay at table" fullWidth onPress={close} />
-            <BevelButton material="glass" label="Leave table" fullWidth onPress={leave} />
+            <BevelButton material="glass" label="Stay at table" fullWidth onPress={close} />
+            <BevelButton
+              material="glass"
+              tone="danger"
+              label="Leave table"
+              fullWidth
+              onPress={leave}
+            />
           </>
         ) : (
           <>
@@ -71,16 +77,13 @@ export function TableSettings({
             <View style={styles.exit}>
               <BevelButton
                 material="glass"
+                tone={isSpectator ? 'default' : 'danger'}
                 size="sm"
                 fullWidth
                 accessibilityLabel={isSpectator ? 'Back to lobby' : 'Leave table'}
-                onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}>
-                <PidroText
-                  role="label"
-                  style={{ color: isSpectator ? PidroColors.text : PidroColors.danger }}>
-                  {isSpectator ? 'Back to lobby' : 'Leave table'}
-                </PidroText>
-              </BevelButton>
+                label={isSpectator ? 'Back to lobby' : 'Leave table'}
+                onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}
+              />
             </View>
           </>
         )}

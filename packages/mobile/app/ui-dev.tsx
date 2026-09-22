@@ -275,6 +275,13 @@ function UiDevHarness() {
             <BevelButton label="Medium" material="glass" size="md" onPress={noop} />
             <BevelButton label="Large" material="glass" size="lg" onPress={noop} />
             <BevelButton
+              label="Destructive"
+              material="glass"
+              tone="danger"
+              size="md"
+              onPress={noop}
+            />
+            <BevelButton
               accessibilityLabel="Icon button"
               material="glass"
               size="icon"
