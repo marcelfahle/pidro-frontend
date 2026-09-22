@@ -132,6 +132,18 @@ export default function GameCanvas({
           <DealerSelectionMarker x={L.trick.cx} y={L.trick.cy} size={Math.max(58, L.cardW * 0.9)} />
         )}
         <View
+          testID="table-trick-center"
+          pointerEvents="none"
+          accessible={false}
+          style={{
+            position: 'absolute',
+            top: L.trick.cy,
+            left: L.trick.cx,
+            width: 1,
+            height: 1,
+          }}
+        />
+        <View
           testID="player-hand-top"
           pointerEvents="none"
           accessible={false}

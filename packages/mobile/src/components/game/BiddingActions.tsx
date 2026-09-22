@@ -14,6 +14,7 @@ const GRID_GAP = PidroSpacing.xxs;
 const CONTROL_GAP = PidroSpacing.xs;
 const PANEL_PADDING = PidroSpacing.xxs;
 const HAND_GAP = 18;
+const PORTRAIT_HAND_GAP = PidroSpacing.xxl;
 const MAX_BUTTON_SIZE = 54;
 const FIXED_GROUP_HEIGHT = PidroLayout.touchTarget + GRID_GAP * 2 + CONTROL_GAP + PANEL_PADDING * 2;
 
@@ -71,26 +72,30 @@ export function BiddingActions({
   const handHeight = layout.cardH * (landscape ? 0.9 : 1);
   const handTop = layout.hand.cy - handHeight / 2;
   const tableTop = insets.top + topReserve;
+  const handGap = landscape ? HAND_GAP : PORTRAIT_HAND_GAP;
   const sideBackWidth = Math.max(30, Math.min(56, layout.cardW * 0.62));
   const northClearance = tableTop + (landscape ? 56 : 82);
   const sideClearance =
-    layout.trick.cy - (sideBackWidth * 3.4) / 2 - 62 + PidroLayout.touchTarget + HAND_GAP;
+    layout.trick.cy - (sideBackWidth * 3.4) / 2 - 62 + PidroLayout.touchTarget + handGap;
   const preferredTop = landscape ? northClearance : Math.max(northClearance, sideClearance);
-  const availableHeight = handTop - HAND_GAP - preferredTop;
+  const availableHeight = handTop - handGap - preferredTop;
   const buttonSize = Math.max(
     PidroLayout.touchTarget,
     Math.min(MAX_BUTTON_SIZE, Math.floor((availableHeight - FIXED_GROUP_HEIGHT) / 3))
   );
   const gridWidth = buttonSize * 3 + GRID_GAP * 2;
+  const gridHeight = buttonSize * 3 + GRID_GAP * 2;
   const hardTop = tableTop + HAND_GAP;
+  const portraitTop = Math.max(hardTop, layout.trick.cy - gridHeight / 2 - PANEL_PADDING);
 
   return (
     <View
       style={[
         styles.overlay,
         {
-          top: hardTop,
-          bottom: height - handTop + HAND_GAP,
+          top: landscape ? hardTop : portraitTop,
+          bottom: height - handTop + handGap,
+          justifyContent: landscape ? 'flex-end' : 'flex-start',
         },
       ]}
       pointerEvents="box-none">

@@ -2,6 +2,8 @@ export const UI_VIEWPORTS = [
   { name: 'portrait', width: 390, height: 844 },
   { name: 'landscape', width: 844, height: 390 },
   { name: 'compact-landscape', width: 667, height: 375, tableOnly: true },
+  { name: 'tablet-portrait', width: 768, height: 1024, cases: ['table-bidding'] },
+  { name: 'tablet-landscape', width: 1024, height: 768, cases: ['table-bidding'] },
 ];
 
 export function assertInsideViewport(name, box, viewport) {
