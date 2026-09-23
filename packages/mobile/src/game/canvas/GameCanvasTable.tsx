@@ -13,6 +13,7 @@ import type { RematchVote } from '@pidro/shared';
 import type { Room } from '@/types/lobby';
 import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } from '@/types/game';
 import { useGameTableController } from '@/game/useGameTableController';
+import { useDealHaptics } from '@/game/useGameHaptics';
 import { useGameStore } from '@/stores/game';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
 import { TableSettings } from './TableSettings';
@@ -216,6 +217,7 @@ export function GameCanvasTable({
     isPrivateDealerRob ? HIDDEN_PRESENTATION_HAND : undefined
   );
   const model = useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null);
+  useDealHaptics(model);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
   const facesReady = useHandPresentationReady(serverModel.yourHand, textures, isBiddingTurn);
   const isHandReady = !model.dealStage && facesReady;

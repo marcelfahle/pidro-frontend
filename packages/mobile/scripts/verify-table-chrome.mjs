@@ -91,7 +91,7 @@ try {
     );
     assert.equal(
       await page.getByRole('switch', { name: 'Haptics' }).getAttribute('aria-disabled'),
-      'true'
+      null
     );
     await assertMinimumTouchTargets(page, 'table settings', viewport);
     await page.screenshot({ path: `${shots}/${viewport.name}-settings.png` });
