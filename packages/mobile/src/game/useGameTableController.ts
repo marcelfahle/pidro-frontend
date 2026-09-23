@@ -21,6 +21,7 @@ import type {
 } from '@/types/game';
 import { useGameStore, useGameViewModel } from '@/stores/game';
 import { pushGameAction } from '@/channels/hooks/useGameChannel';
+import { playActionHaptic } from './useGameHaptics';
 
 export type GameTableController = {
   roomTitle: string;
@@ -152,6 +153,7 @@ export function useGameTableController(room?: Room): GameTableController {
         const promise = pushGameAction('declare_trump', { suit });
         if (!promise) return;
         await promise;
+        playActionHaptic();
       } catch (error) {
         showActionError('Declare trump', error);
       }
@@ -167,6 +169,7 @@ export function useGameTableController(room?: Room): GameTableController {
         const promise = pushGameAction('play_card', { card: { rank: card.rank, suit: card.suit } });
         if (!promise) return;
         await promise;
+        playActionHaptic();
       } catch (error) {
         showActionError('Play card', error);
       } finally {
@@ -184,6 +187,7 @@ export function useGameTableController(room?: Room): GameTableController {
       if (!promise) return;
       try {
         await promise;
+        playActionHaptic();
       } catch (error) {
         showActionError('Select hand', error);
       }

@@ -6,6 +6,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { computeLayout } from '@/game/canvas/layout';
+import { playActionHaptic } from '@/game/useGameHaptics';
 import { useGameStore } from '@/stores/game';
 import type { LegalAction } from '@/types/game';
 
@@ -58,6 +59,7 @@ export function BiddingActions({
       const promise = pushGameAction(event, payload);
       if (!promise) throw new Error('The game connection is not ready.');
       await promise;
+      playActionHaptic();
     } catch (error) {
       console.error(`[Game] ${event} failed:`, error);
       setSubmissionError('Bid not sent. Check your connection and try again.');

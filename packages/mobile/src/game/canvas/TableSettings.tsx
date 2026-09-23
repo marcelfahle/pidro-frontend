@@ -6,6 +6,7 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
+import { useSettingsStore } from '@/stores/settings';
 import { TableUtilityWindow } from './TableUtilityWindow';
 
 export function TableSettings({
@@ -19,6 +20,8 @@ export function TableSettings({
 }) {
   const insets = useSafeAreaInsets();
   const [panel, setPanel] = useState<'settings' | 'leave' | null>(null);
+  const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
+  const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
   const close = () => setPanel(null);
   const leave = () => {
     close();
@@ -57,23 +60,33 @@ export function TableSettings({
           </>
         ) : (
           <>
-            {['Sound', 'Haptics'].map((label) => (
-              <View key={label} style={styles.row}>
-                <View style={styles.copy}>
-                  <PidroText role="label">{label}</PidroText>
-                  <PidroText role="metadata" tone="muted">
-                    Coming soon
-                  </PidroText>
-                </View>
-                {/* No playback or haptic consumer exists yet. Do not offer a no-op switch. */}
-                <PidroSwitch
-                  accessibilityLabel={label}
-                  value={false}
-                  disabled
-                  onValueChange={() => {}}
-                />
+            <View style={styles.row}>
+              <View style={styles.copy}>
+                <PidroText role="label">Sound</PidroText>
+                <PidroText role="metadata" tone="muted">
+                  Coming soon
+                </PidroText>
               </View>
-            ))}
+              <PidroSwitch
+                accessibilityLabel="Sound"
+                value={false}
+                disabled
+                onValueChange={() => {}}
+              />
+            </View>
+            <View style={styles.row}>
+              <View style={styles.copy}>
+                <PidroText role="label">Haptics</PidroText>
+                <PidroText role="metadata" tone="muted">
+                  Subtle game feedback
+                </PidroText>
+              </View>
+              <PidroSwitch
+                accessibilityLabel="Haptics"
+                value={hapticEnabled}
+                onValueChange={toggleHaptic}
+              />
+            </View>
             <View style={styles.exit}>
               <BevelButton
                 material="glass"
