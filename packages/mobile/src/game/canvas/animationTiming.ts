@@ -11,6 +11,10 @@ export const DEAL_PACKET_TRAVEL_MS = 300;
 export const DEAL_SORT_PAUSE_MS = 2 * DEAL_PACKET_CARD_STAGGER_MS + DEAL_PACKET_TRAVEL_MS + 240;
 export const DEAL_SORT_DURATION_MS = 560;
 
+export const CUT_CARD_STAGGER_MS = 620;
+export const CUT_CARD_TRAVEL_MS = 520;
+export const CUT_WINNER_PAUSE_MS = 900;
+
 const CLOCKWISE = ['north', 'east', 'south', 'west'] as const;
 type Seat = (typeof CLOCKWISE)[number];
 
