@@ -21,7 +21,7 @@ import type {
 } from '@/types/game';
 import { useGameStore, useGameViewModel } from '@/stores/game';
 import { pushGameAction } from '@/channels/hooks/useGameChannel';
-import { playActionHaptic } from './useGameHaptics';
+import { playActionHaptic, playCardHaptic } from './useGameHaptics';
 
 export type GameTableController = {
   roomTitle: string;
@@ -169,7 +169,7 @@ export function useGameTableController(room?: Room): GameTableController {
         const promise = pushGameAction('play_card', { card: { rank: card.rank, suit: card.suit } });
         if (!promise) return;
         await promise;
-        playActionHaptic();
+        playCardHaptic();
       } catch (error) {
         showActionError('Play card', error);
       } finally {

@@ -38,6 +38,9 @@ import { playedCardTarget, type RelativePosition, type TableLayout } from './lay
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
 import {
+  CUT_CARD_STAGGER_MS,
+  CUT_CARD_TRAVEL_MS,
+  CUT_WINNER_PAUSE_MS,
   DEAL_CARD_STAGGER_MS,
   DEAL_CARD_TRAVEL_MS,
   DEAL_PACKET_CARD_STAGGER_MS,
@@ -48,9 +51,6 @@ import { T } from './tokens';
 
 const MAX = 36;
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
-const CUT_CARD_STAGGER_MS = 620;
-const CUT_CARD_TRAVEL_MS = 520;
-const CUT_WINNER_PAUSE_MS = 900;
 
 function handSlotFn(L: TableLayout, n: number) {
   const step = n > 1 ? Math.min(L.cardW * 0.72, (L.hand.maxWidth - L.cardW) / (n - 1)) : 0;
