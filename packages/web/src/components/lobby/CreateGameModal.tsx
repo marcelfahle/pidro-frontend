@@ -11,7 +11,6 @@ interface CreateGameModalProps {
   onSubmit: (config: {
     name: string;
     seats: { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType };
-    botDifficulty: string;
   }) => void;
   username: string;
   loading?: boolean;
@@ -79,16 +78,12 @@ export function CreateGameModal({
   const [seat2, setSeat2] = useState<SeatToggle>('open');
   const [seat3, setSeat3] = useState<SeatToggle>('open');
   const [seat4, setSeat4] = useState<SeatToggle>('open');
-  const [botDifficulty, setBotDifficulty] = useState('basic');
-
-  const hasBot = seat2 === 'ai' || seat3 === 'ai' || seat4 === 'ai';
 
   const submit = () => {
     if (loading) return;
     onSubmit({
       name: clampRoomName(name.trim() || `${username}'s game`),
       seats: { seat_2: seat2, seat_3: seat3, seat_4: seat4 },
-      botDifficulty,
     });
   };
 
@@ -176,27 +171,6 @@ export function CreateGameModal({
             ))}
           </div>
         </div>
-
-        {hasBot && (
-          <div>
-            <label
-              htmlFor="bot-difficulty"
-              className="mb-2 block text-xs font-black uppercase tracking-[0.18em] text-cyan-50/70"
-            >
-              Bot Difficulty
-            </label>
-            <select
-              id="bot-difficulty"
-              value={botDifficulty}
-              onChange={(e) => setBotDifficulty(e.target.value)}
-              className="pidro-select"
-            >
-              <option value="random">Random</option>
-              <option value="basic">Basic</option>
-              <option value="smart">Smart</option>
-            </select>
-          </div>
-        )}
 
         {error && <p className="text-sm font-bold text-red-200">{error}</p>}
 

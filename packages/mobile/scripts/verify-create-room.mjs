@@ -70,7 +70,7 @@ try {
     await edit('Your partner').click();
     await button('Your partner bot').click();
     assert.equal(await edit('Your partner', 'Bot').getAttribute('aria-expanded'), 'false');
-    await button('Strong').click();
+    assert.equal(await form.getByText(/Bot strength|Bot Difficulty/).count(), 0);
     await edit('Opponent 2').click();
     await button('Invite…').click();
     await form.getByText(/Invitations do not reserve seats/).waitFor();
@@ -115,19 +115,17 @@ try {
       {
         name: `${username}'s table`,
         seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'open' },
-        bot_difficulty: 'smart',
       },
       'partner must map to south; previews must never be serialized'
     );
     await button('Cancel creation').click();
     await page.getByRole('button', { name: 'Create table', exact: true }).click();
     await edit('Your partner').waitFor();
-    assert.equal(await button('Strong').count(), 0, 'dismissal resets bot draft');
     await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
     await edit('Your partner').click();
     await page.screenshot({ path: resolve(output, `${viewport.name}-expanded.png`) });
     console.log(
-      `creation ok: ${viewport.name} — defaults, partner mapping, bot strength, preview isolation, invite notice, reset, keyboard Done, 44px targets, containment`
+      `creation ok: ${viewport.name} — defaults, partner mapping, no bot strength, preview isolation, invite notice, reset, keyboard Done, 44px targets, containment`
     );
     await context.close();
   }

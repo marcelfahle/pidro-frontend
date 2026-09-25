@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Keyboard, Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { clampRoomName } from '@pidro/shared';
-import type { BotDifficulty, CreateRoomRequest } from '@/types/lobby';
+import type { CreateRoomRequest } from '@/types/lobby';
 import { LevelRing } from '@/components/home/LevelRing';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
@@ -25,11 +25,6 @@ interface CreateRoomModalProps {
 
 type SeatKey = 'seat_2' | 'seat_3' | 'seat_4';
 type SeatType = 'open' | 'ai';
-const DIFFICULTIES: { value: BotDifficulty; label: string }[] = [
-  { value: 'random', label: 'Casual' },
-  { value: 'basic', label: 'Regular' },
-  { value: 'smart', label: 'Strong' },
-];
 
 export function CreateRoomModal(props: CreateRoomModalProps) {
   // Unmount the draft on dismissal: no stale seat choices or preview passwords on reopen.
@@ -68,8 +63,6 @@ export function CreateRoomForm({
   const [expanded, setExpanded] = useState<SeatKey | null>(null);
   const [rules, setRules] = useState(false);
   const [inviteNotice, setInviteNotice] = useState(false);
-  const [difficulty, setDifficulty] = useState<BotDifficulty>('basic');
-  const hasBot = Object.values(seats).includes('ai');
 
   const submit = () => {
     if (isLoading || rules) return;
@@ -77,7 +70,6 @@ export function CreateRoomForm({
     onSubmit({
       name: clampRoomName(`${username ?? 'Player'}'s table`),
       seats,
-      ...(hasBot ? { bot_difficulty: difficulty } : {}),
     });
   };
 
@@ -212,31 +204,6 @@ export function CreateRoomForm({
             {seat('seat_4', 'Opponent 2')}
           </View>
         </View>
-        {hasBot ? (
-          <View style={styles.section}>
-            <PidroText role="label">
-              Bot strength{' '}
-              <PidroText role="metadata" tone="soft">
-                · all bots
-              </PidroText>
-            </PidroText>
-            <View style={styles.choices}>
-              {DIFFICULTIES.map(({ value, label }) => (
-                <BevelButton
-                  key={value}
-                  material="glass"
-                  size="sm"
-                  label={`${difficulty === value ? '✓ ' : ''}${label}`}
-                  accessibilityLabel={label}
-                  accessibilityState={{ selected: difficulty === value, disabled: isLoading }}
-                  aria-selected={difficulty === value}
-                  disabled={isLoading}
-                  onPress={() => setDifficulty(value)}
-                />
-              ))}
-            </View>
-          </View>
-        ) : null}
         {error ? (
           <PidroText role="body" tone="danger" accessibilityRole="alert">
             {error}

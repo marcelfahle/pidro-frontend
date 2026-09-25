@@ -1,4 +1,4 @@
-import type { BotDifficulty, Room, SeatType } from '@pidro/shared';
+import type { Room, SeatType } from '@pidro/shared';
 import { useLobbyStore } from '@pidro/shared';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -79,7 +79,6 @@ export function LobbyPage() {
     async (config: {
       name: string;
       seats: { seat_2: SeatType; seat_3: SeatType; seat_4: SeatType };
-      botDifficulty: string;
     }) => {
       setCreateLoading(true);
       setCreateError(null);
@@ -91,7 +90,6 @@ export function LobbyPage() {
         const result = await lobbyApi.createRoom({
           name: config.name,
           seats: config.seats,
-          ...(hasBot && { bot_difficulty: config.botDifficulty as BotDifficulty }),
         });
         const code = result?.code;
         if (!code) throw new Error('No room code returned');

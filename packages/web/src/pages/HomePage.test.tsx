@@ -80,8 +80,8 @@ describe('HomePage', () => {
     expect(mockCreateRoom).toHaveBeenCalledWith({
       name: "testuser's solo table",
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-      bot_difficulty: 'basic',
     });
+    expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('bot_difficulty');
     expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('settings');
     expect(mockNavigate).toHaveBeenCalledWith('/game/SOLO1');
   });

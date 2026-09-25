@@ -227,6 +227,24 @@ describe('LobbyPage', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/game/NEW123');
   });
 
+  it('creates a game with a bot without exposing or sending difficulty', async () => {
+    setupMocks();
+    mockCreateRoom.mockResolvedValue({ code: 'BOT123', room: {} });
+    renderLobby();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Create Game' }));
+    expect(screen.queryByLabelText('Bot Difficulty')).not.toBeInTheDocument();
+    await userEvent.click(screen.getAllByRole('button', { name: 'Bot' })[0]);
+    const submitButtons = screen.getAllByRole('button', { name: 'Create Game' });
+    await userEvent.click(submitButtons[submitButtons.length - 1]);
+
+    expect(mockCreateRoom).toHaveBeenCalledWith({
+      name: "testuser's game",
+      seats: { seat_2: 'ai', seat_3: 'open', seat_4: 'open' },
+    });
+    expect(mockCreateRoom.mock.calls[0][0]).not.toHaveProperty('bot_difficulty');
+  });
+
   it('joins a room and navigates to game page', async () => {
     setupMocks(
       {},

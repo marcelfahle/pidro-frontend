@@ -43,7 +43,6 @@ export default function HomeScreen() {
     const response = await lobbyApi.createRoom({
       name: clampRoomName(`${user?.username ?? 'Player'}'s solo table`),
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-      bot_difficulty: 'basic',
     });
     if (!response?.code) throw new Error('No room code returned');
     if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');

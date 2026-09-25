@@ -74,7 +74,6 @@ async function createHiddenCurrentRoom(token) {
     body: JSON.stringify({
       name: `Stale ${Date.now().toString().slice(-6)}`,
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-      bot_difficulty: 'basic',
     }),
   });
   const payload = await response.json().catch(() => null);
@@ -96,7 +95,6 @@ async function createLiveGameRoom(token) {
     body: JSON.stringify({
       name: `Live table ${Date.now().toString().slice(-6)}`,
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-      bot_difficulty: 'basic',
     }),
   });
   const payload = await response.json().catch(() => null);
