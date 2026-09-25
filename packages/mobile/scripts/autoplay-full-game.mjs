@@ -88,7 +88,6 @@ async function main() {
     const created = await api('/api/v1/rooms', 'POST', token, {
       name: `Autoplay ${Date.now().toString().slice(-6)}`,
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-      bot_difficulty: 'basic',
     });
     if (!created.ok) throw new Error(`create room failed: ${JSON.stringify(created.payload)}`);
     roomCode = created.payload?.data?.code ?? created.payload?.code;

@@ -92,5 +92,4 @@ export interface CreateRoomRequest {
     seat_3: SeatType;
     seat_4: SeatType;
   };
-  bot_difficulty?: BotDifficulty;
 }

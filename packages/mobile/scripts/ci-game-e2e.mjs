@@ -271,7 +271,6 @@ async function stageTwoMultiplayerVideo() {
   const created = await api('/api/v1/rooms', 'POST', hostToken, {
     name: `CI e2e ${suffix}`,
     seats: { seat_2: 'ai', seat_4: 'ai' },
-    bot_difficulty: 'basic',
   });
   if (!created.ok) {
     throw new Error(`create multiplayer room failed: ${JSON.stringify(created.payload)}`);

@@ -64,7 +64,6 @@ export function HomePage() {
       const result = await lobbyApi.createRoom({
         name: clampRoomName(`${user?.username ?? 'Player'}'s solo table`),
         seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-        bot_difficulty: 'basic',
       });
       const code = result?.code;
       if (!code) throw new Error('No room code returned');

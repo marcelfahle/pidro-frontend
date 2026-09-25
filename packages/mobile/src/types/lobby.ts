@@ -1,7 +1,6 @@
 export type {
   RoomStatus,
   SeatType,
-  BotDifficulty,
   Position,
   PositionPreference,
   Player,
