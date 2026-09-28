@@ -18,13 +18,37 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "env": {
+        "APP_VARIANT": "production"
+      },
       "channel": "production"
+    },
+    "beta": {
+      "extends": "production",
+      "distribution": "store",
+      "environment": "production",
+      "autoIncrement": true,
+      "env": {
+        "APP_VARIANT": "beta",
+        "EXPO_PUBLIC_API_URL": "https://app.pidro.online",
+        "EXPO_PUBLIC_WS_URL": "wss://app.pidro.online/socket"
+      },
+      "channel": "beta"
     }
   },
   "submit": {
     "production": {
       "ios": {
         "ascAppId": "1137091987"
+      },
+      "android": {
+        "track": "internal",
+        "releaseStatus": "completed"
+      }
+    },
+    "beta": {
+      "ios": {
+        "ascAppId": "6816832730"
       },
       "android": {
         "track": "internal",
