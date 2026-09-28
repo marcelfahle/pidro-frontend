@@ -122,7 +122,7 @@ describe('resolved variant configuration', () => {
   it.each([
     ['production', 'Pidro', 'pidro-mobile', 'com.oneapps.pidro', true],
     ['development', 'Pidro Dev', 'pidro-mobile-dev', 'com.marcelfahle.pidro3.dev', false],
-    ['preview', 'Pidro Preview', 'pidro-mobile-preview', 'com.marcelfahle.pidro3.preview', false],
+    ['beta', 'Pidro Beta', 'pidro-mobile-beta', 'com.oneapps.pidro.beta', true],
   ])(
     'keeps %s identifiers and intended links',
     (variant, name, scheme, identifier, verifiedAndroid) => {
@@ -167,7 +167,27 @@ describe('resolved variant configuration', () => {
     }
   );
 
-  it.each(['prevew', 'prod', ''])('rejects an unsupported %j variant', (variant) => {
+  it('defaults to the Beta identity until the public launch', () => {
+    delete process.env.APP_VARIANT;
+    delete require.cache[configPath];
+    const configure = require(configPath);
+    const config = configure({ config: baseConfig });
+
+    expect(config.name).toBe('Pidro Beta');
+    expect(config.ios.bundleIdentifier).toBe('com.oneapps.pidro.beta');
+    expect(config.android.package).toBe('com.oneapps.pidro.beta');
+    expect(config.ios.usesAppleSignIn).toBe(true);
+  });
+
+  it('keeps the Sign in with Apple entitlement off outside the Beta', () => {
+    process.env.APP_VARIANT = 'production';
+    delete require.cache[configPath];
+    const configure = require(configPath);
+
+    expect(configure({ config: baseConfig }).ios.usesAppleSignIn).toBeUndefined();
+  });
+
+  it.each(['preview', 'prod', ''])('rejects an unsupported %j variant', (variant) => {
     process.env.APP_VARIANT = variant;
     delete require.cache[configPath];
     const configure = require(configPath);
