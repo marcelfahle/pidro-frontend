@@ -23,6 +23,9 @@ const variants = {
 module.exports = ({ config }) => {
   const selectedVariant = variants[variant];
   const isProduction = variant === 'production';
+  // Store-distributed builds (production and the Beta) verify invite links and
+  // block the permissions the store review flags; dev builds keep both empty.
+  const isStoreBuild = isProduction || variant === 'beta';
   if (!isProduction && !selectedVariant) {
     throw new Error(`Unsupported APP_VARIANT: ${JSON.stringify(variant)}`);
   }
@@ -43,7 +46,7 @@ module.exports = ({ config }) => {
       ...config.android,
       allowBackup: false,
       ...(selectedVariant ? { package: selectedVariant.bundleIdentifier } : {}),
-      ...(isProduction
+      ...(isStoreBuild
         ? {
             blockedPermissions: [
               'android.permission.READ_EXTERNAL_STORAGE',
