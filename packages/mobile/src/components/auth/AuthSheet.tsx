@@ -8,7 +8,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { PidroText } from '@/components/ui/PidroText';
-import { AuthProviderButtons, type AuthProviderPlatform } from './AuthProviderButtons';
+import { AuthProviderButtons } from './AuthProviderButtons';
 
 export type AuthSheetReason = 'multiplayer' | 'friends' | 'invite';
 
@@ -32,10 +32,8 @@ export interface AuthSheetProps {
   reason?: AuthSheetReason;
   onClose: () => void;
   onApple: () => void;
-  onGoogle: () => void;
   onFacebook: () => void;
   onEmail: () => void;
-  forcePlatform?: AuthProviderPlatform;
 }
 
 export function AuthSheet({
@@ -43,10 +41,8 @@ export function AuthSheet({
   reason = 'multiplayer',
   onClose,
   onApple,
-  onGoogle,
   onFacebook,
   onEmail,
-  forcePlatform,
 }: AuthSheetProps) {
   const reduceMotion = useReducedMotion();
   const copy = COPY[reason];
@@ -70,13 +66,7 @@ export function AuthSheet({
             {copy.description}
           </PidroText>
 
-          <AuthProviderButtons
-            onApple={onApple}
-            onGoogle={onGoogle}
-            onFacebook={onFacebook}
-            onEmail={onEmail}
-            forcePlatform={forcePlatform}
-          />
+          <AuthProviderButtons onApple={onApple} onFacebook={onFacebook} onEmail={onEmail} />
 
           <Pressable
             accessibilityRole="button"

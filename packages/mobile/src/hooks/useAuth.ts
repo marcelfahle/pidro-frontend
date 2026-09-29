@@ -8,11 +8,19 @@ import {
   getInstallId,
 } from '@/features/invites/installId';
 import { invitePlatform } from '@/features/invites/platform';
+import {
+  requestSocialCredential,
+  type SocialCredentialResult,
+} from '@/features/auth/socialCredentials';
+import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
 
 type ApiError = {
   errors?: { detail: string }[];
   message?: string;
 };
+
+export type SocialSignInOutcome =
+  ProviderLoginResponse | Extract<SocialCredentialResult, { status: 'cancelled' | 'failure' }>;
 
 function getSafeAxiosErrorDetails(error: AxiosError) {
   const { baseURL, method, url } = error.config ?? {};
@@ -66,6 +74,53 @@ export function useAuth() {
         const message = extractErrorMessage(e, 'Failed to sign in');
         setError(message);
         return false;
+      } finally {
+        requestInFlight.current = false;
+        setIsLoading(false);
+      }
+    },
+    [setSession]
+  );
+
+  const signInWithProvider = useCallback(
+    async (provider: AuthProvider): Promise<SocialSignInOutcome> => {
+      if (requestInFlight.current) {
+        return { status: 'cancelled', provider };
+      }
+      requestInFlight.current = true;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const credential = await requestSocialCredential(provider);
+        if (credential.status === 'cancelled') return credential;
+        if (credential.status === 'failure') {
+          setError(credential.message);
+          return credential;
+        }
+
+        const installId = await getInstallId();
+        const outcome = await authApi.providerLogin(provider, credential.token, installId);
+        if (outcome.status === 'signed_in') {
+          setSession({
+            accessToken: outcome.session.token,
+            user: outcome.session.user,
+          });
+        }
+        return outcome;
+      } catch (e) {
+        if (e instanceof AxiosError) {
+          console.warn('[Auth] Provider sign in request failed:', getSafeAxiosErrorDetails(e));
+        } else {
+          console.warn('[Auth] Provider sign in failed before reaching the API');
+        }
+        const failure = {
+          status: 'failure' as const,
+          provider,
+          message: 'Sign in could not be completed. Try again.',
+        };
+        setError(failure.message);
+        return failure;
       } finally {
         requestInFlight.current = false;
         setIsLoading(false);
@@ -199,6 +254,7 @@ export function useAuth() {
     isAuthenticated: status === 'authenticated',
     isHydrated: hydrated,
     signIn,
+    signInWithProvider,
     signUp,
     continueAsGuest,
     requestPasswordReset,

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter, type Href } from 'expo-router';
 import { Keyboard, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
+import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
@@ -11,16 +12,20 @@ import { useAuth } from '@/hooks/useAuth';
 import { t } from '@/i18n';
 import { authenticatedDestination } from '@/navigation/initialRoute';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+import type { AuthProvider } from '@/api/auth';
+import { handleClassicFound } from '@/features/auth/classicFound';
+import { handleSocialSignInOutcome } from '@/features/auth/loginSocial';
 
 type LoginField = 'username' | 'password';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [socialNotice, setSocialNotice] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<LoginField, string>>>({});
   const usernameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const { signIn, isLoading, error, clearError } = useAuth();
+  const { signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const { width, height } = useWindowDimensions();
@@ -76,6 +81,23 @@ export default function LoginScreen() {
     if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
   }, [isLoading, password, pendingInvite, router, signIn, username]);
 
+  const handleProviderLogin = useCallback(
+    async (provider: AuthProvider) => {
+      if (isLoading) return;
+      setSocialNotice(null);
+      const outcome = await signInWithProvider(provider);
+      handleSocialSignInOutcome(outcome, {
+        onSignedIn: () => router.replace(authenticatedDestination(pendingInvite) as Href),
+        onClassicFound: handleClassicFound,
+        onUnknownIdentity: () =>
+          setSocialNotice(
+            `We couldn’t sign in with that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`
+          ),
+      });
+    },
+    [isLoading, pendingInvite, router, signInWithProvider]
+  );
+
   return (
     <AuthScreenFrame
       title="Welcome back"
@@ -101,6 +123,17 @@ export default function LoginScreen() {
           </Link>
         </View>
       }>
+      <AuthProviderButtons
+        showEmail={false}
+        showEmailDivider
+        onApple={() => void handleProviderLogin('apple')}
+        onFacebook={() => void handleProviderLogin('facebook')}
+      />
+      {socialNotice ? (
+        <PidroText role="metadata" tone="soft" align="center" accessibilityLiveRegion="polite">
+          {socialNotice}
+        </PidroText>
+      ) : null}
       <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
         <View style={compactLandscape && styles.fieldLandscape}>
           <Input

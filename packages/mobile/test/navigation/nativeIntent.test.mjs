@@ -21,6 +21,7 @@ const baseConfig = {
 
 afterEach(() => {
   delete process.env.APP_VARIANT;
+  delete process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
   delete require.cache[configPath];
 });
 
@@ -132,6 +133,7 @@ describe('resolved variant configuration', () => {
   it.each([
     ['production', 'Pidro', 'pidro-mobile', 'com.oneapps.pidro', true],
     ['development', 'Pidro Dev', 'pidro-mobile-dev', 'com.marcelfahle.pidro3.dev', false],
+    ['preview', 'Pidro Preview', 'pidro-mobile-preview', 'com.marcelfahle.pidro3.preview', false],
     ['beta', 'Pidro Beta', 'pidro-mobile-beta', 'com.oneapps.pidro.beta', true],
   ])(
     'keeps %s identifiers and intended links',
@@ -150,6 +152,13 @@ describe('resolved variant configuration', () => {
       ]);
       expect(config.android.package).toBe(identifier);
       expect(config.android.allowBackup).toBe(false);
+      expect(config.ios.usesAppleSignIn).toBe(true);
+      expect(config.plugins).toContain('expo-apple-authentication');
+      expect(
+        config.plugins.some(
+          (plugin) => Array.isArray(plugin) && plugin[0] === 'react-native-fbsdk-next'
+        )
+      ).toBe(false);
       if (verifiedAndroid) {
         expect(config.android.blockedPermissions).toEqual([
           'android.permission.READ_EXTERNAL_STORAGE',
@@ -189,15 +198,29 @@ describe('resolved variant configuration', () => {
     expect(config.ios.usesAppleSignIn).toBe(true);
   });
 
-  it('keeps the Sign in with Apple entitlement off outside the Beta', () => {
-    process.env.APP_VARIANT = 'production';
+  it('adds Facebook native configuration only when its client token is supplied', () => {
+    process.env.APP_VARIANT = 'preview';
+    process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN = 'configured-client-token';
     delete require.cache[configPath];
     const configure = require(configPath);
+    const config = configure({ config: baseConfig });
 
-    expect(configure({ config: baseConfig }).ios.usesAppleSignIn).toBeUndefined();
+    expect(config.plugins).toContainEqual([
+      'react-native-fbsdk-next',
+      {
+        appID: '345200965110578',
+        clientToken: 'configured-client-token',
+        displayName: 'Pidro',
+        scheme: 'fb345200965110578',
+        advertiserIDCollectionEnabled: false,
+        autoLogAppEventsEnabled: false,
+        isAutoInitEnabled: false,
+        iosUserTrackingPermission: false,
+      },
+    ]);
   });
 
-  it.each(['preview', 'prod', ''])('rejects an unsupported %j variant', (variant) => {
+  it.each(['prod', ''])('rejects an unsupported %j variant', (variant) => {
     process.env.APP_VARIANT = variant;
     delete require.cache[configPath];
     const configure = require(configPath);

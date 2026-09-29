@@ -5,10 +5,20 @@
 const variant = process.env.APP_VARIANT ?? 'beta';
 
 const variants = {
+  production: {
+    name: 'Pidro',
+    scheme: 'pidro-mobile',
+    bundleIdentifier: 'com.oneapps.pidro',
+  },
   development: {
     name: 'Pidro Dev',
     scheme: 'pidro-mobile-dev',
     bundleIdentifier: 'com.marcelfahle.pidro3.dev',
+  },
+  preview: {
+    name: 'Pidro Preview',
+    scheme: 'pidro-mobile-preview',
+    bundleIdentifier: 'com.marcelfahle.pidro3.preview',
   },
   // Side-by-side TestFlight/Play build for the Classic cohort. Own App Store
   // Connect record (6816832730); App ID grouped under com.oneapps.pidro for
@@ -23,29 +33,46 @@ const variants = {
 module.exports = ({ config }) => {
   const selectedVariant = variants[variant];
   const isProduction = variant === 'production';
+  const facebookClientToken = process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
   // Store-distributed builds (production and the Beta) verify invite links and
   // block the permissions the store review flags; dev builds keep both empty.
   const isStoreBuild = isProduction || variant === 'beta';
-  if (!isProduction && !selectedVariant) {
+  if (!selectedVariant) {
     throw new Error(`Unsupported APP_VARIANT: ${JSON.stringify(variant)}`);
+  }
+
+  const plugins = [...(config.plugins ?? []), 'expo-apple-authentication'];
+  if (facebookClientToken) {
+    plugins.push([
+      'react-native-fbsdk-next',
+      {
+        appID: '345200965110578',
+        clientToken: facebookClientToken,
+        displayName: 'Pidro',
+        scheme: 'fb345200965110578',
+        advertiserIDCollectionEnabled: false,
+        autoLogAppEventsEnabled: false,
+        isAutoInitEnabled: false,
+        iosUserTrackingPermission: false,
+      },
+    ]);
   }
 
   return {
     ...config,
-    name: selectedVariant?.name ?? config.name,
-    scheme: selectedVariant?.scheme ?? config.scheme,
+    name: selectedVariant.name,
+    scheme: selectedVariant.scheme,
+    plugins,
     ios: {
       ...config.ios,
-      bundleIdentifier: selectedVariant?.bundleIdentifier ?? config.ios.bundleIdentifier,
+      bundleIdentifier: selectedVariant.bundleIdentifier,
       associatedDomains: ['applinks:www.pidro.online', 'applinks:pidro.online'],
-      // Keep the Sign in with Apple entitlement on the beta App ID so EAS's
-      // capability sync never drops the capability (and its grouping).
-      ...(variant === 'beta' ? { usesAppleSignIn: true } : {}),
+      usesAppleSignIn: true,
     },
     android: {
       ...config.android,
       allowBackup: false,
-      ...(selectedVariant ? { package: selectedVariant.bundleIdentifier } : {}),
+      package: selectedVariant.bundleIdentifier,
       ...(isStoreBuild
         ? {
             blockedPermissions: [

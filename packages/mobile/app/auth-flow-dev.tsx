@@ -1,8 +1,7 @@
 /**
  * Dev preview of the guest-first auth flow (no backend, no session):
  * the AuthSheet that gates social surfaces, and the post-game
- * KeepProgressPrompt. A platform toggle previews the Apple-first (iOS)
- * and Google-first (Android) orderings on any device.
+ * KeepProgressPrompt.
  *
  * Reachable at /auth-flow-dev — deliberately outside the auth guard.
  */
@@ -11,7 +10,6 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthSheet, type AuthSheetReason } from '@/components/auth/AuthSheet';
 import { KeepProgressPrompt } from '@/components/auth/KeepProgressPrompt';
-import type { AuthProviderPlatform } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
@@ -22,7 +20,6 @@ export default function AuthFlowDevScreen() {
   const router = useRouter();
   const [sheetReason, setSheetReason] = useState<AuthSheetReason | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);
-  const [platform, setPlatform] = useState<AuthProviderPlatform>('ios');
   const [lastAction, setLastAction] = useState<string | null>(null);
 
   const closeAll = () => {
@@ -41,24 +38,6 @@ export default function AuthFlowDevScreen() {
         Guest-first: solo always works with no account. The sheet appears only at the door to
         anything social; the prompt appears after an anonymous player finishes a game.
       </PidroText>
-
-      <Surface variant="subtle" style={styles.section}>
-        <PidroText role="label">Preview platform</PidroText>
-        <View style={styles.row}>
-          <BevelButton
-            label="iOS · Apple first"
-            material={platform === 'ios' ? 'wood' : 'glass'}
-            size="sm"
-            onPress={() => setPlatform('ios')}
-          />
-          <BevelButton
-            label="Android · Google first"
-            material={platform === 'android' ? 'wood' : 'glass'}
-            size="sm"
-            onPress={() => setPlatform('android')}
-          />
-        </View>
-      </Surface>
 
       <Surface variant="subtle" style={styles.section}>
         <PidroText role="label">Gates (open the sheet)</PidroText>
@@ -105,10 +84,8 @@ export default function AuthFlowDevScreen() {
       <AuthSheet
         isOpen={sheetReason != null}
         reason={sheetReason ?? 'multiplayer'}
-        forcePlatform={platform}
         onClose={record('dismissed sheet')}
         onApple={record('Continue with Apple')}
-        onGoogle={record('Continue with Google')}
         onFacebook={record('Continue with Facebook')}
         onEmail={() => {
           closeAll();
@@ -119,10 +96,8 @@ export default function AuthFlowDevScreen() {
         isOpen={promptOpen}
         wins={3}
         rating={1487}
-        forcePlatform={platform}
         onClose={record('maybe later')}
         onApple={record('Continue with Apple (post-game)')}
-        onGoogle={record('Continue with Google (post-game)')}
         onFacebook={record('Continue with Facebook (post-game)')}
         onEmail={() => {
           closeAll();

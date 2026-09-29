@@ -8,7 +8,7 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
 import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { PidroText } from '@/components/ui/PidroText';
-import { AuthProviderButtons, type AuthProviderPlatform } from './AuthProviderButtons';
+import { AuthProviderButtons } from './AuthProviderButtons';
 
 export interface KeepProgressPromptProps {
   isOpen: boolean;
@@ -16,10 +16,8 @@ export interface KeepProgressPromptProps {
   rating?: number;
   onClose: () => void;
   onApple: () => void;
-  onGoogle: () => void;
   onFacebook: () => void;
   onEmail: () => void;
-  forcePlatform?: AuthProviderPlatform;
 }
 
 export function KeepProgressPrompt({
@@ -28,10 +26,8 @@ export function KeepProgressPrompt({
   rating,
   onClose,
   onApple,
-  onGoogle,
   onFacebook,
   onEmail,
-  forcePlatform,
 }: KeepProgressPromptProps) {
   const reduceMotion = useReducedMotion();
 
@@ -65,13 +61,7 @@ export function KeepProgressPrompt({
             ) : null}
           </View>
 
-          <AuthProviderButtons
-            onApple={onApple}
-            onGoogle={onGoogle}
-            onFacebook={onFacebook}
-            onEmail={onEmail}
-            forcePlatform={forcePlatform}
-          />
+          <AuthProviderButtons onApple={onApple} onFacebook={onFacebook} onEmail={onEmail} />
 
           <Pressable
             accessibilityRole="button"

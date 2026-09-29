@@ -127,9 +127,9 @@ provider placement inside that native modal; neither test replaces device testin
 
 ## `/auth-flow-dev` — guest-first auth
 
-No params. In-page toggles: platform (**iOS** Apple-first / **Android** Google-first),
-gates that open `AuthSheet` (`multiplayer`, `friends`, invite link), and the post-game
-`KeepProgressPrompt`. Deliberately outside the auth guard. testID `auth-flow-dev`.
+No params. Includes gates that open `AuthSheet` (`multiplayer`, `friends`, invite link)
+and the post-game `KeepProgressPrompt`. Deliberately outside the auth guard. testID
+`auth-flow-dev`.
 
 ## `/join/<code>?fixture=open`
 

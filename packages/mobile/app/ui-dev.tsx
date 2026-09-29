@@ -341,17 +341,8 @@ function UiDevHarness() {
         <Surface variant="panel" style={styles.section} padded>
           <PidroText role="title">Sign-in providers</PidroText>
           <AuthProviderButtons
-            variant="compact"
-            showEmail={false}
-            forcePlatform="ios"
+            availability={{ apple: false, facebook: true }}
             onApple={noop}
-            onGoogle={noop}
-            onFacebook={noop}
-          />
-          <AuthProviderButtons
-            forcePlatform="ios"
-            onApple={noop}
-            onGoogle={noop}
             onFacebook={noop}
             onEmail={noop}
           />
