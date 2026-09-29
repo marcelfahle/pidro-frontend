@@ -27,7 +27,9 @@ export default function LoginScreen() {
   const usernameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const { user, signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
-  const [confirmSwitch, setConfirmSwitch] = useState(false);
+  // A guest who signs into another account leaves their guest behind, so
+  // every sign-in method asks first. Holds the method waiting for that answer.
+  const [pendingSwitch, setPendingSwitch] = useState<'password' | AuthProvider | null>(null);
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const { width, height } = useWindowDimensions();
@@ -86,15 +88,14 @@ export default function LoginScreen() {
 
     if (user?.guest) {
       Keyboard.dismiss();
-      setConfirmSwitch(true);
+      setPendingSwitch('password');
       return;
     }
     await performLogin();
   }, [isLoading, password, performLogin, user?.guest, username]);
 
-  const handleProviderLogin = useCallback(
+  const performProviderLogin = useCallback(
     async (provider: AuthProvider) => {
-      if (isLoading) return;
       setSocialNotice(null);
       const outcome = await signInWithProvider(provider);
       handleSocialSignInOutcome(outcome, {
@@ -106,7 +107,19 @@ export default function LoginScreen() {
           ),
       });
     },
-    [isLoading, pendingInvite, router, signInWithProvider]
+    [pendingInvite, router, signInWithProvider]
+  );
+
+  const handleProviderLogin = useCallback(
+    async (provider: AuthProvider) => {
+      if (isLoading) return;
+      if (user?.guest) {
+        setPendingSwitch(provider);
+        return;
+      }
+      await performProviderLogin(provider);
+    },
+    [isLoading, performProviderLogin, user?.guest]
   );
 
   return (
@@ -210,17 +223,17 @@ export default function LoginScreen() {
         loading={isLoading}
       />
       <Modal
-        isOpen={confirmSwitch}
+        isOpen={pendingSwitch !== null}
         title="Switch players?"
         description="Guest results do not merge into a different account. Cancel to keep playing with this guest."
-        onClose={() => setConfirmSwitch(false)}>
+        onClose={() => setPendingSwitch(null)}>
         <View style={styles.switchActions}>
           <BevelButton
             label="Cancel"
             material="glass"
             size="sm"
             fullWidth
-            onPress={() => setConfirmSwitch(false)}
+            onPress={() => setPendingSwitch(null)}
           />
           <BevelButton
             label="Switch account"
@@ -228,8 +241,10 @@ export default function LoginScreen() {
             size="sm"
             fullWidth
             onPress={() => {
-              setConfirmSwitch(false);
-              void performLogin();
+              const method = pendingSwitch;
+              setPendingSwitch(null);
+              if (method === 'password') void performLogin();
+              else if (method) void performProviderLogin(method);
             }}
           />
         </View>
