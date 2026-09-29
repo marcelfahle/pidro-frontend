@@ -10,11 +10,16 @@ export function initRealtime() {
   try {
     phoenixSocket.initMobile(() => authStore.getState().accessToken);
 
-    authStore.subscribe((state) => {
-      if (state.accessToken) {
+    authStore.subscribe((state, previous) => {
+      if (!state.accessToken) {
+        phoenixSocket.disconnect();
+      } else if (previous.user?.id && previous.user.id !== state.user?.id) {
+        phoenixSocket.disconnect();
         phoenixSocket.connect();
       } else {
-        phoenixSocket.disconnect();
+        // Same-player guest upgrades intentionally keep the live connection.
+        // connect() still refreshes the credential used by auto-reconnect.
+        phoenixSocket.connect();
       }
     });
 

@@ -13,10 +13,12 @@ export type AuthState = {
   user: User | null;
   status: AuthStatus;
   hydrated: boolean;
+  preserveSessionOnUnauthorized: boolean;
 
   setSession: (data: { accessToken: string; refreshToken?: string; user: User }) => void;
   clearSession: () => void;
   setHydrated: (hydrated: boolean) => void;
+  setPreserveSessionOnUnauthorized: (preserve: boolean) => void;
 };
 
 const initialState = {
@@ -25,6 +27,7 @@ const initialState = {
   user: null,
   status: 'checking' as AuthStatus,
   hydrated: false,
+  preserveSessionOnUnauthorized: false,
 };
 
 interface CreateAuthStoreOptions {
@@ -44,6 +47,7 @@ export function createAuthStore({ storage, storageKey = 'auth-storage' }: Create
             refreshToken: refreshToken ?? get().refreshToken,
             user,
             status: 'authenticated',
+            preserveSessionOnUnauthorized: false,
           });
         },
 
@@ -53,12 +57,15 @@ export function createAuthStore({ storage, storageKey = 'auth-storage' }: Create
             refreshToken: null,
             user: null,
             status: 'unauthenticated',
+            preserveSessionOnUnauthorized: false,
           });
 
           storage.removeItem?.(storageKey);
         },
 
         setHydrated: (hydrated) => set({ hydrated }),
+        setPreserveSessionOnUnauthorized: (preserve) =>
+          set({ preserveSessionOnUnauthorized: preserve }),
       }),
       {
         name: storageKey,

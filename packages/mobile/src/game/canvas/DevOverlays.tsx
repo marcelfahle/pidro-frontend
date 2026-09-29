@@ -133,6 +133,7 @@ export function DevOverlays({
   rematch,
   result,
   xp,
+  guest,
   playerName,
 }: {
   phase: string;
@@ -141,6 +142,7 @@ export function DevOverlays({
   rematch?: string;
   result?: string;
   xp?: string;
+  guest?: string;
   playerName?: string;
 }) {
   const router = useRouter();
@@ -235,6 +237,8 @@ export function DevOverlays({
           progressionSummary={
             xp ? { xp_earned: 64, veteran_level: 12, leveled_up: xp === 'level' } : null
           }
+          showGuestSave={guest === 'true'}
+          onSaveGuest={noop}
         />
       )}
     </>

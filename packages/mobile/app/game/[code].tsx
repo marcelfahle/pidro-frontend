@@ -29,6 +29,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentType } from 're
 import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
+import { AuthSheet } from '@/components/auth/AuthSheet';
 import { WaitingTable } from '@/components/game/WaitingTable';
 import { InviteModal } from '@/components/invites/InviteModal';
 import { Background } from '@/components/ui/Background';
@@ -39,6 +40,7 @@ import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
+import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
 import { t } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
@@ -52,6 +54,8 @@ type SkiaTableProps = {
   rematchPending?: boolean;
   roomFinished?: boolean;
   onHome?: () => void;
+  showGuestSave?: boolean;
+  onSaveGuest?: () => void;
 };
 
 /**
@@ -163,6 +167,7 @@ export default function GameScreen() {
   const updateRoom = useLobbyStore((s) => s.updateRoom);
   const removeRoom = useLobbyStore((s) => s.removeRoom);
   const youPlayerId = useAuthStore((s) => s.user?.id ?? '');
+  const currentUser = useAuthStore((s) => s.user);
   const youUsername = useAuthStore((s) =>
     s.user ? publicPlayerName(s.user.username, 'Player', s.user.display_name) : null
   );
@@ -270,6 +275,27 @@ export default function GameScreen() {
   // Get current game phase from the game store
   const serverPhase = useGameStore((s) => s.serverState?.phase);
   const tableIsWaiting = readiness?.status === 'waiting' || readiness?.status === 'ready';
+  const completedGame =
+    (serverPhase === 'complete' || serverPhase === 'game_over') &&
+    readiness?.status === 'finished' &&
+    role === 'player';
+  const [showGuestSave, setShowGuestSave] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const promptedCompletionRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!completedGame || !currentUser?.guest || promptedCompletionRef.current === code) return;
+    promptedCompletionRef.current = code;
+    let active = true;
+    void claimDailyGuestSavePrompt(currentUser.id)
+      .then((show) => {
+        if (active && show) setShowGuestSave(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [code, completedGame, currentUser?.guest, currentUser?.id]);
   const shouldRestoreServerState =
     !tableIsWaiting && (room?.status === 'playing' || room?.status === 'finished') && !serverPhase;
 
@@ -692,6 +718,17 @@ export default function GameScreen() {
           rematchPending={rematchPending}
           roomFinished={readiness ? readiness.status === 'finished' : true}
           onHome={() => handleLeaveGame('/home')}
+          showGuestSave={showGuestSave && Boolean(currentUser?.guest)}
+          onSaveGuest={() => setAccountSheetOpen(true)}
+        />
+        <AuthSheet
+          isOpen={accountSheetOpen}
+          reason="postGame"
+          onClose={() => setAccountSheetOpen(false)}
+          onClaimClassic={() => {
+            setAccountSheetOpen(false);
+            router.push('/(auth)/login');
+          }}
         />
         <TableFeedback notice={notice} />
         <TableSeatDecision key={room.code} decisions={decisions} />

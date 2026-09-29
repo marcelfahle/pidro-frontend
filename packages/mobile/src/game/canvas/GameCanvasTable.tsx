@@ -44,6 +44,8 @@ type Props = {
   /** False once the room has moved on from the finished game (next game starting). */
   roomFinished?: boolean;
   onHome?: () => void;
+  showGuestSave?: boolean;
+  onSaveGuest?: () => void;
 };
 
 const HIDDEN_PRESENTATION_HAND: Card[] = [];
@@ -204,6 +206,8 @@ export function GameCanvasTable({
   rematchPending,
   roomFinished = true,
   onHome,
+  showGuestSave,
+  onSaveGuest,
 }: Props) {
   const controller = useGameTableController(room);
   const role = useGameStore((state) => state.role);
@@ -350,6 +354,8 @@ export function GameCanvasTable({
           onPlayAgain={onPlayAgain ?? onLeave}
           rematch={rematch}
           rematchPending={rematchPending}
+          showGuestSave={showGuestSave}
+          onSaveGuest={onSaveGuest}
         />
       )}
     </GestureHandlerRootView>

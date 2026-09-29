@@ -52,13 +52,13 @@ export default function AuthFlowDevScreen() {
             label="Friends"
             material="glass"
             size="sm"
-            onPress={() => setSheetReason('friends')}
+            onPress={() => setSheetReason('save')}
           />
           <BevelButton
             label="Invite link"
             material="glass"
             size="sm"
-            onPress={() => setSheetReason('invite')}
+            onPress={() => setSheetReason('postGame')}
           />
         </View>
       </Surface>
@@ -85,23 +85,18 @@ export default function AuthFlowDevScreen() {
         isOpen={sheetReason != null}
         reason={sheetReason ?? 'multiplayer'}
         onClose={record('dismissed sheet')}
-        onApple={record('Continue with Apple')}
-        onFacebook={record('Continue with Facebook')}
-        onEmail={() => {
+        onSaved={record('Saved guest account')}
+        onClaimClassic={() => {
           closeAll();
           router.push('/(auth)/login');
         }}
       />
       <KeepProgressPrompt
         isOpen={promptOpen}
-        wins={3}
-        rating={1487}
         onClose={record('maybe later')}
-        onApple={record('Continue with Apple (post-game)')}
-        onFacebook={record('Continue with Facebook (post-game)')}
-        onEmail={() => {
+        onSave={() => {
           closeAll();
-          router.push('/(auth)/register');
+          setSheetReason('postGame');
         }}
       />
     </ScreenShell>

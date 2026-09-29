@@ -2,6 +2,26 @@ import { describe, expect, it } from 'bun:test';
 import { PhoenixSocket } from '../src/channels/socket';
 
 describe('PhoenixSocket connection lifecycle', () => {
+  it('refreshes the automatic reconnect token without dropping a live socket', () => {
+    let token = 'guest-token';
+    const client = new PhoenixSocket();
+    const socket = client.init({
+      config: { apiURL: 'https://example.test', wsURL: 'wss://example.test/socket' },
+      getToken: () => token,
+    }) as ReturnType<PhoenixSocket['init']> & { authToken?: string };
+    let connectCalls = 0;
+    socket.isConnected = () => true;
+    socket.connect = () => {
+      connectCalls += 1;
+    };
+
+    token = 'saved-token';
+    client.connect();
+
+    expect(socket.authToken).toBe('saved-token');
+    expect(connectCalls).toBe(0);
+  });
+
   it('reconnects after an in-flight disconnect finishes', () => {
     const client = new PhoenixSocket();
     const socket = client.init({

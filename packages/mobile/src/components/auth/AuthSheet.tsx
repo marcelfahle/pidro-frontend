@@ -1,29 +1,46 @@
-/**
- * The one auth surface in the app: a bottom sheet that appears at the
- * moment of social contact (multiplayer, friends, invites) — never at app
- * open. Solo play must never show it. Guests arriving via invite links
- * skip it too and get the post-game KeepProgressPrompt instead.
- */
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
-import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
+import { publicPlayerName } from '@pidro/shared';
+import { BevelButton } from '@/components/ui/BevelButton';
+import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
-import { AuthProviderButtons } from './AuthProviderButtons';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { Surface } from '@/components/ui/Surface';
+import {
+  PidroBevel,
+  PidroColors,
+  PidroFonts,
+  PidroLayout,
+  PidroRadii,
+  PidroSpacing,
+} from '@/design/tokens';
+import { useAuth, type GuestSaveField } from '@/hooks/useAuth';
 
-export type AuthSheetReason = 'multiplayer' | 'friends' | 'invite';
+export type AuthSheetReason = 'save' | 'multiplayer' | 'postGame';
 
 const COPY: Record<AuthSheetReason, { title: string; description: string }> = {
+  save: {
+    title: 'Save your player',
+    description: 'Keep your name, games and progress on every device.',
+  },
   multiplayer: {
-    title: 'Play with others',
-    description: 'Sign in so friends and rivals can find you at the table.',
+    title: 'Save to play people',
+    description: 'Create an account without losing this player or your progress.',
   },
-  friends: {
-    title: 'Find your friends',
-    description: 'Sign in to add friends and invite them to your table.',
-  },
-  invite: {
-    title: 'Take your seat',
-    description: 'Sign in to join this table.',
+  postGame: {
+    title: 'Keep your progress',
+    description: 'Save this player, then carry on from any device.',
   },
 };
 
@@ -31,84 +48,210 @@ export interface AuthSheetProps {
   isOpen: boolean;
   reason?: AuthSheetReason;
   onClose: () => void;
-  onApple: () => void;
-  onFacebook: () => void;
-  onEmail: () => void;
+  onSaved?: () => void;
+  onClaimClassic: (name: string) => void;
+  providerActions?: ReactNode;
 }
 
 export function AuthSheet({
   isOpen,
-  reason = 'multiplayer',
+  reason = 'save',
   onClose,
-  onApple,
-  onFacebook,
-  onEmail,
+  onSaved,
+  onClaimClassic,
+  providerActions,
 }: AuthSheetProps) {
   const reduceMotion = useReducedMotion();
-  const copy = COPY[reason];
+  const { width, height } = useWindowDimensions();
+  const compactLandscape = width > height && height < 500;
+  const { user, saveGuest, isLoading } = useAuth();
+  const initialName = publicPlayerName(user?.username, 'Player', user?.display_name);
+  const [displayName, setDisplayName] = useState(initialName);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [fields, setFields] = useState<Partial<Record<GuestSaveField, string>>>({});
+  const [message, setMessage] = useState<string | null>(null);
+  const [classicNameReserved, setClassicNameReserved] = useState(false);
 
+  const resetForm = () => {
+    setDisplayName(initialName);
+    setEmail('');
+    setPassword('');
+    setFields({});
+    setMessage(null);
+    setClassicNameReserved(false);
+  };
+
+  const clearField = (field: GuestSaveField) => {
+    setFields((current) => ({ ...current, [field]: undefined }));
+    setMessage(null);
+    if (field === 'displayName') setClassicNameReserved(false);
+  };
+
+  const submit = async () => {
+    const nextFields: Partial<Record<GuestSaveField, string>> = {};
+    if (!displayName.trim()) nextFields.displayName = 'Enter your public name.';
+    if (!email.trim()) nextFields.email = 'Enter an email address.';
+    if (password.length < 8) nextFields.password = 'Use at least 8 characters.';
+    if (Object.keys(nextFields).length) {
+      setFields(nextFields);
+      return;
+    }
+
+    const result = await saveGuest(displayName.trim(), email.trim(), password);
+    if (result.ok) {
+      onSaved?.();
+      onClose();
+      return;
+    }
+    setFields(result.error.fields ?? {});
+    setClassicNameReserved(Boolean(result.error.classicNameReserved));
+    setMessage(result.error.fields ? null : result.error.message);
+  };
+
+  const copy = COPY[reason];
   return (
     <Modal
       visible={isOpen}
       transparent
       animationType={reduceMotion ? 'none' : 'slide'}
+      onShow={resetForm}
       onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          accessibilityLabel="Dismiss sign in"
-          onPress={onClose}
-        />
-        <View style={styles.sheet} testID="auth-sheet">
-          <View style={styles.grabber} />
-          <PidroText style={styles.title}>{copy.title}</PidroText>
-          <PidroText role="body" tone="soft" align="center" style={styles.description}>
-            {copy.description}
-          </PidroText>
-
-          <AuthProviderButtons onApple={onApple} onFacebook={onFacebook} onEmail={onEmail} />
-
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
           <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Not now"
+            style={StyleSheet.absoluteFill}
+            accessibilityLabel="Dismiss account saving"
             onPress={onClose}
-            style={styles.notNow}>
-            <PidroText role="label" tone="muted">
-              Not now
-            </PidroText>
-          </Pressable>
-        </View>
-      </View>
+          />
+          <KeyboardAvoidingView
+            style={styles.keyboard}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <View style={styles.sheet} testID="auth-sheet">
+              <View style={styles.grabber} />
+              <PidroText style={styles.title}>{copy.title}</PidroText>
+              {!compactLandscape ? (
+                <PidroText role="body" tone="soft" align="center" style={styles.description}>
+                  {copy.description}
+                </PidroText>
+              ) : null}
+              <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={[styles.form, compactLandscape && styles.formLandscape]}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}>
+                {providerActions}
+                <Input
+                  containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
+                  label="Public name"
+                  value={displayName}
+                  onChangeText={(value) => {
+                    setDisplayName(value);
+                    clearField('displayName');
+                  }}
+                  error={fields.displayName}
+                  maxLength={20}
+                  editable={!isLoading}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                />
+                {classicNameReserved ? (
+                  <PressableFX
+                    accessibilityRole="button"
+                    accessibilityLabel={`Played Classic as ${displayName}? Claim it and keep your games.`}
+                    onPress={() => onClaimClassic(displayName.trim())}>
+                    <Surface variant="plaque" padded style={styles.claimPlaque}>
+                      <PidroText role="label">Played Classic as {displayName.trim()}?</PidroText>
+                      <PidroText role="metadata" tone="cyan">
+                        Claim it and keep your games.
+                      </PidroText>
+                    </Surface>
+                  </PressableFX>
+                ) : null}
+                <Input
+                  containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
+                  label="Email"
+                  value={email}
+                  onChangeText={(value) => {
+                    setEmail(value);
+                    clearField('email');
+                  }}
+                  error={fields.email}
+                  editable={!isLoading}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  keyboardType="email-address"
+                  returnKeyType="next"
+                />
+                <Input
+                  containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
+                  label="Password"
+                  value={password}
+                  onChangeText={(value) => {
+                    setPassword(value);
+                    clearField('password');
+                  }}
+                  error={fields.password}
+                  editable={!isLoading}
+                  autoCapitalize="none"
+                  autoComplete="new-password"
+                  secureTextEntry
+                  revealPassword
+                  returnKeyType="go"
+                  onSubmitEditing={submit}
+                />
+                {message ? (
+                  <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
+                    {message}
+                  </PidroText>
+                ) : null}
+              </ScrollView>
+              <BevelButton
+                label="Save account"
+                material="wood"
+                size="md"
+                fullWidth
+                loading={isLoading}
+                onPress={submit}
+              />
+              <PressableFX accessibilityRole="button" onPress={onClose} style={styles.notNow}>
+                <PidroText role="label" tone="muted">
+                  Not now
+                </PidroText>
+              </PressableFX>
+            </View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: PidroColors.backdrop,
-  },
+  safe: { flex: 1, justifyContent: 'flex-end', backgroundColor: PidroColors.backdrop },
+  keyboard: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
+    maxHeight: '100%',
+    flexShrink: 1,
     alignItems: 'center',
-    gap: PidroSpacing.sm,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    borderWidth: 1.5,
+    gap: PidroSpacing.xs,
+    borderTopLeftRadius: PidroRadii.lg,
+    borderTopRightRadius: PidroRadii.lg,
+    borderWidth: 1,
     borderBottomWidth: 0,
-    borderColor: 'rgba(140, 215, 250, 0.28)',
+    borderColor: PidroColors.cyanBorderStrong,
     backgroundColor: PidroColors.panelStrong,
     paddingHorizontal: PidroSpacing.lg,
     paddingTop: PidroSpacing.sm,
-    paddingBottom: PidroSpacing.xl,
-    boxShadow: '0px -8px 24px rgba(0,0,0,0.4)',
+    paddingBottom: PidroSpacing.sm,
   },
   grabber: {
     width: 40,
-    height: 4.5,
-    borderRadius: 3,
-    backgroundColor: 'rgba(184, 225, 246, 0.35)',
-    marginBottom: PidroSpacing.xxs,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: PidroColors.borderStrong,
   },
   title: {
     fontFamily: PidroFonts.display,
@@ -116,16 +259,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     lineHeight: 31,
     color: PidroBevel.textGold,
-    textShadowColor: 'rgba(20, 8, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3,
   },
-  description: {
-    maxWidth: 300,
-    marginBottom: PidroSpacing.xs,
-  },
+  description: { maxWidth: 340 },
+  scroll: { width: '100%', flexShrink: 1, overflow: 'hidden' },
+  form: { width: '100%', maxWidth: 420, alignSelf: 'center', gap: PidroSpacing.sm },
+  formLandscape: { maxWidth: 800, flexDirection: 'row', gap: PidroSpacing.xs },
+  claimPlaque: { width: '100%', gap: PidroSpacing.xxs },
   notNow: {
-    minHeight: 44,
+    minHeight: PidroLayout.touchTarget,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'stretch',

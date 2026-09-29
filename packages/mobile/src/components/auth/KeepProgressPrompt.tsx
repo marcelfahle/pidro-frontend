@@ -5,30 +5,19 @@
  * ends, never mid-play, and always dismissible.
  */
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
 import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
-import { AuthProviderButtons } from './AuthProviderButtons';
 
 export interface KeepProgressPromptProps {
   isOpen: boolean;
-  wins: number;
-  rating?: number;
   onClose: () => void;
-  onApple: () => void;
-  onFacebook: () => void;
-  onEmail: () => void;
+  onSave: () => void;
 }
 
-export function KeepProgressPrompt({
-  isOpen,
-  wins,
-  rating,
-  onClose,
-  onApple,
-  onFacebook,
-  onEmail,
-}: KeepProgressPromptProps) {
+export function KeepProgressPrompt({ isOpen, onClose, onSave }: KeepProgressPromptProps) {
   const reduceMotion = useReducedMotion();
 
   return (
@@ -37,43 +26,34 @@ export function KeepProgressPrompt({
       transparent
       animationType={reduceMotion ? 'none' : 'fade'}
       onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <View style={styles.card} testID="keep-progress-prompt">
-          <PidroText style={styles.title}>Keep your progress</PidroText>
-          <PidroText role="body" tone="soft" align="center" style={styles.description}>
-            Create a free account and your record follows you everywhere.
-          </PidroText>
-
-          <View style={styles.carrots}>
-            <View style={styles.carrot}>
-              <PidroText style={styles.carrotValue}>{wins}</PidroText>
-              <PidroText role="metadata" tone="muted">
-                {wins === 1 ? 'win' : 'wins'}
-              </PidroText>
-            </View>
-            {rating != null ? (
-              <View style={styles.carrot}>
-                <PidroText style={styles.carrotValue}>{rating}</PidroText>
-                <PidroText role="metadata" tone="muted">
-                  rating
-                </PidroText>
-              </View>
-            ) : null}
-          </View>
-
-          <AuthProviderButtons onApple={onApple} onFacebook={onFacebook} onEmail={onEmail} />
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Maybe later"
-            onPress={onClose}
-            style={styles.later}>
-            <PidroText role="label" tone="muted">
-              Maybe later
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.backdrop} edges={['top', 'left', 'right', 'bottom']}>
+          <View style={styles.card} testID="keep-progress-prompt">
+            <PidroText style={styles.title}>Keep your progress</PidroText>
+            <PidroText role="body" tone="soft" align="center" style={styles.description}>
+              Create a free account and your record follows you everywhere.
             </PidroText>
-          </Pressable>
-        </View>
-      </View>
+
+            <BevelButton
+              label="Save account"
+              material="wood"
+              size="md"
+              fullWidth
+              onPress={onSave}
+            />
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Maybe later"
+              onPress={onClose}
+              style={styles.later}>
+              <PidroText role="label" tone="muted">
+                Maybe later
+              </PidroText>
+            </Pressable>
+          </View>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
@@ -110,32 +90,6 @@ const styles = StyleSheet.create({
   },
   description: {
     maxWidth: 280,
-  },
-  carrots: {
-    flexDirection: 'row',
-    gap: PidroSpacing.sm,
-    marginVertical: PidroSpacing.xxs,
-  },
-  carrot: {
-    minWidth: 96,
-    alignItems: 'center',
-    gap: 2,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: 'rgba(225, 173, 58, 0.4)',
-    backgroundColor: 'rgba(225, 173, 58, 0.1)',
-    paddingVertical: PidroSpacing.xs,
-    paddingHorizontal: PidroSpacing.sm,
-  },
-  carrotValue: {
-    fontFamily: PidroFonts.display,
-    fontWeight: '400',
-    fontSize: 26,
-    lineHeight: 32,
-    color: PidroBevel.textGold,
-    textShadowColor: 'rgba(20, 8, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
   later: {
     minHeight: 44,

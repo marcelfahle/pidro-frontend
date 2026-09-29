@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { clampRoomName, publicPlayerName } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { Background } from '@/components/ui/Background';
+import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LevelRing } from '@/components/home/LevelRing';
@@ -29,6 +30,7 @@ export default function HomeScreen() {
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const router = useRouter();
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const refreshIdentity = useProfileIdentity();
   const pillClearance = usePillClearance();
@@ -156,6 +158,15 @@ export default function HomeScreen() {
           </PidroText>
         </BevelButton>
       </View>
+      {user?.guest ? (
+        <BevelButton
+          label="Save your progress"
+          material="glass"
+          size="sm"
+          fullWidth
+          onPress={() => setAccountSheetOpen(true)}
+        />
+      ) : null}
     </View>
   );
 
@@ -191,6 +202,14 @@ export default function HomeScreen() {
           )}
         </SafeAreaView>
       </View>
+      <AuthSheet
+        isOpen={accountSheetOpen}
+        onClose={() => setAccountSheetOpen(false)}
+        onClaimClassic={() => {
+          setAccountSheetOpen(false);
+          router.push('/(auth)/login');
+        }}
+      />
     </Background>
   );
 }

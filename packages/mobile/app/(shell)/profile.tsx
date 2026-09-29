@@ -15,6 +15,8 @@ import {
 import { profileApi } from '@/api/profile';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { Avatar } from '@/components/ui/Avatar';
+import { AuthSheet } from '@/components/auth/AuthSheet';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -55,11 +57,14 @@ function ProfileContent() {
   const [bioDraft, setBioDraft] = useState('');
   const [bioBaseline, setBioBaseline] = useState('');
   const [pendingSignOut, setPendingSignOut] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<{
     title: string;
     description: string;
     label: string;
     cancelLabel?: string;
+    secondaryLabel?: string;
+    secondary?: () => void;
     proceed: () => void;
   } | null>(null);
   const dirty =
@@ -277,6 +282,22 @@ function ProfileContent() {
   };
 
   const handleSignOut = () => {
+    if (user?.guest) {
+      setConfirmation({
+        title: 'Save this guest before signing out?',
+        description:
+          'Signing out removes access to this unsaved player on this device. Inactive guest accounts are eligible for deletion after 30 days.',
+        label: 'Sign out anyway',
+        cancelLabel: 'Cancel',
+        secondaryLabel: 'Save account',
+        secondary: () => setAccountSheetOpen(true),
+        proceed: () => {
+          closeEditor();
+          setPendingSignOut(true);
+        },
+      });
+      return;
+    }
     setConfirmation({
       title: 'Sign out?',
       description: dirty
@@ -293,6 +314,15 @@ function ProfileContent() {
 
   const accountActions = (
     <View className="items-center gap-1 pt-4">
+      {user?.guest ? (
+        <BevelButton
+          label="Save your progress"
+          material="glass"
+          size="sm"
+          fullWidth
+          onPress={() => setAccountSheetOpen(true)}
+        />
+      ) : null}
       {user?.email && (
         <PidroText role="metadata" tone="muted" align="center">
           {user.email}
@@ -521,6 +551,19 @@ function ProfileContent() {
                 onPress={() => setConfirmation(null)}
               />
             )}
+            {confirmation.secondaryLabel && confirmation.secondary ? (
+              <BevelButton
+                label={confirmation.secondaryLabel}
+                material="wood"
+                size="sm"
+                fullWidth
+                onPress={() => {
+                  const secondary = confirmation.secondary;
+                  setConfirmation(null);
+                  secondary?.();
+                }}
+              />
+            ) : null}
             <Button
               label={confirmation.label}
               variant={confirmation.cancelLabel ? 'destructive' : 'outline'}
@@ -533,6 +576,14 @@ function ProfileContent() {
           </View>
         )}
       </Modal>
+      <AuthSheet
+        isOpen={accountSheetOpen}
+        onClose={() => setAccountSheetOpen(false)}
+        onClaimClassic={() => {
+          setAccountSheetOpen(false);
+          router.push('/(auth)/login');
+        }}
+      />
     </ScreenShell>
   );
 }
