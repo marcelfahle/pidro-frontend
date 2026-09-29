@@ -29,7 +29,7 @@ describe('parseInviteLink', () => {
       source: 'copy',
     });
 
-    for (const scheme of ['pidro-mobile', 'pidro-mobile-dev', 'pidro-mobile-preview']) {
+    for (const scheme of ['pidro-mobile', 'pidro-mobile-dev', 'pidro-mobile-beta']) {
       expect(parseInviteLink(`${scheme}://j/7KQ4M2XB?source=qr`)).toEqual({
         code: '7KQ4M2XB',
         source: 'qr',

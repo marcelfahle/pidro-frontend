@@ -1,6 +1,6 @@
 import { parseInviteLink } from '@pidro/shared';
 
-const APP_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-preview:']);
+const APP_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-beta:']);
 
 /**
  * Dev harness routes opened straight from a simulator (`just table-sim`,
