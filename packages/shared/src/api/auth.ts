@@ -17,6 +17,34 @@ interface AuthResponseEnvelope {
   };
 }
 
+export type AuthProvider = 'apple' | 'facebook';
+
+export interface ClassicPreview {
+  name: string;
+  games_played: number;
+  level: number;
+  member_since: string;
+  name_allowed?: boolean | null;
+}
+
+export interface ClassicFound {
+  classic_found: true;
+  classic: ClassicPreview;
+  ticket: string;
+  expires_at: string;
+}
+
+export type ProviderLoginResponse =
+  | { status: 'signed_in'; session: LoginResponse }
+  | { status: 'classic_found'; claim: ClassicFound }
+  | { status: 'unknown_identity' };
+
+type ProviderAuthEnvelope =
+  | AuthResponseEnvelope
+  | {
+      data: ClassicFound;
+    };
+
 export type LoginResponse = AuthResponseEnvelope['data'];
 export type RegisterResponse = AuthResponseEnvelope['data'];
 export type UpgradeGuestResponse = AuthResponseEnvelope['data'];
@@ -46,6 +74,31 @@ interface PasswordResetRequestEnvelope {
 export type PasswordResetRequestResponse = PasswordResetRequestEnvelope['data'];
 
 export function createAuthApi(api: ApiClient) {
+  const providerLogin = async (
+    provider: AuthProvider,
+    token: string,
+    installId: string
+  ): Promise<ProviderLoginResponse> => {
+    const credentials = provider === 'apple' ? { identity_token: token } : { access_token: token };
+    const response = await api.post<ProviderAuthEnvelope>(
+      `/api/v1/auth/${provider}`,
+      { ...credentials, install_id: installId },
+      // An unrecognized provider identity is an expected sign-in result. Let
+      // the caller handle it without the client's global 401 session clearer.
+      {
+        validateStatus: (status) => (status >= 200 && status < 300) || status === 401,
+      }
+    );
+
+    if (response.status === 401) return { status: 'unknown_identity' };
+
+    const data = response.data.data;
+    if ('token' in data) {
+      return { status: 'signed_in', session: data };
+    }
+    return { status: 'classic_found', claim: data };
+  };
+
   return {
     login: async (username: string, password: string): Promise<LoginResponse> => {
       const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/login', {
@@ -58,7 +111,7 @@ export function createAuthApi(api: ApiClient) {
     register: async (
       username: string,
       email: string,
-      password: string,
+      password: string
     ): Promise<RegisterResponse> => {
       const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/register', {
         user: { username, email, password },
@@ -69,7 +122,7 @@ export function createAuthApi(api: ApiClient) {
     upgradeGuest: async (
       username: string,
       email: string,
-      password: string,
+      password: string
     ): Promise<UpgradeGuestResponse> => {
       const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/upgrade', {
         username,
@@ -98,6 +151,8 @@ export function createAuthApi(api: ApiClient) {
       });
       return response.data.data;
     },
+
+    providerLogin,
   };
 }
 

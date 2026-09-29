@@ -21,6 +21,7 @@ const baseConfig = {
 
 afterEach(() => {
   delete process.env.APP_VARIANT;
+  delete process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
   delete require.cache[configPath];
 });
 
@@ -150,6 +151,13 @@ describe('resolved variant configuration', () => {
       ]);
       expect(config.android.package).toBe(identifier);
       expect(config.android.allowBackup).toBe(false);
+      expect(config.ios.usesAppleSignIn).toBe(true);
+      expect(config.plugins).toContain('expo-apple-authentication');
+      expect(
+        config.plugins.some(
+          (plugin) => Array.isArray(plugin) && plugin[0] === 'react-native-fbsdk-next'
+        )
+      ).toBe(true);
       if (verifiedAndroid) {
         expect(config.android.blockedPermissions).toEqual([
           'android.permission.READ_EXTERNAL_STORAGE',
@@ -189,15 +197,39 @@ describe('resolved variant configuration', () => {
     expect(config.ios.usesAppleSignIn).toBe(true);
   });
 
-  it('keeps the Sign in with Apple entitlement off outside the Beta', () => {
-    process.env.APP_VARIANT = 'production';
+  it('always configures the Facebook SDK and adds the client token only when supplied', () => {
+    process.env.APP_VARIANT = 'beta';
+    delete process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN;
+    delete require.cache[configPath];
+    const withoutToken = require(configPath)({ config: baseConfig });
+    const facebook = withoutToken.plugins.find(
+      (plugin) => Array.isArray(plugin) && plugin[0] === 'react-native-fbsdk-next'
+    );
+    expect(facebook[1]).toMatchObject({ appID: '345200965110578', autoLogAppEventsEnabled: false });
+    expect(facebook[1]).not.toHaveProperty('clientToken');
+
+    process.env.APP_VARIANT = 'beta';
+    process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN = 'configured-client-token';
     delete require.cache[configPath];
     const configure = require(configPath);
+    const config = configure({ config: baseConfig });
 
-    expect(configure({ config: baseConfig }).ios.usesAppleSignIn).toBeUndefined();
+    expect(config.plugins).toContainEqual([
+      'react-native-fbsdk-next',
+      {
+        appID: '345200965110578',
+        clientToken: 'configured-client-token',
+        displayName: 'Pidro',
+        scheme: 'fb345200965110578',
+        advertiserIDCollectionEnabled: false,
+        autoLogAppEventsEnabled: false,
+        isAutoInitEnabled: false,
+        iosUserTrackingPermission: false,
+      },
+    ]);
   });
 
-  it.each(['preview', 'prod', ''])('rejects an unsupported %j variant', (variant) => {
+  it.each(['prod', ''])('rejects an unsupported %j variant', (variant) => {
     process.env.APP_VARIANT = variant;
     delete require.cache[configPath];
     const configure = require(configPath);

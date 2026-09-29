@@ -2,9 +2,13 @@ import { createAuthApi } from '@pidro/shared';
 import { api } from './client';
 
 export type {
+  AuthProvider,
+  ClassicFound,
+  ClassicPreview,
   CreateGuestRequest,
   CreateGuestResponse,
   LoginResponse,
+  ProviderLoginResponse,
   RegisterResponse,
   UpgradeGuestResponse,
   User,
@@ -18,3 +22,4 @@ export const upgradeGuest = authApi.upgradeGuest;
 export const createGuest = authApi.createGuest;
 export const requestPasswordReset = authApi.requestPasswordReset;
 export const resetPassword = authApi.resetPassword;
+export const providerLogin = authApi.providerLogin;
