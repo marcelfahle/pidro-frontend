@@ -1,6 +1,9 @@
-import { Redirect, useLocalSearchParams } from 'expo-router';
+import { useEffect, useMemo } from 'react';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { isInviteArrivalSource, normalizeInviteCode, type InvitePreview } from '@pidro/shared';
 import { JoinInviteScreen } from '@/components/invites/JoinInviteScreen';
+import { useAuthStore } from '@/stores/auth';
+import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 const OPEN_FIXTURE: InvitePreview = {
   code: '7KQ4M2XB',
@@ -14,12 +17,26 @@ const OPEN_FIXTURE: InvitePreview = {
 };
 
 export default function JoinInviteRoute() {
+  const router = useRouter();
   const params = useLocalSearchParams<{ code?: string; source?: string; fixture?: string }>();
   const code = normalizeInviteCode(typeof params.code === 'string' ? params.code : '');
   const source = isInviteArrivalSource(params.source) ? params.source : undefined;
-  const fixture =
-    __DEV__ && params.fixture === 'open' ? { ...OPEN_FIXTURE, code: code ?? '' } : null;
+  const fixture = useMemo(
+    () => (__DEV__ && params.fixture === 'open' ? { ...OPEN_FIXTURE, code: code ?? '' } : null),
+    [code, params.fixture]
+  );
+  const authHydrated = useAuthStore((state) => state.hydrated);
+  const user = useAuthStore((state) => state.user);
+  const pendingInviteHydrated = usePendingInviteStore((state) => state.hydrated);
+  const setPendingInvite = usePendingInviteStore((state) => state.setPendingInvite);
+
+  useEffect(() => {
+    if (!code || fixture || !authHydrated || !pendingInviteHydrated || user) return;
+    setPendingInvite(code, source);
+    router.replace('/welcome');
+  }, [authHydrated, code, fixture, pendingInviteHydrated, router, setPendingInvite, source, user]);
 
   if (!code) return <Redirect href="/+not-found" />;
+  if (!fixture && (!authHydrated || !pendingInviteHydrated || !user)) return null;
   return <JoinInviteScreen key={code} code={code} source={source} fixture={fixture} />;
 }

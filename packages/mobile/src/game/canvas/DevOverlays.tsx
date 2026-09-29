@@ -133,8 +133,8 @@ export function DevOverlays({
   rematch,
   result,
   xp,
-  guest,
   playerName,
+  guest = false,
 }: {
   phase: string;
   isHandReady: boolean;
@@ -142,8 +142,8 @@ export function DevOverlays({
   rematch?: string;
   result?: string;
   xp?: string;
-  guest?: string;
   playerName?: string;
+  guest?: boolean;
 }) {
   const router = useRouter();
   const [voted, setVoted] = useState(false);
@@ -234,11 +234,12 @@ export function DevOverlays({
           onPlayAgain={() => setVoted(true)}
           rematch={voted && vote ? { ...vote, agreed: vote.agreed + 1, youAgreed: true } : vote}
           rematchPending={rematch === 'pending'}
+          playAgainLabel={guest ? 'Play again' : undefined}
+          showGuestSave={guest}
+          onSaveGuest={() => {}}
           progressionSummary={
             xp ? { xp_earned: 64, veteran_level: 12, leveled_up: xp === 'level' } : null
           }
-          showGuestSave={guest === 'true'}
-          onSaveGuest={noop}
         />
       )}
     </>

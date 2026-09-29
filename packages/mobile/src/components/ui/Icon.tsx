@@ -21,6 +21,7 @@ export type IconName =
   | 'close'
   | 'chevron-down'
   | 'chevron-right'
+  | 'lock'
   | 'bot';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
@@ -33,6 +34,7 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     mode: 'stroke',
   },
   'chevron-right': { path: 'm9 5 7 7-7 7', mode: 'stroke' },
+  lock: { path: 'M6 10h12v11H6zM8.5 10V7.5a3.5 3.5 0 0 1 7 0V10', mode: 'stroke' },
   bot: { path: 'M12 3v3M5 6h14v14H5zM9 11v2m6-2v2m-6 4h6M2 10v6m20-6v6', mode: 'stroke' },
   plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
   'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },

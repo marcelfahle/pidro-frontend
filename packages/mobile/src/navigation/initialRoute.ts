@@ -17,6 +17,7 @@ export function initialRoute(
   pendingInvite: PendingInvite | null
 ): string | null {
   if (!authHydrated || !inviteHydrated) return null;
-  if (pendingInvite) return authenticatedDestination(pendingInvite);
+  if (pendingInvite && authStatus === 'authenticated')
+    return authenticatedDestination(pendingInvite);
   return canAccessProtectedRoutes(authHydrated, authStatus) ? '/home' : '/welcome';
 }
