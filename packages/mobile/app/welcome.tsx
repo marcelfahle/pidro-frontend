@@ -15,6 +15,7 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { createSoloRoom } from '@/features/game/solo';
 import { useAuth } from '@/hooks/useAuth';
+import { classifyInviteState } from '@/features/invites/joinFlow';
 import { authenticatedDestination } from '@/navigation/initialRoute';
 import { gameRoute } from '@/navigation/gameRoute';
 import { useLobbyStore } from '@/stores/lobby';
@@ -30,6 +31,7 @@ export default function WelcomeScreen() {
   const network = useNetworkState();
   const offline = network.isConnected === false || network.isInternetReachable === false;
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
+  const clearPendingInvite = usePendingInviteStore((state) => state.clearPendingInvite);
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const { isAuthenticated, user, continueAsGuest, error: authError, clearError } = useAuth();
   const [launchState, setLaunchState] = useState<LaunchState>('idle');
@@ -43,7 +45,10 @@ export default function WelcomeScreen() {
     invitesApi
       .preview(pendingInvite.code)
       .then((preview) => {
-        if (active) setInvitePreview(preview);
+        if (!active) return;
+        // A dead invite would leave JOIN TABLE leading nowhere; show PLAY instead.
+        if (classifyInviteState(preview.state) === 'terminal') clearPendingInvite();
+        else setInvitePreview(preview);
       })
       .catch(() => {
         if (active) setInvitePreview(null);
@@ -51,7 +56,7 @@ export default function WelcomeScreen() {
     return () => {
       active = false;
     };
-  }, [pendingInvite]);
+  }, [clearPendingInvite, pendingInvite]);
 
   const startSolo = useCallback(
     async (playerName: string) => {
