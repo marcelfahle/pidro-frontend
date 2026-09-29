@@ -695,7 +695,8 @@ async function main() {
         if (
           viewport.tableOnly &&
           !testCase.path.startsWith('/table-dev') &&
-          testCase.name !== 'join-invite'
+          testCase.name !== 'join-invite' &&
+          !viewport.entryCases?.includes(testCase.name)
         )
           continue;
         const page = await context.newPage();

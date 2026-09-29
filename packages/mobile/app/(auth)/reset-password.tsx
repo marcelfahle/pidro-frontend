@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, TextInput } from 'react-native';
+import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
 import { Link, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -38,12 +38,17 @@ export default function ResetPasswordScreen() {
       subtitle={token ? 'Use at least 8 characters.' : undefined}
       error={token ? error : 'This reset link is missing or invalid.'}
       footer={
-        <Link href="/(auth)/login" style={styles.link}>
-          Back to sign in
-        </Link>
+        <>
+          <Link href="/(auth)/login" style={styles.link}>
+            Back to sign in
+          </Link>
+          <Link href="/welcome" style={styles.link}>
+            Play as guest
+          </Link>
+        </>
       }>
       {token ? (
-        <>
+        <View style={styles.formContent}>
           <Input
             ref={inputRef}
             label="New password"
@@ -72,13 +77,19 @@ export default function ResetPasswordScreen() {
             loading={isLoading}
             onPress={submit}
           />
-        </>
+        </View>
       ) : null}
     </AuthScreenFrame>
   );
 }
 
 const styles = StyleSheet.create({
+  formContent: {
+    width: '100%',
+    maxWidth: 440,
+    alignSelf: 'center',
+    gap: 8,
+  },
   link: {
     minWidth: PidroLayout.touchTarget,
     minHeight: PidroLayout.touchTarget,

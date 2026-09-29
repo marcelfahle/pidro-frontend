@@ -17,7 +17,7 @@ import type {
 import type { Position, ReadinessSnapshot, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
-import { publicPlayerName } from '../utils/playerName';
+import { isGeneratedGuestUsername, publicPlayerName } from '../utils/playerName';
 import { lifecycleFromReply } from '../utils/seatLifecycle';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
@@ -242,7 +242,15 @@ export const useGameStore = create<GameState>((set, get) => ({
         baseMeta[pos] = {
           position: pos,
           playerId,
-          username: seat?.player?.username ?? (sameOccupant ? previous.username : null),
+          username: seat?.player
+            ? publicPlayerName(
+                seat.player.username,
+                sameOccupant ? (previous.username ?? 'Player') : 'Player',
+                seat.player.display_name,
+              )
+            : sameOccupant
+              ? previous.username
+              : null,
           avatar_url:
             seat?.player?.avatar_url !== undefined
               ? seat.player.avatar_url
@@ -292,7 +300,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (!player || player.is_bot) continue;
         playerMeta[position] = {
           ...meta,
-          username: player.username,
+          username: publicPlayerName(player.username, meta.username ?? 'Player', player.display_name),
           ...(player.avatar_url !== undefined ? { avatar_url: player.avatar_url } : {}),
         };
       }
@@ -474,11 +482,16 @@ export const useGameStore = create<GameState>((set, get) => ({
         const previous = Object.values(current.playerMeta).find(
           (meta) => meta.playerId === playerId,
         );
+        const snapshotName = publicPlayerName(seat.username, '', seat.display_name);
+        const keepsKnownGuestName =
+          previous?.username &&
+          isGeneratedGuestUsername(seat.username) &&
+          (typeof seat.display_name !== 'string' || !seat.display_name.trim());
         playerMeta[pos] = {
           ...createEmptyPlayerMeta(pos),
           playerId,
           username:
-            (publicPlayerName(seat.username, '', seat.display_name) || previous?.username) ??
+            (keepsKnownGuestName ? previous.username : snapshotName || previous?.username) ??
             (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
           avatar_url:
             seat.avatar_url !== undefined ? seat.avatar_url : (previous?.avatar_url ?? null),

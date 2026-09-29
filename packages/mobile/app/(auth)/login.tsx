@@ -96,6 +96,9 @@ export default function LoginScreen() {
             style={[styles.link, !compactLandscape && styles.quietLink]}>
             {t('invite.manual.entry')}
           </Link>
+          <Link href="/welcome" style={[styles.link, !compactLandscape && styles.quietLink]}>
+            Play as guest
+          </Link>
         </View>
       }>
       <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>

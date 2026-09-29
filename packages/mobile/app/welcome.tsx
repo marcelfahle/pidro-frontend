@@ -19,6 +19,7 @@ export default function WelcomeScreen() {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const compactLandscape = landscape && height < 500;
+  const compactPortrait = !landscape && height < 700;
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const { isAuthenticated, continueAsGuest, isLoading, error, clearError } = useAuth();
   const [guestEntry, setGuestEntry] = useState(false);
@@ -56,9 +57,8 @@ export default function WelcomeScreen() {
     }
 
     Keyboard.dismiss();
-    const success = await continueAsGuest(validation.value);
-    if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
-  }, [continueAsGuest, displayName, pendingInvite, router]);
+    await continueAsGuest(validation.value);
+  }, [continueAsGuest, displayName]);
 
   if (isAuthenticated) {
     return <Redirect href={authenticatedDestination(pendingInvite) as Href} />;
@@ -69,8 +69,14 @@ export default function WelcomeScreen() {
       testID="welcome-screen"
       scroll
       contentStyle={landscape ? styles.landscape : styles.portrait}>
-      <View style={[styles.logoStage, landscape && styles.logoStageLandscape]} pointerEvents="none">
-        <LogoGlow size={landscape ? 340 : 400} />
+      <View
+        style={[
+          styles.logoStage,
+          landscape && styles.logoStageLandscape,
+          compactPortrait && styles.logoStageCompact,
+        ]}
+        pointerEvents="none">
+        <LogoGlow size={landscape ? 340 : compactPortrait ? 280 : 400} />
         <PidroLogo size="hero" />
       </View>
 
@@ -83,7 +89,7 @@ export default function WelcomeScreen() {
           <PidroText align="center" style={styles.title}>
             Your seat is waiting
           </PidroText>
-          {compactLandscape ? null : (
+          {compactLandscape || guestEntry ? null : (
             <PidroText role="body" tone="soft" align="center">
               Jump straight into a game, or make an account to play everywhere.
             </PidroText>
@@ -142,6 +148,7 @@ export default function WelcomeScreen() {
               material="wood"
               size="hero"
               fullWidth
+              style={styles.guestButton}
               onPress={openGuestEntry}
             />
             <View style={styles.accountActions}>
@@ -191,6 +198,9 @@ const styles = StyleSheet.create({
     height: 300,
     flexShrink: 1,
   },
+  logoStageCompact: {
+    height: 130,
+  },
   panel: {
     width: '100%',
     maxWidth: 440,
@@ -222,5 +232,8 @@ const styles = StyleSheet.create({
   },
   guestForm: {
     gap: PidroSpacing.sm,
+  },
+  guestButton: {
+    maxWidth: 380,
   },
 });

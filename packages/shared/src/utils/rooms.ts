@@ -17,29 +17,17 @@ function normalizeSeat(raw: any, fallbackIndex: number): Seat {
 
   const position: Position | undefined = raw?.position ?? INDEX_TO_POSITION[seatIndex] ?? undefined;
 
-  const rawPlayer = raw?.player;
-  const player = rawPlayer
-    ? {
-        ...rawPlayer,
-        username: publicPlayerName(
-          rawPlayer.username,
-          rawPlayer.is_bot ? 'Bot' : 'Player',
-          rawPlayer.display_name,
-        ),
-      }
-    : raw?.player_id
+  const player =
+    raw?.player ??
+    (raw?.player_id
       ? {
           id: String(raw.player_id),
-          username: publicPlayerName(
-            raw.player_username,
-            raw.player_is_bot ? 'Bot' : 'Player',
-            raw.player_display_name,
-          ),
+          username: publicPlayerName(raw.player_username, raw.player_is_bot ? 'Bot' : 'Player'),
           display_name: raw.player_display_name ?? null,
           is_bot: raw.player_is_bot ?? false,
           avatar_url: raw.player_avatar_url ?? null,
         }
-      : null;
+      : null);
 
   const status: 'occupied' | 'free' = raw?.status === 'occupied' || player ? 'occupied' : 'free';
 
@@ -96,15 +84,16 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
       seat_index: POSITION_TO_INDEX[position],
       position,
       status: playerId ? 'occupied' : 'free',
-      player: playerId
-        ? {
-            id: String(playerId),
-            username: publicPlayerName(username, isBot ? 'Bot' : 'Player', displayName),
-            display_name: displayName,
-            is_bot: isBot,
-            avatar_url: value?.avatar_url ?? null,
-          }
-        : null,
+      player:
+        playerId
+          ? {
+              id: String(playerId),
+              username: publicPlayerName(username, isBot ? 'Bot' : 'Player'),
+              display_name: displayName,
+              is_bot: isBot,
+              avatar_url: value?.avatar_url ?? null,
+            }
+          : null,
       player_id: playerId,
     };
   });

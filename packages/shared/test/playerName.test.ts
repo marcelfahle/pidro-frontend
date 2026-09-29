@@ -52,9 +52,39 @@ test('generated guest handles use the chosen public name without changing regula
   });
   expect(room.seats?.[0].player).toMatchObject({
     id: 'guest-id',
-    username: 'Anna',
+    username: 'guest_7KQ4M2XB',
     display_name: 'Anna',
   });
+
+  const store = useGameStore.getState();
+  store.initFromRoom({
+    room: {
+      ...room,
+      positions: { north: 'guest-id', east: null, south: null, west: null },
+    },
+    youPlayerId: 'guest-id',
+  });
+  expect(useGameStore.getState().playerMeta.north.username).toBe('Anna');
+  store.setReadiness({
+    room_id: 'GUEST',
+    ready_epoch: 1,
+    snapshot_revision: 1,
+    status: 'waiting',
+    positions: { north: 'guest-id', east: null, south: null, west: null },
+    ready_players: [],
+    seats: {
+      north: {
+        user_id: 'guest-id',
+        username: 'guest_7KQ4M2XB',
+        occupant_type: 'human',
+        status: 'connected',
+      },
+      east: { user_id: null, occupant_type: 'vacant', status: 'vacant' },
+      south: { user_id: null, occupant_type: 'vacant', status: 'vacant' },
+      west: { user_id: null, occupant_type: 'vacant', status: 'vacant' },
+    },
+  });
+  expect(useGameStore.getState().playerMeta.north.username).toBe('Anna');
 });
 
 test('REST, lobby, readiness and lifecycle agree for the reported accounts, players and spectators', () => {

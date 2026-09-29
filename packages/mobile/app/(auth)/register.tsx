@@ -104,14 +104,19 @@ export default function RegisterScreen() {
       }
       error={authError}
       footer={
-        <>
-          <PidroText role="metadata" tone="soft">
-            Already have an account?
-          </PidroText>
-          <Link href="/(auth)/login" style={styles.link}>
-            Sign in
+        <View style={styles.footerRows}>
+          <View style={styles.footerRow}>
+            <PidroText role="metadata" tone="soft">
+              Already have an account?
+            </PidroText>
+            <Link href="/(auth)/login" style={styles.link}>
+              Sign in
+            </Link>
+          </View>
+          <Link href={user?.guest ? '/home' : '/welcome'} style={styles.quietLink}>
+            {user?.guest ? 'Back to game' : 'Play as guest'}
           </Link>
-        </>
+        </View>
       }>
       <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
         <View style={compactLandscape && styles.fieldLandscape}>
@@ -207,6 +212,14 @@ const styles = StyleSheet.create({
     width: '32%',
     flexGrow: 1,
   },
+  footerRows: {
+    alignItems: 'center',
+  },
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+  },
   link: {
     minWidth: PidroLayout.touchTarget,
     minHeight: PidroLayout.touchTarget,
@@ -214,5 +227,11 @@ const styles = StyleSheet.create({
     color: PidroColors.cyanText,
     ...PidroType.metadata,
     paddingVertical: 14,
+  },
+  quietLink: {
+    minHeight: PidroLayout.touchTarget,
+    color: PidroColors.cyanText,
+    ...PidroType.metadata,
+    paddingVertical: 8,
   },
 });

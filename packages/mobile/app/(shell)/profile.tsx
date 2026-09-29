@@ -102,7 +102,7 @@ function ProfileContent() {
   useEffect(() => {
     if (!pendingSignOut || dirty || busy) return;
     clearSession();
-    router.replace('/(auth)/login');
+    router.replace('/welcome');
   }, [pendingSignOut, dirty, busy, clearSession, router]);
 
   useFocusEffect(

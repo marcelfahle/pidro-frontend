@@ -370,12 +370,13 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
                   onSubmitEditing={submitGuest}
                 />
               </View>
-              <Button
+              <BevelButton
                 label={t('invite.join')}
+                material="wood"
+                size="md"
                 onPress={submitGuest}
                 loading={submitting}
                 disabled={!displayName.trim()}
-                size="lg"
               />
             </View>
             <View style={styles.accountEntry}>
