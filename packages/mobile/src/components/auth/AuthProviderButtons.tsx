@@ -6,10 +6,8 @@ import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
-import {
-  getSocialProviderAvailability,
-  type SocialProviderAvailability,
-} from '@/features/auth/socialCredentials';
+import type { SocialProviderAvailability } from '@/features/auth/socialCredentials';
+import { getSocialProviderAvailability } from '@/features/auth/socialProviders';
 
 export interface AuthProviderButtonsProps {
   onApple: () => void;

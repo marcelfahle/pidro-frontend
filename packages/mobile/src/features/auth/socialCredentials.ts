@@ -16,8 +16,6 @@ export interface SocialProviderAvailability {
   facebook: boolean;
 }
 
-export const facebookConfigured = Boolean(process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN);
-
 function isAppleCancellation(error: unknown): boolean {
   return (
     typeof error === 'object' &&
@@ -27,57 +25,11 @@ function isAppleCancellation(error: unknown): boolean {
   );
 }
 
-async function appleSignIn(): Promise<string | null> {
-  const AppleAuthentication = await import('expo-apple-authentication');
-  const credential = await AppleAuthentication.signInAsync({
-    requestedScopes: [AppleAuthentication.AppleAuthenticationScope.EMAIL],
-  });
-  return credential.identityToken;
-}
-
-async function facebookSignIn(): Promise<{ cancelled: boolean; accessToken: string | null }> {
-  const { AccessToken, LoginManager, Settings } = await import('react-native-fbsdk-next');
-  Settings.initializeSDK();
-  const result = await LoginManager.logInWithPermissions(['public_profile', 'email'], 'enabled');
-  if (result.isCancelled) return { cancelled: true, accessToken: null };
-
-  const current = await AccessToken.getCurrentAccessToken();
-  return { cancelled: false, accessToken: current?.accessToken ?? null };
-}
-
-export async function getSocialProviderAvailability(): Promise<SocialProviderAvailability> {
-  const { Platform } = await import('react-native');
-  let apple = false;
-  if (Platform.OS === 'ios') {
-    const AppleAuthentication = await import('expo-apple-authentication');
-    apple = await AppleAuthentication.isAvailableAsync().catch(() => false);
-  }
-
-  let facebook = false;
-  if ((Platform.OS === 'ios' || Platform.OS === 'android') && facebookConfigured) {
-    facebook = await import('react-native-fbsdk-next')
-      .then(({ Settings }) => {
-        Settings.initializeSDK();
-        return true;
-      })
-      .catch(() => false);
-  }
-
-  return { apple, facebook };
-}
-
+/** Pure outcome mapping; the native SDK calls live in socialProviders.ts. */
 export async function requestSocialCredential(
   provider: AuthProvider,
-  dependencies?: SocialCredentialDependencies
+  resolvedDependencies: SocialCredentialDependencies
 ): Promise<SocialCredentialResult> {
-  const resolvedDependencies =
-    dependencies ??
-    ({
-      platform: (await import('react-native')).Platform.OS,
-      appleSignIn,
-      facebookSignIn,
-    } satisfies SocialCredentialDependencies);
-
   if (provider === 'apple' && resolvedDependencies.platform !== 'ios') {
     return { status: 'failure', provider, message: 'Apple sign-in is unavailable on this device.' };
   }
