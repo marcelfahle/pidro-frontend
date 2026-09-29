@@ -411,11 +411,9 @@ export const useGameChannel = ({
         if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = publicPlayerName(
-          data?.username ?? data?.player_name,
-          '',
-          data?.display_name
-        );
+        const username =
+          publicPlayerName(data?.username ?? data?.player_name, '', data?.display_name) ||
+          undefined;
         if (position) {
           setSeatStatus(position, 'bot_substitute', username);
           setPlayerConnected(null, position, true);
@@ -430,11 +428,9 @@ export const useGameChannel = ({
         if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = publicPlayerName(
-          data?.username ?? data?.player_name,
-          '',
-          data?.display_name
-        );
+        const username =
+          publicPlayerName(data?.username ?? data?.player_name, '', data?.display_name) ||
+          undefined;
         if (position) {
           setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
@@ -479,11 +475,9 @@ export const useGameChannel = ({
         if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = publicPlayerName(
-          data?.username ?? data?.player_name,
-          '',
-          data?.display_name
-        );
+        const username =
+          publicPlayerName(data?.username ?? data?.player_name, '', data?.display_name) ||
+          undefined;
         if (position) {
           setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
