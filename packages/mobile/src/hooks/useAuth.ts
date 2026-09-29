@@ -8,10 +8,8 @@ import {
   getInstallId,
 } from '@/features/invites/installId';
 import { invitePlatform } from '@/features/invites/platform';
-import {
-  requestSocialCredential,
-  type SocialCredentialResult,
-} from '@/features/auth/socialCredentials';
+import type { SocialCredentialResult } from '@/features/auth/socialCredentials';
+import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
 import { runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
 
@@ -95,7 +93,7 @@ export function useAuth() {
       try {
         setIsLoading(true);
         setError(null);
-        const credential = await requestSocialCredential(provider);
+        const credential = await requestNativeSocialCredential(provider);
         if (credential.status === 'cancelled') return credential;
         if (credential.status === 'failure') {
           setError(credential.message);
