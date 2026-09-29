@@ -4,7 +4,7 @@ export const INVITE_ARRIVAL_SOURCES = [...INVITE_SOURCES, 'deferred', 'typed'] a
 export type InviteArrivalSource = (typeof INVITE_ARRIVAL_SOURCES)[number];
 
 const INVITE_HOSTS = new Set(['www.pidro.online', 'pidro.online']);
-const INVITE_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-preview:']);
+const INVITE_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-beta:']);
 const INVITE_CODE_PATTERN = /^[0-9A-HJKMNP-TV-Z]{8}$/;
 
 export interface ParsedInviteLink {
