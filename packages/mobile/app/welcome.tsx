@@ -6,9 +6,10 @@ import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
+import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
+import { PidroLayout, PidroSpacing } from '@/design/tokens';
 import { validateDisplayName } from '@/features/invites/joinFlow';
 import { useAuth } from '@/hooks/useAuth';
 import { authenticatedDestination } from '@/navigation/initialRoute';
@@ -85,17 +86,6 @@ export default function WelcomeScreen() {
         variant="window"
         padded
         style={[styles.panel, compactLandscape && styles.panelCompact]}>
-        <View style={styles.heading}>
-          <PidroText align="center" style={styles.title}>
-            Your seat is waiting
-          </PidroText>
-          {compactLandscape || guestEntry ? null : (
-            <PidroText role="body" tone="soft" align="center">
-              Jump straight into a game, or make an account to play everywhere.
-            </PidroText>
-          )}
-        </View>
-
         {error ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger" align="center">
@@ -108,7 +98,7 @@ export default function WelcomeScreen() {
           <View style={styles.guestForm}>
             <Input
               ref={nameRef}
-              label="Public name"
+              label="Your name"
               placeholder="What should players call you?"
               value={displayName}
               onChangeText={handleNameChange}
@@ -121,52 +111,48 @@ export default function WelcomeScreen() {
               returnKeyType="go"
               onSubmitEditing={submitGuest}
             />
-            <PidroText role="metadata" tone="soft" align="center">
-              No email or password needed. This guest stays on this device.
-            </PidroText>
             <BevelButton
-              label="Start playing"
+              label="Play"
               material="wood"
-              size="hero"
+              size="sm"
               fullWidth
               loading={isLoading}
               onPress={submitGuest}
             />
-            <BevelButton
-              label="Back"
-              material="glass"
-              size="sm"
-              fullWidth
+            <PressableFX
+              accessibilityRole="button"
+              accessibilityLabel="Back"
               disabled={isLoading}
               onPress={() => setGuestEntry(false)}
-            />
+              style={styles.back}>
+              <PidroText role="metadata" tone="cyan">
+                Back
+              </PidroText>
+            </PressableFX>
           </View>
         ) : (
           <View style={styles.actions}>
             <BevelButton
-              label="Play as guest"
+              label="Play"
               material="wood"
-              size="hero"
+              size="sm"
               fullWidth
-              style={styles.guestButton}
               onPress={openGuestEntry}
             />
-            <View style={styles.accountActions}>
-              <BevelButton
-                label="Create account"
-                material="glass"
-                size="md"
-                fullWidth
-                onPress={() => router.push('/(auth)/register')}
-              />
-              <BevelButton
-                label="Sign in"
-                material="glass"
-                size="md"
-                fullWidth
-                onPress={() => router.push('/(auth)/login')}
-              />
-            </View>
+            <BevelButton
+              label="Create account"
+              material="glass"
+              size="sm"
+              fullWidth
+              onPress={() => router.push('/(auth)/register')}
+            />
+            <BevelButton
+              label="Sign in"
+              material="glass"
+              size="sm"
+              fullWidth
+              onPress={() => router.push('/(auth)/login')}
+            />
           </View>
         )}
       </Surface>
@@ -203,37 +189,28 @@ const styles = StyleSheet.create({
   },
   panel: {
     width: '100%',
-    maxWidth: 440,
-    gap: PidroSpacing.md,
+    maxWidth: 340,
+    gap: PidroSpacing.sm,
   },
   panelCompact: {
     padding: PidroSpacing.md,
     gap: PidroSpacing.sm,
   },
-  heading: {
-    gap: PidroSpacing.xxs,
-  },
-  title: {
-    fontFamily: PidroFonts.display,
-    fontWeight: '400',
-    fontSize: 28,
-    lineHeight: 36,
-    color: PidroBevel.textGold,
-    ...PidroBevel.labelShadow,
-  },
   error: {
     padding: PidroSpacing.sm,
   },
   actions: {
-    gap: PidroSpacing.md,
-  },
-  accountActions: {
-    gap: PidroSpacing.sm,
+    gap: PidroSpacing.xs,
   },
   guestForm: {
-    gap: PidroSpacing.sm,
+    gap: PidroSpacing.xs,
   },
-  guestButton: {
-    maxWidth: 380,
+  back: {
+    minWidth: PidroLayout.touchTarget,
+    minHeight: PidroLayout.touchTarget,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: PidroSpacing.md,
   },
 });

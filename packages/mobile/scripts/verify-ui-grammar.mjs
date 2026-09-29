@@ -353,7 +353,7 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
   if (name !== 'welcome-guest') return;
 
   const input = page.getByPlaceholder('What should players call you?');
-  const submit = page.getByRole('button', { name: 'Start playing' });
+  const submit = page.getByRole('button', { name: 'Play', exact: true });
   await submit.click();
   await page.getByText('Enter the name other players will see.', { exact: true }).waitFor();
   if (!(await input.evaluate((element) => element === document.activeElement))) {
@@ -732,7 +732,7 @@ async function main() {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
           if (testCase.openGuestEntry) {
-            await page.getByRole('button', { name: 'Play as guest' }).click();
+            await page.getByRole('button', { name: 'Play', exact: true }).click();
             await page.getByPlaceholder('What should players call you?').waitFor();
           }
           await assertTargetGeometry(page, testCase, viewport);
