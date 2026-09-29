@@ -91,14 +91,13 @@ describe('invite APIs', () => {
     const guest = {
       id: 'guest-direct',
       username: 'guest_7KQ4M2XB',
-      display_name: 'Anna',
+      display_name: 'Amber Fox',
       email: null,
       guest: true,
     };
     const { api, calls } = recordingApi([{ data: { token: 'token', user: guest } }]);
 
     const result = await createAuthApi(api).createGuest({
-      display_name: 'Anna',
       creation_token: '8b597c4a-c208-4cf6-b274-81b29f6751ea',
       platform: 'android',
       install_id: 'install-1',
@@ -108,13 +107,12 @@ describe('invite APIs', () => {
       method: 'post',
       path: '/api/v1/auth/guest',
       body: {
-        display_name: 'Anna',
         creation_token: '8b597c4a-c208-4cf6-b274-81b29f6751ea',
         platform: 'android',
         install_id: 'install-1',
       },
     });
-    expect(result.user.display_name).toBe('Anna');
+    expect(result.user.display_name).toBe('Amber Fox');
     expect(result.state).toBeUndefined();
   });
 

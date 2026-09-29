@@ -197,8 +197,8 @@ export function useAuth() {
   );
 
   const continueAsGuest = useCallback(
-    async (displayName: string) => {
-      if (requestInFlight.current) return false;
+    async (displayName?: string) => {
+      if (requestInFlight.current) return null;
       requestInFlight.current = true;
 
       try {
@@ -209,14 +209,14 @@ export function useAuth() {
           getInstallId().catch(() => undefined),
         ]);
         const response = await authApi.createGuest({
-          display_name: displayName,
+          ...(displayName ? { display_name: displayName } : {}),
           creation_token: creationToken,
           platform: invitePlatform(),
           ...(installId ? { install_id: installId } : {}),
         });
         setSession({ accessToken: response.token, user: response.user });
         await clearGuestCreationToken().catch(() => undefined);
-        return true;
+        return response;
       } catch (e) {
         if (e instanceof AxiosError) {
           console.warn('[Auth] Guest creation request failed:', getSafeAxiosErrorDetails(e));
@@ -224,7 +224,7 @@ export function useAuth() {
           console.warn('[Auth] Guest creation failed with a non-API error');
         }
         setError(extractErrorMessage(e, 'Your guest session could not be created. Try again.'));
-        return false;
+        return null;
       } finally {
         requestInFlight.current = false;
         setIsLoading(false);

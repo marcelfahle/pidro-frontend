@@ -371,22 +371,11 @@ async function stageTwoMultiplayerVideo() {
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    // A fill that lands before React hydrates can be lost. Re-fill until the
-    // submit button, which enables only with a non-empty name, is ready.
-    const displayName = `Guest ${suffix}`;
-    const nameField = page.getByPlaceholder('Enter the name players will see');
-    const joinTable = page.getByRole('button', { name: 'Join table' });
-    await nameField.waitFor({ timeout: 30_000 });
-    let formReady = false;
-    for (let attempt = 0; attempt < 6 && !formReady; attempt += 1) {
-      await nameField.fill(displayName);
-      await page.waitForTimeout(500);
-      formReady = await joinTable.isEnabled();
-    }
-    if (!formReady) throw new Error('Join never enabled — guest name input did not hydrate');
+    const joinTable = page.getByRole('button', { name: 'JOIN TABLE' });
+    await joinTable.waitFor({ timeout: 30_000 });
     await joinTable.click();
     await page.waitForURL(new RegExp(`/game/${roomCode}$`), { timeout: 30_000 });
-    log(`guest ${displayName} created and invite redeemed through the UI`);
+    log('nameless guest created and invite redeemed through the UI');
 
     const seen = new Set();
     await captureMilestones(page, seen);

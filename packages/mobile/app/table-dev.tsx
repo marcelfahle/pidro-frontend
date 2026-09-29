@@ -212,11 +212,11 @@ function TableDevHarness() {
     rematch?: string;
     result?: string;
     xp?: string;
-    guest?: string;
     readyResult?: string;
     deal?: string;
     dealer?: string;
     clear?: string;
+    guest?: string;
   }>();
   const phase = typeof params.phase === 'string' ? params.phase : 'playing';
   const autoPlay = params.autoplay === 'true';
@@ -372,8 +372,8 @@ function TableDevHarness() {
             rematch={params.rematch}
             result={params.result}
             xp={params.xp}
-            guest={params.guest}
             playerName={params.playerName}
+            guest={params.guest === 'true'}
           />
           {params.feedback === 'owner' && (
             <TableSeatDecision

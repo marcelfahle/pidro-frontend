@@ -2,10 +2,10 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { clampRoomName, publicPlayerName } from '@pidro/shared';
+import { publicPlayerName } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { Background } from '@/components/ui/Background';
-import { AuthSheet } from '@/components/auth/AuthSheet';
+import { AuthSheet, type AuthSheetReason } from '@/components/auth/AuthSheet';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LevelRing } from '@/components/home/LevelRing';
@@ -22,6 +22,7 @@ import { useLobbyStore } from '@/stores/lobby';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { gameRoute } from '@/navigation/gameRoute';
+import { createSoloRoom } from '@/features/game/solo';
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -30,7 +31,7 @@ export default function HomeScreen() {
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const router = useRouter();
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
-  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [accountSheetReason, setAccountSheetReason] = useState<AuthSheetReason | null>(null);
   const [error, setError] = useState<string | null>(null);
   const refreshIdentity = useProfileIdentity();
   const pillClearance = usePillClearance();
@@ -43,11 +44,7 @@ export default function HomeScreen() {
   );
 
   const createSinglePlayerRoom = async () => {
-    const response = await lobbyApi.createRoom({
-      name: clampRoomName(`${playerName}'s solo table`),
-      seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
-    });
-    if (!response?.code) throw new Error('No room code returned');
+    const response = await createSoloRoom(playerName);
     if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
     router.replace(gameRoute(response.code, 'single-player'));
   };
@@ -127,11 +124,15 @@ export default function HomeScreen() {
       <CtaBadge label="FIND A TABLE">
         <BevelButton
           label="PLAY"
+          leadingIcon={user?.guest ? <Icon name="lock" size={24} /> : undefined}
           material="wood"
           size={landscape ? 'lg' : 'hero'}
           weight="hero"
           fullWidth
-          onPress={() => router.push('/lobby')}
+          onPress={() => {
+            if (user?.guest) setAccountSheetReason('multiplayer');
+            else router.push('/lobby');
+          }}
         />
       </CtaBadge>
 
@@ -164,7 +165,7 @@ export default function HomeScreen() {
           material="glass"
           size="sm"
           fullWidth
-          onPress={() => setAccountSheetOpen(true)}
+          onPress={() => setAccountSheetReason('save')}
         />
       ) : null}
     </View>
@@ -203,10 +204,16 @@ export default function HomeScreen() {
         </SafeAreaView>
       </View>
       <AuthSheet
-        isOpen={accountSheetOpen}
-        onClose={() => setAccountSheetOpen(false)}
+        isOpen={accountSheetReason != null}
+        reason={accountSheetReason ?? 'save'}
+        onClose={() => setAccountSheetReason(null)}
+        onSaved={() => {
+          const shouldFindTable = accountSheetReason === 'multiplayer';
+          setAccountSheetReason(null);
+          if (shouldFindTable) router.push('/lobby');
+        }}
         onClaimClassic={() => {
-          setAccountSheetOpen(false);
+          setAccountSheetReason(null);
           router.push('/(auth)/login');
         }}
       />

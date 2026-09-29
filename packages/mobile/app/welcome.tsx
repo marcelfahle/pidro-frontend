@@ -1,70 +1,122 @@
-import { useCallback, useRef, useState } from 'react';
-import { Keyboard, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Redirect, useRouter, type Href } from 'expo-router';
+import { useNetworkState } from 'expo-network';
+import { publicPlayerName, type InvitePreview } from '@pidro/shared';
+import { invitesApi } from '@/api/invites';
 import { LogoGlow } from '@/components/home/LogoGlow';
 import { BevelButton } from '@/components/ui/BevelButton';
-import { Input } from '@/components/ui/Input';
+import { Icon } from '@/components/ui/Icon';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroLayout, PidroSpacing } from '@/design/tokens';
-import { validateDisplayName } from '@/features/invites/joinFlow';
+import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { createSoloRoom } from '@/features/game/solo';
 import { useAuth } from '@/hooks/useAuth';
+import { classifyInviteState } from '@/features/invites/joinFlow';
 import { authenticatedDestination } from '@/navigation/initialRoute';
+import { gameRoute } from '@/navigation/gameRoute';
+import { useLobbyStore } from '@/stores/lobby';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+
+type LaunchState = 'idle' | 'creatingGuest' | 'creatingRoom' | 'roomFailed' | 'joiningInvite';
 
 export default function WelcomeScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
-  const compactLandscape = landscape && height < 500;
   const compactPortrait = !landscape && height < 700;
+  const network = useNetworkState();
+  const offline = network.isConnected === false || network.isInternetReachable === false;
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
-  const { isAuthenticated, continueAsGuest, isLoading, error, clearError } = useAuth();
-  const [guestEntry, setGuestEntry] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [nameError, setNameError] = useState<string | null>(null);
-  const nameRef = useRef<TextInput>(null);
+  const clearPendingInvite = usePendingInviteStore((state) => state.clearPendingInvite);
+  const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
+  const { isAuthenticated, user, continueAsGuest, error: authError, clearError } = useAuth();
+  const [launchState, setLaunchState] = useState<LaunchState>('idle');
+  const [launchError, setLaunchError] = useState<string | null>(null);
+  const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
+  const launchBusy = launchState === 'creatingGuest' || launchState === 'creatingRoom';
 
-  const openGuestEntry = useCallback(() => {
-    clearError();
-    setGuestEntry(true);
-    requestAnimationFrame(() => nameRef.current?.focus());
-  }, [clearError]);
+  useEffect(() => {
+    if (!pendingInvite) return;
+    let active = true;
+    invitesApi
+      .preview(pendingInvite.code)
+      .then((preview) => {
+        if (!active) return;
+        // A dead invite would leave JOIN TABLE leading nowhere; show PLAY instead.
+        if (classifyInviteState(preview.state) === 'terminal') clearPendingInvite();
+        else setInvitePreview(preview);
+      })
+      .catch(() => {
+        if (active) setInvitePreview(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [clearPendingInvite, pendingInvite]);
 
-  const handleNameChange = useCallback(
-    (value: string) => {
-      setDisplayName(value);
-      setNameError(null);
-      clearError();
+  const startSolo = useCallback(
+    async (playerName: string) => {
+      setLaunchState('creatingRoom');
+      setLaunchError(null);
+      try {
+        const response = await createSoloRoom(playerName);
+        if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
+        router.replace(gameRoute(response.code, 'single-player'));
+      } catch {
+        setLaunchState('roomFailed');
+        setLaunchError('We could not start your solo table. Try again.');
+      }
     },
-    [clearError]
+    [router, upsertLobbyRoom]
   );
 
-  const submitGuest = useCallback(async () => {
-    const validation = validateDisplayName(displayName);
-    if (validation.error) {
-      const messages = {
-        required: 'Enter the name other players will see.',
-        tooShort: 'Use at least 2 characters.',
-        tooLong: 'Use 20 characters or fewer.',
-        forbidden: 'That name contains unsupported characters.',
-      };
-      setNameError(messages[validation.error]);
-      nameRef.current?.focus();
+  const launch = useCallback(async () => {
+    if (launchBusy || offline) return;
+    clearError();
+    setLaunchError(null);
+
+    if (launchState === 'roomFailed' && user) {
+      await startSolo(publicPlayerName(user.username, 'Player', user.display_name));
       return;
     }
 
-    Keyboard.dismiss();
-    await continueAsGuest(validation.value);
-  }, [continueAsGuest, displayName]);
+    setLaunchState('creatingGuest');
+    const session = await continueAsGuest();
+    if (!session) {
+      setLaunchState('idle');
+      return;
+    }
 
-  if (isAuthenticated) {
+    if (pendingInvite) {
+      setLaunchState('joiningInvite');
+      router.replace(authenticatedDestination(pendingInvite) as Href);
+      return;
+    }
+
+    await startSolo(publicPlayerName(session.user.username, 'Player', session.user.display_name));
+  }, [
+    clearError,
+    continueAsGuest,
+    launchBusy,
+    launchState,
+    offline,
+    pendingInvite,
+    router,
+    startSolo,
+    user,
+  ]);
+
+  if (isAuthenticated && launchState === 'idle') {
     return <Redirect href={authenticatedDestination(pendingInvite) as Href} />;
   }
 
+  const currentPreview =
+    pendingInvite && invitePreview?.code === pendingInvite.code ? invitePreview : null;
+  const inviter = currentPreview?.host || 'A friend';
   return (
     <ScreenShell
       testID="welcome-screen"
@@ -81,81 +133,95 @@ export default function WelcomeScreen() {
         <PidroLogo size="hero" />
       </View>
 
-      <Surface
-        testID="welcome-window"
-        variant="window"
-        padded
-        style={[styles.panel, compactLandscape && styles.panelCompact]}>
-        {error ? (
-          <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
-            <PidroText role="metadata" tone="danger" align="center">
-              {error}
+      <View testID="welcome-window" style={styles.actions}>
+        {pendingInvite ? (
+          <Surface variant="card" style={styles.inviteCard}>
+            <View style={styles.inviteAvatar}>
+              <PidroText role="title" tone="gold">
+                {inviter.charAt(0).toUpperCase()}
+              </PidroText>
+            </View>
+            <View style={styles.inviteCopy}>
+              <PidroText role="label" numberOfLines={1}>
+                {inviter} saved you a seat
+              </PidroText>
+              <PidroText role="metadata" tone="soft">
+                Table {pendingInvite.code}
+              </PidroText>
+            </View>
+            <PidroText role="metadata" tone="cyan">
+              INVITE
             </PidroText>
           </Surface>
         ) : null}
 
-        {guestEntry ? (
-          <View style={styles.guestForm}>
-            <Input
-              ref={nameRef}
-              label="Your name"
-              placeholder="What should players call you?"
-              value={displayName}
-              onChangeText={handleNameChange}
-              error={nameError ?? undefined}
-              editable={!isLoading}
-              maxLength={80}
-              autoCapitalize="words"
-              autoCorrect={false}
-              enterKeyHint="go"
-              returnKeyType="go"
-              onSubmitEditing={submitGuest}
-            />
-            <BevelButton
-              label="Play"
-              material="wood"
-              size="sm"
-              fullWidth
-              loading={isLoading}
-              onPress={submitGuest}
-            />
-            <PressableFX
-              accessibilityRole="button"
-              accessibilityLabel="Back"
-              disabled={isLoading}
-              onPress={() => setGuestEntry(false)}
-              style={styles.back}>
-              <PidroText role="metadata" tone="cyan">
-                Back
-              </PidroText>
-            </PressableFX>
+        {offline ? (
+          <Surface variant="subtle" style={styles.offline} accessibilityRole="alert">
+            <PidroText role="metadata" tone="gold" align="center">
+              You&apos;re offline. Connect to play.
+            </PidroText>
+          </Surface>
+        ) : null}
+
+        {authError || launchError ? (
+          <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
+            <PidroText role="metadata" tone="danger" align="center">
+              {launchError || authError}
+            </PidroText>
+          </Surface>
+        ) : null}
+
+        <BevelButton
+          label={pendingInvite ? 'JOIN TABLE' : 'PLAY'}
+          material="wood"
+          size={landscape ? 'lg' : 'hero'}
+          weight="hero"
+          fullWidth
+          disabled={offline}
+          loading={launchBusy}
+          onPress={launch}
+        />
+
+        <PressableFX
+          accessibilityRole="button"
+          accessibilityLabel="Played Pidro Classic? Bring your name and games."
+          disabled={offline || launchBusy}
+          onPress={() => router.push('/(auth)/login')}
+          style={[styles.classic, (offline || launchBusy) && styles.disabled]}>
+          <View style={styles.classicIcon}>
+            <Icon name="friends" size={24} color={PidroColors.cyan} />
           </View>
-        ) : (
-          <View style={styles.actions}>
-            <BevelButton
-              label="Play"
-              material="wood"
-              size="sm"
-              fullWidth
-              onPress={openGuestEntry}
-            />
-            <BevelButton
-              label="Create account"
-              material="glass"
-              size="sm"
-              fullWidth
-              onPress={() => router.push('/(auth)/register')}
-            />
-            <BevelButton
-              label="Sign in"
-              material="glass"
-              size="sm"
-              fullWidth
-              onPress={() => router.push('/(auth)/login')}
-            />
+          <View style={styles.classicCopy}>
+            <PidroText role="label">Played Pidro Classic?</PidroText>
+            <PidroText role="metadata" tone="soft">
+              Bring your name and games.
+            </PidroText>
           </View>
-        )}
-      </Surface>
+          <Icon name="chevron-right" size={22} color={PidroColors.cyanText} />
+        </PressableFX>
+
+        <View style={[styles.accountLinks, (offline || launchBusy) && styles.disabled]}>
+          <PressableFX
+            accessibilityRole="link"
+            disabled={offline || launchBusy}
+            onPress={() => router.push('/(auth)/login')}
+            style={styles.accountLink}>
+            <PidroText role="metadata" tone="cyan">
+              Sign in
+            </PidroText>
+          </PressableFX>
+          <View style={styles.dot} />
+          <PressableFX
+            accessibilityRole="link"
+            disabled={offline || launchBusy}
+            onPress={() => router.push('/(auth)/register')}
+            style={styles.accountLink}>
+            <PidroText role="metadata" tone="cyan">
+              Create account
+            </PidroText>
+          </PressableFX>
+        </View>
+      </View>
     </ScreenShell>
   );
 }
@@ -184,33 +250,62 @@ const styles = StyleSheet.create({
     height: 300,
     flexShrink: 1,
   },
-  logoStageCompact: {
-    height: 130,
-  },
-  panel: {
+  logoStageCompact: { height: 130 },
+  actions: {
     width: '100%',
     maxWidth: 340,
+    alignItems: 'stretch',
     gap: PidroSpacing.sm,
   },
-  panelCompact: {
-    padding: PidroSpacing.md,
-    gap: PidroSpacing.sm,
-  },
-  error: {
+  inviteCard: {
+    minHeight: 64,
     padding: PidroSpacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.sm,
   },
-  actions: {
-    gap: PidroSpacing.xs,
-  },
-  guestForm: {
-    gap: PidroSpacing.xs,
-  },
-  back: {
-    minWidth: PidroLayout.touchTarget,
-    minHeight: PidroLayout.touchTarget,
-    alignSelf: 'center',
+  inviteAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: PidroSpacing.md,
+    backgroundColor: PidroColors.glass,
   },
+  inviteCopy: { flex: 1, minWidth: 0 },
+  offline: { padding: PidroSpacing.sm, borderColor: PidroColors.gold },
+  error: { padding: PidroSpacing.sm },
+  classic: {
+    minHeight: 64,
+    padding: PidroSpacing.sm,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderColor: PidroColors.borderStrong,
+    backgroundColor: PidroColors.panelStrong,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.sm,
+  },
+  classicIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PidroColors.glass,
+  },
+  classicCopy: { flex: 1, minWidth: 0 },
+  accountLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: PidroSpacing.xxs,
+  },
+  accountLink: {
+    minHeight: PidroLayout.touchTarget,
+    justifyContent: 'center',
+    paddingHorizontal: PidroSpacing.sm,
+  },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: PidroColors.textMuted },
+  disabled: { opacity: 0.5 },
 });

@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LevelRing } from '@/components/home/LevelRing';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
+import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroSpacing } from '@/design/tokens';
 import type { RematchVote } from '@pidro/shared';
@@ -24,6 +25,7 @@ interface GameOverOverlayProps {
   onPlayAgain: () => void;
   rematch?: RematchVote | null;
   rematchPending?: boolean;
+  playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
 }
@@ -43,6 +45,7 @@ export function GameOverOverlay({
   onPlayAgain,
   rematch,
   rematchPending = false,
+  playAgainLabel = 'Rematch',
   showGuestSave = false,
   onSaveGuest,
 }: GameOverOverlayProps) {
@@ -156,16 +159,16 @@ export function GameOverOverlay({
               </Surface>
             )}
             {showGuestSave && onSaveGuest ? (
-              <Pressable accessibilityRole="button" onPress={onSaveGuest}>
+              <PressableFX accessibilityRole="button" onPress={onSaveGuest}>
                 <Surface variant="plaque" style={styles.guestSave}>
                   <PidroText role="label" tone="gold" align="center">
-                    Keep your progress
+                    Ready for real players?
                   </PidroText>
                   <PidroText role="metadata" tone="cyan" align="center">
-                    Create a free account and your record follows you everywhere.
+                    Save your progress to play people.
                   </PidroText>
                 </Surface>
-              </Pressable>
+              </PressableFX>
             ) : null}
           </Surface>
         </ScrollView>
@@ -194,7 +197,7 @@ export function GameOverOverlay({
             {!spectator && (
               <BevelButton
                 testID="play-again"
-                label={rematch?.youAgreed ? 'Waiting…' : 'Rematch'}
+                label={rematch?.youAgreed ? 'Waiting…' : playAgainLabel}
                 leadingIcon={<Icon name="rematch" size={22} color={PidroBevel.textGold} />}
                 disabled={!rematch || rematch.youAgreed}
                 loading={rematchPending}
