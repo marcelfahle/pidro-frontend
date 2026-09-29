@@ -6,4 +6,5 @@ export const api = createApiClient({
   config: API_CONFIG,
   getToken: () => authStore.getState().accessToken,
   clearSession: () => authStore.getState().clearSession(),
+  shouldPreserveSessionOnUnauthorized: () => authStore.getState().preserveSessionOnUnauthorized,
 });

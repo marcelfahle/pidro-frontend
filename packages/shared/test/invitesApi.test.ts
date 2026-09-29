@@ -61,7 +61,7 @@ describe('invite APIs', () => {
     const auth = createAuthApi(api);
 
     await auth.register('anna', 'anna@example.com', 'password123');
-    await auth.upgradeGuest('anna', 'anna@example.com', 'password123');
+    await auth.upgradeGuest('Anna North', 'anna@example.com', 'password123');
 
     expect(calls).toEqual([
       {
@@ -79,7 +79,7 @@ describe('invite APIs', () => {
         method: 'post',
         path: '/api/v1/auth/upgrade',
         body: {
-          username: 'anna',
+          username: 'Anna North',
           email: 'anna@example.com',
           password: 'password123',
         },

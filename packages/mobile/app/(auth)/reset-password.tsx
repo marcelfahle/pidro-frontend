@@ -4,6 +4,7 @@ import { Link, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 import { authenticatedDestination } from '@/navigation/initialRoute';
@@ -14,10 +15,18 @@ export default function ResetPasswordScreen() {
   const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
   const [password, setPassword] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
   const inputRef = useRef<TextInput>(null);
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
-  const { resetPassword, isLoading, error, clearError } = useAuth();
+  const { user, resetPassword, isLoading, error, clearError } = useAuth();
+
+  const performReset = useCallback(async () => {
+    if (!token) return;
+    if (await resetPassword(token, password)) {
+      router.replace(authenticatedDestination(pendingInvite) as Href);
+    }
+  }, [password, pendingInvite, resetPassword, router, token]);
 
   const submit = useCallback(async () => {
     if (!token) return;
@@ -27,10 +36,12 @@ export default function ResetPasswordScreen() {
       return;
     }
     Keyboard.dismiss();
-    if (await resetPassword(token, password)) {
-      router.replace(authenticatedDestination(pendingInvite) as Href);
+    if (user?.guest) {
+      setConfirmSwitch(true);
+      return;
     }
-  }, [password, pendingInvite, resetPassword, router, token]);
+    await performReset();
+  }, [password, performReset, token, user?.guest]);
 
   return (
     <AuthScreenFrame
@@ -77,6 +88,31 @@ export default function ResetPasswordScreen() {
             loading={isLoading}
             onPress={submit}
           />
+          <Modal
+            isOpen={confirmSwitch}
+            title="Switch players?"
+            description="Resetting this account's password signs in as that player. Guest results do not merge."
+            onClose={() => setConfirmSwitch(false)}>
+            <View style={styles.switchActions}>
+              <BevelButton
+                label="Cancel"
+                material="glass"
+                size="sm"
+                fullWidth
+                onPress={() => setConfirmSwitch(false)}
+              />
+              <BevelButton
+                label="Switch account"
+                material="wood"
+                size="sm"
+                fullWidth
+                onPress={() => {
+                  setConfirmSwitch(false);
+                  void performReset();
+                }}
+              />
+            </View>
+          </Modal>
         </View>
       ) : null}
     </AuthScreenFrame>
@@ -97,4 +133,5 @@ const styles = StyleSheet.create({
     ...PidroType.metadata,
     paddingVertical: 14,
   },
+  switchActions: { gap: 8 },
 });

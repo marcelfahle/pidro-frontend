@@ -5,6 +5,7 @@ import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
@@ -25,7 +26,8 @@ export default function LoginScreen() {
   const [validationErrors, setValidationErrors] = useState<Partial<Record<LoginField, string>>>({});
   const usernameRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const { signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
+  const { user, signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
+  const [confirmSwitch, setConfirmSwitch] = useState(false);
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const { width, height } = useWindowDimensions();
@@ -58,6 +60,12 @@ export default function LoginScreen() {
   );
   const focusPassword = useCallback(() => passwordRef.current?.focus(), []);
 
+  const performLogin = useCallback(async () => {
+    Keyboard.dismiss();
+    const success = await signIn(username.trim(), password);
+    if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
+  }, [password, pendingInvite, router, signIn, username]);
+
   const handleLogin = useCallback(async () => {
     const normalizedUsername = username.trim();
     if (isLoading) return;
@@ -76,10 +84,13 @@ export default function LoginScreen() {
       return;
     }
 
-    Keyboard.dismiss();
-    const success = await signIn(normalizedUsername, password);
-    if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
-  }, [isLoading, password, pendingInvite, router, signIn, username]);
+    if (user?.guest) {
+      Keyboard.dismiss();
+      setConfirmSwitch(true);
+      return;
+    }
+    await performLogin();
+  }, [isLoading, password, performLogin, user?.guest, username]);
 
   const handleProviderLogin = useCallback(
     async (provider: AuthProvider) => {
@@ -198,6 +209,31 @@ export default function LoginScreen() {
         onPress={handleLogin}
         loading={isLoading}
       />
+      <Modal
+        isOpen={confirmSwitch}
+        title="Switch players?"
+        description="Guest results do not merge into a different account. Cancel to keep playing with this guest."
+        onClose={() => setConfirmSwitch(false)}>
+        <View style={styles.switchActions}>
+          <BevelButton
+            label="Cancel"
+            material="glass"
+            size="sm"
+            fullWidth
+            onPress={() => setConfirmSwitch(false)}
+          />
+          <BevelButton
+            label="Switch account"
+            material="wood"
+            size="sm"
+            fullWidth
+            onPress={() => {
+              setConfirmSwitch(false);
+              void performLogin();
+            }}
+          />
+        </View>
+      </Modal>
     </AuthScreenFrame>
   );
 }
@@ -245,5 +281,8 @@ const styles = StyleSheet.create({
   },
   quietLink: {
     paddingVertical: 8,
+  },
+  switchActions: {
+    gap: 8,
   },
 });

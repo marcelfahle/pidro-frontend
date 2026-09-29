@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Link, useRouter, type Href } from 'expo-router';
 import { Keyboard, Platform, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
+import { AuthSheet } from '@/components/auth/AuthSheet';
 import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
@@ -13,6 +14,7 @@ import { usePendingInviteStore } from '@/stores/pendingInvite';
 type RegisterField = 'username' | 'email' | 'password';
 
 export default function RegisterScreen() {
+  const { user, signUp, isLoading, error: authError, clearError } = useAuth();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -22,7 +24,6 @@ export default function RegisterScreen() {
   const usernameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const { user, signUp, isLoading, error: authError, clearError } = useAuth();
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const { width, height } = useWindowDimensions();
@@ -92,16 +93,23 @@ export default function RegisterScreen() {
     if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
   }, [email, isLoading, password, pendingInvite, router, signUp, username]);
 
+  if (user?.guest) {
+    return (
+      <View style={styles.guestSheetHost}>
+        <AuthSheet
+          isOpen
+          onClose={() => router.replace('/home')}
+          onSaved={() => router.replace(authenticatedDestination(pendingInvite) as Href)}
+          onClaimClassic={() => router.push('/(auth)/login')}
+        />
+      </View>
+    );
+  }
+
   return (
     <AuthScreenFrame
-      title={user?.guest ? 'Save your player' : 'Create your account'}
-      subtitle={
-        compactLandscape
-          ? undefined
-          : user?.guest
-            ? 'Keep your name and progress on every device.'
-            : 'Choose your name and claim a seat at the table.'
-      }
+      title="Create your account"
+      subtitle={compactLandscape ? undefined : 'Choose your name and claim a seat at the table.'}
       error={authError}
       footer={
         <View style={styles.footerRows}>
@@ -113,8 +121,8 @@ export default function RegisterScreen() {
               Sign in
             </Link>
           </View>
-          <Link href={user?.guest ? '/home' : '/welcome'} style={styles.quietLink}>
-            {user?.guest ? 'Back to game' : 'Play as guest'}
+          <Link href="/welcome" style={styles.quietLink}>
+            Play as guest
           </Link>
         </View>
       }>
@@ -188,7 +196,7 @@ export default function RegisterScreen() {
         </View>
       </View>
       <BevelButton
-        label={user?.guest ? 'Save account' : 'Create account'}
+        label="Create account"
         material="wood"
         size="md"
         fullWidth
@@ -200,6 +208,10 @@ export default function RegisterScreen() {
 }
 
 const styles = StyleSheet.create({
+  guestSheetHost: {
+    flex: 1,
+    backgroundColor: PidroColors.feltBottom,
+  },
   fields: {
     gap: PidroSpacing.md,
   },

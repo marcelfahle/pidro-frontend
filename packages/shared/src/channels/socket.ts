@@ -52,12 +52,11 @@ export class PhoenixSocket {
 
   private openConnection() {
     if (!this.socket) return;
+    // Keep the credential Phoenix will use for its next automatic reconnect
+    // current even while an existing connection intentionally stays open.
+    (this.socket as Socket & { authToken?: string }).authToken =
+      this.tokenGetter?.() ?? undefined;
     if (!this.socket.isConnected()) {
-      // Phoenix exposes authToken at runtime but the DefinitelyTyped package
-      // does not declare the public field. Refresh it before every connection
-      // so sign-out/sign-in never reuses the previous account's JWT.
-      (this.socket as Socket & { authToken?: string }).authToken =
-        this.tokenGetter?.() ?? undefined;
       this.socket.connect();
     }
   }

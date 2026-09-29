@@ -50,7 +50,7 @@ export type RegisterResponse = AuthResponseEnvelope['data'];
 export type UpgradeGuestResponse = AuthResponseEnvelope['data'];
 
 export interface CreateGuestRequest {
-  display_name: string;
+  display_name?: string;
   invite_code?: string;
   creation_token?: string;
   platform?: 'ios' | 'android' | 'web';
@@ -101,10 +101,11 @@ export function createAuthApi(api: ApiClient) {
 
   return {
     login: async (username: string, password: string): Promise<LoginResponse> => {
-      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/login', {
-        username,
-        password,
-      });
+      const response = await api.post<AuthResponseEnvelope>(
+        '/api/v1/auth/login',
+        { username, password },
+        { preserveSessionOnUnauthorized: true },
+      );
       return response.data.data;
     },
 
@@ -120,15 +121,15 @@ export function createAuthApi(api: ApiClient) {
     },
 
     upgradeGuest: async (
-      username: string,
+      displayName: string,
       email: string,
       password: string
     ): Promise<UpgradeGuestResponse> => {
-      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/upgrade', {
-        username,
-        email,
-        password,
-      });
+      const response = await api.post<AuthResponseEnvelope>(
+        '/api/v1/auth/upgrade',
+        { username: displayName, email, password },
+        { preserveSessionOnUnauthorized: true },
+      );
       return response.data.data;
     },
 

@@ -1,6 +1,12 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import type { PlatformConfig } from '../platform/types';
 
+declare module 'axios' {
+  interface AxiosRequestConfig {
+    preserveSessionOnUnauthorized?: boolean;
+  }
+}
+
 export type TokenGetter = () => string | null;
 export type SessionClearer = () => void;
 
@@ -8,9 +14,15 @@ interface ApiClientDeps {
   config: PlatformConfig;
   getToken: TokenGetter;
   clearSession: SessionClearer;
+  shouldPreserveSessionOnUnauthorized?: () => boolean;
 }
 
-export function createApiClient({ config, getToken, clearSession }: ApiClientDeps) {
+export function createApiClient({
+  config,
+  getToken,
+  clearSession,
+  shouldPreserveSessionOnUnauthorized,
+}: ApiClientDeps) {
   const instance = axios.create({
     baseURL: config.baseURL,
     timeout: config.timeout,
@@ -28,17 +40,28 @@ export function createApiClient({ config, getToken, clearSession }: ApiClientDep
       }
       return reqConfig;
     },
-    (error: AxiosError) => Promise.reject(error)
+    (error: AxiosError) => Promise.reject(error),
   );
 
   instance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
-      if (error.response?.status === 401) {
+      const authorization = error.config?.headers?.Authorization;
+      const requestToken =
+        typeof authorization === 'string' && authorization.startsWith('Bearer ')
+          ? authorization.slice('Bearer '.length)
+          : null;
+      if (
+        error.response?.status === 401 &&
+        !error.config?.preserveSessionOnUnauthorized &&
+        !shouldPreserveSessionOnUnauthorized?.() &&
+        requestToken != null &&
+        requestToken === getToken()
+      ) {
         clearSession();
       }
       return Promise.reject(error);
-    }
+    },
   );
 
   return instance;

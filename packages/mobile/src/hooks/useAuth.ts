@@ -13,9 +13,12 @@ import {
   type SocialCredentialResult,
 } from '@/features/auth/socialCredentials';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
+import { runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
+
+export type { GuestSaveField, GuestSaveFailure, GuestSaveResult } from '@/features/auth/saveGuest';
 
 type ApiError = {
-  errors?: { detail: string }[];
+  errors?: { code?: string; title?: string; detail: string }[];
   message?: string;
 };
 
@@ -137,10 +140,7 @@ export function useAuth() {
       try {
         setIsLoading(true);
         setError(null);
-        const currentUser = useAuthStore.getState().user;
-        const response = currentUser?.guest
-          ? await authApi.upgradeGuest(username, email, password)
-          : await authApi.register(username, email, password);
+        const response = await authApi.register(username, email, password);
         setSession({
           accessToken: response.token,
           user: response.user,
@@ -155,6 +155,39 @@ export function useAuth() {
         const message = extractErrorMessage(e, 'Failed to create account');
         setError(message);
         return false;
+      } finally {
+        requestInFlight.current = false;
+        setIsLoading(false);
+      }
+    },
+    [setSession]
+  );
+
+  const saveGuest = useCallback(
+    async (displayName: string, email: string, password: string): Promise<GuestSaveResult> => {
+      if (requestInFlight.current) {
+        return { ok: false, error: { message: 'Account saving is already in progress.' } };
+      }
+      const original = useAuthStore.getState();
+      requestInFlight.current = true;
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const result = await runGuestSave({
+          original,
+          displayName,
+          email,
+          password,
+          upgrade: authApi.upgradeGuest,
+          login: authApi.login,
+          getSession: useAuthStore.getState,
+          install: (response) => setSession({ accessToken: response.token, user: response.user }),
+          setSessionPreservation: (preserve) =>
+            useAuthStore.getState().setPreserveSessionOnUnauthorized(preserve),
+        });
+        if (!result.ok) setError(result.error.message);
+        return result;
       } finally {
         requestInFlight.current = false;
         setIsLoading(false);
@@ -256,6 +289,7 @@ export function useAuth() {
     signIn,
     signInWithProvider,
     signUp,
+    saveGuest,
     continueAsGuest,
     requestPasswordReset,
     resetPassword,
