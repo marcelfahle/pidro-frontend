@@ -132,6 +132,10 @@ jobs:
           start_expo
 
           bun run test:ui
+          # The screenshot matrix retains enough Metro/SSR state to starve later page loads.
+          # The remaining suites are independent, so continue against a fresh server.
+          cleanup
+          start_expo
           UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
           node scripts/verify-seat-decisions.mjs
           node scripts/verify-dealing.mjs

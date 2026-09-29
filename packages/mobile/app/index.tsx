@@ -1,9 +1,12 @@
 import { Redirect, type Href } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
-import { ActivityIndicator, View, Text } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { initialRoute } from '@/navigation/initialRoute';
 import { useDeferredInviteBootstrap } from '@/features/invites/useDeferredInviteBootstrap';
+import { PidroLogo } from '@/components/ui/PidroLogo';
+import { ScreenShell } from '@/components/ui/ScreenShell';
+import { PidroColors, PidroSpacing } from '@/design/tokens';
 
 export default function Index() {
   const status = useAuthStore((s) => s.status);
@@ -17,12 +20,27 @@ export default function Index() {
 
   if (!route) {
     return (
-      <View className="flex-1 items-center justify-center bg-white">
-        <Text className="mb-4 text-4xl font-bold tracking-tighter text-slate-900">PIDRO</Text>
-        <ActivityIndicator size="small" color="#0f172a" />
-      </View>
+      <ScreenShell contentStyle={styles.loading}>
+        <View style={styles.logo}>
+          <PidroLogo size="hero" />
+        </View>
+        <ActivityIndicator size="small" color={PidroColors.cyanText} />
+      </ScreenShell>
     );
   }
 
   return <Redirect href={route as Href} />;
 }
+
+const styles = StyleSheet.create({
+  loading: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: PidroSpacing.md,
+  },
+  logo: {
+    height: 170,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it } from 'bun:test';
 import { createRequire } from 'node:module';
 import { createPendingInviteStore } from '../../../shared/src/stores/pendingInvite.ts';
 import { redirectSystemPath } from '../../app/+native-intent.tsx';
-import { canAccessProtectedRoutes, initialRoute } from '../../src/navigation/initialRoute.ts';
+import {
+  authenticatedDestination,
+  canAccessProtectedRoutes,
+  initialRoute,
+} from '../../src/navigation/initialRoute.ts';
 
 globalThis.__DEV__ = true;
 
@@ -87,7 +91,15 @@ describe('initial route', () => {
 
   it('otherwise follows the existing auth entry behavior', () => {
     expect(initialRoute(true, true, 'authenticated', null)).toBe('/home');
-    expect(initialRoute(true, true, 'unauthenticated', null)).toBe('/(auth)/login');
+    expect(initialRoute(true, true, 'unauthenticated', null)).toBe('/welcome');
+  });
+
+  it('uses one post-authentication return contract for home and invitations', () => {
+    expect(authenticatedDestination(null)).toBe('/home');
+    expect(authenticatedDestination({ code: '7KQ4M2XB', source: 'im', receivedAt: 1 })).toBe(
+      '/join/7KQ4M2XB?source=im'
+    );
+    expect(authenticatedDestination({ code: '7KQ4M2XB', receivedAt: 1 })).toBe('/join/7KQ4M2XB');
   });
 
   it('removes protected-route access when an active session is cleared', () => {
@@ -112,9 +124,7 @@ describe('initial route', () => {
     await store.persist.rehydrate();
 
     expect(store.getState().hydrated).toBe(true);
-    expect(initialRoute(true, store.getState().hydrated, 'unauthenticated', null)).toBe(
-      '/(auth)/login'
-    );
+    expect(initialRoute(true, store.getState().hydrated, 'unauthenticated', null)).toBe('/welcome');
   });
 });
 

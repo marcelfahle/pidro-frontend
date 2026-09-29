@@ -17,7 +17,7 @@ export function canManageRoom(
 }
 
 export function seatDisplayName(player: Player | null | undefined): string {
-  return publicPlayerName(player?.username, '');
+  return publicPlayerName(player?.username, '', player?.display_name);
 }
 
 export function availableMoveTargets(room: Room, current: Position): Position[] {

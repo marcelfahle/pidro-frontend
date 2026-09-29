@@ -1,4 +1,4 @@
-import { lifecycleFromReply } from '@pidro/shared';
+import { lifecycleFromReply, publicPlayerName } from '@pidro/shared';
 import { useEffect, useRef } from 'react';
 import { Channel, Presence } from 'phoenix';
 import {
@@ -82,7 +82,7 @@ function applyLifecycle(
     const isBot = next.status === 'bot_substitute' || next.status === 'permanent_bot';
     const name = isBot
       ? (next.decision?.player_name ?? previous.username ?? 'A player')
-      : (next.username ?? 'A player');
+      : publicPlayerName(next.username, 'A player', next.display_name);
     if (isBot && !wasBot && previous.status !== 'vacant') {
       onSeatEvent?.({
         message: `${name} (${position}) disconnected. Bot is filling in.`,
@@ -411,7 +411,9 @@ export const useGameChannel = ({
         if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = (data?.username as string) || (data?.player_name as string) || null;
+        const username =
+          publicPlayerName(data?.username ?? data?.player_name, '', data?.display_name) ||
+          undefined;
         if (position) {
           setSeatStatus(position, 'bot_substitute', username);
           setPlayerConnected(null, position, true);
@@ -426,7 +428,9 @@ export const useGameChannel = ({
         if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = (data?.username as string) || (data?.player_name as string) || null;
+        const username =
+          publicPlayerName(data?.username ?? data?.player_name, '', data?.display_name) ||
+          undefined;
         if (position) {
           setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
@@ -471,12 +475,14 @@ export const useGameChannel = ({
         if (useGameStore.getState().lifecycle) return;
         const data = payload as Record<string, unknown> | undefined;
         const position = (data?.position as Position) || null;
-        const username = (data?.username as string) || (data?.player_name as string) || null;
+        const username =
+          publicPlayerName(data?.username ?? data?.player_name, '', data?.display_name) ||
+          undefined;
         if (position) {
-          setSeatStatus(position, 'normal', username ?? null);
+          setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
-            message: `${username ?? 'A new player'} joined as substitute`,
+            message: `${username || 'A new player'} joined as substitute`,
             variant: 'success',
           });
         }

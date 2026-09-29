@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter, type Href } from 'expo-router';
 import type { InviteArrivalSource, InvitePreview } from '@pidro/shared';
-import { normalizeInviteCode } from '@pidro/shared';
+import { normalizeInviteCode, publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { createGuest } from '@/api/auth';
 import { invitesApi } from '@/api/invites';
 import { lobbyApi } from '@/api/lobby';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
@@ -43,6 +44,8 @@ const stateMessageKeys = {
 
 export function JoinInviteScreen({ code, source, fixture }: Props) {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const compactLandscape = width > height && height < 500;
   const authHydrated = useAuthStore((state) => state.hydrated);
   const user = useAuthStore((state) => state.user);
   const setSession = useAuthStore((state) => state.setSession);
@@ -280,7 +283,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
     if (submitting || guestCreatingRef.current || redeemingRef.current) return;
     routeActiveRef.current = false;
     clearPendingInvite();
-    router.replace((user ? '/home' : '/(auth)/login') as Href);
+    router.replace((user ? '/home' : '/welcome') as Href);
   }, [clearPendingInvite, router, submitting, user]);
 
   const availability = movedCode ? 'moved' : preview ? classifyInviteState(preview.state) : null;
@@ -351,33 +354,63 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
 
         {!flowLoading && availability === 'joinable' && !user ? (
           <View style={styles.form}>
-            <Input
-              label={t('invite.name.label')}
-              placeholder={t('invite.name.placeholder')}
-              value={displayName}
-              onChangeText={setDisplayName}
-              error={nameError ?? undefined}
-              editable={!submitting}
-              maxLength={80}
-              autoCapitalize="words"
-              autoCorrect={false}
-              returnKeyType="go"
-              onSubmitEditing={submitGuest}
-            />
-            <Button
-              label={t('invite.join')}
-              onPress={submitGuest}
-              loading={submitting}
-              disabled={!displayName.trim()}
-              size="lg"
-            />
+            <View style={[styles.joinRow, compactLandscape && styles.joinRowCompact]}>
+              <View style={styles.nameField}>
+                <Input
+                  label={t('invite.name.label')}
+                  placeholder={t('invite.name.placeholder')}
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  error={nameError ?? undefined}
+                  editable={!submitting}
+                  maxLength={80}
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  returnKeyType="go"
+                  onSubmitEditing={submitGuest}
+                />
+              </View>
+              <BevelButton
+                label={t('invite.join')}
+                material="wood"
+                size="md"
+                onPress={submitGuest}
+                loading={submitting}
+                disabled={!displayName.trim()}
+              />
+            </View>
+            <View style={styles.accountEntry}>
+              {compactLandscape ? null : (
+                <PidroText role="metadata" tone="muted" align="center">
+                  Or join with an account
+                </PidroText>
+              )}
+              <View style={styles.accountActions}>
+                <BevelButton
+                  label="Create account"
+                  material="glass"
+                  size="sm"
+                  onPress={() => router.push('/(auth)/register')}
+                />
+                <BevelButton
+                  label="Sign in"
+                  material="glass"
+                  size="sm"
+                  onPress={() => router.push('/(auth)/login')}
+                />
+              </View>
+            </View>
           </View>
         ) : null}
 
         {!flowLoading && availability === 'joinable' && user ? (
           <View style={styles.stack}>
             <PidroText role="body" tone="soft" align="center" accessibilityLiveRegion="polite">
-              {submitting ? t('invite.joining') : t('invite.readyAs', { name: user.username })}
+              {submitting
+                ? t('invite.joining')
+                : t('invite.readyAs', {
+                    name: publicPlayerName(user.username, 'Player', user.display_name),
+                  })}
             </PidroText>
             {error && !confirmLeave && !submitting ? (
               <Button
@@ -421,6 +454,26 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: PidroSpacing.md,
+  },
+  joinRow: {
+    gap: PidroSpacing.md,
+  },
+  joinRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+  },
+  nameField: {
+    minWidth: 0,
+    flex: 1,
+  },
+  accountEntry: {
+    gap: PidroSpacing.xs,
+  },
+  accountActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: PidroSpacing.sm,
   },
   actions: {
     flexDirection: 'row',

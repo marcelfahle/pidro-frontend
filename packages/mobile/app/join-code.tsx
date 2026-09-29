@@ -35,7 +35,7 @@ export default function JoinCodeScreen() {
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
-    else router.replace((authenticated ? '/home' : '/(auth)/login') as Href);
+    else router.replace((authenticated ? '/home' : '/welcome') as Href);
   };
 
   const submit = () => {

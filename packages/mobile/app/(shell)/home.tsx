@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { clampRoomName } from '@pidro/shared';
+import { clampRoomName, publicPlayerName } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -32,6 +32,7 @@ export default function HomeScreen() {
   const [error, setError] = useState<string | null>(null);
   const refreshIdentity = useProfileIdentity();
   const pillClearance = usePillClearance();
+  const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
 
   useFocusEffect(
     useCallback(() => {
@@ -41,7 +42,7 @@ export default function HomeScreen() {
 
   const createSinglePlayerRoom = async () => {
     const response = await lobbyApi.createRoom({
-      name: clampRoomName(`${user?.username ?? 'Player'}'s solo table`),
+      name: clampRoomName(`${playerName}'s solo table`),
       seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
     });
     if (!response?.code) throw new Error('No room code returned');
@@ -97,7 +98,7 @@ export default function HomeScreen() {
         <LevelRing uri={user?.avatar_url} accessibilityLabel="Your profile picture" />
         <View style={styles.identityCopy}>
           <PidroText role="label" numberOfLines={1}>
-            {user?.username ?? 'Player'}
+            {playerName}
           </PidroText>
         </View>
       </PressableFX>

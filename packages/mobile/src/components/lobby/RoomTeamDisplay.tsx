@@ -1,4 +1,5 @@
 import { View, StyleSheet } from 'react-native';
+import { publicPlayerName } from '@pidro/shared';
 import { Seat, Position } from '@/types/lobby';
 import { POSITION_TO_INDEX } from '@/utils/positions';
 import { PidroColors, PidroRadii, PidroSpacing, PidroType } from '@/design/tokens';
@@ -51,6 +52,7 @@ export function RoomTeamDisplay({
         player: {
           id: string;
           username: string;
+          display_name?: string | null;
           is_bot?: boolean;
           avatar_url?: string | null;
         } | null;
@@ -108,11 +110,12 @@ export function RoomTeamDisplay({
     const canJoin = !isOccupied && isAvailable(position) && !isPlaying && !isFull;
 
     if (isOccupied && player) {
+      const playerName = publicPlayerName(player.username, 'Player', player.display_name);
       const content = (
         <>
           <LevelRing uri={player.avatar_url} size={48} />
           <PidroText role="metadata" style={styles.name} numberOfLines={1}>
-            {player.username}
+            {playerName}
           </PidroText>
         </>
       );
@@ -121,7 +124,7 @@ export function RoomTeamDisplay({
       ) : (
         <PressableFX
           accessibilityRole="button"
-          accessibilityLabel={`View ${player.username}'s profile`}
+          accessibilityLabel={`View ${playerName}'s profile`}
           onPress={() => setProfilePlayerId(player.id)}
           style={styles.seat}>
           {content}

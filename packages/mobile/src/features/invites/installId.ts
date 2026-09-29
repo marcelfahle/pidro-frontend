@@ -12,3 +12,16 @@ export async function getInstallId(): Promise<string> {
   await AsyncStorage.setItem(STORAGE_KEYS.installId, installId);
   return installId;
 }
+
+export async function getGuestCreationToken(): Promise<string> {
+  const stored = await AsyncStorage.getItem(STORAGE_KEYS.guestCreationToken);
+  if (stored && INSTALL_ID_PATTERN.test(stored)) return stored;
+
+  const token = Crypto.randomUUID();
+  await AsyncStorage.setItem(STORAGE_KEYS.guestCreationToken, token);
+  return token;
+}
+
+export async function clearGuestCreationToken(): Promise<void> {
+  await AsyncStorage.removeItem(STORAGE_KEYS.guestCreationToken);
+}

@@ -8,7 +8,7 @@ export function waitingRoomEvent(
 ): WaitingRoomEvent | null {
   if (event === 'kicked') return { kind: 'kicked' };
   if (event === 'invite_redeemed') {
-    const joiningName = publicPlayerName(payload.username, '');
+    const joiningName = publicPlayerName(payload.username, '', payload.display_name);
     return { kind: 'refresh', ...(joiningName ? { joiningName } : {}) };
   }
   if (event === 'player_kicked' || event === 'seat_moved' || event === 'owner_changed') {
