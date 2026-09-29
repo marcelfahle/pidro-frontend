@@ -1,4 +1,3 @@
-import { Platform } from 'react-native';
 import type { AuthProvider } from '@/api/auth';
 
 export type SocialCredentialResult =
@@ -46,13 +45,8 @@ async function facebookSignIn(): Promise<{ cancelled: boolean; accessToken: stri
   return { cancelled: false, accessToken: current?.accessToken ?? null };
 }
 
-const defaultDependencies: SocialCredentialDependencies = {
-  platform: Platform.OS,
-  appleSignIn,
-  facebookSignIn,
-};
-
 export async function getSocialProviderAvailability(): Promise<SocialProviderAvailability> {
+  const { Platform } = await import('react-native');
   let apple = false;
   if (Platform.OS === 'ios') {
     const AppleAuthentication = await import('expo-apple-authentication');
@@ -74,22 +68,30 @@ export async function getSocialProviderAvailability(): Promise<SocialProviderAva
 
 export async function requestSocialCredential(
   provider: AuthProvider,
-  dependencies: SocialCredentialDependencies = defaultDependencies
+  dependencies?: SocialCredentialDependencies
 ): Promise<SocialCredentialResult> {
-  if (provider === 'apple' && dependencies.platform !== 'ios') {
+  const resolvedDependencies =
+    dependencies ??
+    ({
+      platform: (await import('react-native')).Platform.OS,
+      appleSignIn,
+      facebookSignIn,
+    } satisfies SocialCredentialDependencies);
+
+  if (provider === 'apple' && resolvedDependencies.platform !== 'ios') {
     return { status: 'failure', provider, message: 'Apple sign-in is unavailable on this device.' };
   }
 
   try {
     if (provider === 'apple') {
-      const token = await dependencies.appleSignIn();
+      const token = await resolvedDependencies.appleSignIn();
       if (!token) {
         return { status: 'failure', provider, message: 'Apple sign-in did not return a token.' };
       }
       return { status: 'success', provider, token };
     }
 
-    const result = await dependencies.facebookSignIn();
+    const result = await resolvedDependencies.facebookSignIn();
     if (result.cancelled) return { status: 'cancelled', provider };
     if (!result.accessToken) {
       return {

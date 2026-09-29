@@ -1,6 +1,4 @@
-import { describe, expect, it, mock } from 'bun:test';
-
-mock.module('react-native', () => ({ Platform: { OS: 'ios' } }));
+import { describe, expect, it } from 'bun:test';
 
 const { requestSocialCredential } = await import('../../src/features/auth/socialCredentials.ts');
 
