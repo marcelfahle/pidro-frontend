@@ -41,6 +41,7 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
+import { shouldAutoReadySolo } from '@/features/game/soloReadiness';
 import { t } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
@@ -54,6 +55,7 @@ type SkiaTableProps = {
   rematchPending?: boolean;
   roomFinished?: boolean;
   onHome?: () => void;
+  playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
 };
@@ -326,6 +328,24 @@ export default function GameScreen() {
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
   const { notice, addNotice: handleSeatEvent, clearNotices } = useTableNotices(code);
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
+  const autoReadyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (
+      origin !== 'single-player' ||
+      !isChannelJoined ||
+      !shouldAutoReadySolo(readiness, youPositionAbs)
+    ) {
+      return;
+    }
+    const key = `${readiness!.room_id}:${readiness!.ready_epoch}`;
+    if (autoReadyRef.current === key) return;
+    autoReadyRef.current = key;
+    void handleReady().catch(() => {
+      autoReadyRef.current = null;
+      handleSeatEvent({ message: 'Could not start the solo game. Try again.', variant: 'warning' });
+    });
+  }, [handleReady, handleSeatEvent, isChannelJoined, origin, readiness, youPositionAbs]);
 
   const handleProgressionSummary = useCallback(
     (summary: ProgressionSummary) => {
@@ -718,6 +738,7 @@ export default function GameScreen() {
           rematchPending={rematchPending}
           roomFinished={readiness ? readiness.status === 'finished' : true}
           onHome={() => handleLeaveGame('/home')}
+          playAgainLabel={origin === 'single-player' ? 'Play again' : undefined}
           showGuestSave={showGuestSave && Boolean(currentUser?.guest)}
           onSaveGuest={() => setAccountSheetOpen(true)}
         />

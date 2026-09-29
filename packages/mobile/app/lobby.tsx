@@ -15,6 +15,7 @@ import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
+import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
@@ -77,7 +78,15 @@ export default function LobbyScreen() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const pendingAccountActionRef = useRef<(() => Promise<void>) | null>(null);
   const realtimeRevisionRef = useRef(0);
+
+  const requestAccount = (retry: () => Promise<void>) => {
+    pendingAccountActionRef.current = retry;
+    setIsCreateModalOpen(false);
+    setAccountSheetOpen(true);
+  };
 
   const markRealtimeUpdate = useCallback(() => {
     realtimeRevisionRef.current += 1;
@@ -150,7 +159,7 @@ export default function LobbyScreen() {
     loadLobby();
   }, [loadLobby]);
 
-  const handleJoinRoom = async (code: string, position?: Position) => {
+  const handleJoinRoom = async (code: string, position?: Position, mayRequestAccount = true) => {
     try {
       const response = await lobbyApi.joinRoom(code, position);
       captureAnalytics('room_joined', { join_source: 'lobby' });
@@ -158,6 +167,17 @@ export default function LobbyScreen() {
       router.push(`/game/${code}`);
     } catch (joinError: unknown) {
       const { code: errorCode, detail } = apiErrorInfo(joinError);
+      if (errorCode === 'ACCOUNT_REQUIRED') {
+        if (mayRequestAccount) {
+          requestAccount(() => handleJoinRoom(code, position, false));
+        } else {
+          Alert.alert(
+            'Could not join',
+            detail || 'Your account could not be confirmed. Please try again.'
+          );
+        }
+        return;
+      }
       if (errorCode === 'ALREADY_IN_ROOM') {
         if (activeRoom?.code === code) {
           router.push(`/game/${code}`);
@@ -175,17 +195,29 @@ export default function LobbyScreen() {
     }
   };
 
-  const handleWatchRoom = async (code: string) => {
+  const handleWatchRoom = async (code: string, mayRequestAccount = true) => {
     try {
       await lobbyApi.watchRoom(code);
       router.push(`/game/${code}`);
     } catch (watchError: unknown) {
-      const { detail } = apiErrorInfo(watchError);
+      const { code: errorCode, detail } = apiErrorInfo(watchError);
+      if (errorCode === 'ACCOUNT_REQUIRED' && mayRequestAccount) {
+        requestAccount(() => handleWatchRoom(code, false));
+        return;
+      }
       Alert.alert('Could not watch', detail || 'That table may no longer be available.');
     }
   };
 
-  const handleCreateRoom = async (data: CreateRoomRequest) => {
+  const handleCreateRoom = async (
+    data: CreateRoomRequest,
+    mayRequestAccount = true,
+    showFailureAlert = false
+  ) => {
+    const reportFailure = (message: string) => {
+      if (showFailureAlert) Alert.alert('Could not create table', message);
+      else setCreateError(message);
+    };
     setIsCreating(true);
     setCreateError(null);
     try {
@@ -200,9 +232,17 @@ export default function LobbyScreen() {
       router.replace(`/game/${response.code}`);
     } catch (createRoomError: unknown) {
       const { code, detail } = apiErrorInfo(createRoomError);
+      if (code === 'ACCOUNT_REQUIRED') {
+        if (mayRequestAccount) {
+          requestAccount(() => handleCreateRoom(data, false, true));
+        } else {
+          reportFailure(detail || 'Your account could not be confirmed. Please try again.');
+        }
+        return;
+      }
       if (code === 'ALREADY_IN_ROOM') {
         if (activeRoom) {
-          setCreateError(
+          reportFailure(
             `You are already at table ${activeRoom.code}. Rejoin it or leave before creating another table.`
           );
         } else {
@@ -221,8 +261,19 @@ export default function LobbyScreen() {
             router.replace(`/game/${retryResponse.code}`);
             return;
           } catch (retryError) {
-            const retryDetail = apiErrorInfo(retryError).detail;
-            setCreateError(
+            const retryInfo = apiErrorInfo(retryError);
+            if (retryInfo.code === 'ACCOUNT_REQUIRED') {
+              if (mayRequestAccount) {
+                requestAccount(() => handleCreateRoom(data, false, true));
+              } else {
+                reportFailure(
+                  retryInfo.detail || 'Your account could not be confirmed. Please try again.'
+                );
+              }
+              return;
+            }
+            const retryDetail = retryInfo.detail;
+            reportFailure(
               retryDetail
                 ? `We could not clear your previous table: ${retryDetail}`
                 : 'The server still has you at another table. Refresh the lobby, then rejoin or leave it before creating a new table.'
@@ -230,7 +281,7 @@ export default function LobbyScreen() {
           }
         }
       } else {
-        setCreateError(
+        reportFailure(
           detail
             ? `We could not create the table: ${detail}`
             : 'We could not create the table. Please try again.'
@@ -429,6 +480,25 @@ export default function LobbyScreen() {
         username={playerName}
         avatarUrl={user?.avatar_url}
         error={createError}
+      />
+      <AuthSheet
+        isOpen={accountSheetOpen}
+        reason="multiplayer"
+        onClose={() => {
+          pendingAccountActionRef.current = null;
+          setAccountSheetOpen(false);
+        }}
+        onSaved={() => {
+          const retry = pendingAccountActionRef.current;
+          pendingAccountActionRef.current = null;
+          setAccountSheetOpen(false);
+          void retry?.();
+        }}
+        onClaimClassic={() => {
+          pendingAccountActionRef.current = null;
+          setAccountSheetOpen(false);
+          router.push('/(auth)/login');
+        }}
       />
     </ScreenShell>
   );

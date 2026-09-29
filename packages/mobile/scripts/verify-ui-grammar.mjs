@@ -39,7 +39,12 @@ const allCases = [
     name: 'welcome-guest',
     path: '/welcome',
     testId: 'welcome-window',
-    openGuestEntry: true,
+  },
+  {
+    name: 'welcome-invite',
+    path: '/welcome',
+    testId: 'welcome-window',
+    pendingInvite: true,
   },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
@@ -133,6 +138,11 @@ const allCases = [
     heights: [844],
   },
   { name: 'table-game-over', path: '/table-dev?phase=game_over', testId: 'game-over-window' },
+  {
+    name: 'table-game-over-guest',
+    path: '/table-dev?phase=game_over&guest=true',
+    testId: 'game-over-window',
+  },
   {
     name: 'table-game-over-rematch-waiting',
     path: '/table-dev?phase=game_over&rematch=waiting',
@@ -352,18 +362,6 @@ async function assertAuthFormInteractions(page, name, viewport) {
 async function assertWelcomeGuestInteractions(page, name, viewport) {
   if (name !== 'welcome-guest') return;
 
-  const input = page.getByPlaceholder('What should players call you?');
-  const submit = page.getByRole('button', { name: 'Play', exact: true });
-  await submit.click();
-  await page.getByText('Enter the name other players will see.', { exact: true }).waitFor();
-  if (!(await input.evaluate((element) => element === document.activeElement))) {
-    throw new Error(`guest validation did not focus the public name in ${viewport.name}`);
-  }
-
-  await input.fill('A');
-  await submit.click();
-  await page.getByText('Use at least 2 characters.', { exact: true }).waitFor();
-
   const requestBodies = [];
   await page.route('**/api/v1/auth/guest', async (route) => {
     requestBodies.push(route.request().postDataJSON());
@@ -377,7 +375,7 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
             user: {
               id: 'ui-guest-user',
               username: 'guest_7KQ4M2XB',
-              display_name: 'Anna',
+              display_name: 'Amber Fox',
               email: null,
               guest: true,
             },
@@ -392,18 +390,30 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
       body: JSON.stringify({ errors: [{ detail: 'Too many attempts. Try again soon.' }] }),
     });
   });
-  await input.fill('Anna');
+  const roomBodies = [];
+  await page.route('**/api/v1/rooms', async (route) => {
+    if (route.request().method() !== 'POST') return route.continue();
+    roomBodies.push(route.request().postDataJSON());
+    await route.fulfill({
+      status: 201,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { code: 'SOLO1' } }),
+    });
+  });
+
+  const submit = page.getByRole('button', { name: 'PLAY', exact: true });
   await submit.click();
   await page.getByText('Too many attempts. Try again soon.', { exact: true }).waitFor();
-  assert.equal(await input.inputValue(), 'Anna', 'Guest errors must preserve the public name');
-  assert.equal(requestBodies[0].display_name, 'Anna');
+  assert.equal('display_name' in requestBodies[0], false);
   assert.match(requestBodies[0].creation_token, /^[0-9a-f-]{36}$/i);
   assert.equal('invite_code' in requestBodies[0], false);
 
   await submit.click();
-  await page.waitForURL((url) => url.pathname.endsWith('/home'), { timeout: 10_000 });
-  await page.getByText('Anna', { exact: true }).waitFor();
+  await page.waitForURL((url) => url.pathname.endsWith('/game/SOLO1'), { timeout: 10_000 });
   assert.equal(requestBodies[1].creation_token, requestBodies[0].creation_token);
+  assert.equal('display_name' in requestBodies[1], false);
+  assert.equal(roomBodies.length, 1);
+  assert.deepEqual(roomBodies[0].seats, { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' });
 }
 
 async function assertBiddingRevealSequence(page, viewport) {
@@ -701,12 +711,51 @@ async function main() {
           continue;
         const page = await context.newPage();
         await page.addInitScript(
-          ({ authenticated, fixture }) => {
+          ({ authenticated, fixture, pendingInvite }) => {
             if (authenticated) globalThis.localStorage.setItem('auth-storage', fixture);
             else globalThis.localStorage.removeItem('auth-storage');
+            if (pendingInvite) {
+              globalThis.localStorage.setItem(
+                'pending-invite-storage',
+                JSON.stringify({
+                  state: {
+                    pendingInvite: { code: '7KQ4M2XB', source: 'copy', receivedAt: 1 },
+                  },
+                  version: 0,
+                })
+              );
+            } else {
+              globalThis.localStorage.removeItem('pending-invite-storage');
+            }
           },
-          { authenticated: testCase.authenticated === true, fixture: authFixture }
+          {
+            authenticated: testCase.authenticated === true,
+            fixture: authFixture,
+            pendingInvite: testCase.pendingInvite === true,
+          }
         );
+        if (testCase.pendingInvite) {
+          await page.route('**/api/v1/invites/7KQ4M2XB', async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                data: {
+                  invite: {
+                    code: '7KQ4M2XB',
+                    state: 'open',
+                    host: 'Anna',
+                    seats_taken: 2,
+                    seats_total: 4,
+                    seat_hint: 'partner',
+                    label: null,
+                    expires_at: '2099-01-01T00:00:00Z',
+                  },
+                },
+              }),
+            });
+          });
+        }
         const pageErrors = [];
         page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
@@ -731,15 +780,11 @@ async function main() {
           if (testCase.verifyDealerSelection || testCase.verifyDealerPrivacy) {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
-          if (testCase.openGuestEntry) {
-            await page.getByRole('button', { name: 'Play', exact: true }).click();
-            await page.getByPlaceholder('What should players call you?').waitFor();
-          }
           await assertTargetGeometry(page, testCase, viewport);
           if (testCase.name.startsWith('table-game-over')) {
             await page
               .getByTestId('victory-confetti')
-              .waitFor({ state: 'detached', timeout: 5000 });
+              .waitFor({ state: 'detached', timeout: 7000 });
           }
           await page.waitForTimeout(testCase.path.startsWith('/table-dev') ? 1_200 : 150);
           if (pageErrors.length) {

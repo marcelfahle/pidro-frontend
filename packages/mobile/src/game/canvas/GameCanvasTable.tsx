@@ -44,6 +44,7 @@ type Props = {
   /** False once the room has moved on from the finished game (next game starting). */
   roomFinished?: boolean;
   onHome?: () => void;
+  playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
 };
@@ -206,6 +207,7 @@ export function GameCanvasTable({
   rematchPending,
   roomFinished = true,
   onHome,
+  playAgainLabel,
   showGuestSave,
   onSaveGuest,
 }: Props) {
@@ -354,6 +356,7 @@ export function GameCanvasTable({
           onPlayAgain={onPlayAgain ?? onLeave}
           rematch={rematch}
           rematchPending={rematchPending}
+          playAgainLabel={playAgainLabel}
           showGuestSave={showGuestSave}
           onSaveGuest={onSaveGuest}
         />

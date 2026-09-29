@@ -88,6 +88,13 @@ describe('initial route', () => {
         receivedAt: 1,
       })
     ).toBe('/join/7KQ4M2XB?source=im');
+    expect(
+      initialRoute(true, true, 'unauthenticated', {
+        code: '7KQ4M2XB',
+        source: 'im',
+        receivedAt: 1,
+      })
+    ).toBe('/welcome');
   });
 
   it('otherwise follows the existing auth entry behavior', () => {
