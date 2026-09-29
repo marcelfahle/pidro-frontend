@@ -15,11 +15,6 @@ const variants = {
     scheme: 'pidro-mobile-dev',
     bundleIdentifier: 'com.marcelfahle.pidro3.dev',
   },
-  preview: {
-    name: 'Pidro Preview',
-    scheme: 'pidro-mobile-preview',
-    bundleIdentifier: 'com.marcelfahle.pidro3.preview',
-  },
   // Side-by-side TestFlight/Play build for the Classic cohort. Own App Store
   // Connect record (6816832730); App ID grouped under com.oneapps.pidro for
   // Sign in with Apple so identities match Classic. See PID-143.
@@ -41,13 +36,17 @@ module.exports = ({ config }) => {
     throw new Error(`Unsupported APP_VARIANT: ${JSON.stringify(variant)}`);
   }
 
-  const plugins = [...(config.plugins ?? []), 'expo-apple-authentication'];
-  if (facebookClientToken) {
-    plugins.push([
+  // The Facebook SDK is linked into every build and starts from the app
+  // delegate, so it always needs its app ID and the auto-logging switches off,
+  // even when no client token is set (the app then hides the button).
+  const plugins = [
+    ...(config.plugins ?? []),
+    'expo-apple-authentication',
+    [
       'react-native-fbsdk-next',
       {
         appID: '345200965110578',
-        clientToken: facebookClientToken,
+        ...(facebookClientToken ? { clientToken: facebookClientToken } : {}),
         displayName: 'Pidro',
         scheme: 'fb345200965110578',
         advertiserIDCollectionEnabled: false,
@@ -55,8 +54,8 @@ module.exports = ({ config }) => {
         isAutoInitEnabled: false,
         iosUserTrackingPermission: false,
       },
-    ]);
-  }
+    ],
+  ];
 
   return {
     ...config,
