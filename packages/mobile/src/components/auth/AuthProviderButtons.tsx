@@ -54,6 +54,8 @@ export function AuthProviderButtons({
     };
   }, [availabilityOverride]);
 
+  if (!availability.apple && !availability.facebook && !(showEmail && onEmail)) return null;
+
   return (
     <View style={styles.stack}>
       {availability.apple ? (
