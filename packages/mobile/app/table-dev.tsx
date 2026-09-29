@@ -212,6 +212,7 @@ function TableDevHarness() {
     rematch?: string;
     result?: string;
     xp?: string;
+    guest?: string;
     readyResult?: string;
     deal?: string;
     dealer?: string;
@@ -371,6 +372,7 @@ function TableDevHarness() {
             rematch={params.rematch}
             result={params.result}
             xp={params.xp}
+            guest={params.guest}
             playerName={params.playerName}
           />
           {params.feedback === 'owner' && (

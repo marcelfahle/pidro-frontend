@@ -30,7 +30,6 @@ import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
 import { AuthSheet } from '@/components/auth/AuthSheet';
-import { KeepProgressPrompt } from '@/components/auth/KeepProgressPrompt';
 import { WaitingTable } from '@/components/game/WaitingTable';
 import { InviteModal } from '@/components/invites/InviteModal';
 import { Background } from '@/components/ui/Background';
@@ -55,6 +54,8 @@ type SkiaTableProps = {
   rematchPending?: boolean;
   roomFinished?: boolean;
   onHome?: () => void;
+  showGuestSave?: boolean;
+  onSaveGuest?: () => void;
 };
 
 /**
@@ -278,7 +279,7 @@ export default function GameScreen() {
     (serverPhase === 'complete' || serverPhase === 'game_over') &&
     readiness?.status === 'finished' &&
     role === 'player';
-  const [savePromptOpen, setSavePromptOpen] = useState(false);
+  const [showGuestSave, setShowGuestSave] = useState(false);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const promptedCompletionRef = useRef<string | null>(null);
 
@@ -288,7 +289,7 @@ export default function GameScreen() {
     let active = true;
     void claimDailyGuestSavePrompt(currentUser.id)
       .then((show) => {
-        if (active && show) setSavePromptOpen(true);
+        if (active && show) setShowGuestSave(true);
       })
       .catch(() => undefined);
     return () => {
@@ -717,14 +718,8 @@ export default function GameScreen() {
           rematchPending={rematchPending}
           roomFinished={readiness ? readiness.status === 'finished' : true}
           onHome={() => handleLeaveGame('/home')}
-        />
-        <KeepProgressPrompt
-          isOpen={savePromptOpen}
-          onClose={() => setSavePromptOpen(false)}
-          onSave={() => {
-            setSavePromptOpen(false);
-            setAccountSheetOpen(true);
-          }}
+          showGuestSave={showGuestSave && Boolean(currentUser?.guest)}
+          onSaveGuest={() => setAccountSheetOpen(true)}
         />
         <AuthSheet
           isOpen={accountSheetOpen}

@@ -1,4 +1,4 @@
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LevelRing } from '@/components/home/LevelRing';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -24,6 +24,8 @@ interface GameOverOverlayProps {
   onPlayAgain: () => void;
   rematch?: RematchVote | null;
   rematchPending?: boolean;
+  showGuestSave?: boolean;
+  onSaveGuest?: () => void;
 }
 
 function displayName(player: RelativePlayerView): string {
@@ -41,6 +43,8 @@ export function GameOverOverlay({
   onPlayAgain,
   rematch,
   rematchPending = false,
+  showGuestSave = false,
+  onSaveGuest,
 }: GameOverOverlayProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -151,6 +155,18 @@ export function GameOverOverlay({
                 </PidroText>
               </Surface>
             )}
+            {showGuestSave && onSaveGuest ? (
+              <Pressable accessibilityRole="button" onPress={onSaveGuest}>
+                <Surface variant="plaque" style={styles.guestSave}>
+                  <PidroText role="label" tone="gold" align="center">
+                    Keep your progress
+                  </PidroText>
+                  <PidroText role="metadata" tone="cyan" align="center">
+                    Create a free account and your record follows you everywhere.
+                  </PidroText>
+                </Surface>
+              </Pressable>
+            ) : null}
           </Surface>
         </ScrollView>
         <View style={styles.footer}>
@@ -225,6 +241,7 @@ const styles = StyleSheet.create({
   playerWide: { flex: 1 },
   playerName: { flex: 1, minWidth: 0 },
   progression: { padding: PidroSpacing.sm },
+  guestSave: { padding: PidroSpacing.sm, gap: PidroSpacing.xxs },
   footer: { gap: PidroSpacing.xs },
   rematchStatus: {
     alignSelf: 'center',
