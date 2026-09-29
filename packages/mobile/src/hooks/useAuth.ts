@@ -2,6 +2,12 @@ import { useState, useCallback, useRef } from 'react';
 import { AxiosError } from 'axios';
 import { useAuthStore } from '@/stores/auth';
 import * as authApi from '@/api/auth';
+import {
+  clearGuestCreationToken,
+  getGuestCreationToken,
+  getInstallId,
+} from '@/features/invites/installId';
+import { invitePlatform } from '@/features/invites/platform';
 
 type ApiError = {
   errors?: { detail: string }[];
@@ -76,7 +82,10 @@ export function useAuth() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await authApi.register(username, email, password);
+        const currentUser = useAuthStore.getState().user;
+        const response = currentUser?.guest
+          ? await authApi.upgradeGuest(username, email, password)
+          : await authApi.register(username, email, password);
         setSession({
           accessToken: response.token,
           user: response.user,
@@ -90,6 +99,81 @@ export function useAuth() {
         }
         const message = extractErrorMessage(e, 'Failed to create account');
         setError(message);
+        return false;
+      } finally {
+        requestInFlight.current = false;
+        setIsLoading(false);
+      }
+    },
+    [setSession]
+  );
+
+  const continueAsGuest = useCallback(
+    async (displayName: string) => {
+      if (requestInFlight.current) return false;
+      requestInFlight.current = true;
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const [creationToken, installId] = await Promise.all([
+          getGuestCreationToken(),
+          getInstallId().catch(() => undefined),
+        ]);
+        const response = await authApi.createGuest({
+          display_name: displayName,
+          creation_token: creationToken,
+          platform: invitePlatform(),
+          ...(installId ? { install_id: installId } : {}),
+        });
+        setSession({ accessToken: response.token, user: response.user });
+        await clearGuestCreationToken().catch(() => undefined);
+        return true;
+      } catch (e) {
+        if (e instanceof AxiosError) {
+          console.warn('[Auth] Guest creation request failed:', getSafeAxiosErrorDetails(e));
+        } else {
+          console.warn('[Auth] Guest creation failed with a non-API error');
+        }
+        setError(extractErrorMessage(e, 'Your guest session could not be created. Try again.'));
+        return false;
+      } finally {
+        requestInFlight.current = false;
+        setIsLoading(false);
+      }
+    },
+    [setSession]
+  );
+
+  const requestPasswordReset = useCallback(async (identifier: string) => {
+    if (requestInFlight.current) return false;
+    requestInFlight.current = true;
+    try {
+      setIsLoading(true);
+      setError(null);
+      await authApi.requestPasswordReset(identifier);
+      return true;
+    } catch (e) {
+      setError(extractErrorMessage(e, 'Could not request a password reset. Try again.'));
+      return false;
+    } finally {
+      requestInFlight.current = false;
+      setIsLoading(false);
+    }
+  }, []);
+
+  const resetPassword = useCallback(
+    async (token: string, password: string) => {
+      if (requestInFlight.current) return false;
+      requestInFlight.current = true;
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await authApi.resetPassword(token, password);
+        setSession({ accessToken: response.token, user: response.user });
+        return true;
+      } catch (e) {
+        setError(extractErrorMessage(e, 'Could not reset your password. Try again.'));
         return false;
       } finally {
         requestInFlight.current = false;
@@ -116,6 +200,9 @@ export function useAuth() {
     isHydrated: hydrated,
     signIn,
     signUp,
+    continueAsGuest,
+    requestPasswordReset,
+    resetPassword,
     signOut,
     clearError,
   };

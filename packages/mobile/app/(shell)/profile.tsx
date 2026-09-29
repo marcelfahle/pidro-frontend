@@ -4,7 +4,14 @@ import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
-import { AVATAR_MAX_BYTES, BIO_MAX_LENGTH, bioError, bioLength, normalizeBio } from '@pidro/shared';
+import {
+  AVATAR_MAX_BYTES,
+  BIO_MAX_LENGTH,
+  bioError,
+  bioLength,
+  normalizeBio,
+  publicPlayerName,
+} from '@pidro/shared';
 import { profileApi } from '@/api/profile';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { Avatar } from '@/components/ui/Avatar';
@@ -318,7 +325,7 @@ function ProfileContent() {
                 />
                 <View className="min-w-0 flex-1 gap-1">
                   <PidroText role="title" numberOfLines={2}>
-                    {user?.username ?? 'Player'}
+                    {publicPlayerName(user?.username, 'Player', user?.display_name)}
                   </PidroText>
                   <PidroText role="metadata" tone="muted">
                     This is how other players see you.

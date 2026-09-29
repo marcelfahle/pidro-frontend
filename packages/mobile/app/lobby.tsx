@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
@@ -58,6 +59,7 @@ export default function LobbyScreen() {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const user = useAuthStore((state) => state.user);
+  const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
   const {
     rooms,
     lobby,
@@ -377,7 +379,7 @@ export default function LobbyScreen() {
                       room={room}
                       onJoin={handleJoinRoom}
                       currentUserId={user?.id}
-                      currentUsername={user?.username}
+                      currentUsername={playerName}
                       compact={landscape}
                     />
                   ))}
@@ -424,7 +426,7 @@ export default function LobbyScreen() {
         }}
         onSubmit={handleCreateRoom}
         isLoading={isCreating}
-        username={user?.username}
+        username={playerName}
         avatarUrl={user?.avatar_url}
         error={createError}
       />

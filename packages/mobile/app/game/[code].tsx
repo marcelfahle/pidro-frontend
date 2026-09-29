@@ -21,7 +21,7 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/stores/lobby';
 import { useGameStore } from '@/stores/game';
-import { rematchVote, roomWithReadiness, type RematchVote } from '@pidro/shared';
+import { publicPlayerName, rematchVote, roomWithReadiness, type RematchVote } from '@pidro/shared';
 import { useAuthStore } from '@/stores/auth';
 import { lobbyApi } from '@/api/lobby';
 import { api } from '@/api/client';
@@ -163,7 +163,9 @@ export default function GameScreen() {
   const updateRoom = useLobbyStore((s) => s.updateRoom);
   const removeRoom = useLobbyStore((s) => s.removeRoom);
   const youPlayerId = useAuthStore((s) => s.user?.id ?? '');
-  const youUsername = useAuthStore((s) => s.user?.username ?? null);
+  const youUsername = useAuthStore((s) =>
+    s.user ? publicPlayerName(s.user.username, 'Player', s.user.display_name) : null
+  );
   const authHydrated = useAuthStore((s) => s.hydrated);
   const accessToken = useAuthStore((s) => s.accessToken);
   const initGame = useGameStore((s) => s.initFromRoom);
@@ -561,7 +563,7 @@ export default function GameScreen() {
   );
 
   if (authHydrated && !accessToken) {
-    return <Redirect href="/(auth)/login" />;
+    return <Redirect href="/welcome" />;
   }
 
   const terminalJoinFailure = terminalGameJoinFailure(lastError);

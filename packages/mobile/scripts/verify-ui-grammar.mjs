@@ -34,8 +34,21 @@ const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
+  { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
+  {
+    name: 'welcome-guest',
+    path: '/welcome',
+    testId: 'welcome-window',
+    openGuestEntry: true,
+  },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
+  { name: 'forgot-password', path: '/(auth)/forgot-password', testId: 'auth-window' },
+  {
+    name: 'reset-password',
+    path: '/(auth)/reset-password?token=fixture-token',
+    testId: 'auth-window',
+  },
   { name: 'join-code', path: '/join-code', testId: 'join-code-window' },
   {
     name: 'join-invite',
@@ -334,6 +347,63 @@ async function assertAuthFormInteractions(page, name, viewport) {
     );
   }
   await page.waitForURL((url) => url.pathname.endsWith('/home'), { timeout: 10_000 });
+}
+
+async function assertWelcomeGuestInteractions(page, name, viewport) {
+  if (name !== 'welcome-guest') return;
+
+  const input = page.getByPlaceholder('What should players call you?');
+  const submit = page.getByRole('button', { name: 'Start playing' });
+  await submit.click();
+  await page.getByText('Enter the name other players will see.', { exact: true }).waitFor();
+  if (!(await input.evaluate((element) => element === document.activeElement))) {
+    throw new Error(`guest validation did not focus the public name in ${viewport.name}`);
+  }
+
+  await input.fill('A');
+  await submit.click();
+  await page.getByText('Use at least 2 characters.', { exact: true }).waitFor();
+
+  const requestBodies = [];
+  await page.route('**/api/v1/auth/guest', async (route) => {
+    requestBodies.push(route.request().postDataJSON());
+    if (requestBodies.length > 1) {
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          data: {
+            token: 'ui-guest-token',
+            user: {
+              id: 'ui-guest-user',
+              username: 'guest_7KQ4M2XB',
+              display_name: 'Anna',
+              email: null,
+              guest: true,
+            },
+          },
+        }),
+      });
+      return;
+    }
+    await route.fulfill({
+      status: 429,
+      contentType: 'application/json',
+      body: JSON.stringify({ errors: [{ detail: 'Too many attempts. Try again soon.' }] }),
+    });
+  });
+  await input.fill('Anna');
+  await submit.click();
+  await page.getByText('Too many attempts. Try again soon.', { exact: true }).waitFor();
+  assert.equal(await input.inputValue(), 'Anna', 'Guest errors must preserve the public name');
+  assert.equal(requestBodies[0].display_name, 'Anna');
+  assert.match(requestBodies[0].creation_token, /^[0-9a-f-]{36}$/i);
+  assert.equal('invite_code' in requestBodies[0], false);
+
+  await submit.click();
+  await page.waitForURL((url) => url.pathname.endsWith('/home'), { timeout: 10_000 });
+  await page.getByText('Anna', { exact: true }).waitFor();
+  assert.equal(requestBodies[1].creation_token, requestBodies[0].creation_token);
 }
 
 async function assertBiddingRevealSequence(page, viewport) {
@@ -660,6 +730,10 @@ async function main() {
           if (testCase.verifyDealerSelection || testCase.verifyDealerPrivacy) {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
+          if (testCase.openGuestEntry) {
+            await page.getByRole('button', { name: 'Play as guest' }).click();
+            await page.getByPlaceholder('What should players call you?').waitFor();
+          }
           await assertTargetGeometry(page, testCase, viewport);
           if (testCase.name.startsWith('table-game-over')) {
             await page
@@ -675,6 +749,7 @@ async function main() {
             fullPage: false,
           });
           await assertAuthFormInteractions(page, testCase.name, viewport);
+          await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);

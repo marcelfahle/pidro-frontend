@@ -46,6 +46,78 @@ const rawRoom = {
 };
 
 describe('invite APIs', () => {
+  it('keeps fresh registration and authenticated guest upgrade as separate contracts', async () => {
+    const registered = {
+      id: 'registered-1',
+      username: 'anna',
+      display_name: null,
+      email: 'anna@example.com',
+      guest: false,
+    };
+    const { api, calls } = recordingApi([
+      { data: { token: 'fresh-token', user: registered } },
+      { data: { token: 'upgrade-token', user: registered } },
+    ]);
+    const auth = createAuthApi(api);
+
+    await auth.register('anna', 'anna@example.com', 'password123');
+    await auth.upgradeGuest('anna', 'anna@example.com', 'password123');
+
+    expect(calls).toEqual([
+      {
+        method: 'post',
+        path: '/api/v1/auth/register',
+        body: {
+          user: {
+            username: 'anna',
+            email: 'anna@example.com',
+            password: 'password123',
+          },
+        },
+      },
+      {
+        method: 'post',
+        path: '/api/v1/auth/upgrade',
+        body: {
+          username: 'anna',
+          email: 'anna@example.com',
+          password: 'password123',
+        },
+      },
+    ]);
+  });
+
+  it('creates a direct guest with the idempotency token and no invitation', async () => {
+    const guest = {
+      id: 'guest-direct',
+      username: 'guest_7KQ4M2XB',
+      display_name: 'Anna',
+      email: null,
+      guest: true,
+    };
+    const { api, calls } = recordingApi([{ data: { token: 'token', user: guest } }]);
+
+    const result = await createAuthApi(api).createGuest({
+      display_name: 'Anna',
+      creation_token: '8b597c4a-c208-4cf6-b274-81b29f6751ea',
+      platform: 'android',
+      install_id: 'install-1',
+    });
+
+    expect(calls[0]).toEqual({
+      method: 'post',
+      path: '/api/v1/auth/guest',
+      body: {
+        display_name: 'Anna',
+        creation_token: '8b597c4a-c208-4cf6-b274-81b29f6751ea',
+        platform: 'android',
+        install_id: 'install-1',
+      },
+    });
+    expect(result.user.display_name).toBe('Anna');
+    expect(result.state).toBeUndefined();
+  });
+
   it('creates a guest with the deployed request and response shape', async () => {
     const guest = {
       id: 'guest-1',

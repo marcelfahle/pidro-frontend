@@ -6,6 +6,7 @@ export {
   type LoginResponse,
   type PasswordResetRequestResponse,
   type RegisterResponse,
+  type UpgradeGuestResponse,
   type User,
 } from './auth';
 export { type ApiClient, createApiClient, type SessionClearer, type TokenGetter } from './client';

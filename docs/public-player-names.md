@@ -2,17 +2,21 @@
 
 The canonical public name is **username**, on every platform and surface.
 `display_name` remains stored profile metadata; it is not a public-name fallback.
-This includes guest accounts: they display their generated `guest_…` username.
+The one exception is a generated guest handle (`guest_` plus its eight-character
+code): those accounts display the public name chosen during guest creation while
+keeping the generated username as the stable account handle.
 
 - User IDs identify accounts and own seats, profiles and reconnect rights. Never
   use a name as an identity key or show a raw ID as a missing-name fallback.
 - Wire `username` means the account username. Wire `display_name` means the
   stored display name, including null. Do not copy either field into the other.
-- Lifecycle decision `player_name` and invite-preview host labels use username.
-- `invite_redeemed` includes both `username` and `display_name`; notifications use
-  username. Old events without username trigger a refresh without a named toast.
-- Shared `publicPlayerName` supplies a neutral missing-name label, never a
-  display name. Existing bot labels remain `Bot`.
+- Lifecycle decision `player_name` and invite-preview host labels use the same
+  public-name selector.
+- `invite_redeemed` includes both `username` and `display_name`; notifications
+  apply the generated-guest exception. Old events without username trigger a
+  refresh without a named toast.
+- Shared `publicPlayerName` supplies a neutral missing-name label and applies the
+  generated-guest exception. Existing bot labels remain `Bot`.
 - Lifecycle seats also carry authoritative `avatar_url` (including explicit
   null). Observers must restore it from the event after leave/rejoin rather than
   depending on a lobby/REST refresh or a previous occupant's cached picture.

@@ -15,6 +15,7 @@ export const API_CONFIG = {
 export const STORAGE_KEYS = {
   auth: 'auth-storage',
   installId: 'install-id:v1',
+  guestCreationToken: 'guest-creation-token:v1',
   pendingInvite: 'pending-invite-storage',
 } as const;
 

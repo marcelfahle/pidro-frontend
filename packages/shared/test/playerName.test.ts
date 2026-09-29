@@ -31,6 +31,32 @@ test('public fallback never exposes display names or account IDs', () => {
   });
 });
 
+test('generated guest handles use the chosen public name without changing regular usernames', () => {
+  expect(publicPlayerName('guest_7KQ4M2XB', 'Player', 'Anna')).toBe('Anna');
+  expect(publicPlayerName('guest_7KQ4M2XB', 'Player', '  Kettu 🦊  ')).toBe('Kettu 🦊');
+  expect(publicPlayerName('guest_7KQ4M2XB', 'Player', '   ')).toBe('guest_7KQ4M2XB');
+  expect(publicPlayerName('mfios1', 'Player', 'iOS 1')).toBe('mfios1');
+
+  const room = normalizeRoom({
+    code: 'GUEST',
+    seats: [
+      {
+        position: 'north',
+        player: {
+          id: 'guest-id',
+          username: 'guest_7KQ4M2XB',
+          display_name: 'Anna',
+        },
+      },
+    ],
+  });
+  expect(room.seats?.[0].player).toMatchObject({
+    id: 'guest-id',
+    username: 'Anna',
+    display_name: 'Anna',
+  });
+});
+
 test('REST, lobby, readiness and lifecycle agree for the reported accounts, players and spectators', () => {
   for (const displayName of [
     undefined,

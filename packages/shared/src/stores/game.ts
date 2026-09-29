@@ -17,6 +17,7 @@ import type {
 import type { Position, ReadinessSnapshot, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
+import { publicPlayerName } from '../utils/playerName';
 import { lifecycleFromReply } from '../utils/seatLifecycle';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
@@ -163,7 +164,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         playerMeta[position] = {
           ...playerMeta[position],
           playerId: seat.player_id,
-          username: seat.username,
+          username: publicPlayerName(seat.username, 'Player', seat.display_name),
           avatar_url:
             seat.avatar_url !== undefined
               ? seat.avatar_url
@@ -477,8 +478,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           ...createEmptyPlayerMeta(pos),
           playerId,
           username:
-            seat.username ??
-            previous?.username ??
+            (publicPlayerName(seat.username, '', seat.display_name) || previous?.username) ??
             (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
           avatar_url:
             seat.avatar_url !== undefined ? seat.avatar_url : (previous?.avatar_url ?? null),
@@ -550,7 +550,11 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
           ? {
               ...known,
               id,
-              username: snapshot.seats[position].username ?? known?.username ?? 'Player',
+              username: publicPlayerName(
+                snapshot.seats[position].username,
+                known?.username ?? 'Player',
+                snapshot.seats[position].display_name ?? known?.display_name,
+              ),
               avatar_url:
                 snapshot.seats[position].avatar_url !== undefined
                   ? snapshot.seats[position].avatar_url

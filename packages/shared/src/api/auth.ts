@@ -19,16 +19,18 @@ interface AuthResponseEnvelope {
 
 export type LoginResponse = AuthResponseEnvelope['data'];
 export type RegisterResponse = AuthResponseEnvelope['data'];
+export type UpgradeGuestResponse = AuthResponseEnvelope['data'];
 
 export interface CreateGuestRequest {
   display_name: string;
-  invite_code: string;
+  invite_code?: string;
+  creation_token?: string;
   platform?: 'ios' | 'android' | 'web';
   install_id?: string;
 }
 
 interface GuestResponseEnvelope extends AuthResponseEnvelope {
-  data: AuthResponseEnvelope['data'] & { state: string };
+  data: AuthResponseEnvelope['data'] & { state?: string };
 }
 
 export type CreateGuestResponse = GuestResponseEnvelope['data'];
@@ -60,6 +62,19 @@ export function createAuthApi(api: ApiClient) {
     ): Promise<RegisterResponse> => {
       const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/register', {
         user: { username, email, password },
+      });
+      return response.data.data;
+    },
+
+    upgradeGuest: async (
+      username: string,
+      email: string,
+      password: string,
+    ): Promise<UpgradeGuestResponse> => {
+      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/upgrade', {
+        username,
+        email,
+        password,
       });
       return response.data.data;
     },

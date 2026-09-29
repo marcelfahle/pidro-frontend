@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
-import type { ProfileIdentity } from '@pidro/shared';
+import { publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { profileApi } from '@/api/profile';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -70,7 +70,7 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
               resizeMode="cover"
             />
             <PidroText role="label" align="center">
-              {profile.username}
+              {publicPlayerName(profile.username, 'Player', profile.display_name)}
             </PidroText>
             <PidroText role="label">About me</PidroText>
             <PidroText role="body" className="break-words" tone={profile.bio ? 'default' : 'muted'}>
