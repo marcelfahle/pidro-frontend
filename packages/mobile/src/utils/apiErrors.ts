@@ -1,9 +1,17 @@
 type ApiErrorBody = {
-  errors?: { code?: string; detail?: string }[];
+  errors?: {
+    code?: string;
+    detail?: string;
+    action?: { type: string; method?: string; endpoint?: string };
+  }[];
   message?: string;
 };
 
-export function apiErrorInfo(error: unknown): { code?: string; detail?: string } {
+export function apiErrorInfo(error: unknown): {
+  code?: string;
+  detail?: string;
+  action?: { type: string; method?: string; endpoint?: string };
+} {
   const data =
     typeof error === 'object' && error !== null && 'response' in error
       ? (error as { response?: { data?: ApiErrorBody } }).response?.data
@@ -12,5 +20,6 @@ export function apiErrorInfo(error: unknown): { code?: string; detail?: string }
   return {
     code: firstError?.code,
     detail: firstError?.detail ?? data?.message,
+    action: firstError?.action,
   };
 }

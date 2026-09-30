@@ -15,12 +15,23 @@ export {
 } from './auth';
 export { type ApiClient, createApiClient, type SessionClearer, type TokenGetter } from './client';
 export {
+  type ClassicApi,
+  type ClassicClaimAccount,
+  type ClassicClaimMethod,
+  type ClassicClaimPreview,
+  type ClassicClaimRequest,
+  type ClassicVerification,
+  type ClassicVerifyRequest,
+  createClassicApi,
+} from './classic';
+export {
   createProfileApi,
   AVATAR_MAX_BYTES,
   BIO_MAX_LENGTH,
   normalizeBio,
   bioLength,
   bioError,
+  type ClassicProfile,
   type ProfileIdentity,
 } from './profile';
 export {

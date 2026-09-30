@@ -100,7 +100,7 @@ export default function RegisterScreen() {
           isOpen
           onClose={() => router.replace('/home')}
           onSaved={() => router.replace(authenticatedDestination(pendingInvite) as Href)}
-          onClaimClassic={() => router.replace('/(auth)/login')}
+          onClaimClassic={() => router.replace('/(auth)/claim-classic')}
         />
       </View>
     );

@@ -131,6 +131,13 @@ No params. Includes gates that open `AuthSheet` (`multiplayer`, `friends`, invit
 and the post-game `KeepProgressPrompt`. Deliberately outside the auth guard. testID
 `auth-flow-dev`.
 
+## `/claim-classic?fixture=<state>` — Classic claim
+
+The real claim screen with deterministic presentation states and no backend mutation. States:
+`method`, `preview`, `rename`, and `already-claimed`. Use an authenticated fixture for an existing
+guest/account preview; without one, `preview` also shows the fresh-account fields. testID
+`claim-classic-screen`.
+
 ## `/join/<code>?fixture=open`
 
 Renders the invite preview with no backend.

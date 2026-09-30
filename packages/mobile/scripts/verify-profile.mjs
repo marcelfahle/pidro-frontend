@@ -20,6 +20,16 @@ try {
     display_name: null,
     avatar_url: null,
     bio: 'Always up for one more hand. Coffee helps. ☕',
+    classic: {
+      name: 'SofiaClassic',
+      games_played: 1284,
+      wins: 702,
+      losses: 582,
+      win_rate: 702 / 1284,
+      level: 42,
+      member_since: '2012-04-03T00:00:00Z',
+      claimed_at: '2026-09-30T00:00:00Z',
+    },
   };
   await page.addInitScript(
     (user) =>
@@ -69,6 +79,7 @@ try {
   await page.goto(baseURL);
   await button('Open your profile').click();
   await visible(button('Edit bio'));
+  await visible(page.getByTestId('profile-classic-section'));
   await assertMinimumTouchTargets(page, 'profile', { name: 'portrait' });
   await capture('profile-native-clean');
 
@@ -219,7 +230,7 @@ try {
   assert.equal(await input.inputValue(), 'Unsaved sign-out draft.');
   await button('Sign out').click();
   await button('Sign out').last().click();
-  await page.waitForURL(/\/login$/);
+  await page.waitForURL(/\/welcome$/);
   assert.equal(await page.evaluate(() => localStorage.getItem('auth-storage')), null);
   assert.deepEqual(errors, []);
   console.log(

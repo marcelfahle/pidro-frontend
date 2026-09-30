@@ -48,6 +48,34 @@ const allCases = [
   },
   { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
   { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
+  {
+    name: 'classic-method',
+    path: '/(auth)/claim-classic?fixture=method',
+    testId: 'claim-classic-screen',
+  },
+  {
+    name: 'classic-preview',
+    path: '/(auth)/claim-classic?fixture=preview',
+    testId: 'claim-classic-screen',
+    authenticated: true,
+  },
+  {
+    name: 'classic-fresh',
+    path: '/(auth)/claim-classic?fixture=preview',
+    testId: 'claim-classic-screen',
+  },
+  {
+    name: 'classic-rename',
+    path: '/(auth)/claim-classic?fixture=rename',
+    testId: 'claim-classic-screen',
+    authenticated: true,
+  },
+  {
+    name: 'classic-conflict',
+    path: '/(auth)/claim-classic?fixture=already-claimed',
+    testId: 'claim-classic-screen',
+    authenticated: true,
+  },
   { name: 'forgot-password', path: '/(auth)/forgot-password', testId: 'auth-window' },
   {
     name: 'reset-password',

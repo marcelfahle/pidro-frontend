@@ -214,7 +214,7 @@ export default function HomeScreen() {
         }}
         onClaimClassic={() => {
           setAccountSheetReason(null);
-          router.push('/(auth)/login');
+          router.push('/(auth)/claim-classic');
         }}
       />
     </Background>

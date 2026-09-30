@@ -88,7 +88,7 @@ export default function AuthFlowDevScreen() {
         onSaved={record('Saved guest account')}
         onClaimClassic={() => {
           closeAll();
-          router.push('/(auth)/login');
+          router.push('/(auth)/claim-classic');
         }}
       />
       <KeepProgressPrompt

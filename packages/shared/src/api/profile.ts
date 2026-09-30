@@ -35,6 +35,18 @@ export interface ProfileIdentity {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  classic: ClassicProfile | null;
+}
+
+export interface ClassicProfile {
+  name?: string;
+  games_played?: number;
+  wins?: number;
+  losses?: number;
+  win_rate?: number;
+  level?: number;
+  member_since?: string;
+  claimed_at?: string;
 }
 
 export function createProfileApi(api: ApiClient) {

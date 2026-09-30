@@ -50,6 +50,7 @@ it('shows the public profile as text without an editor, and closes without navig
     display_name: null,
     avatar_url: null,
     bio: '<script>alert(1)</script>',
+    classic: null,
   });
   const { container } = render(
     <PlayerProfileButton playerId="other" name="Anna">

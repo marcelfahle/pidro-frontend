@@ -748,7 +748,7 @@ export default function GameScreen() {
           onClose={() => setAccountSheetOpen(false)}
           onClaimClassic={() => {
             setAccountSheetOpen(false);
-            router.push('/(auth)/login');
+            router.push('/(auth)/claim-classic');
           }}
         />
         <TableFeedback notice={notice} />

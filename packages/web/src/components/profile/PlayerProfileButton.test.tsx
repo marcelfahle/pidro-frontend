@@ -26,6 +26,7 @@ describe('public profile name', () => {
       display_name,
       avatar_url: null,
       bio: null,
+      classic: null,
     });
     render(
       <PlayerProfileButton playerId="stable-ios-id" name="mfios1">
