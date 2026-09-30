@@ -119,7 +119,7 @@ function ProfileContent() {
     useCallback(() => {
       void refreshIdentity()
         .then((identity) => {
-          if (identity) setClassic(identity.classic);
+          if (identity) setClassic(identity.classic ?? null);
           setRefreshError(false);
         })
         .catch(() => setRefreshError(true));

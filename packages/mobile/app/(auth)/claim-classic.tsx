@@ -34,7 +34,7 @@ const FIXTURE_PREVIEW: ClassicVerification = {
 function memberSince(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return String(date.getFullYear());
+  return String(date.getUTCFullYear());
 }
 
 export default function ClaimClassicScreen() {
