@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -12,7 +12,7 @@ import {
   normalizeBio,
   publicPlayerName,
 } from '@pidro/shared';
-import { profileApi } from '@/api/profile';
+import { profileApi, type ClassicProfile } from '@/api/profile';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { Avatar } from '@/components/ui/Avatar';
 import { AuthSheet } from '@/components/auth/AuthSheet';
@@ -24,9 +24,10 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { PidroLayout } from '@/design/tokens';
+import { PidroLayout, PidroSpacing } from '@/design/tokens';
 import { authStore, useAuthStore } from '@/stores/auth';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
+import { usePillClearance } from '@/components/shell/TabPill';
 
 type AvatarDraft = Blob | { uri: string; name: string; type: string };
 
@@ -40,8 +41,11 @@ function ProfileContent() {
   // Window width also handles iPad split view. Larger text gets the roomier stack.
   const twoColumns = width >= PidroLayout.landscapeMinWidth * Math.max(1, fontScale);
   const shortWindow = height < PidroLayout.compactHeight;
+  const pillClearance = usePillClearance();
+  const horizontalPadding = width > height ? PidroSpacing.lg : PidroSpacing.md;
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
+  const { classicClaimed } = useLocalSearchParams<{ classicClaimed?: string }>();
   const router = useRouter();
   const navigation = useNavigation();
   const refreshIdentity = useProfileIdentity();
@@ -57,7 +61,8 @@ function ProfileContent() {
   const [bioDraft, setBioDraft] = useState('');
   const [bioBaseline, setBioBaseline] = useState('');
   const [pendingSignOut, setPendingSignOut] = useState(false);
-  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
+  const [accountSheetOpen, setAccountSheetOpen] = useState(classicClaimed === 'guest');
+  const [classic, setClassic] = useState<ClassicProfile | null | undefined>(undefined);
   const [confirmation, setConfirmation] = useState<{
     title: string;
     description: string;
@@ -113,7 +118,10 @@ function ProfileContent() {
   useFocusEffect(
     useCallback(() => {
       void refreshIdentity()
-        .then(() => setRefreshError(false))
+        .then((identity) => {
+          if (identity) setClassic(identity.classic);
+          setRefreshError(false);
+        })
         .catch(() => setRefreshError(true));
     }, [refreshIdentity])
   );
@@ -333,7 +341,14 @@ function ProfileContent() {
   );
 
   return (
-    <ScreenShell scroll compact={!twoColumns} testID="profile-screen">
+    <ScreenShell
+      scroll
+      compact={!twoColumns}
+      testID="profile-screen"
+      contentStyle={{
+        paddingBottom: PidroSpacing.md + pillClearance.bottom,
+        paddingRight: horizontalPadding + pillClearance.right,
+      }}>
       <View className={shortWindow ? 'gap-3' : 'gap-6'}>
         <ScreenHeader title="Your profile" onBack={() => router.back()} />
         {refreshError && (
@@ -535,6 +550,27 @@ function ProfileContent() {
             </Surface>
           </View>
         </View>
+        {classic !== undefined ? (
+          classic ? (
+            <ClassicSection classic={classic} />
+          ) : (
+            <Surface variant="panel" padded style={styles.classicSection}>
+              <View style={styles.classicHeading}>
+                <PidroText role="label">Pidro Classic</PidroText>
+                <PidroText role="body" tone="soft">
+                  Played the original game? Bring your Classic name and career into this profile.
+                </PidroText>
+              </View>
+              <BevelButton
+                label="Claim Pidro Classic"
+                material="glass"
+                size="sm"
+                fullWidth
+                onPress={() => router.push('/(auth)/claim-classic')}
+              />
+            </Surface>
+          )
+        ) : null}
         {!twoColumns && accountActions}
       </View>
       <Modal
@@ -581,9 +617,107 @@ function ProfileContent() {
         onClose={() => setAccountSheetOpen(false)}
         onClaimClassic={() => {
           setAccountSheetOpen(false);
-          router.push('/(auth)/login');
+          router.push('/(auth)/claim-classic');
         }}
       />
     </ScreenShell>
   );
 }
+
+function ClassicSection({ classic }: { classic: ClassicProfile }) {
+  const metrics = [
+    classic.games_played != null
+      ? { label: 'Games played', value: classic.games_played.toLocaleString() }
+      : null,
+    classic.wins != null ? { label: 'Wins', value: classic.wins.toLocaleString() } : null,
+    classic.losses != null ? { label: 'Losses', value: classic.losses.toLocaleString() } : null,
+    classic.win_rate != null
+      ? { label: 'Win rate', value: `${Math.round(classic.win_rate * 100)}%` }
+      : null,
+    classic.level != null ? { label: 'Classic level', value: String(classic.level) } : null,
+  ].filter((metric): metric is { label: string; value: string } => metric !== null);
+
+  return (
+    <Surface testID="profile-classic-section" variant="card" padded style={styles.classicSection}>
+      <View style={styles.classicHeading}>
+        <PidroText role="title" tone="gold">
+          Pidro Classic
+        </PidroText>
+        {classic.name ? (
+          <PidroText role="label">Played as {classic.name}</PidroText>
+        ) : (
+          <PidroText role="metadata" tone="muted">
+            Classic name kept private
+          </PidroText>
+        )}
+      </View>
+      {metrics.length ? (
+        <View style={styles.classicMetrics}>
+          {metrics.map((metric) => (
+            <View
+              key={metric.label}
+              style={styles.classicMetric}
+              accessible
+              accessibilityLabel={`${metric.label}: ${metric.value}`}>
+              <PidroText role="title" tone="gold" align="center">
+                {metric.value}
+              </PidroText>
+              <PidroText role="metadata" tone="muted" align="center">
+                {metric.label}
+              </PidroText>
+            </View>
+          ))}
+        </View>
+      ) : null}
+      {classic.member_since || classic.claimed_at ? (
+        <View style={styles.classicDates}>
+          {classic.member_since ? (
+            <PidroText role="metadata" tone="soft">
+              Member since {formatClassicDate(classic.member_since)}
+            </PidroText>
+          ) : null}
+          {classic.claimed_at ? (
+            <PidroText role="metadata" tone="soft">
+              Claimed on {formatClassicDate(classic.claimed_at)}
+            </PidroText>
+          ) : null}
+        </View>
+      ) : null}
+    </Surface>
+  );
+}
+
+function formatClassicDate(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+const styles = StyleSheet.create({
+  classicSection: {
+    gap: PidroSpacing.md,
+  },
+  classicHeading: {
+    gap: PidroSpacing.xxs,
+  },
+  classicMetrics: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: PidroSpacing.xs,
+  },
+  classicMetric: {
+    minWidth: 104,
+    flexGrow: 1,
+    gap: PidroSpacing.xxs,
+  },
+  classicDates: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: PidroSpacing.xs,
+  },
+});

@@ -497,7 +497,7 @@ export default function LobbyScreen() {
         onClaimClassic={() => {
           pendingAccountActionRef.current = null;
           setAccountSheetOpen(false);
-          router.push('/(auth)/login');
+          router.push('/(auth)/claim-classic');
         }}
       />
     </ScreenShell>

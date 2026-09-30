@@ -141,6 +141,17 @@ export function AuthSheet({
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}>
                 {providerActions}
+                {!classicNameReserved ? (
+                  <PressableFX
+                    accessibilityRole="button"
+                    accessibilityLabel="Claim Pidro Classic"
+                    onPress={() => onClaimClassic(displayName.trim())}
+                    style={styles.classicLink}>
+                    <PidroText role="label" tone="cyan">
+                      Played Classic? Claim it instead
+                    </PidroText>
+                  </PressableFX>
+                ) : null}
                 <Input
                   containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
                   label="Public name"
@@ -265,6 +276,12 @@ const styles = StyleSheet.create({
   form: { width: '100%', maxWidth: 420, alignSelf: 'center', gap: PidroSpacing.sm },
   formLandscape: { maxWidth: 800, flexDirection: 'row', gap: PidroSpacing.xs },
   claimPlaque: { width: '100%', gap: PidroSpacing.xxs },
+  classicLink: {
+    minHeight: PidroLayout.touchTarget,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   notNow: {
     minHeight: PidroLayout.touchTarget,
     alignItems: 'center',

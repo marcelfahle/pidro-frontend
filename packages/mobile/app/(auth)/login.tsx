@@ -100,7 +100,10 @@ export default function LoginScreen() {
       const outcome = await signInWithProvider(provider);
       handleSocialSignInOutcome(outcome, {
         onSignedIn: () => router.replace(authenticatedDestination(pendingInvite) as Href),
-        onClassicFound: handleClassicFound,
+        onClassicFound: (claim) => {
+          handleClassicFound(claim, provider);
+          router.replace('/(auth)/claim-classic');
+        },
         onUnknownIdentity: () =>
           setSocialNotice(
             `We couldn’t sign in with that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`

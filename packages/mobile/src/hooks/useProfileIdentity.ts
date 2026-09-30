@@ -5,7 +5,7 @@ import { authStore } from '@/stores/auth';
 export function useProfileIdentity() {
   return useCallback(async () => {
     const before = authStore.getState();
-    if (!before.user || !before.accessToken) return;
+    if (!before.user || !before.accessToken) return undefined;
     const identity = await profileApi.getIdentity();
     const current = authStore.getState();
     if (
@@ -13,7 +13,7 @@ export function useProfileIdentity() {
       current.accessToken !== before.accessToken ||
       identity.user_id !== before.user.id
     )
-      return;
+      return undefined;
     const currentUser = current.user;
     current.setSession({
       accessToken: current.accessToken,
@@ -26,5 +26,6 @@ export function useProfileIdentity() {
         bio: identity.bio,
       },
     });
+    return identity;
   }, []);
 }

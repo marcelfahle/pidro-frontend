@@ -186,7 +186,7 @@ export default function WelcomeScreen() {
           accessibilityRole="button"
           accessibilityLabel="Played Pidro Classic? Bring your name and games."
           disabled={offline || launchBusy}
-          onPress={() => router.push('/(auth)/login')}
+          onPress={() => router.push('/(auth)/claim-classic')}
           style={[styles.classic, (offline || launchBusy) && styles.disabled]}>
           <View style={styles.classicIcon}>
             <Icon name="friends" size={24} color={PidroColors.cyan} />
