@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { classicApi, type ClassicClaimMethod, type ClassicVerification } from '@/api/classic';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -13,8 +13,17 @@ import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import { takePendingClassicClaim } from '@/features/auth/classicFound';
+import { authenticatedDestination } from '@/navigation/initialRoute';
 import { useAuthStore } from '@/stores/auth';
+import { usePendingInviteStore } from '@/stores/pendingInvite';
 import { apiErrorInfo } from '@/utils/apiErrors';
+
+// Ticket errors a retry can't fix: start over with a fresh verification.
+const DEAD_TICKET_CODES = new Set([
+  'CLAIM_TICKET_EXPIRED',
+  'INVALID_CLAIM_TICKET',
+  'CLAIM_TICKET_BINDING_MISMATCH',
+]);
 
 type Field = 'login' | 'classicPassword' | 'username' | 'email' | 'password' | 'displayName';
 type Fixture = 'method' | 'preview' | 'rename' | 'already-claimed';
@@ -91,18 +100,29 @@ export default function ClaimClassicScreen() {
     []
   );
 
-  const reportRequestError = useCallback((requestError: unknown, fallback: string) => {
-    const info = apiErrorInfo(requestError);
-    setCanSignIn(info.code === 'ALREADY_CLAIMED' && info.action?.type === 'sign_in');
-    if (info.code === 'PROVIDER_UNAVAILABLE') {
-      setError('Classic or the sign-in provider is temporarily unavailable. Try again.');
-    } else if (info.code === 'CLAIM_TICKET_EXPIRED') {
-      setVerification(null);
-      setError('That verification expired. Verify your Classic account again.');
-    } else {
-      setError(info.detail || fallback);
-    }
-  }, []);
+  const reportRequestError = useCallback(
+    (requestError: unknown, fallback: string, provider?: 'apple' | 'facebook') => {
+      const info = apiErrorInfo(requestError);
+      // Signing in from here would replace whoever is signed in on this phone
+      // (a guest's games included), so only offer it when nobody is.
+      setCanSignIn(!user && info.code === 'ALREADY_CLAIMED' && info.action?.type === 'sign_in');
+      if (info.code === 'PROVIDER_UNAVAILABLE') {
+        setError('Classic or the sign-in provider is temporarily unavailable. Try again.');
+      } else if (DEAD_TICKET_CODES.has(info.code ?? '')) {
+        setVerification(null);
+        setError('That verification is no longer valid. Verify your Classic account again.');
+      } else if (provider && info.code === 'INVALID_CREDENTIALS') {
+        setError(
+          `No Classic account uses that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`
+        );
+      } else if (info.code === 'ALREADY_CLAIMED' && user) {
+        setError('This Classic account is already linked to another Pidro account.');
+      } else {
+        setError(info.detail || fallback);
+      }
+    },
+    [user]
+  );
 
   const verifyPassword = useCallback(async () => {
     const nextFields: Partial<Record<Field, string>> = {};
@@ -150,7 +170,8 @@ export default function ClaimClassicScreen() {
       } catch (requestError) {
         reportRequestError(
           requestError,
-          `We could not verify that ${provider} account. Try again.`
+          `We could not verify that ${provider} account. Try again.`,
+          provider
         );
       } finally {
         setBusy(false);
@@ -190,10 +211,15 @@ export default function ClaimClassicScreen() {
         ...(Object.keys(account).length ? { account } : {}),
       });
       setSession({ accessToken: result.token, user: result.user });
-      router.replace({
-        pathname: '/profile',
-        params: { classicClaimed: result.user.guest ? 'guest' : 'yes' },
-      });
+      const pendingInvite = usePendingInviteStore.getState().pendingInvite;
+      if (pendingInvite) {
+        router.replace(authenticatedDestination(pendingInvite) as Href);
+      } else {
+        router.replace({
+          pathname: '/profile',
+          params: { classicClaimed: result.user.guest ? 'guest' : 'yes' },
+        });
+      }
     } catch (requestError) {
       reportRequestError(requestError, 'We could not claim that Classic account. Try again.');
     } finally {

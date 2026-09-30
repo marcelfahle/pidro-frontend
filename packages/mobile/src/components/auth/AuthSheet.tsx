@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -50,6 +50,8 @@ export interface AuthSheetProps {
   onClose: () => void;
   onSaved?: () => void;
   onClaimClassic: (name: string) => void;
+  /** Hide the claim links, e.g. once a Classic account is linked. */
+  showClaimClassic?: boolean;
   providerActions?: ReactNode;
 }
 
@@ -59,6 +61,7 @@ export function AuthSheet({
   onClose,
   onSaved,
   onClaimClassic,
+  showClaimClassic = true,
   providerActions,
 }: AuthSheetProps) {
   const reduceMotion = useReducedMotion();
@@ -72,6 +75,34 @@ export function AuthSheet({
   const [fields, setFields] = useState<Partial<Record<GuestSaveField, string>>>({});
   const [message, setMessage] = useState<string | null>(null);
   const [classicNameReserved, setClassicNameReserved] = useState(false);
+  // A screen pushed while this Modal is still on screen opens hidden behind
+  // it on iOS. So a claim tap hides the sheet first and hands the action to
+  // the caller once the Modal is gone (onDismiss on iOS, next render elsewhere).
+  const [handingOff, setHandingOff] = useState(false);
+  const pendingClaim = useRef<string | null>(null);
+
+  const finishHandOff = () => {
+    const name = pendingClaim.current;
+    if (name === null) return;
+    pendingClaim.current = null;
+    onClaimClassic(name);
+  };
+
+  const claimClassic = (name: string) => {
+    pendingClaim.current = name;
+    setHandingOff(true);
+  };
+
+  // Reopening the sheet after a hand-off shows it again.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (!isOpen) setHandingOff(false);
+  }
+
+  useEffect(() => {
+    if (handingOff && Platform.OS !== 'ios') finishHandOff();
+  });
 
   const resetForm = () => {
     setDisplayName(initialName);
@@ -112,7 +143,8 @@ export function AuthSheet({
   const copy = COPY[reason];
   return (
     <Modal
-      visible={isOpen}
+      visible={isOpen && !handingOff}
+      onDismiss={finishHandOff}
       transparent
       animationType={reduceMotion ? 'none' : 'slide'}
       onShow={resetForm}
@@ -141,11 +173,11 @@ export function AuthSheet({
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}>
                 {providerActions}
-                {!classicNameReserved ? (
+                {showClaimClassic && !classicNameReserved ? (
                   <PressableFX
                     accessibilityRole="button"
                     accessibilityLabel="Claim Pidro Classic"
-                    onPress={() => onClaimClassic(displayName.trim())}
+                    onPress={() => claimClassic(displayName.trim())}
                     style={styles.classicLink}>
                     <PidroText role="label" tone="cyan">
                       Played Classic? Claim it instead
@@ -167,11 +199,11 @@ export function AuthSheet({
                   autoCorrect={false}
                   returnKeyType="next"
                 />
-                {classicNameReserved ? (
+                {showClaimClassic && classicNameReserved ? (
                   <PressableFX
                     accessibilityRole="button"
                     accessibilityLabel={`Played Classic as ${displayName}? Claim it and keep your games.`}
-                    onPress={() => onClaimClassic(displayName.trim())}>
+                    onPress={() => claimClassic(displayName.trim())}>
                     <Surface variant="plaque" padded style={styles.claimPlaque}>
                       <PidroText role="label">Played Classic as {displayName.trim()}?</PidroText>
                       <PidroText role="metadata" tone="cyan">

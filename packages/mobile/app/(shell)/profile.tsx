@@ -615,6 +615,7 @@ function ProfileContent() {
       <AuthSheet
         isOpen={accountSheetOpen}
         onClose={() => setAccountSheetOpen(false)}
+        showClaimClassic={!classic}
         onClaimClassic={() => {
           setAccountSheetOpen(false);
           router.push('/(auth)/claim-classic');
