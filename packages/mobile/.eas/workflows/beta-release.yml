@@ -1,0 +1,43 @@
+# One command to ship a Beta: builds both platforms, uploads iOS to TestFlight
+# and adds it to the internal Team group (no Beta App Review needed). When the
+# external Friends group gets testers, add external_groups: ['Friends'] and
+# submit_beta_review: true to the testflight job.
+#   cd packages/mobile && npx eas-cli workflow:run .eas/workflows/beta-release.yml
+# Android still needs a manual upload in Play Console until a Google service
+# account is set up for EAS Submit.
+name: Beta release
+
+on:
+  workflow_dispatch:
+    inputs:
+      changelog:
+        type: string
+        required: false
+        description: What to Test notes shown to TestFlight testers
+        default: Bug fixes and improvements.
+
+jobs:
+  build_ios:
+    name: Build iOS
+    type: build
+    params:
+      platform: ios
+      profile: beta
+
+  build_android:
+    name: Build Android
+    type: build
+    params:
+      platform: android
+      profile: beta
+
+  testflight:
+    name: TestFlight (Team)
+    needs: [build_ios]
+    type: testflight
+    params:
+      build_id: ${{ needs.build_ios.outputs.build_id }}
+      profile: beta
+      internal_groups: ['Team']
+      changelog: ${{ inputs.changelog }}
+      submit_beta_review: false
