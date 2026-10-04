@@ -329,13 +329,20 @@ async function assertAuthFormInteractions(page, name, viewport) {
   const endpoint = `/api/v1/auth/${name === 'login' ? 'login' : 'register'}`;
   const expectedPayload =
     name === 'login'
-      ? { username: 'Player', password: passwordValue }
+      ? {
+          username: 'Player',
+          password: passwordValue,
+          age_band: '18_plus',
+          terms_version: '1',
+        }
       : {
           user: {
             username: 'Player',
             email: 'player@example.com',
             password: passwordValue,
           },
+          age_band: '18_plus',
+          terms_version: '1',
         };
   let requestCount = 0;
   let releaseResponse;
@@ -355,6 +362,8 @@ async function assertAuthFormInteractions(page, name, viewport) {
             id: 'ui-auth-submit-user',
             username: 'Player',
             email: name === 'register' ? 'player@example.com' : null,
+            age_band: '18_plus',
+            terms_version: '1',
           },
         },
       }),
