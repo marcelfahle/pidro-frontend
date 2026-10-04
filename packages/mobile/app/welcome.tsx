@@ -6,6 +6,7 @@ import { publicPlayerName, type InvitePreview } from '@pidro/shared';
 import { invitesApi } from '@/api/invites';
 import { ClassicPlaque } from '@/components/home/ClassicPlaque';
 import { LogoGlow } from '@/components/home/LogoGlow';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { HomeTileButton, type HomeTileSize } from '@/components/ui/HomeTileButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroLogo } from '@/components/ui/PidroLogo';
@@ -133,7 +134,16 @@ export default function WelcomeScreen() {
         styles.screen,
         compactLandscape ? styles.screenLandscape : tablet && styles.screenTablet,
       ]}>
-      {!compactLandscape ? <View style={styles.headerSpacer} /> : null}
+      <View style={[styles.header, compactLandscape && styles.headerLandscape]}>
+        <BevelButton
+          accessibilityLabel="Settings"
+          material="glass"
+          size="icon"
+          onPress={() => router.push('/device-settings')}
+          style={tablet && styles.settingsTablet}>
+          <Icon name="settings" size={tablet ? 22 : 20} />
+        </BevelButton>
+      </View>
       <View style={compactLandscape ? styles.bodyLandscape : styles.body}>
         <View
           style={[styles.logoStage, compactLandscape && styles.logoStageLandscape]}
@@ -257,7 +267,15 @@ const styles = StyleSheet.create({
   },
   screenLandscape: { paddingVertical: PidroSpacing.md },
   screenTablet: { paddingHorizontal: PidroSpacing.xl, paddingVertical: PidroSpacing.xl },
-  headerSpacer: { width: '100%', height: 48, flexShrink: 0 },
+  header: {
+    width: '100%',
+    height: 48,
+    flexShrink: 0,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  headerLandscape: { position: 'absolute', top: 16, right: 16, width: 44, zIndex: 1 },
+  settingsTablet: { width: 48, minHeight: 48 },
   body: { width: '100%', flex: 1, alignItems: 'center', gap: 14 },
   bodyLandscape: {
     width: '100%',

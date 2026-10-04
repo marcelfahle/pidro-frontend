@@ -58,6 +58,7 @@ const allCases = [
     authFixture: guestAuthFixture,
   },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
+  { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
   {
@@ -503,6 +504,15 @@ async function assertHomeGuestInteractions(page, name) {
   await page.waitForURL((url) => url.pathname.endsWith('/join-code'));
 }
 
+async function assertWelcomeSettingsInteractions(page, name) {
+  if (name !== 'welcome') return;
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.waitForURL((url) => url.pathname.endsWith('/device-settings'));
+  await page.getByTestId('settings-screen').waitFor();
+  await page.getByRole('button', { name: 'Go back', exact: true }).click();
+  await page.waitForURL((url) => url.pathname.endsWith('/welcome'));
+}
+
 async function assertBiddingRevealSequence(page, viewport) {
   const biddingWindow = page.getByTestId('bidding-window').first();
 
@@ -726,7 +736,7 @@ async function assertSeatPlacement(page, viewport) {
 }
 
 async function assertSwitchInteractions(page, name, screenshotDir) {
-  if (name !== 'ui-components' && name !== 'settings') return;
+  if (name !== 'ui-components' && name !== 'settings' && name !== 'device-settings') return;
   const gallery = name === 'ui-components';
   const first = page.getByRole('switch', {
     name: gallery ? 'Enabled example' : 'Sound',
@@ -858,6 +868,8 @@ async function main() {
                   display_name: guest ? 'Lucky Moose' : 'Bengt',
                   avatar_url: null,
                   bio: null,
+                  games_played: guest ? 1 : 28,
+                  veteran: { level: guest ? 2 : 7 },
                   classic: guest ? null : { games_played: 1862, level: 14 },
                 },
               }),
@@ -909,9 +921,18 @@ async function main() {
           await assertTargetGeometry(page, testCase, viewport);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();
+            await page.getByText('28 games · Level 7', { exact: true }).waitFor();
             await page.getByText('3 tables open', { exact: true }).waitFor();
           } else if (testCase.name === 'home-guest') {
             await page.getByText('Lucky Moose', { exact: true }).waitFor();
+            await page.getByText('Guest · 1 game', { exact: true }).waitFor();
+          }
+          if (viewport.name === 'landscape' && testCase.name.startsWith('home')) {
+            const expectedHeight = testCase.name === 'home' ? 170 : 150;
+            for (const tile of ['home-quick-game', 'home-play-online']) {
+              const box = await getStableBox(page.getByTestId(tile), page);
+              assert.equal(Math.round(box?.height ?? 0), expectedHeight, `${tile} height`);
+            }
           }
           if (testCase.name.startsWith('table-game-over')) {
             await page
@@ -928,6 +949,7 @@ async function main() {
           });
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
+          await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
           if (testCase.verifyReadiness) {

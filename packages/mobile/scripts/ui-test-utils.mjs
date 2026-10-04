@@ -11,15 +11,21 @@ export const UI_VIEWPORTS = [
   },
   {
     name: 'tablet-portrait',
+    width: 768,
+    height: 1024,
+    cases: ['table-bidding'],
+  },
+  {
+    name: 'home-tablet-portrait',
     width: 820,
     height: 1180,
-    cases: ['table-bidding', 'home', 'home-guest'],
+    cases: ['welcome', 'home', 'home-guest'],
   },
   {
     name: 'tablet-landscape',
     width: 1024,
     height: 768,
-    cases: ['table-bidding', 'home', 'home-guest'],
+    cases: ['table-bidding', 'welcome', 'home', 'home-guest'],
   },
 ];
 

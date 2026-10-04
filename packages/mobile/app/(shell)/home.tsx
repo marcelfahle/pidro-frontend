@@ -131,14 +131,15 @@ export default function HomeScreen() {
     }
   };
 
-  const games = identity?.classic?.games_played;
-  const level = identity?.classic?.level;
+  const games = identity?.games_played;
+  const level = identity?.veteran?.level;
+  const gamesLabel = games === 1 ? '1 game' : `${games?.toLocaleString()} games`;
   const identityMeta = guest
     ? games != null
-      ? `Guest · ${games.toLocaleString()} games`
+      ? `Guest · ${gamesLabel}`
       : 'Guest'
     : games != null && level != null
-      ? `${games.toLocaleString()} games · Level ${level}`
+      ? `${gamesLabel} · Level ${level}`
       : null;
   const onlineStatus =
     lobbyCountState !== 'ready'

@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   landscapeRim: { minHeight: 150 },
   tabletRim: { minHeight: 210 },
   face: {
-    minHeight: '100%',
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 8,
