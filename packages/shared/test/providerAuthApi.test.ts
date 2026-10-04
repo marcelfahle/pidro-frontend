@@ -21,6 +21,29 @@ function providerApi(response: { status: number; data: unknown }) {
 }
 
 describe('provider authentication API', () => {
+  it('sends a stored age answer with password login', async () => {
+    const password = providerApi({
+      status: 200,
+      data: { data: { token: 'session', user } },
+    });
+
+    await password.auth.login('player', 'password', {
+      age_band: '18_plus',
+      terms_version: '1',
+    });
+
+    expect(password.calls[0]).toMatchObject({
+      path: '/api/v1/auth/login',
+      body: {
+        username: 'player',
+        password: 'password',
+        age_band: '18_plus',
+        terms_version: '1',
+      },
+      config: { preserveSessionOnUnauthorized: true },
+    });
+  });
+
   it('sends each provider token with the persistent install id', async () => {
     const apple = providerApi({
       status: 200,

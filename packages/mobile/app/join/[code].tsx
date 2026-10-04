@@ -5,7 +5,7 @@ import { JoinInviteScreen } from '@/components/invites/JoinInviteScreen';
 import { useAuthStore } from '@/stores/auth';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
-import { needsAgeGate } from '@/navigation/initialRoute';
+import { joinRedirectDestination, needsAgeGate } from '@/navigation/initialRoute';
 
 const OPEN_FIXTURE: InvitePreview = {
   code: '7KQ4M2XB',
@@ -36,12 +36,10 @@ export default function JoinInviteRoute() {
 
   useEffect(() => {
     if (!code || fixture || !authHydrated || !pendingInviteHydrated || !ageGateHydrated) return;
+    const destination = joinRedirectDestination(ageBand, user);
+    if (!destination) return;
     setPendingInvite(code, source);
-    if (needsAgeGate(ageBand, user)) {
-      router.replace('/age');
-    } else if (!user) {
-      router.replace('/welcome');
-    }
+    router.replace(destination);
   }, [
     ageBand,
     ageGateHydrated,

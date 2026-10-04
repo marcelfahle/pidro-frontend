@@ -11,7 +11,9 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 import { t } from '@/i18n';
-import { authenticatedDestination } from '@/navigation/initialRoute';
+import { authenticatedEntryDestination } from '@/navigation/initialRoute';
+import { useAgeGateStore } from '@/stores/ageGate';
+import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import type { AuthProvider } from '@/api/auth';
 import { handleClassicFound } from '@/features/auth/classicFound';
@@ -65,7 +67,16 @@ export default function LoginScreen() {
   const performLogin = useCallback(async () => {
     Keyboard.dismiss();
     const success = await signIn(username.trim(), password);
-    if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
+    const signedInUser = useAuthStore.getState().user;
+    if (success && signedInUser) {
+      router.replace(
+        authenticatedEntryDestination(
+          pendingInvite,
+          useAgeGateStore.getState().ageBand,
+          signedInUser
+        ) as Href
+      );
+    }
   }, [password, pendingInvite, router, signIn, username]);
 
   const handleLogin = useCallback(async () => {
@@ -99,7 +110,16 @@ export default function LoginScreen() {
       setSocialNotice(null);
       const outcome = await signInWithProvider(provider);
       handleSocialSignInOutcome(outcome, {
-        onSignedIn: () => router.replace(authenticatedDestination(pendingInvite) as Href),
+        onSignedIn: () => {
+          if (outcome.status !== 'signed_in') return;
+          router.replace(
+            authenticatedEntryDestination(
+              pendingInvite,
+              useAgeGateStore.getState().ageBand,
+              outcome.session.user
+            ) as Href
+          );
+        },
         onClassicFound: (claim) => {
           handleClassicFound(claim, provider);
           router.replace('/(auth)/claim-classic');

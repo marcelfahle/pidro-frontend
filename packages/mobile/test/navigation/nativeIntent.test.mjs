@@ -7,6 +7,7 @@ import {
   canAccessProtectedRoutes,
   entryDestination,
   initialRoute,
+  joinRedirectDestination,
 } from '../../src/navigation/initialRoute.ts';
 
 globalThis.__DEV__ = true;
@@ -154,11 +155,32 @@ describe('initial route', () => {
     expect(authenticatedDestination({ code: '7KQ4M2XB', receivedAt: 1 })).toBe('/join/7KQ4M2XB');
   });
 
+  it('stores an invite only when the join route must redirect away', () => {
+    expect(joinRedirectDestination(null, answeredUser)).toBe('/age');
+    expect(joinRedirectDestination('18_plus', null)).toBe('/welcome');
+    expect(joinRedirectDestination('18_plus', answeredUser)).toBeNull();
+  });
+
   it('removes protected-route access when an active session is cleared', () => {
-    expect(canAccessProtectedRoutes(false, 'authenticated')).toBe(false);
-    expect(canAccessProtectedRoutes(true, 'checking')).toBe(false);
-    expect(canAccessProtectedRoutes(true, 'authenticated')).toBe(true);
-    expect(canAccessProtectedRoutes(true, 'unauthenticated')).toBe(false);
+    expect(canAccessProtectedRoutes(false, true, 'authenticated', '18_plus', answeredUser)).toBe(
+      false
+    );
+    expect(canAccessProtectedRoutes(true, false, 'authenticated', '18_plus', answeredUser)).toBe(
+      false
+    );
+    expect(canAccessProtectedRoutes(true, true, 'checking', '18_plus', answeredUser)).toBe(false);
+    expect(canAccessProtectedRoutes(true, true, 'authenticated', '18_plus', answeredUser)).toBe(
+      true
+    );
+    expect(
+      canAccessProtectedRoutes(true, true, 'authenticated', '18_plus', {
+        ...answeredUser,
+        age_band: 'unknown',
+      })
+    ).toBe(false);
+    expect(canAccessProtectedRoutes(true, true, 'unauthenticated', '18_plus', answeredUser)).toBe(
+      false
+    );
   });
 
   it('settles startup routing when pending-invite storage cannot be read', async () => {

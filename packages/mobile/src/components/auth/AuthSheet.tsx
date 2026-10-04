@@ -80,8 +80,15 @@ export function AuthSheet({
   // the caller once the Modal is gone (onDismiss on iOS, next render elsewhere).
   const [handingOff, setHandingOff] = useState(false);
   const pendingClaim = useRef<string | null>(null);
+  const pendingSave = useRef(false);
 
   const finishHandOff = () => {
+    if (pendingSave.current) {
+      pendingSave.current = false;
+      if (onSaved) onSaved();
+      else onClose();
+      return;
+    }
     const name = pendingClaim.current;
     if (name === null) return;
     pendingClaim.current = null;
@@ -131,8 +138,8 @@ export function AuthSheet({
 
     const result = await saveGuest(displayName.trim(), email.trim(), password);
     if (result.ok) {
-      onSaved?.();
-      onClose();
+      pendingSave.current = true;
+      setHandingOff(true);
       return;
     }
     setFields(result.error.fields ?? {});

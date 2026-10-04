@@ -10,6 +10,7 @@ import { initRealtime } from '../src/bootstrap/realtime';
 import { initSentry } from '../src/bootstrap/sentry';
 import { canAccessProtectedRoutes } from '../src/navigation/initialRoute';
 import { useAuthStore } from '../src/stores/auth';
+import { useAgeGateStore } from '../src/stores/ageGate';
 import { PidroColors } from '../src/design/tokens';
 
 initSentry();
@@ -21,7 +22,16 @@ export default function RootLayout() {
   });
   const authHydrated = useAuthStore((state) => state.hydrated);
   const authStatus = useAuthStore((state) => state.status);
-  const canAccessApp = canAccessProtectedRoutes(authHydrated, authStatus);
+  const user = useAuthStore((state) => state.user);
+  const ageGateHydrated = useAgeGateStore((state) => state.hydrated);
+  const ageBand = useAgeGateStore((state) => state.ageBand);
+  const canAccessApp = canAccessProtectedRoutes(
+    authHydrated,
+    ageGateHydrated,
+    authStatus,
+    ageBand,
+    user
+  );
   const reduceMotion = useReducedMotion();
   const menuAnimation = reduceMotion ? 'none' : 'slide_from_right';
 

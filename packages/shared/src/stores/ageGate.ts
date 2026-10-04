@@ -1,7 +1,7 @@
-import { create } from "zustand";
-import { createJSONStorage, persist } from "zustand/middleware";
-import type { DeclaredAgeBand } from "../api/auth";
-import type { PersistStorage } from "../platform/types";
+import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
+import type { DeclaredAgeBand } from '../api/auth';
+import type { PersistStorage } from '../platform/types';
 
 export type AgeGateState = {
   ageBand: DeclaredAgeBand | null;
@@ -18,7 +18,7 @@ interface CreateAgeGateStoreOptions {
 
 export function createAgeGateStore({
   storage,
-  storageKey = "age-gate-storage",
+  storageKey = 'age-gate-storage',
 }: CreateAgeGateStoreOptions) {
   return create<AgeGateState>()(
     persist(
@@ -33,10 +33,9 @@ export function createAgeGateStore({
         name: storageKey,
         storage: createJSONStorage(() => storage),
         partialize: ({ ageBand, termsVersion }) => ({ ageBand, termsVersion }),
-        onRehydrateStorage: (initialState) => () =>
-          initialState.setHydrated(true),
-      },
-    ),
+        onRehydrateStorage: (initialState) => () => initialState.setHydrated(true),
+      }
+    )
   );
 }
 

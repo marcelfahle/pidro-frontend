@@ -16,8 +16,9 @@ import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { createSoloRoom } from '@/features/game/solo';
 import { useAuth } from '@/hooks/useAuth';
 import { classifyInviteState } from '@/features/invites/joinFlow';
-import { authenticatedDestination } from '@/navigation/initialRoute';
+import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { gameRoute } from '@/navigation/gameRoute';
+import { useAgeGateStore } from '@/stores/ageGate';
 import { useLobbyStore } from '@/stores/lobby';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
@@ -31,6 +32,7 @@ export default function WelcomeScreen() {
   const network = useNetworkState();
   const offline = network.isConnected === false || network.isInternetReachable === false;
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
+  const ageBand = useAgeGateStore((state) => state.ageBand);
   const clearPendingInvite = usePendingInviteStore((state) => state.clearPendingInvite);
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const { isAuthenticated, user, continueAsGuest, error: authError, clearError } = useAuth();
@@ -91,9 +93,10 @@ export default function WelcomeScreen() {
       return;
     }
 
-    if (pendingInvite) {
+    const destination = authenticatedEntryDestination(pendingInvite, ageBand, session.user);
+    if (destination !== '/home') {
       setLaunchState('joiningInvite');
-      router.replace(authenticatedDestination(pendingInvite) as Href);
+      router.replace(destination as Href);
       return;
     }
 
@@ -101,6 +104,7 @@ export default function WelcomeScreen() {
   }, [
     clearError,
     continueAsGuest,
+    ageBand,
     launchBusy,
     launchState,
     offline,
@@ -111,7 +115,9 @@ export default function WelcomeScreen() {
   ]);
 
   if (isAuthenticated && launchState === 'idle') {
-    return <Redirect href={authenticatedDestination(pendingInvite) as Href} />;
+    return user ? (
+      <Redirect href={authenticatedEntryDestination(pendingInvite, ageBand, user) as Href} />
+    ) : null;
   }
 
   const currentPreview =
