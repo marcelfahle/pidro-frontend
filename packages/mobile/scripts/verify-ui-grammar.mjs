@@ -810,6 +810,10 @@ async function main() {
         await page.addInitScript(
           ({ ageGate, authenticated, fixture, pendingInvite }) => {
             globalThis.localStorage.setItem('age-gate-storage', ageGate);
+            if (!globalThis.sessionStorage.getItem('ui-settings-initialized')) {
+              globalThis.localStorage.removeItem('settings-storage');
+              globalThis.sessionStorage.setItem('ui-settings-initialized', 'true');
+            }
             if (authenticated) globalThis.localStorage.setItem('auth-storage', fixture);
             else globalThis.localStorage.removeItem('auth-storage');
             if (pendingInvite) {
