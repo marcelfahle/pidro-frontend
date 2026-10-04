@@ -1,5 +1,15 @@
 import type { ApiClient } from './client';
 
+export const TERMS_VERSION = '1';
+
+export type AgeBand = '13_17' | '18_plus' | 'unknown';
+export type DeclaredAgeBand = Exclude<AgeBand, 'unknown'> | 'under_13';
+
+export interface AgeTermsRequest {
+  age_band?: DeclaredAgeBand;
+  terms_version?: string;
+}
+
 export type User = {
   id: string;
   email: string | null;
@@ -8,6 +18,8 @@ export type User = {
   guest?: boolean;
   avatar_url?: string | null;
   bio?: string | null;
+  age_band?: AgeBand;
+  terms_version?: string | null;
 };
 
 interface AuthResponseEnvelope {
@@ -55,6 +67,30 @@ export interface CreateGuestRequest {
   creation_token?: string;
   platform?: 'ios' | 'android' | 'web';
   install_id?: string;
+  age_band?: DeclaredAgeBand;
+  terms_version?: string;
+}
+
+export interface RegisterRequest extends AgeTermsRequest {
+  user: {
+    username: string;
+    email: string;
+    password: string;
+  };
+}
+
+export interface UpgradeGuestRequest extends AgeTermsRequest {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export type ProviderAuthRequest = AgeTermsRequest &
+  ({ identity_token: string; install_id: string } | { access_token: string; install_id: string });
+
+export interface SetAgeRequest {
+  age_band: DeclaredAgeBand;
+  terms_version: string;
 }
 
 interface GuestResponseEnvelope extends AuthResponseEnvelope {
@@ -71,18 +107,29 @@ interface PasswordResetRequestEnvelope {
   };
 }
 
+interface UserResponseEnvelope {
+  data: {
+    user: User;
+  };
+}
+
 export type PasswordResetRequestResponse = PasswordResetRequestEnvelope['data'];
 
 export function createAuthApi(api: ApiClient) {
   const providerLogin = async (
     provider: AuthProvider,
     token: string,
-    installId: string
+    installId: string,
+    ageTerms: AgeTermsRequest = {}
   ): Promise<ProviderLoginResponse> => {
     const credentials = provider === 'apple' ? { identity_token: token } : { access_token: token };
     const response = await api.post<ProviderAuthEnvelope>(
       `/api/v1/auth/${provider}`,
-      { ...credentials, install_id: installId },
+      {
+        ...credentials,
+        install_id: installId,
+        ...ageTerms,
+      } satisfies ProviderAuthRequest,
       // An unrecognized provider identity is an expected sign-in result. Let
       // the caller handle it without the client's global 401 session clearer.
       {
@@ -112,30 +159,48 @@ export function createAuthApi(api: ApiClient) {
     register: async (
       username: string,
       email: string,
-      password: string
+      password: string,
+      ageTerms: AgeTermsRequest = {}
     ): Promise<RegisterResponse> => {
-      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/register', {
+      const request: RegisterRequest = {
         user: { username, email, password },
-      });
+        ...ageTerms,
+      };
+      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/register', request);
       return response.data.data;
     },
 
     upgradeGuest: async (
       displayName: string,
       email: string,
-      password: string
+      password: string,
+      ageTerms: AgeTermsRequest = {}
     ): Promise<UpgradeGuestResponse> => {
-      const response = await api.post<AuthResponseEnvelope>(
-        '/api/v1/auth/upgrade',
-        { username: displayName, email, password },
-        { preserveSessionOnUnauthorized: true },
-      );
+      const request: UpgradeGuestRequest = {
+        username: displayName,
+        email,
+        password,
+        ...ageTerms,
+      };
+      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/upgrade', request, {
+        preserveSessionOnUnauthorized: true,
+      });
       return response.data.data;
     },
 
     createGuest: async (request: CreateGuestRequest): Promise<CreateGuestResponse> => {
       const response = await api.post<GuestResponseEnvelope>('/api/v1/auth/guest', request);
       return response.data.data;
+    },
+
+    getMe: async (): Promise<User> => {
+      const response = await api.get<UserResponseEnvelope>('/api/v1/auth/me');
+      return response.data.data.user;
+    },
+
+    setAge: async (request: SetAgeRequest): Promise<User> => {
+      const response = await api.post<UserResponseEnvelope>('/api/v1/auth/age', request);
+      return response.data.data.user;
     },
 
     requestPasswordReset: async (identifier: string): Promise<PasswordResetRequestResponse> => {

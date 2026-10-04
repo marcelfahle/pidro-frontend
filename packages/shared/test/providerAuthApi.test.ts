@@ -31,21 +31,41 @@ describe('provider authentication API', () => {
       data: { data: { token: 'session', user } },
     });
 
-    expect(await apple.auth.providerLogin('apple', 'apple-token', 'install-1')).toEqual({
+    expect(
+      await apple.auth.providerLogin('apple', 'apple-token', 'install-1', {
+        age_band: '13_17',
+        terms_version: '1',
+      })
+    ).toEqual({
       status: 'signed_in',
       session: { token: 'session', user },
     });
-    expect(await facebook.auth.providerLogin('facebook', 'facebook-token', 'install-2')).toEqual({
+    expect(
+      await facebook.auth.providerLogin('facebook', 'facebook-token', 'install-2', {
+        age_band: '18_plus',
+        terms_version: '1',
+      })
+    ).toEqual({
       status: 'signed_in',
       session: { token: 'session', user },
     });
     expect(apple.calls[0]).toMatchObject({
       path: '/api/v1/auth/apple',
-      body: { identity_token: 'apple-token', install_id: 'install-1' },
+      body: {
+        identity_token: 'apple-token',
+        install_id: 'install-1',
+        age_band: '13_17',
+        terms_version: '1',
+      },
     });
     expect(facebook.calls[0]).toMatchObject({
       path: '/api/v1/auth/facebook',
-      body: { access_token: 'facebook-token', install_id: 'install-2' },
+      body: {
+        access_token: 'facebook-token',
+        install_id: 'install-2',
+        age_band: '18_plus',
+        terms_version: '1',
+      },
     });
   });
 

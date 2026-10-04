@@ -71,6 +71,7 @@ export function BevelButton({
   fullWidth = false,
   loading = false,
   disabled = false,
+  accessibilityState,
   style,
   ...rest
 }: BevelButtonProps) {
@@ -95,7 +96,7 @@ export function BevelButton({
     <BevelPressable
       accessibilityRole="button"
       accessibilityLabel={rest.accessibilityLabel ?? label}
-      accessibilityState={{ disabled: disabled || loading, busy: loading }}
+      accessibilityState={{ disabled: disabled || loading, busy: loading, ...accessibilityState }}
       material={material}
       weight={size === 'hero' ? 'hero' : 'lite'}
       radius={size === 'icon' ? 12 : size === 'hero' ? 20 : 14}

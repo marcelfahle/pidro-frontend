@@ -3,7 +3,9 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { isInviteArrivalSource, normalizeInviteCode, type InvitePreview } from '@pidro/shared';
 import { JoinInviteScreen } from '@/components/invites/JoinInviteScreen';
 import { useAuthStore } from '@/stores/auth';
+import { useAgeGateStore } from '@/stores/ageGate';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+import { needsAgeGate } from '@/navigation/initialRoute';
 
 const OPEN_FIXTURE: InvitePreview = {
   code: '7KQ4M2XB',
@@ -28,15 +30,40 @@ export default function JoinInviteRoute() {
   const authHydrated = useAuthStore((state) => state.hydrated);
   const user = useAuthStore((state) => state.user);
   const pendingInviteHydrated = usePendingInviteStore((state) => state.hydrated);
+  const ageGateHydrated = useAgeGateStore((state) => state.hydrated);
+  const ageBand = useAgeGateStore((state) => state.ageBand);
   const setPendingInvite = usePendingInviteStore((state) => state.setPendingInvite);
 
   useEffect(() => {
-    if (!code || fixture || !authHydrated || !pendingInviteHydrated || user) return;
+    if (!code || fixture || !authHydrated || !pendingInviteHydrated || !ageGateHydrated) return;
     setPendingInvite(code, source);
-    router.replace('/welcome');
-  }, [authHydrated, code, fixture, pendingInviteHydrated, router, setPendingInvite, source, user]);
+    if (needsAgeGate(ageBand, user)) {
+      router.replace('/age');
+    } else if (!user) {
+      router.replace('/welcome');
+    }
+  }, [
+    ageBand,
+    ageGateHydrated,
+    authHydrated,
+    code,
+    fixture,
+    pendingInviteHydrated,
+    router,
+    setPendingInvite,
+    source,
+    user,
+  ]);
 
   if (!code) return <Redirect href="/+not-found" />;
-  if (!fixture && (!authHydrated || !pendingInviteHydrated || !user)) return null;
+  if (
+    !fixture &&
+    (!authHydrated ||
+      !pendingInviteHydrated ||
+      !ageGateHydrated ||
+      !user ||
+      needsAgeGate(ageBand, user))
+  )
+    return null;
   return <JoinInviteScreen key={code} code={code} source={source} fixture={fixture} />;
 }

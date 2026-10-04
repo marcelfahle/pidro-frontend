@@ -60,8 +60,14 @@ describe('invite APIs', () => {
     ]);
     const auth = createAuthApi(api);
 
-    await auth.register('anna', 'anna@example.com', 'password123');
-    await auth.upgradeGuest('Anna North', 'anna@example.com', 'password123');
+    await auth.register('anna', 'anna@example.com', 'password123', {
+      age_band: '13_17',
+      terms_version: '1',
+    });
+    await auth.upgradeGuest('Anna North', 'anna@example.com', 'password123', {
+      age_band: '18_plus',
+      terms_version: '1',
+    });
 
     expect(calls).toEqual([
       {
@@ -73,6 +79,8 @@ describe('invite APIs', () => {
             email: 'anna@example.com',
             password: 'password123',
           },
+          age_band: '13_17',
+          terms_version: '1',
         },
       },
       {
@@ -82,6 +90,8 @@ describe('invite APIs', () => {
           username: 'Anna North',
           email: 'anna@example.com',
           password: 'password123',
+          age_band: '18_plus',
+          terms_version: '1',
         },
       },
     ]);
@@ -101,6 +111,8 @@ describe('invite APIs', () => {
       creation_token: '8b597c4a-c208-4cf6-b274-81b29f6751ea',
       platform: 'android',
       install_id: 'install-1',
+      age_band: '18_plus',
+      terms_version: '1',
     });
 
     expect(calls[0]).toEqual({
@@ -110,6 +122,8 @@ describe('invite APIs', () => {
         creation_token: '8b597c4a-c208-4cf6-b274-81b29f6751ea',
         platform: 'android',
         install_id: 'install-1',
+        age_band: '18_plus',
+        terms_version: '1',
       },
     });
     expect(result.user.display_name).toBe('Amber Fox');
@@ -146,6 +160,29 @@ describe('invite APIs', () => {
       },
     ]);
     expect(result.user).toEqual(guest);
+  });
+
+  it('sets and refetches the caller age using the user response envelope', async () => {
+    const user = {
+      id: 'user-1',
+      username: 'anna',
+      email: null,
+      age_band: '13_17',
+      terms_version: '1',
+    };
+    const { api, calls } = recordingApi([{ data: { user } }, { data: { user } }]);
+    const auth = createAuthApi(api);
+
+    await expect(auth.setAge({ age_band: '13_17', terms_version: '1' })).resolves.toEqual(user);
+    await expect(auth.getMe()).resolves.toEqual(user);
+    expect(calls).toEqual([
+      {
+        method: 'post',
+        path: '/api/v1/auth/age',
+        body: { age_band: '13_17', terms_version: '1' },
+      },
+      { method: 'get', path: '/api/v1/auth/me' },
+    ]);
   });
 
   it('previews, mints, regenerates, revokes, and redeems invites', async () => {
