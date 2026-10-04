@@ -25,7 +25,21 @@ const authFixture = JSON.stringify({
   state: {
     accessToken: 'ui-grammar-token',
     refreshToken: null,
-    user: { id: 'ui-grammar-user', username: 'Player', age_band: '18_plus' },
+    user: { id: 'ui-grammar-user', username: 'Bengt', age_band: '18_plus' },
+  },
+  version: 0,
+});
+const guestAuthFixture = JSON.stringify({
+  state: {
+    accessToken: 'ui-grammar-guest-token',
+    refreshToken: null,
+    user: {
+      id: 'ui-grammar-guest',
+      username: 'guest_7KQ4M2XB',
+      display_name: 'Lucky Moose',
+      guest: true,
+      age_band: '18_plus',
+    },
   },
   version: 0,
 });
@@ -36,6 +50,13 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  {
+    name: 'home-guest',
+    path: '/home',
+    testId: 'home-screen',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
@@ -444,7 +465,10 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
     });
   });
 
-  const submit = page.getByRole('button', { name: 'PLAY', exact: true });
+  const submit = page.getByRole('button', {
+    name: 'Quick game. You and three bots. No sign-up.',
+    exact: true,
+  });
   await submit.click();
   await page.getByText('Too many attempts. Try again soon.', { exact: true }).waitFor();
   assert.equal('display_name' in requestBodies[0], false);
@@ -459,6 +483,24 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
   assert.equal('display_name' in requestBodies[1], false);
   assert.equal(roomBodies.length, 1);
   assert.deepEqual(roomBodies[0].seats, { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' });
+}
+
+async function assertHomeGuestInteractions(page, name) {
+  if (name !== 'home-guest') return;
+  if ((await page.getByText('League', { exact: true }).count()) !== 0) {
+    throw new Error('guest Home must not render the account tab pill');
+  }
+
+  await page
+    .getByRole('button', {
+      name: 'Play online. Real players. Needs a free account.',
+      exact: true,
+    })
+    .click();
+  const joinCode = page.getByRole('link', { name: 'Have a table code?', exact: true });
+  await joinCode.waitFor();
+  await joinCode.click();
+  await page.waitForURL((url) => url.pathname.endsWith('/join-code'));
 }
 
 async function assertBiddingRevealSequence(page, viewport) {
@@ -777,7 +819,7 @@ async function main() {
           {
             ageGate: ageGateFixture,
             authenticated: testCase.authenticated === true,
-            fixture: authFixture,
+            fixture: testCase.authFixture ?? authFixture,
             pendingInvite: testCase.pendingInvite === true,
           }
         );
@@ -798,6 +840,43 @@ async function main() {
                     label: null,
                     expires_at: '2099-01-01T00:00:00Z',
                   },
+                },
+              }),
+            });
+          });
+        }
+        if (testCase.name === 'home' || testCase.name === 'home-guest') {
+          await page.route('**/api/v1/profile', async (route) => {
+            const guest = testCase.name === 'home-guest';
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                data: {
+                  user_id: guest ? 'ui-grammar-guest' : 'ui-grammar-user',
+                  username: guest ? 'guest_7KQ4M2XB' : 'Bengt',
+                  display_name: guest ? 'Lucky Moose' : 'Bengt',
+                  avatar_url: null,
+                  bio: null,
+                  classic: guest ? null : { games_played: 1862, level: 14 },
+                },
+              }),
+            });
+          });
+          await page.route('**/api/v1/lobby', async (route) => {
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                data: {
+                  my_rejoinable: [],
+                  open_tables: [
+                    { code: 'OPEN01', name: 'North table', status: 'waiting', seats: [] },
+                    { code: 'OPEN02', name: 'South table', status: 'waiting', seats: [] },
+                    { code: 'OPEN03', name: 'West table', status: 'waiting', seats: [] },
+                  ],
+                  substitute_needed: [],
+                  spectatable: [],
                 },
               }),
             });
@@ -828,6 +907,12 @@ async function main() {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
           await assertTargetGeometry(page, testCase, viewport);
+          if (testCase.name === 'home') {
+            await page.getByText('Bengt', { exact: true }).waitFor();
+            await page.getByText('3 tables open', { exact: true }).waitFor();
+          } else if (testCase.name === 'home-guest') {
+            await page.getByText('Lucky Moose', { exact: true }).waitFor();
+          }
           if (testCase.name.startsWith('table-game-over')) {
             await page
               .getByTestId('victory-confetti')
@@ -843,6 +928,7 @@ async function main() {
           });
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
+          await assertHomeGuestInteractions(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);

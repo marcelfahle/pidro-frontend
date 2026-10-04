@@ -12,6 +12,7 @@ export const PidroColors = {
   backdrop: 'rgba(1, 13, 27, 0.72)',
   cyan: '#46dcff',
   cyanText: '#8beaff',
+  cyanStatus: '#A6EEFF',
   cyanSoft: 'rgba(70, 220, 255, 0.42)',
   iconOnGlass: '#CFEFFF',
   cyanBorder: 'rgba(91, 221, 255, 0.42)',
@@ -27,6 +28,7 @@ export const PidroColors = {
   woodMid: '#5a3515',
   woodBottom: '#1e0e04',
   text: '#ffffff',
+  textOnWood: '#FFF1CF',
   textSoft: 'rgba(239, 249, 255, 0.78)',
   textMuted: 'rgba(218, 237, 247, 0.58)',
   ink: '#08243d',
@@ -40,6 +42,7 @@ export const PidroColors = {
   successBg: 'rgba(21, 101, 63, 0.68)',
   warning: '#ffd98a',
   warningBg: 'rgba(107, 73, 11, 0.72)',
+  plaqueShadow: '0px 4px 14px rgba(1,13,27,0.35), inset 0px 1px 0px rgba(139,234,255,0.12)',
 } as const;
 
 /**
