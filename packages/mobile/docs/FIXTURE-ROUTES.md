@@ -164,7 +164,7 @@ node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/biddi
 renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
 `bun run ui:baselines <runId>`.
 
-`UI_CASES` names: `home` `lobby` `login` `register` `join-code` `join-invite`
+`UI_CASES` names: `home` `home-guest` `lobby` `login` `register` `join-code` `join-invite`
 `ui-components` `create-table` `table-waiting` `table-ready` `table-ready-host`
 `table-host-controls` `table-invite` `table-playing` `table-dealer-selection`
 `table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`

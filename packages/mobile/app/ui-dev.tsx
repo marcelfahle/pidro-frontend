@@ -13,6 +13,7 @@ import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
+import { HomeTileButton } from '@/components/ui/HomeTileButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
@@ -292,6 +293,28 @@ function UiDevHarness() {
         </Surface>
 
         <Surface variant="panel" style={styles.section} padded>
+          <PidroText role="title">Home tiles</PidroText>
+          <View style={styles.homeTiles}>
+            <HomeTileButton
+              material="wood"
+              icon={<Icon name="bot" size={30} color={PidroBevel.textGold} />}
+              title="Quick game"
+              subtitle="You and three bots"
+              status="No sign-up"
+              onPress={noop}
+            />
+            <HomeTileButton
+              material="glass"
+              icon={<Icon name="friends" size={30} />}
+              title="Play online"
+              subtitle="Real players"
+              status="Needs a free account"
+              onPress={noop}
+            />
+          </View>
+        </Surface>
+
+        <Surface variant="panel" style={styles.section} padded>
           <PidroText role="title">Match results</PidroText>
           <View style={styles.row}>
             <PidroText role="score" tone="gold">
@@ -427,6 +450,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: PidroSpacing.sm,
+  },
+  homeTiles: {
+    width: '100%',
+    maxWidth: 340,
+    flexDirection: 'row',
+    gap: PidroSpacing.sm,
+    alignSelf: 'center',
   },
   action: {
     minWidth: 130,

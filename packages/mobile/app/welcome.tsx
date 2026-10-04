@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Redirect, useRouter, type Href } from 'expo-router';
 import { useNetworkState } from 'expo-network';
 import { publicPlayerName, type InvitePreview } from '@pidro/shared';
 import { invitesApi } from '@/api/invites';
+import { ClassicPlaque } from '@/components/home/ClassicPlaque';
 import { LogoGlow } from '@/components/home/LogoGlow';
 import { BevelButton } from '@/components/ui/BevelButton';
+import { HomeTileButton, type HomeTileSize } from '@/components/ui/HomeTileButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
-import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { createSoloRoom } from '@/features/game/solo';
 import { useAuth } from '@/hooks/useAuth';
 import { classifyInviteState } from '@/features/invites/joinFlow';
@@ -28,7 +29,9 @@ export default function WelcomeScreen() {
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
-  const compactPortrait = !landscape && height < 700;
+  const compactLandscape = landscape && height < PidroLayout.compactHeight;
+  const tablet = Math.min(width, height) >= 700;
+  const tileSize: HomeTileSize = tablet ? 'tablet' : compactLandscape ? 'landscape' : 'phone';
   const network = useNetworkState();
   const offline = network.isConnected === false || network.isInternetReachable === false;
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
@@ -127,105 +130,129 @@ export default function WelcomeScreen() {
     <ScreenShell
       testID="welcome-screen"
       scroll
-      contentStyle={landscape ? styles.landscape : styles.portrait}>
-      <View
-        style={[
-          styles.logoStage,
-          landscape && styles.logoStageLandscape,
-          compactPortrait && styles.logoStageCompact,
-        ]}
-        pointerEvents="none">
-        <LogoGlow size={landscape ? 340 : compactPortrait ? 280 : 400} />
-        <PidroLogo size="hero" />
-      </View>
-
-      <View testID="welcome-window" style={styles.actions}>
-        {pendingInvite ? (
-          <Surface variant="card" style={styles.inviteCard}>
-            <View style={styles.inviteAvatar}>
-              <PidroText role="title" tone="gold">
-                {inviter.charAt(0).toUpperCase()}
-              </PidroText>
-            </View>
-            <View style={styles.inviteCopy}>
-              <PidroText role="label" numberOfLines={1}>
-                {inviter} saved you a seat
-              </PidroText>
-              <PidroText role="metadata" tone="soft">
-                Table {pendingInvite.code}
-              </PidroText>
-            </View>
-            <PidroText role="metadata" tone="cyan">
-              INVITE
-            </PidroText>
-          </Surface>
-        ) : null}
-
-        {offline ? (
-          <Surface variant="subtle" style={styles.offline} accessibilityRole="alert">
-            <PidroText role="metadata" tone="gold" align="center">
-              You&apos;re offline. Connect to play.
-            </PidroText>
-          </Surface>
-        ) : null}
-
-        {authError || launchError ? (
-          <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
-            <PidroText role="metadata" tone="danger" align="center">
-              {launchError || authError}
-            </PidroText>
-          </Surface>
-        ) : null}
-
+      contentStyle={[
+        styles.screen,
+        compactLandscape ? styles.screenLandscape : tablet && styles.screenTablet,
+      ]}>
+      <View style={[styles.header, compactLandscape && styles.headerLandscape]}>
         <BevelButton
-          label={pendingInvite ? 'JOIN TABLE' : 'PLAY'}
-          material="wood"
-          size={landscape ? 'lg' : 'hero'}
-          weight="hero"
-          fullWidth
-          disabled={offline}
-          loading={launchBusy}
-          onPress={launch}
-        />
+          accessibilityLabel="Settings"
+          material="glass"
+          size="icon"
+          onPress={() => router.push('/device-settings')}
+          style={tablet && styles.settingsTablet}>
+          <Icon name="settings" size={tablet ? 22 : 20} />
+        </BevelButton>
+      </View>
+      <View style={compactLandscape ? styles.bodyLandscape : styles.body}>
+        <View
+          style={[styles.logoStage, compactLandscape && styles.logoStageLandscape]}
+          pointerEvents="none">
+          <LogoGlow size={tablet ? 700 : compactLandscape ? 360 : 420} />
+          <PidroLogo size="hero" width={tablet ? 440 : compactLandscape ? 270 : 280} />
+        </View>
 
-        <PressableFX
-          accessibilityRole="button"
-          accessibilityLabel="Played Pidro Classic? Bring your name and games."
-          disabled={offline || launchBusy}
-          onPress={() => router.push('/(auth)/claim-classic')}
-          style={[styles.classic, (offline || launchBusy) && styles.disabled]}>
-          <View style={styles.classicIcon}>
-            <Icon name="friends" size={24} color={PidroColors.cyan} />
-          </View>
-          <View style={styles.classicCopy}>
-            <PidroText role="label">Played Pidro Classic?</PidroText>
-            <PidroText role="metadata" tone="soft">
-              Bring your name and games.
-            </PidroText>
-          </View>
-          <Icon name="chevron-right" size={22} color={PidroColors.cyanText} />
-        </PressableFX>
+        <View
+          testID="welcome-window"
+          style={[
+            styles.actions,
+            tablet && styles.actionsTablet,
+            compactLandscape && styles.actionsLandscape,
+          ]}>
+          {pendingInvite ? (
+            <Surface variant="card" style={styles.inviteCard}>
+              <View style={styles.inviteAvatar}>
+                <PidroText role="title" tone="gold">
+                  {inviter.charAt(0).toUpperCase()}
+                </PidroText>
+              </View>
+              <View style={styles.inviteCopy}>
+                <PidroText role="label" numberOfLines={1}>
+                  {inviter} saved you a seat
+                </PidroText>
+                <PidroText role="metadata" tone="soft">
+                  Table {pendingInvite.code}
+                </PidroText>
+              </View>
+              <PidroText role="metadata" tone="cyan">
+                INVITE
+              </PidroText>
+            </Surface>
+          ) : null}
 
-        <View style={[styles.accountLinks, (offline || launchBusy) && styles.disabled]}>
-          <PressableFX
-            accessibilityRole="link"
+          {offline ? (
+            <Surface variant="subtle" style={styles.offline} accessibilityRole="alert">
+              <PidroText role="metadata" tone="gold" align="center">
+                You&apos;re offline. Connect to play.
+              </PidroText>
+            </Surface>
+          ) : null}
+
+          {authError || launchError ? (
+            <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
+              <PidroText role="metadata" tone="danger" align="center">
+                {launchError || authError}
+              </PidroText>
+            </Surface>
+          ) : null}
+
+          <View style={[styles.tiles, tablet && styles.tilesTablet]}>
+            <HomeTileButton
+              material="wood"
+              icon={
+                <Icon
+                  name="bot"
+                  size={tablet ? 40 : compactLandscape ? 28 : 30}
+                  color={PidroBevel.textGold}
+                />
+              }
+              title="Quick game"
+              subtitle="You and three bots"
+              status="No sign-up"
+              size={tileSize}
+              disabled={offline}
+              loading={launchBusy}
+              onPress={launch}
+              testID="welcome-quick-game"
+            />
+            <HomeTileButton
+              material="glass"
+              icon={
+                <Icon
+                  name="friends"
+                  size={tablet ? 40 : compactLandscape ? 28 : 30}
+                  color={PidroColors.iconOnGlass}
+                />
+              }
+              title="Play online"
+              subtitle="Real players"
+              status="Needs a free account"
+              size={tileSize}
+              disabled={offline || launchBusy}
+              onPress={() => router.push('/(auth)/register')}
+              testID="welcome-play-online"
+            />
+          </View>
+
+          <ClassicPlaque
             disabled={offline || launchBusy}
-            onPress={() => router.push('/(auth)/login')}
-            style={styles.accountLink}>
+            onPress={() => router.push('/(auth)/claim-classic')}
+          />
+
+          <View style={[styles.accountLinks, (offline || launchBusy) && styles.disabled]}>
             <PidroText role="metadata" tone="cyan">
-              Sign in
+              Have an account?
             </PidroText>
-          </PressableFX>
-          <View style={styles.dot} />
-          <PressableFX
-            accessibilityRole="link"
-            disabled={offline || launchBusy}
-            onPress={() => router.push('/(auth)/register')}
-            style={styles.accountLink}>
-            <PidroText role="metadata" tone="cyan">
-              Create account
-            </PidroText>
-          </PressableFX>
+            <Pressable
+              accessibilityRole="link"
+              disabled={offline || launchBusy}
+              onPress={() => router.push('/(auth)/login')}
+              style={styles.accountLink}>
+              <PidroText role="metadata" tone="cyan" style={styles.signIn}>
+                Sign in
+              </PidroText>
+            </Pressable>
+          </View>
         </View>
       </View>
     </ScreenShell>
@@ -233,36 +260,53 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  portrait: {
-    justifyContent: 'center',
+  screen: {
     alignItems: 'center',
-    gap: PidroSpacing.md,
+    gap: 14,
+    paddingHorizontal: PidroSpacing.sm,
   },
-  landscape: {
+  screenLandscape: { paddingVertical: PidroSpacing.md },
+  screenTablet: { paddingHorizontal: PidroSpacing.xl, paddingVertical: PidroSpacing.xl },
+  header: {
+    width: '100%',
+    height: 48,
+    flexShrink: 0,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  headerLandscape: { position: 'absolute', top: 16, right: 16, width: 44, zIndex: 1 },
+  settingsTablet: { width: 48, minHeight: 48 },
+  body: { width: '100%', flex: 1, alignItems: 'center', gap: 14 },
+  bodyLandscape: {
+    width: '100%',
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: PidroSpacing.xl,
+    gap: PidroSpacing.xxl,
   },
   logoStage: {
     width: '100%',
-    height: 210,
+    flex: 1,
+    minHeight: 180,
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoStageLandscape: {
-    width: '43%',
-    maxWidth: 360,
-    height: 300,
+    width: 340,
+    alignSelf: 'stretch',
     flexShrink: 1,
   },
-  logoStageCompact: { height: 130 },
   actions: {
     width: '100%',
     maxWidth: 340,
     alignItems: 'stretch',
-    gap: PidroSpacing.sm,
+    gap: 14,
   },
+  actionsLandscape: { width: 330 },
+  actionsTablet: { maxWidth: 480, gap: PidroSpacing.lg },
+  tiles: { width: '100%', flexDirection: 'row', gap: PidroSpacing.sm },
+  tilesTablet: { gap: PidroSpacing.md },
   inviteCard: {
     minHeight: 64,
     padding: PidroSpacing.sm,
@@ -281,26 +325,6 @@ const styles = StyleSheet.create({
   inviteCopy: { flex: 1, minWidth: 0 },
   offline: { padding: PidroSpacing.sm, borderColor: PidroColors.gold },
   error: { padding: PidroSpacing.sm },
-  classic: {
-    minHeight: 64,
-    padding: PidroSpacing.sm,
-    borderWidth: 1,
-    borderRadius: 12,
-    borderColor: PidroColors.borderStrong,
-    backgroundColor: PidroColors.panelStrong,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: PidroSpacing.sm,
-  },
-  classicIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: PidroColors.glass,
-  },
-  classicCopy: { flex: 1, minWidth: 0 },
   accountLinks: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -312,6 +336,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: PidroSpacing.sm,
   },
-  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: PidroColors.textMuted },
+  signIn: { fontWeight: '800' },
   disabled: { opacity: 0.5 },
 });

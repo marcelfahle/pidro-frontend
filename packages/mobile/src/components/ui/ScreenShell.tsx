@@ -6,6 +6,7 @@ import {
   StyleSheet,
   useWindowDimensions,
   View,
+  type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -16,7 +17,7 @@ interface ScreenShellProps {
   children: ReactNode;
   scroll?: boolean;
   compact?: boolean;
-  contentStyle?: ViewStyle;
+  contentStyle?: StyleProp<ViewStyle>;
   testID?: string;
 }
 

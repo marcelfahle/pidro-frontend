@@ -182,6 +182,7 @@ function BevelLayers({
         borderRadius: radius - rimPad,
         padding: keyPad,
         backgroundColor: PidroBevel.keyline,
+        flexGrow: 1,
       }}>
       {face}
     </View>

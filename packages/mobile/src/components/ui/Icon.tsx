@@ -23,7 +23,8 @@ export type IconName =
   | 'chevron-right'
   | 'lock'
   | 'check'
-  | 'bot';
+  | 'bot'
+  | 'cards';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   home: { path: 'M3 11l9-8 9 8M5 9v12h5v-7h4v7h5V9', mode: 'stroke' },
@@ -37,7 +38,14 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   'chevron-right': { path: 'm9 5 7 7-7 7', mode: 'stroke' },
   lock: { path: 'M6 10h12v11H6zM8.5 10V7.5a3.5 3.5 0 0 1 7 0V10', mode: 'stroke' },
   check: { path: 'M5 12.5l4.5 4.5L19 7.5', mode: 'stroke' },
-  bot: { path: 'M12 3v3M5 6h14v14H5zM9 11v2m6-2v2m-6 4h6M2 10v6m20-6v6', mode: 'stroke' },
+  bot: {
+    path: 'M5 8h14v11a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V8M12 8V5.5M12 3a1.2 1.2 0 1 0 0 2.4A1.2 1.2 0 0 0 12 3M9.5 12.5v2m5-2v2M2.8 12.5v3m18.4-3v3',
+    mode: 'stroke',
+  },
+  cards: {
+    path: 'M5.5 6.2 3.9 6.6a2 2 0 0 0-1.4 2.5l3.1 10.1a2 2 0 0 0 2.5 1.3l2.4-.7M12.5 4h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2M15.5 8.2c-1.2 1.4-2.4 2.3-2.4 3.4 0 .8.6 1.3 1.3 1.3.5 0 .9-.2 1.1-.6.2.4.6.6 1.1.6.7 0 1.3-.5 1.3-1.3 0-1.1-1.2-2-2.4-3.4M15.5 13v1.6',
+    mode: 'stroke',
+  },
   plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
   'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },
   star: {

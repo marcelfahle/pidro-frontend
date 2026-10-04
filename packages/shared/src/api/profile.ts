@@ -35,6 +35,10 @@ export interface ProfileIdentity {
   display_name: string | null;
   avatar_url: string | null;
   bio: string | null;
+  games_played?: number;
+  veteran?: {
+    level: number;
+  };
   classic: ClassicProfile | null;
 }
 

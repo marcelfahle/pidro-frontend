@@ -50,6 +50,7 @@ export interface AuthSheetProps {
   onClose: () => void;
   onSaved?: () => void;
   onClaimClassic: (name: string) => void;
+  onJoinCode?: () => void;
   /** Hide the claim links, e.g. once a Classic account is linked. */
   showClaimClassic?: boolean;
   providerActions?: ReactNode;
@@ -61,6 +62,7 @@ export function AuthSheet({
   onClose,
   onSaved,
   onClaimClassic,
+  onJoinCode,
   showClaimClassic = true,
   providerActions,
 }: AuthSheetProps) {
@@ -79,24 +81,30 @@ export function AuthSheet({
   // it on iOS. So a claim tap hides the sheet first and hands the action to
   // the caller once the Modal is gone (onDismiss on iOS, next render elsewhere).
   const [handingOff, setHandingOff] = useState(false);
-  const pendingClaim = useRef<string | null>(null);
-  const pendingSave = useRef(false);
+  const pendingHandOff = useRef<
+    { type: 'save' } | { type: 'claim'; name: string } | { type: 'joinCode' } | null
+  >(null);
 
   const finishHandOff = () => {
-    if (pendingSave.current) {
-      pendingSave.current = false;
+    const pending = pendingHandOff.current;
+    if (pending === null) return;
+    pendingHandOff.current = null;
+    if (pending.type === 'save') {
       if (onSaved) onSaved();
       else onClose();
       return;
     }
-    const name = pendingClaim.current;
-    if (name === null) return;
-    pendingClaim.current = null;
-    onClaimClassic(name);
+    if (pending.type === 'claim') onClaimClassic(pending.name);
+    else onJoinCode?.();
   };
 
   const claimClassic = (name: string) => {
-    pendingClaim.current = name;
+    pendingHandOff.current = { type: 'claim', name };
+    setHandingOff(true);
+  };
+
+  const joinCode = () => {
+    pendingHandOff.current = { type: 'joinCode' };
     setHandingOff(true);
   };
 
@@ -138,7 +146,7 @@ export function AuthSheet({
 
     const result = await saveGuest(displayName.trim(), email.trim(), password);
     if (result.ok) {
-      pendingSave.current = true;
+      pendingHandOff.current = { type: 'save' };
       setHandingOff(true);
       return;
     }
@@ -266,6 +274,13 @@ export function AuthSheet({
                 loading={isLoading}
                 onPress={submit}
               />
+              {reason === 'multiplayer' && onJoinCode ? (
+                <PressableFX accessibilityRole="link" onPress={joinCode} style={styles.joinCode}>
+                  <PidroText role="metadata" tone="cyan">
+                    Have a table code?
+                  </PidroText>
+                </PressableFX>
+              ) : null}
               <PressableFX accessibilityRole="button" onPress={onClose} style={styles.notNow}>
                 <PidroText role="label" tone="muted">
                   Not now
@@ -320,6 +335,12 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  joinCode: {
+    minHeight: PidroLayout.touchTarget,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
   },
   notNow: {
     minHeight: PidroLayout.touchTarget,

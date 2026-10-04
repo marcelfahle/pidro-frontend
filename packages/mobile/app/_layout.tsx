@@ -58,6 +58,7 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="(onboarding)/age" />
           <Stack.Screen name="welcome" />
+          <Stack.Screen name="device-settings" />
           <Stack.Screen name="join-code" />
           <Stack.Screen name="join/[code]" />
           <Stack.Screen name="(auth)" />
