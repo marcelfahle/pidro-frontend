@@ -21,12 +21,16 @@ try {
     const requests = [];
     await page.addInitScript((username) => {
       localStorage.setItem(
+        'age-gate-storage',
+        JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
+      );
+      localStorage.setItem(
         'auth-storage',
         JSON.stringify({
           state: {
             accessToken: 'creation-test',
             refreshToken: null,
-            user: { id: 'viewer', username },
+            user: { id: 'viewer', username, age_band: '18_plus' },
           },
           version: 0,
         })

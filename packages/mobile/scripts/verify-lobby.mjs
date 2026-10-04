@@ -99,12 +99,16 @@ try {
     const joins = [];
     await page.addInitScript(() => {
       localStorage.setItem(
+        'age-gate-storage',
+        JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
+      );
+      localStorage.setItem(
         'auth-storage',
         JSON.stringify({
           state: {
             accessToken: 'lobby-test-token',
             refreshToken: null,
-            user: { id: 'viewer', username: 'Viewer' },
+            user: { id: 'viewer', username: 'Viewer', age_band: '18_plus' },
           },
           version: 0,
         })
