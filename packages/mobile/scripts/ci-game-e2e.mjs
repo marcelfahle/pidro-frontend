@@ -371,6 +371,12 @@ async function stageTwoMultiplayerVideo() {
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'domcontentloaded' });
 
+    const ageChoice = page.getByRole('radio', { name: '18 or older' });
+    await ageChoice.waitFor({ timeout: 30_000 });
+    await ageChoice.click();
+    await page.getByRole('button', { name: 'Continue' }).click();
+    log('first-launch age gate completed with an eligible answer');
+
     const joinTable = page.getByRole('button', { name: 'JOIN TABLE' });
     await joinTable.waitFor({ timeout: 30_000 });
     await joinTable.click();
