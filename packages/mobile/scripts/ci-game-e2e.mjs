@@ -390,6 +390,7 @@ async function stageTwoMultiplayerVideo() {
     await page.getByRole('button', { name: 'Continue' }).click();
     log('first-launch age gate completed with an eligible answer');
 
+    await page.getByTestId('welcome-quick-game').click();
     const joinTable = page.getByRole('button', { name: 'JOIN TABLE' });
     await joinTable.waitFor({ timeout: 30_000 });
     await joinTable.click();
