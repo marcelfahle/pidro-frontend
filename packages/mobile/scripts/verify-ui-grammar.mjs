@@ -25,8 +25,12 @@ const authFixture = JSON.stringify({
   state: {
     accessToken: 'ui-grammar-token',
     refreshToken: null,
-    user: { id: 'ui-grammar-user', username: 'Player' },
+    user: { id: 'ui-grammar-user', username: 'Player', age_band: '18_plus' },
   },
+  version: 0,
+});
+const ageGateFixture = JSON.stringify({
+  state: { ageBand: '18_plus', termsVersion: '1' },
   version: 0,
 });
 
@@ -739,7 +743,8 @@ async function main() {
           continue;
         const page = await context.newPage();
         await page.addInitScript(
-          ({ authenticated, fixture, pendingInvite }) => {
+          ({ ageGate, authenticated, fixture, pendingInvite }) => {
+            globalThis.localStorage.setItem('age-gate-storage', ageGate);
             if (authenticated) globalThis.localStorage.setItem('auth-storage', fixture);
             else globalThis.localStorage.removeItem('auth-storage');
             if (pendingInvite) {
@@ -757,6 +762,7 @@ async function main() {
             }
           },
           {
+            ageGate: ageGateFixture,
             authenticated: testCase.authenticated === true,
             fixture: authFixture,
             pendingInvite: testCase.pendingInvite === true,
