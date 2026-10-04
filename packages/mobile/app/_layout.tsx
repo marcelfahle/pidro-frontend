@@ -46,7 +46,7 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: PidroColors.feltBottom },
           }}>
           <Stack.Screen name="index" />
-          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="(onboarding)/age" />
           <Stack.Screen name="welcome" />
           <Stack.Screen name="join-code" />
           <Stack.Screen name="join/[code]" />
