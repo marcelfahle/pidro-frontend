@@ -12,6 +12,7 @@ import type { SocialCredentialResult } from '@/features/auth/socialCredentials';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
 import { runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
+import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 
 export type { GuestSaveField, GuestSaveFailure, GuestSaveResult } from '@/features/auth/saveGuest';
 
@@ -101,7 +102,12 @@ export function useAuth() {
         }
 
         const installId = await getInstallId();
-        const outcome = await authApi.providerLogin(provider, credential.token, installId);
+        const outcome = await authApi.providerLogin(
+          provider,
+          credential.token,
+          installId,
+          storedAgeTerms()
+        );
         if (outcome.status === 'signed_in') {
           setSession({
             accessToken: outcome.session.token,
@@ -138,7 +144,7 @@ export function useAuth() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await authApi.register(username, email, password);
+        const response = await authApi.register(username, email, password, storedAgeTerms());
         setSession({
           accessToken: response.token,
           user: response.user,
@@ -177,7 +183,8 @@ export function useAuth() {
           displayName,
           email,
           password,
-          upgrade: authApi.upgradeGuest,
+          upgrade: (name, accountEmail, accountPassword) =>
+            authApi.upgradeGuest(name, accountEmail, accountPassword, storedAgeTerms()),
           login: authApi.login,
           getSession: useAuthStore.getState,
           install: (response) => setSession({ accessToken: response.token, user: response.user }),
@@ -211,6 +218,7 @@ export function useAuth() {
           creation_token: creationToken,
           platform: invitePlatform(),
           ...(installId ? { install_id: installId } : {}),
+          ...storedAgeTerms(),
         });
         setSession({ accessToken: response.token, user: response.user });
         await clearGuestCreationToken().catch(() => undefined);

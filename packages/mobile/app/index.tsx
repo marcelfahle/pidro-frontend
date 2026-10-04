@@ -1,5 +1,6 @@
 import { Redirect, type Href } from 'expo-router';
 import { useAuthStore } from '@/stores/auth';
+import { useAgeGateStore } from '@/stores/ageGate';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { initialRoute } from '@/navigation/initialRoute';
@@ -11,11 +12,14 @@ import { PidroColors, PidroSpacing } from '@/design/tokens';
 export default function Index() {
   const status = useAuthStore((s) => s.status);
   const hydrated = useAuthStore((s) => s.hydrated);
+  const user = useAuthStore((s) => s.user);
+  const ageGateHydrated = useAgeGateStore((s) => s.hydrated);
+  const ageBand = useAgeGateStore((s) => s.ageBand);
   const inviteHydrated = usePendingInviteStore((s) => s.hydrated);
   const pendingInvite = usePendingInviteStore((s) => s.pendingInvite);
   const deferredBootstrapComplete = useDeferredInviteBootstrap();
   const route = deferredBootstrapComplete
-    ? initialRoute(hydrated, inviteHydrated, status, pendingInvite)
+    ? initialRoute(hydrated, inviteHydrated, ageGateHydrated, status, pendingInvite, ageBand, user)
     : null;
 
   if (!route) {

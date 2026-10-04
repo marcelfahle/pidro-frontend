@@ -5,6 +5,7 @@ import { redirectSystemPath } from '../../app/+native-intent.tsx';
 import {
   authenticatedDestination,
   canAccessProtectedRoutes,
+  entryDestination,
   initialRoute,
 } from '../../src/navigation/initialRoute.ts';
 
@@ -93,28 +94,56 @@ describe('native invite intent', () => {
 });
 
 describe('initial route', () => {
-  it('waits for both persisted stores and gives an invite precedence', () => {
-    expect(initialRoute(false, true, 'unauthenticated', null)).toBeNull();
-    expect(initialRoute(true, false, 'unauthenticated', null)).toBeNull();
+  const answeredUser = {
+    id: 'user-1',
+    username: 'player',
+    email: null,
+    age_band: '18_plus',
+  };
+
+  it('waits for all persisted stores and gives an authenticated invite precedence', () => {
+    expect(initialRoute(false, true, true, 'unauthenticated', null, null, null)).toBeNull();
+    expect(initialRoute(true, false, true, 'unauthenticated', null, null, null)).toBeNull();
+    expect(initialRoute(true, true, false, 'unauthenticated', null, null, null)).toBeNull();
     expect(
-      initialRoute(true, true, 'authenticated', {
-        code: '7KQ4M2XB',
-        source: 'im',
-        receivedAt: 1,
-      })
+      initialRoute(
+        true,
+        true,
+        true,
+        'authenticated',
+        { code: '7KQ4M2XB', source: 'im', receivedAt: 1 },
+        '18_plus',
+        answeredUser
+      )
     ).toBe('/join/7KQ4M2XB?source=im');
-    expect(
-      initialRoute(true, true, 'unauthenticated', {
-        code: '7KQ4M2XB',
-        source: 'im',
-        receivedAt: 1,
-      })
-    ).toBe('/welcome');
   });
 
-  it('otherwise follows the existing auth entry behavior', () => {
-    expect(initialRoute(true, true, 'authenticated', null)).toBe('/home');
-    expect(initialRoute(true, true, 'unauthenticated', null)).toBe('/welcome');
+  it('gates no answer, under-13 answers, and signed-in unknown users', () => {
+    expect(entryDestination('unauthenticated', null, null, null)).toBe('/age');
+    expect(entryDestination('unauthenticated', null, 'under_13', null)).toBe('/age');
+    expect(
+      entryDestination('authenticated', null, '18_plus', {
+        ...answeredUser,
+        age_band: 'unknown',
+      })
+    ).toBe('/age');
+    expect(
+      entryDestination('authenticated', null, '13_17', {
+        id: 'legacy-user',
+        username: 'legacy',
+        email: null,
+      })
+    ).toBe('/age');
+  });
+
+  it('resumes Welcome or the pending authenticated invite after an eligible answer', () => {
+    const invite = { code: '7KQ4M2XB', source: 'im', receivedAt: 1 };
+    expect(entryDestination('unauthenticated', null, '18_plus', null)).toBe('/welcome');
+    expect(entryDestination('unauthenticated', invite, '18_plus', null)).toBe('/welcome');
+    expect(entryDestination('authenticated', null, '18_plus', answeredUser)).toBe('/home');
+    expect(entryDestination('authenticated', invite, '18_plus', answeredUser)).toBe(
+      '/join/7KQ4M2XB?source=im'
+    );
   });
 
   it('uses one post-authentication return contract for home and invitations', () => {
@@ -147,7 +176,9 @@ describe('initial route', () => {
     await store.persist.rehydrate();
 
     expect(store.getState().hydrated).toBe(true);
-    expect(initialRoute(true, store.getState().hydrated, 'unauthenticated', null)).toBe('/welcome');
+    expect(
+      initialRoute(true, store.getState().hydrated, true, 'unauthenticated', null, '18_plus', null)
+    ).toBe('/welcome');
   });
 });
 

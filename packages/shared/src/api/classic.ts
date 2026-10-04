@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import type { LoginResponse } from './auth';
+import type { AgeTermsRequest, LoginResponse } from './auth';
 
 export type ClassicClaimMethod = 'password' | 'apple' | 'facebook';
 
@@ -29,7 +29,7 @@ export interface ClassicClaimAccount {
   display_name?: string;
 }
 
-export interface ClassicClaimRequest {
+export interface ClassicClaimRequest extends AgeTermsRequest {
   ticket: string;
   install_id?: string;
   account?: ClassicClaimAccount;

@@ -54,6 +54,8 @@ describe('Classic claim API', () => {
         ticket: 'claim-ticket',
         install_id: 'install-1',
         account: { username: 'veteran', display_name: 'New Name' },
+        age_band: '18_plus',
+        terms_version: '1',
       })
     ).resolves.toMatchObject({
       token: 'session-token',
@@ -76,6 +78,8 @@ describe('Classic claim API', () => {
           ticket: 'claim-ticket',
           install_id: 'install-1',
           account: { username: 'veteran', display_name: 'New Name' },
+          age_band: '18_plus',
+          terms_version: '1',
         },
       },
     ]);

@@ -22,6 +22,7 @@ import {
 } from '@/features/invites/joinFlow';
 import { invitePlatform } from '@/features/invites/platform';
 import { getInstallId } from '@/features/invites/installId';
+import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 import { t } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -234,6 +235,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
         invite_code: code,
         platform: invitePlatform(),
         ...(installId ? { install_id: installId } : {}),
+        ...storedAgeTerms(),
       });
       if (!routeActiveRef.current) return;
       captureAnalytics('guest_created', { arrival_source: source ?? 'direct' });

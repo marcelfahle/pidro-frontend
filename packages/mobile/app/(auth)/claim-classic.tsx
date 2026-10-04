@@ -13,6 +13,7 @@ import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import { takePendingClassicClaim } from '@/features/auth/classicFound';
+import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 import { authenticatedDestination } from '@/navigation/initialRoute';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
@@ -209,6 +210,7 @@ export default function ClaimClassicScreen() {
         ticket: verification.ticket,
         install_id: installId,
         ...(Object.keys(account).length ? { account } : {}),
+        ...storedAgeTerms(),
       });
       setSession({ accessToken: result.token, user: result.user });
       const pendingInvite = usePendingInviteStore.getState().pendingInvite;

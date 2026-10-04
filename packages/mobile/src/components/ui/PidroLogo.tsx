@@ -1,7 +1,7 @@
 import { Image, StyleSheet, useWindowDimensions } from 'react-native';
 
 interface PidroLogoProps {
-  size?: 'regular' | 'hero';
+  size?: 'compact' | 'regular' | 'hero';
 }
 
 // logo-v3: tightly cropped mark (1614×975), no baked glow bleed — the
@@ -13,10 +13,13 @@ export function PidroLogo({ size = 'regular' }: PidroLogoProps) {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const hero = size === 'hero';
+  const compact = size === 'compact';
 
-  const markWidth = landscape
-    ? Math.min(hero ? 280 : 230, width * (hero ? 0.3 : 0.26))
-    : Math.min(hero ? 330 : 240, width * (hero ? 0.82 : 0.62));
+  const markWidth = compact
+    ? Math.min(200, width * 0.52)
+    : landscape
+      ? Math.min(hero ? 280 : 230, width * (hero ? 0.3 : 0.26))
+      : Math.min(hero ? 330 : 240, width * (hero ? 0.82 : 0.62));
 
   return (
     <Image
