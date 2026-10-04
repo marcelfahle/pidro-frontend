@@ -9,6 +9,7 @@ export {
   type CreateGuestResponse,
   type DeclaredAgeBand,
   createAuthApi,
+  type LoginRequest,
   type LoginResponse,
   type PasswordResetRequestResponse,
   type ProviderLoginResponse,

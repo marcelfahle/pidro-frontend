@@ -24,6 +24,8 @@ import { invitePlatform } from '@/features/invites/platform';
 import { getInstallId } from '@/features/invites/installId';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 import { t } from '@/i18n';
+import { authenticatedEntryDestination } from '@/navigation/initialRoute';
+import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
@@ -241,6 +243,15 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       captureAnalytics('guest_created', { arrival_source: source ?? 'direct' });
       autoRedeemedCodeRef.current = code;
       setSession({ accessToken: session.token, user: session.user });
+      const destination = authenticatedEntryDestination(
+        usePendingInviteStore.getState().pendingInvite,
+        useAgeGateStore.getState().ageBand,
+        session.user
+      );
+      if (destination === '/age') {
+        router.replace(destination as Href);
+        return;
+      }
       await redeem(false);
     } catch (caught) {
       if (!routeActiveRef.current) return;
@@ -259,7 +270,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       guestCreatingRef.current = false;
       if (routeActiveRef.current) setSubmitting(false);
     }
-  }, [applyStateChange, code, displayName, redeem, setPendingInvite, setSession, source]);
+  }, [applyStateChange, code, displayName, redeem, router, setPendingInvite, setSession, source]);
 
   const leaveAndRetry = useCallback(async () => {
     if (retriedRef.current) return;

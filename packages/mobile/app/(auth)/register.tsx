@@ -8,7 +8,9 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
-import { authenticatedDestination } from '@/navigation/initialRoute';
+import { authenticatedEntryDestination } from '@/navigation/initialRoute';
+import { useAgeGateStore } from '@/stores/ageGate';
+import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 type RegisterField = 'username' | 'email' | 'password';
@@ -90,7 +92,16 @@ export default function RegisterScreen() {
 
     Keyboard.dismiss();
     const success = await signUp(normalizedUsername, normalizedEmail, password);
-    if (success) router.replace(authenticatedDestination(pendingInvite) as Href);
+    const signedInUser = useAuthStore.getState().user;
+    if (success && signedInUser) {
+      router.replace(
+        authenticatedEntryDestination(
+          pendingInvite,
+          useAgeGateStore.getState().ageBand,
+          signedInUser
+        ) as Href
+      );
+    }
   }, [email, isLoading, password, pendingInvite, router, signUp, username]);
 
   if (user?.guest) {
@@ -99,7 +110,17 @@ export default function RegisterScreen() {
         <AuthSheet
           isOpen
           onClose={() => router.replace('/home')}
-          onSaved={() => router.replace(authenticatedDestination(pendingInvite) as Href)}
+          onSaved={() => {
+            const signedInUser = useAuthStore.getState().user;
+            if (!signedInUser) return;
+            router.replace(
+              authenticatedEntryDestination(
+                pendingInvite,
+                useAgeGateStore.getState().ageBand,
+                signedInUser
+              ) as Href
+            );
+          }}
           onClaimClassic={() => router.replace('/(auth)/claim-classic')}
         />
       </View>

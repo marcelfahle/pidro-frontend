@@ -102,12 +102,16 @@ try {
   // Home is protected; use the same inert auth fixture as the UI grammar suite.
   await context.addInitScript(() => {
     localStorage.setItem(
+      'age-gate-storage',
+      JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
+    );
+    localStorage.setItem(
       'auth-storage',
       JSON.stringify({
         state: {
           accessToken: 'ui-grammar-token',
           refreshToken: null,
-          user: { id: 'ui-grammar-user', username: 'Player' },
+          user: { id: 'ui-grammar-user', username: 'Player', age_band: '18_plus' },
         },
         version: 0,
       })

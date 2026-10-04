@@ -61,7 +61,7 @@ export function useAuth() {
       try {
         setIsLoading(true);
         setError(null);
-        const response = await authApi.login(username, password);
+        const response = await authApi.login(username, password, storedAgeTerms());
         setSession({
           accessToken: response.token,
           user: response.user,
@@ -185,7 +185,8 @@ export function useAuth() {
           password,
           upgrade: (name, accountEmail, accountPassword) =>
             authApi.upgradeGuest(name, accountEmail, accountPassword, storedAgeTerms()),
-          login: authApi.login,
+          login: (identifier, accountPassword) =>
+            authApi.login(identifier, accountPassword, storedAgeTerms()),
           getSession: useAuthStore.getState,
           install: (response) => setSession({ accessToken: response.token, user: response.user }),
           setSessionPreservation: (preserve) =>

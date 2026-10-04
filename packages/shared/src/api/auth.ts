@@ -10,6 +10,11 @@ export interface AgeTermsRequest {
   terms_version?: string;
 }
 
+export interface LoginRequest extends AgeTermsRequest {
+  username: string;
+  password: string;
+}
+
 export type User = {
   id: string;
   email: string | null;
@@ -147,11 +152,16 @@ export function createAuthApi(api: ApiClient) {
   };
 
   return {
-    login: async (username: string, password: string): Promise<LoginResponse> => {
+    login: async (
+      username: string,
+      password: string,
+      ageTerms: AgeTermsRequest = {}
+    ): Promise<LoginResponse> => {
+      const request: LoginRequest = { username, password, ...ageTerms };
       const response = await api.post<AuthResponseEnvelope>(
         '/api/v1/auth/login',
-        { username, password },
-        { preserveSessionOnUnauthorized: true },
+        request,
+        { preserveSessionOnUnauthorized: true }
       );
       return response.data.data;
     },

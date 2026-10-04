@@ -46,6 +46,11 @@ const globalTimeoutMs = Number(process.env.E2E_TIMEOUT_MINUTES ?? '20') * 60_000
 const suffix = Date.now().toString(36).slice(-6);
 const soloUser = `ci_${suffix}a`;
 const hostUser = `ci_${suffix}b`;
+const eligibleAgeTerms = { age_band: '18_plus', terms_version: '1' };
+const ageGateFixture = JSON.stringify({
+  state: { ageBand: '18_plus', termsVersion: '1' },
+  version: 0,
+});
 const password = 'ci-hallohallo';
 
 function log(...parts) {
@@ -68,11 +73,16 @@ async function api(path, method, token, body) {
 async function registerOrLogin(username) {
   const registered = await api('/api/v1/auth/register', 'POST', null, {
     user: { username, password },
+    ...eligibleAgeTerms,
   });
   if (registered.ok) {
     return registered.payload?.data?.token ?? registered.payload?.token;
   }
-  const login = await api('/api/v1/auth/login', 'POST', null, { username, password });
+  const login = await api('/api/v1/auth/login', 'POST', null, {
+    username,
+    password,
+    ...eligibleAgeTerms,
+  });
   if (!login.ok) {
     throw new Error(`register failed (${registered.status}) and login failed (${login.status})`);
   }
@@ -229,6 +239,9 @@ async function verifyUiLogin(browser, username) {
   try {
     await page.goto(`${mobileBaseUrl}/(auth)/login`, { waitUntil: 'domcontentloaded' });
     await page.evaluate(() => localStorage.clear());
+    await page.evaluate(({ fixture }) => localStorage.setItem('age-gate-storage', fixture), {
+      fixture: ageGateFixture,
+    });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
     const userField = page.getByPlaceholder('Enter your username');

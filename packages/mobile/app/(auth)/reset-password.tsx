@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
-import { authenticatedDestination } from '@/navigation/initialRoute';
+import { authenticatedEntryDestination } from '@/navigation/initialRoute';
+import { useAgeGateStore } from '@/stores/ageGate';
+import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 export default function ResetPasswordScreen() {
@@ -24,7 +26,15 @@ export default function ResetPasswordScreen() {
   const performReset = useCallback(async () => {
     if (!token) return;
     if (await resetPassword(token, password)) {
-      router.replace(authenticatedDestination(pendingInvite) as Href);
+      const signedInUser = useAuthStore.getState().user;
+      if (!signedInUser) return;
+      router.replace(
+        authenticatedEntryDestination(
+          pendingInvite,
+          useAgeGateStore.getState().ageBand,
+          signedInUser
+        ) as Href
+      );
     }
   }, [password, pendingInvite, resetPassword, router, token]);
 

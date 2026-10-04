@@ -32,18 +32,28 @@ try {
     },
   };
   await page.addInitScript(
-    (user) =>
+    (user) => {
+      localStorage.setItem(
+        'age-gate-storage',
+        JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
+      );
       localStorage.setItem(
         'auth-storage',
         JSON.stringify({
           state: {
             accessToken: 'profile-ui-token',
             refreshToken: null,
-            user: { ...user, id: user.user_id, email: 'sofia@example.com' },
+            user: {
+              ...user,
+              id: user.user_id,
+              email: 'sofia@example.com',
+              age_band: '18_plus',
+            },
           },
           version: 0,
         })
-      ),
+      );
+    },
     identity
   );
   let failSave = true;

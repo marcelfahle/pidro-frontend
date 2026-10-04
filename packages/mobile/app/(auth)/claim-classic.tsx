@@ -14,7 +14,8 @@ import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import { takePendingClassicClaim } from '@/features/auth/classicFound';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
-import { authenticatedDestination } from '@/navigation/initialRoute';
+import { authenticatedEntryDestination } from '@/navigation/initialRoute';
+import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import { apiErrorInfo } from '@/utils/apiErrors';
@@ -214,8 +215,13 @@ export default function ClaimClassicScreen() {
       });
       setSession({ accessToken: result.token, user: result.user });
       const pendingInvite = usePendingInviteStore.getState().pendingInvite;
-      if (pendingInvite) {
-        router.replace(authenticatedDestination(pendingInvite) as Href);
+      const destination = authenticatedEntryDestination(
+        pendingInvite,
+        useAgeGateStore.getState().ageBand,
+        result.user
+      );
+      if (destination !== '/home') {
+        router.replace(destination as Href);
       } else {
         router.replace({
           pathname: '/profile',

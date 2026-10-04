@@ -25,8 +25,12 @@ const authFixture = JSON.stringify({
   state: {
     accessToken: 'ui-grammar-token',
     refreshToken: null,
-    user: { id: 'ui-grammar-user', username: 'Player' },
+    user: { id: 'ui-grammar-user', username: 'Player', age_band: '18_plus' },
   },
+  version: 0,
+});
+const ageGateFixture = JSON.stringify({
+  state: { ageBand: '18_plus', termsVersion: '1' },
   version: 0,
 });
 
@@ -325,13 +329,20 @@ async function assertAuthFormInteractions(page, name, viewport) {
   const endpoint = `/api/v1/auth/${name === 'login' ? 'login' : 'register'}`;
   const expectedPayload =
     name === 'login'
-      ? { username: 'Player', password: passwordValue }
+      ? {
+          username: 'Player',
+          password: passwordValue,
+          age_band: '18_plus',
+          terms_version: '1',
+        }
       : {
           user: {
             username: 'Player',
             email: 'player@example.com',
             password: passwordValue,
           },
+          age_band: '18_plus',
+          terms_version: '1',
         };
   let requestCount = 0;
   let releaseResponse;
@@ -351,6 +362,8 @@ async function assertAuthFormInteractions(page, name, viewport) {
             id: 'ui-auth-submit-user',
             username: 'Player',
             email: name === 'register' ? 'player@example.com' : null,
+            age_band: '18_plus',
+            terms_version: '1',
           },
         },
       }),
@@ -406,6 +419,8 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
               display_name: 'Amber Fox',
               email: null,
               guest: true,
+              age_band: '18_plus',
+              terms_version: '1',
             },
           },
         }),
@@ -435,6 +450,8 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
   assert.equal('display_name' in requestBodies[0], false);
   assert.match(requestBodies[0].creation_token, /^[0-9a-f-]{36}$/i);
   assert.equal('invite_code' in requestBodies[0], false);
+  assert.equal(requestBodies[0].age_band, '18_plus');
+  assert.equal(requestBodies[0].terms_version, '1');
 
   await submit.click();
   await page.waitForURL((url) => url.pathname.endsWith('/game/SOLO1'), { timeout: 10_000 });
@@ -739,7 +756,8 @@ async function main() {
           continue;
         const page = await context.newPage();
         await page.addInitScript(
-          ({ authenticated, fixture, pendingInvite }) => {
+          ({ ageGate, authenticated, fixture, pendingInvite }) => {
+            globalThis.localStorage.setItem('age-gate-storage', ageGate);
             if (authenticated) globalThis.localStorage.setItem('auth-storage', fixture);
             else globalThis.localStorage.removeItem('auth-storage');
             if (pendingInvite) {
@@ -757,6 +775,7 @@ async function main() {
             }
           },
           {
+            ageGate: ageGateFixture,
             authenticated: testCase.authenticated === true,
             fixture: authFixture,
             pendingInvite: testCase.pendingInvite === true,

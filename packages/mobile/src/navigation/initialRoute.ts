@@ -1,7 +1,18 @@
 import type { AuthStatus, DeclaredAgeBand, PendingInvite, User } from '@pidro/shared';
 
-export function canAccessProtectedRoutes(authHydrated: boolean, authStatus: AuthStatus): boolean {
-  return authHydrated && authStatus === 'authenticated';
+export function canAccessProtectedRoutes(
+  authHydrated: boolean,
+  ageGateHydrated: boolean,
+  authStatus: AuthStatus,
+  ageBand: DeclaredAgeBand | null,
+  user: User | null
+): boolean {
+  return (
+    authHydrated &&
+    ageGateHydrated &&
+    authStatus === 'authenticated' &&
+    !needsAgeGate(ageBand, user)
+  );
 }
 
 export function authenticatedDestination(pendingInvite: PendingInvite | null): string {
@@ -10,9 +21,25 @@ export function authenticatedDestination(pendingInvite: PendingInvite | null): s
   return `/join/${pendingInvite.code}${source}`;
 }
 
+export function authenticatedEntryDestination(
+  pendingInvite: PendingInvite | null,
+  ageBand: DeclaredAgeBand | null,
+  user: User
+): string {
+  return entryDestination('authenticated', pendingInvite, ageBand, user);
+}
+
 export function needsAgeGate(ageBand: DeclaredAgeBand | null, user: User | null): boolean {
   if (!ageBand || ageBand === 'under_13') return true;
   return user != null && (user.age_band == null || user.age_band === 'unknown');
+}
+
+export function joinRedirectDestination(
+  ageBand: DeclaredAgeBand | null,
+  user: User | null
+): '/age' | '/welcome' | null {
+  if (needsAgeGate(ageBand, user)) return '/age';
+  return user ? null : '/welcome';
 }
 
 export function entryDestination(

@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -18,11 +18,11 @@ import {
   PidroSpacing,
   PidroSwitchTokens,
 } from '@/design/tokens';
-import { authenticatedDestination, needsAgeGate } from '@/navigation/initialRoute';
+import { reconcileAge } from '@/features/onboarding/reconcileAge';
+import { entryDestination, needsAgeGate } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
-import { apiErrorInfo } from '@/utils/apiErrors';
 
 const TERMS_URL = 'https://www.pidro.online/terms-of-use';
 const PRIVACY_URL = 'https://www.pidro.online/privacy-policy';
@@ -65,23 +65,74 @@ export default function AgeScreen() {
   const { height } = useWindowDimensions();
   const compact = height < PidroLayout.compactHeight;
   const storedBand = useAgeGateStore((state) => state.ageBand);
+  const storedTermsVersion = useAgeGateStore((state) => state.termsVersion);
   const setAnswer = useAgeGateStore((state) => state.setAnswer);
   const user = useAuthStore((state) => state.user);
   const accessToken = useAuthStore((state) => state.accessToken);
   const setSession = useAuthStore((state) => state.setSession);
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const [selection, setSelection] = useState<DeclaredAgeBand | null>(
-    fixture === 'selected' ? '18_plus' : null
+    fixture === 'selected'
+      ? '18_plus'
+      : storedBand === '13_17' || storedBand === '18_plus'
+        ? storedBand
+        : null
   );
   const [stopped, setStopped] = useState(
     fixture === 'under13' || (!fixture && storedBand === 'under_13')
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const autoSubmitStarted = useRef(false);
 
-  const finish = useCallback(() => {
-    router.replace((user ? authenticatedDestination(pendingInvite) : '/welcome') as Href);
-  }, [pendingInvite, router, user]);
+  const finish = useCallback(
+    (resolvedUser = user, resolvedBand = storedBand) => {
+      router.replace(
+        entryDestination(
+          resolvedUser ? 'authenticated' : 'unauthenticated',
+          pendingInvite,
+          resolvedBand,
+          resolvedUser
+        ) as Href
+      );
+    },
+    [pendingInvite, router, storedBand, user]
+  );
+
+  const submitEligibleAnswer = useCallback(
+    async (ageBand: '13_17' | '18_plus', termsVersion: string) => {
+      setSubmitting(true);
+      const result = await reconcileAge(
+        { age_band: ageBand, terms_version: termsVersion },
+        { setAge, getMe }
+      );
+      if (result.status === 'saved') {
+        if (accessToken) setSession({ accessToken, user: result.user });
+        finish(result.user, ageBand);
+      } else if (result.status === 'not_eligible') {
+        setAnswer('under_13', termsVersion);
+        setStopped(true);
+      } else {
+        setError(result.message);
+      }
+      setSubmitting(false);
+    },
+    [accessToken, finish, setAnswer, setSession]
+  );
+
+  useEffect(() => {
+    if (
+      fixture ||
+      autoSubmitStarted.current ||
+      (storedBand !== '13_17' && storedBand !== '18_plus') ||
+      !storedTermsVersion ||
+      !user ||
+      (user.age_band !== 'unknown' && user.age_band != null)
+    )
+      return;
+    autoSubmitStarted.current = true;
+    void submitEligibleAnswer(storedBand, storedTermsVersion);
+  }, [fixture, storedBand, storedTermsVersion, submitEligibleAnswer, user]);
 
   const continueWithSelection = useCallback(async () => {
     if (!selection || submitting) return;
@@ -92,41 +143,24 @@ export default function AgeScreen() {
       return;
     }
     if (!user || (user.age_band !== 'unknown' && user.age_band != null)) {
-      finish();
+      finish(user, selection);
       return;
     }
-
-    setSubmitting(true);
-    try {
-      const updated = await setAge({ age_band: selection, terms_version: TERMS_VERSION });
-      if (accessToken) setSession({ accessToken, user: updated });
-      finish();
-    } catch (requestError) {
-      const { code, detail } = apiErrorInfo(requestError);
-      if (code === 'AGE_ALREADY_SET') {
-        try {
-          const updated = await getMe();
-          if (accessToken) setSession({ accessToken, user: updated });
-          finish();
-        } catch (refreshError) {
-          setError(
-            apiErrorInfo(refreshError).detail || 'We could not confirm your answer. Try again.'
-          );
-        }
-      } else if (code === 'AGE_NOT_ELIGIBLE') {
-        setAnswer('under_13', TERMS_VERSION);
-        setStopped(true);
-      } else {
-        setError(detail || 'We could not save your answer. Try again.');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  }, [accessToken, finish, selection, setAnswer, setSession, submitting, user]);
+    await submitEligibleAnswer(selection, TERMS_VERSION);
+  }, [finish, selection, setAnswer, submitEligibleAnswer, submitting, user]);
 
   if (!fixture && storedBand !== 'under_13' && !needsAgeGate(storedBand, user)) {
     return (
-      <Redirect href={(user ? authenticatedDestination(pendingInvite) : '/welcome') as Href} />
+      <Redirect
+        href={
+          entryDestination(
+            user ? 'authenticated' : 'unauthenticated',
+            pendingInvite,
+            storedBand,
+            user
+          ) as Href
+        }
+      />
     );
   }
 
