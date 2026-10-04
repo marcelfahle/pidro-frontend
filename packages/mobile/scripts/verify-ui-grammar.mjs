@@ -410,6 +410,8 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
               display_name: 'Amber Fox',
               email: null,
               guest: true,
+              age_band: '18_plus',
+              terms_version: '1',
             },
           },
         }),
@@ -439,6 +441,8 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
   assert.equal('display_name' in requestBodies[0], false);
   assert.match(requestBodies[0].creation_token, /^[0-9a-f-]{36}$/i);
   assert.equal('invite_code' in requestBodies[0], false);
+  assert.equal(requestBodies[0].age_band, '18_plus');
+  assert.equal(requestBodies[0].terms_version, '1');
 
   await submit.click();
   await page.waitForURL((url) => url.pathname.endsWith('/game/SOLO1'), { timeout: 10_000 });
