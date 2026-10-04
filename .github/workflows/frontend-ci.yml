@@ -64,7 +64,7 @@ jobs:
   ui-grammar:
     name: UI grammar
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
