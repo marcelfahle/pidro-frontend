@@ -1,4 +1,4 @@
-import { createClassicApi } from '@pidro/shared';
+import { createClassicApi, facebookCredentialRequest } from '@pidro/shared';
 import { api } from './client';
 
 export type {
@@ -11,3 +11,4 @@ export type {
 } from '@pidro/shared';
 
 export const classicApi = createClassicApi(api);
+export { facebookCredentialRequest };

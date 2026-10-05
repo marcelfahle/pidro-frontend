@@ -36,6 +36,12 @@ interface AuthResponseEnvelope {
 
 export type AuthProvider = 'apple' | 'facebook';
 
+export type FacebookCredential =
+  | { type: 'access_token'; token: string }
+  | { type: 'authentication_token'; token: string; nonce: string };
+
+export type ProviderCredential = { type: 'identity_token'; token: string } | FacebookCredential;
+
 export interface ClassicPreview {
   name: string;
   games_played: number;
@@ -91,7 +97,29 @@ export interface UpgradeGuestRequest extends AgeTermsRequest {
 }
 
 export type ProviderAuthRequest = AgeTermsRequest &
-  ({ identity_token: string; install_id: string } | { access_token: string; install_id: string });
+  (
+    | {
+        identity_token: string;
+        access_token?: never;
+        authentication_token?: never;
+        nonce?: never;
+        install_id: string;
+      }
+    | {
+        access_token: string;
+        identity_token?: never;
+        authentication_token?: never;
+        nonce?: never;
+        install_id: string;
+      }
+    | {
+        authentication_token: string;
+        nonce: string;
+        identity_token?: never;
+        access_token?: never;
+        install_id: string;
+      }
+  );
 
 export interface SetAgeRequest {
   age_band: DeclaredAgeBand;
@@ -123,11 +151,16 @@ export type PasswordResetRequestResponse = PasswordResetRequestEnvelope['data'];
 export function createAuthApi(api: ApiClient) {
   const providerLogin = async (
     provider: AuthProvider,
-    token: string,
+    credential: ProviderCredential,
     installId: string,
     ageTerms: AgeTermsRequest = {}
   ): Promise<ProviderLoginResponse> => {
-    const credentials = provider === 'apple' ? { identity_token: token } : { access_token: token };
+    const credentials =
+      credential.type === 'identity_token'
+        ? { identity_token: credential.token }
+        : credential.type === 'access_token'
+          ? { access_token: credential.token }
+          : { authentication_token: credential.token, nonce: credential.nonce };
     const response = await api.post<ProviderAuthEnvelope>(
       `/api/v1/auth/${provider}`,
       {

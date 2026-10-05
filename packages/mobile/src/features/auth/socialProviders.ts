@@ -1,10 +1,13 @@
 import { NativeModules, Platform } from 'react-native';
+import * as Crypto from 'expo-crypto';
 import {
+  facebookNativeModulesLoaded,
+  requestFacebookCredential,
   requestSocialCredential,
   type SocialCredentialResult,
   type SocialProviderAvailability,
 } from './socialCredentials';
-import type { AuthProvider } from '@/api/auth';
+import type { AuthProvider, FacebookCredential } from '@/api/auth';
 
 export const facebookConfigured = Boolean(process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN);
 
@@ -20,7 +23,7 @@ export const facebookConfigured = Boolean(process.env.EXPO_PUBLIC_FACEBOOK_CLIEN
  * moment the sign-in screen opened.
  */
 function facebookNativeModuleLoaded(): boolean {
-  return Boolean(NativeModules.FBAccessToken && NativeModules.FBLoginManager);
+  return facebookNativeModulesLoaded(Platform.OS, NativeModules);
 }
 
 async function appleSignIn(): Promise<string | null> {
@@ -31,17 +34,25 @@ async function appleSignIn(): Promise<string | null> {
   return credential.identityToken;
 }
 
-async function facebookSignIn(): Promise<{ cancelled: boolean; accessToken: string | null }> {
+async function facebookSignIn(): Promise<{
+  cancelled: boolean;
+  credential: FacebookCredential | null;
+}> {
   if (!facebookNativeModuleLoaded()) {
     throw new Error('Facebook sign-in is unavailable in this build.');
   }
-  const { AccessToken, LoginManager, Settings } = await import('react-native-fbsdk-next');
+  const { AccessToken, AuthenticationToken, LoginManager, Settings } =
+    await import('react-native-fbsdk-next');
   Settings.initializeSDK();
-  const result = await LoginManager.logInWithPermissions(['public_profile', 'email'], 'enabled');
-  if (result.isCancelled) return { cancelled: true, accessToken: null };
-
-  const current = await AccessToken.getCurrentAccessToken();
-  return { cancelled: false, accessToken: current?.accessToken ?? null };
+  return requestFacebookCredential({
+    platform: Platform.OS,
+    createNonce: () => Crypto.randomUUID().replaceAll('-', ''),
+    logInWithPermissions: (permissions, tracking, nonce) =>
+      LoginManager.logInWithPermissions(permissions, tracking, nonce),
+    getAccessToken: async () => (await AccessToken.getCurrentAccessToken())?.accessToken ?? null,
+    getAuthenticationToken: async () =>
+      (await AuthenticationToken.getAuthenticationTokenIOS())?.authenticationToken ?? null,
+  });
 }
 
 export async function getSocialProviderAvailability(): Promise<SocialProviderAvailability> {

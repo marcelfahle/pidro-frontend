@@ -55,19 +55,23 @@ describe('provider authentication API', () => {
     });
 
     expect(
-      await apple.auth.providerLogin('apple', 'apple-token', 'install-1', {
-        age_band: '13_17',
-        terms_version: '1',
-      })
+      await apple.auth.providerLogin(
+        'apple',
+        { type: 'identity_token', token: 'apple-token' },
+        'install-1',
+        { age_band: '13_17', terms_version: '1' }
+      )
     ).toEqual({
       status: 'signed_in',
       session: { token: 'session', user },
     });
     expect(
-      await facebook.auth.providerLogin('facebook', 'facebook-token', 'install-2', {
-        age_band: '18_plus',
-        terms_version: '1',
-      })
+      await facebook.auth.providerLogin(
+        'facebook',
+        { type: 'access_token', token: 'facebook-token' },
+        'install-2',
+        { age_band: '18_plus', terms_version: '1' }
+      )
     ).toEqual({
       status: 'signed_in',
       session: { token: 'session', user },
@@ -90,6 +94,31 @@ describe('provider authentication API', () => {
         terms_version: '1',
       },
     });
+
+    const limited = providerApi({
+      status: 200,
+      data: { data: { token: 'session', user } },
+    });
+    await limited.auth.providerLogin(
+      'facebook',
+      {
+        type: 'authentication_token',
+        token: 'facebook-jwt',
+        nonce: '0123456789abcdef0123456789abcdef',
+      },
+      'install-3',
+      { age_band: '18_plus', terms_version: '1' }
+    );
+    expect(limited.calls[0]).toMatchObject({
+      path: '/api/v1/auth/facebook',
+      body: {
+        authentication_token: 'facebook-jwt',
+        nonce: '0123456789abcdef0123456789abcdef',
+        install_id: 'install-3',
+        age_band: '18_plus',
+        terms_version: '1',
+      },
+    });
   });
 
   it('normalizes Classic matches and expected 401 responses', async () => {
@@ -107,13 +136,23 @@ describe('provider authentication API', () => {
     const classic = providerApi({ status: 200, data: { data: claim } });
     const unknown = providerApi({ status: 401, data: { errors: [] } });
 
-    expect(await classic.auth.providerLogin('apple', 'token', 'install')).toEqual({
+    expect(
+      await classic.auth.providerLogin(
+        'apple',
+        { type: 'identity_token', token: 'token' },
+        'install'
+      )
+    ).toEqual({
       status: 'classic_found',
       claim,
     });
-    expect(await unknown.auth.providerLogin('facebook', 'token', 'install')).toEqual({
-      status: 'unknown_identity',
-    });
+    expect(
+      await unknown.auth.providerLogin(
+        'facebook',
+        { type: 'access_token', token: 'token' },
+        'install'
+      )
+    ).toEqual({ status: 'unknown_identity' });
 
     const config = unknown.calls[0].config as {
       validateStatus: (status: number) => boolean;
@@ -149,9 +188,13 @@ describe('provider authentication API', () => {
       );
     };
 
-    expect(await createAuthApi(api).providerLogin('apple', 'token', 'install')).toEqual({
-      status: 'unknown_identity',
-    });
+    expect(
+      await createAuthApi(api).providerLogin(
+        'apple',
+        { type: 'identity_token', token: 'token' },
+        'install'
+      )
+    ).toEqual({ status: 'unknown_identity' });
     expect(sessionClearCount).toBe(0);
 
     await expect(api.get('/api/v1/auth/me')).rejects.toBeInstanceOf(AxiosError);
