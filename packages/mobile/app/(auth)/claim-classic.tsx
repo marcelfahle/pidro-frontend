@@ -1,7 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
-import { classicApi, type ClassicClaimMethod, type ClassicVerification } from '@/api/classic';
+import {
+  classicApi,
+  facebookCredentialRequest,
+  type ClassicClaimMethod,
+  type ClassicVerification,
+} from '@/api/classic';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
@@ -164,9 +169,13 @@ export default function ClaimClassicScreen() {
         }
         const installId = user ? undefined : await getInstallId();
         const result = await classicApi.verify(
-          provider === 'apple'
+          credential.provider === 'apple'
             ? { method: 'apple', identity_token: credential.token, install_id: installId }
-            : { method: 'facebook', access_token: credential.token, install_id: installId }
+            : {
+                method: 'facebook',
+                ...facebookCredentialRequest(credential.credential),
+                install_id: installId,
+              }
         );
         finishVerification(result, provider);
       } catch (requestError) {

@@ -8,12 +8,14 @@ export {
   type CreateGuestRequest,
   type CreateGuestResponse,
   type DeclaredAgeBand,
+  type FacebookCredential,
   createAuthApi,
   type LoginRequest,
   type LoginResponse,
   type PasswordResetRequestResponse,
   type ProviderLoginResponse,
   type ProviderAuthRequest,
+  type ProviderCredential,
   type RegisterRequest,
   type RegisterResponse,
   type SetAgeRequest,
@@ -32,6 +34,7 @@ export {
   type ClassicVerification,
   type ClassicVerifyRequest,
   createClassicApi,
+  facebookCredentialRequest,
 } from './classic';
 export {
   createProfileApi,

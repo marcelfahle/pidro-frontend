@@ -104,7 +104,9 @@ export function useAuth() {
         const installId = await getInstallId();
         const outcome = await authApi.providerLogin(
           provider,
-          credential.token,
+          credential.provider === 'apple'
+            ? { type: 'identity_token', token: credential.token }
+            : credential.credential,
           installId,
           storedAgeTerms()
         );

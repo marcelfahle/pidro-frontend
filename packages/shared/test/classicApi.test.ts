@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import type { ApiClient } from '../src/api/client';
-import { createClassicApi } from '../src/api/classic';
+import { createClassicApi, facebookCredentialRequest } from '../src/api/classic';
 
 function recordingApi() {
   const calls: Array<{ path: string; body: unknown; config: unknown }> = [];
@@ -88,5 +88,36 @@ describe('Classic claim API', () => {
         preserveSessionOnUnauthorized: true,
       });
     }
+  });
+
+  it('sends both Facebook credential shapes without changing them', async () => {
+    const graph = recordingApi();
+    await graph.classic.verify({
+      method: 'facebook',
+      ...facebookCredentialRequest({ type: 'access_token', token: 'graph-token' }),
+      install_id: 'install-graph',
+    });
+    expect(graph.calls[0]?.body).toEqual({
+      method: 'facebook',
+      access_token: 'graph-token',
+      install_id: 'install-graph',
+    });
+
+    const limited = recordingApi();
+    await limited.classic.verify({
+      method: 'facebook',
+      ...facebookCredentialRequest({
+        type: 'authentication_token',
+        token: 'identity-jwt',
+        nonce: 'fedcba9876543210fedcba9876543210',
+      }),
+      install_id: 'install-limited',
+    });
+    expect(limited.calls[0]?.body).toEqual({
+      method: 'facebook',
+      authentication_token: 'identity-jwt',
+      nonce: 'fedcba9876543210fedcba9876543210',
+      install_id: 'install-limited',
+    });
   });
 });
