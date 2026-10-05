@@ -9,6 +9,7 @@ export type {
   ClassicPreview,
   CreateGuestRequest,
   CreateGuestResponse,
+  EmailLookup,
   FacebookCredential,
   LoginResponse,
   ProviderCredential,
@@ -29,3 +30,4 @@ export const setAge = authApi.setAge;
 export const requestPasswordReset = authApi.requestPasswordReset;
 export const resetPassword = authApi.resetPassword;
 export const providerLogin = authApi.providerLogin;
+export const lookupEmail = authApi.lookupEmail;
