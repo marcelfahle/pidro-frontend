@@ -72,8 +72,22 @@ const allCases = [
     testId: 'welcome-window',
     pendingInvite: true,
   },
-  { name: 'login', path: '/(auth)/login', testId: 'auth-window' },
-  { name: 'register', path: '/(auth)/register', testId: 'auth-window' },
+  { name: 'login', path: '/(auth)/login?fixture=providers', testId: 'auth-window' },
+  { name: 'register', path: '/(auth)/register?fixture=providers', testId: 'auth-window' },
+  {
+    name: 'register-password',
+    path: '/(auth)/register?fixture=password-new',
+    testId: 'auth-window',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
+  {
+    name: 'register-name',
+    path: '/(auth)/register?fixture=name-taken',
+    testId: 'auth-window',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
   {
     name: 'classic-method',
     path: '/(auth)/claim-classic?fixture=method',
@@ -102,6 +116,17 @@ const allCases = [
     testId: 'claim-classic-screen',
     authenticated: true,
   },
+  {
+    name: 'classic-forgot',
+    path: '/(auth)/classic-forgot',
+    testId: 'classic-forgot-window',
+  },
+  {
+    name: 'classic-link-sent',
+    path: '/(auth)/classic-forgot?fixture=sent',
+    testId: 'classic-link-sent',
+  },
+  { name: 'classic-help', path: '/(auth)/classic-help', testId: 'classic-help-window' },
   { name: 'forgot-password', path: '/(auth)/forgot-password', testId: 'auth-window' },
   {
     name: 'reset-password',
@@ -273,64 +298,13 @@ async function assertTargetGeometry(page, testCase, viewport) {
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
 }
 
-async function assertAuthFormInteractions(page, name, viewport) {
-  const password = page.getByPlaceholder(
-    name === 'login' ? 'Enter your password' : 'Your password'
-  );
-
-  if (name === 'login') {
-    const username = page.getByPlaceholder('Enter your username');
-    await page.getByRole('button', { name: 'Sign in' }).click();
-    await page.getByText('Enter a username.', { exact: true }).waitFor();
-    await page.getByText('Enter a password.', { exact: true }).waitFor();
-    if (!(await username.evaluate((input) => input === document.activeElement))) {
-      throw new Error(`login validation did not focus username in ${viewport.name}`);
-    }
-
-    await username.fill('Player');
-    if ((await page.getByText('Enter a username.', { exact: true }).count()) !== 0) {
-      throw new Error(`login username error did not clear after editing in ${viewport.name}`);
-    }
-    await username.press('Enter');
-    if (!(await password.evaluate((input) => input === document.activeElement))) {
-      throw new Error(`login Next key did not focus password in ${viewport.name}`);
-    }
-  } else if (name === 'register') {
-    const username = page.getByPlaceholder('Your name');
-    const email = page.getByPlaceholder('you@email.com');
-    await password.fill('correct horse battery staple');
-    await page.getByRole('button', { name: 'Create account' }).click();
-    await page.getByText('Enter a username.', { exact: true }).waitFor();
-    await page.getByText('Enter an email address.', { exact: true }).waitFor();
-    if (!(await username.evaluate((input) => input === document.activeElement))) {
-      throw new Error(`register validation did not focus username in ${viewport.name}`);
-    }
-
-    await username.fill('Player');
-    if ((await page.getByText('Enter a username.', { exact: true }).count()) !== 0) {
-      throw new Error(`register username error did not clear after editing in ${viewport.name}`);
-    }
-    await username.press('Enter');
-    if (!(await email.evaluate((input) => input === document.activeElement))) {
-      throw new Error(`register username Next key did not focus email in ${viewport.name}`);
-    }
-
-    await email.fill('player@example.com');
-    if ((await page.getByText('Enter an email address.', { exact: true }).count()) !== 0) {
-      throw new Error(`register email error did not clear after editing in ${viewport.name}`);
-    }
-    await email.press('Enter');
-    if (!(await password.evaluate((input) => input === document.activeElement))) {
-      throw new Error(`register email Next key did not focus password in ${viewport.name}`);
-    }
-
-    if ((await page.getByPlaceholder('Enter the password again').count()) !== 0) {
-      throw new Error(`register still asks users to re-enter their password in ${viewport.name}`);
-    }
-  } else {
-    return;
+async function assertFocused(locator, message) {
+  if (!(await locator.evaluate((input) => input === document.activeElement))) {
+    throw new Error(message);
   }
+}
 
+async function assertPasswordReveal(page, password, name, viewport) {
   const passwordValue = 'correct horse battery staple';
   await password.fill(passwordValue);
   await page.getByRole('button', { name: 'Show password' }).click();
@@ -347,25 +321,12 @@ async function assertAuthFormInteractions(page, name, viewport) {
   if ((await password.inputValue()) !== passwordValue) {
     throw new Error(`${name} password changed while being hidden in ${viewport.name}`);
   }
+  return passwordValue;
+}
 
-  const endpoint = `/api/v1/auth/${name === 'login' ? 'login' : 'register'}`;
-  const expectedPayload =
-    name === 'login'
-      ? {
-          username: 'Player',
-          password: passwordValue,
-          age_band: '18_plus',
-          terms_version: '1',
-        }
-      : {
-          user: {
-            username: 'Player',
-            email: 'player@example.com',
-            password: passwordValue,
-          },
-          age_band: '18_plus',
-          terms_version: '1',
-        };
+// Enter twice on the last field must send exactly one request, with the
+// payload the server expects, and land on Home.
+async function assertSingleSubmit(page, submitField, endpoint, expectedPayload, name, viewport) {
   let requestCount = 0;
   let releaseResponse;
   const responseGate = new Promise((resolveGate) => {
@@ -394,7 +355,7 @@ async function assertAuthFormInteractions(page, name, viewport) {
   const requestPromise = page.waitForRequest(
     (request) => request.method() === 'POST' && request.url().endsWith(endpoint)
   );
-  await password.evaluate((input) => {
+  await submitField.evaluate((input) => {
     const enter = () =>
       new KeyboardEvent('keydown', {
         key: 'Enter',
@@ -420,6 +381,99 @@ async function assertAuthFormInteractions(page, name, viewport) {
     );
   }
   await page.waitForURL((url) => url.pathname.endsWith('/home'), { timeout: 10_000 });
+}
+
+async function assertAuthFormInteractions(page, name, viewport) {
+  if (name === 'login') {
+    const identifier = page.getByLabel('Email or username', { exact: true });
+    const password = page.getByLabel('Password', { exact: true });
+    await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+    await page.getByText('Enter your email or username.', { exact: true }).waitFor();
+    await page.getByText('Enter your password.', { exact: true }).waitFor();
+    await assertFocused(identifier, `login validation did not focus the email in ${viewport.name}`);
+
+    await identifier.fill('Player');
+    if ((await page.getByText('Enter your email or username.', { exact: true }).count()) !== 0) {
+      throw new Error(`login email error did not clear after editing in ${viewport.name}`);
+    }
+    await identifier.press('Enter');
+    await assertFocused(password, `login Next key did not focus password in ${viewport.name}`);
+
+    const passwordValue = await assertPasswordReveal(page, password, name, viewport);
+    await assertSingleSubmit(
+      page,
+      password,
+      '/api/v1/auth/login',
+      { username: 'Player', password: passwordValue, age_band: '18_plus', terms_version: '1' },
+      name,
+      viewport
+    );
+    return;
+  }
+
+  if (name !== 'register') return;
+
+  // Step 1: the email decides between signing in and starting an account.
+  const email = page.getByLabel('Email', { exact: true });
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await page.getByText('Enter your email address.', { exact: true }).waitFor();
+  await assertFocused(email, `register validation did not focus the email in ${viewport.name}`);
+  await email.fill('player');
+  if ((await page.getByText('Enter your email address.', { exact: true }).count()) !== 0) {
+    throw new Error(`register email error did not clear after editing in ${viewport.name}`);
+  }
+  await email.press('Enter');
+  await page.getByText('Check that email address.', { exact: true }).waitFor();
+
+  let lookups = 0;
+  await page.route('**/api/v1/auth/identify', async (route) => {
+    lookups += 1;
+    if (JSON.stringify(route.request().postDataJSON()) !== '{"email":"player@example.com"}') {
+      throw new Error(`register looked up an unexpected email in ${viewport.name}`);
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ data: { known: false } }),
+    });
+  });
+  await email.fill('player@example.com');
+  await email.press('Enter');
+
+  // Step 2: a new address chooses a password.
+  await page
+    .getByText('There’s no Pidro account for player@example.com yet, so this starts one.', {
+      exact: true,
+    })
+    .waitFor();
+  if (lookups !== 1) throw new Error(`register looked the email up ${lookups} times`);
+  const password = page.getByLabel('Password', { exact: true });
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByText('Use 8 characters or more.', { exact: true }).waitFor();
+  const passwordValue = await assertPasswordReveal(page, password, name, viewport);
+  if ((await page.getByLabel('Confirm password').count()) !== 0) {
+    throw new Error(`register still asks users to re-enter their password in ${viewport.name}`);
+  }
+  await password.press('Enter');
+
+  // Step 3: the public name, then one request creates the account.
+  const publicName = page.getByLabel('Public name', { exact: true });
+  await publicName.waitFor();
+  await page.getByRole('button', { name: 'CONTINUE', exact: true }).click();
+  await page.getByText('Enter the name other players will see.', { exact: true }).waitFor();
+  await publicName.fill('Player');
+  await assertSingleSubmit(
+    page,
+    publicName,
+    '/api/v1/auth/register',
+    {
+      user: { username: 'Player', email: 'player@example.com', password: passwordValue },
+      age_band: '18_plus',
+      terms_version: '1',
+    },
+    name,
+    viewport
+  );
 }
 
 async function assertWelcomeGuestInteractions(page, name, viewport) {

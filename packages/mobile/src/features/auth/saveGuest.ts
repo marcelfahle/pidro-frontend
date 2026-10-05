@@ -21,7 +21,7 @@ type GuestSaveSession = {
   user: { id: string; guest?: boolean } | null;
 };
 
-function guestSaveFailure(error: unknown): GuestSaveFailure {
+export function guestSaveFailure(error: unknown): GuestSaveFailure {
   if (!(error instanceof AxiosError)) {
     return { message: error instanceof Error ? error.message : 'Could not save your account.' };
   }

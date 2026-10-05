@@ -1,24 +1,39 @@
 import { useCallback, useRef, useState } from 'react';
 import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
-import { Link } from 'expo-router';
-import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
-import { BevelButton } from '@/components/ui/BevelButton';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  AuthFlowButton,
+  AuthFlowHeading,
+  AuthFlowIconTile,
+  AuthFlowNotice,
+  AuthFlowScreen,
+  AuthFlowWindow,
+  useAuthFlow,
+} from '@/components/auth/AuthFlow';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
-import { PidroColors, PidroLayout, PidroType } from '@/design/tokens';
+import { TextLink } from '@/components/ui/TextLink';
+import { PidroSpacing } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
+import { useFlowBack, useHardwareBack } from '@/hooks/useFlowBack';
 
 export default function ForgotPasswordScreen() {
-  const [identifier, setIdentifier] = useState('');
+  const router = useRouter();
+  const goBack = useFlowBack();
+  const params = useLocalSearchParams<{ identifier?: string; fixture?: string }>();
+  const fixture = __DEV__ ? params.fixture : undefined;
+  const { layout, metrics, inputStyle } = useAuthFlow();
+  const landscape = layout === 'landscape';
+  const [identifier, setIdentifier] = useState(params.identifier ?? '');
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(fixture === 'sent');
   const inputRef = useRef<TextInput>(null);
   const { requestPasswordReset, isLoading, error, clearError } = useAuth();
 
   const submit = useCallback(async () => {
     const value = identifier.trim();
     if (!value) {
-      setValidationError('Enter your username or email address.');
+      setValidationError('Enter your email or username.');
       inputRef.current?.focus();
       return;
     }
@@ -26,73 +41,128 @@ export default function ForgotPasswordScreen() {
     if (await requestPasswordReset(value)) setSent(true);
   }, [identifier, requestPasswordReset]);
 
-  return (
-    <AuthScreenFrame
-      title="Reset your password"
-      subtitle="We’ll send recovery instructions if an account matches."
-      error={error}
-      footer={
-        <>
-          <Link href="/(auth)/login" style={styles.link}>
-            Back to sign in
-          </Link>
-          <Link href="/welcome" style={styles.link}>
-            Play as guest
-          </Link>
-        </>
-      }>
-      <View style={styles.formContent}>
-        {sent ? (
-          <PidroText role="body" tone="soft" align="center" accessibilityLiveRegion="polite">
-            Check your email for the reset link. You can safely close this screen.
-          </PidroText>
+  const backToForm = useCallback(() => setSent(false), []);
+  useHardwareBack(sent, backToForm);
+
+  if (sent) {
+    // The server answers the same whether or not an account matched, so this
+    // never says a link was sent to a particular address.
+    const body = 'If that matches a Pidro account, a link to choose a new password is on its way.';
+    const done = <AuthFlowButton label="Back to sign in" material="glass" onPress={goBack} />;
+    return (
+      <AuthFlowScreen
+        testID="forgot-password-screen"
+        headerTitle="Sign in"
+        onBack={backToForm}
+        title="Check your email"
+        body={body}
+        inlineIntro
+        fill>
+        {landscape ? (
+          <AuthFlowWindow testID="auth-window">
+            <View style={styles.sentRow}>
+              <AuthFlowIconTile icon="mail" quiet />
+              <PidroText role="body" tone="soft" style={[styles.sentRowCopy, metrics.body]}>
+                The link works for one hour.
+              </PidroText>
+            </View>
+            {done}
+          </AuthFlowWindow>
         ) : (
           <>
-            <Input
-              ref={inputRef}
-              label="Username or email"
-              placeholder="Your username or email"
-              value={identifier}
-              onChangeText={(value) => {
-                setIdentifier(value);
-                setValidationError(null);
-                clearError();
-              }}
-              error={validationError ?? undefined}
-              editable={!isLoading}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="username"
-              returnKeyType="send"
-              onSubmitEditing={submit}
-            />
-            <BevelButton
-              label="Send reset link"
-              material="wood"
-              size="md"
-              fullWidth
-              loading={isLoading}
-              onPress={submit}
-            />
+            <View
+              testID="auth-window"
+              accessibilityLiveRegion="polite"
+              style={[styles.sentHero, layout === 'phone' && styles.sentHeroFill]}>
+              <AuthFlowIconTile icon="mail" />
+              <View style={styles.sentCopy}>
+                <AuthFlowHeading align="center" hero>
+                  Check your email
+                </AuthFlowHeading>
+                <PidroText role="body" tone="soft" align="center" style={metrics.body}>
+                  {body}
+                </PidroText>
+                <PidroText role="body" tone="soft" align="center" style={metrics.body}>
+                  The link works for one hour.
+                </PidroText>
+              </View>
+            </View>
+            {done}
           </>
         )}
-      </View>
-    </AuthScreenFrame>
+      </AuthFlowScreen>
+    );
+  }
+
+  return (
+    <AuthFlowScreen
+      testID="forgot-password-screen"
+      headerTitle="Sign in"
+      onBack={goBack}
+      title="Forgot your password?"
+      body="We email you a link to choose a new one.">
+      <AuthFlowWindow testID="auth-window">
+        {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
+        <Input
+          ref={inputRef}
+          label="Email or username"
+          placeholder="you@example.com"
+          value={identifier}
+          onChangeText={(value) => {
+            setIdentifier(value);
+            setValidationError(null);
+            clearError();
+          }}
+          error={validationError ?? undefined}
+          style={inputStyle}
+          editable={!isLoading}
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="username"
+          textContentType="username"
+          keyboardAppearance="dark"
+          keyboardType="email-address"
+          returnKeyType="send"
+          submitBehavior="blurAndSubmit"
+          onSubmitEditing={submit}
+        />
+        <AuthFlowButton label="Email me a link" loading={isLoading} onPress={submit} />
+      </AuthFlowWindow>
+      <TextLink
+        label="Played Pidro Classic? Recover that account"
+        size={metrics.link}
+        style={styles.centerLink}
+        onPress={() => router.push('/(auth)/classic-forgot')}
+      />
+    </AuthFlowScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  formContent: {
-    width: '100%',
-    maxWidth: 440,
+  centerLink: {
     alignSelf: 'center',
-    gap: 8,
   },
-  link: {
-    minWidth: PidroLayout.touchTarget,
-    minHeight: PidroLayout.touchTarget,
-    color: PidroColors.cyanText,
-    ...PidroType.metadata,
-    paddingVertical: 14,
+  sentHero: {
+    alignItems: 'center',
+    gap: 20,
+  },
+  sentHeroFill: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: PidroSpacing.lg,
+  },
+  sentCopy: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+  },
+  sentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  sentRowCopy: {
+    minWidth: 0,
+    flex: 1,
   },
 });

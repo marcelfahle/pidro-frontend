@@ -1,42 +1,49 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, useRouter, type Href } from 'expo-router';
-import { Keyboard, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
-import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { Keyboard, StyleSheet, TextInput, View } from 'react-native';
+import {
+  AuthFlowButton,
+  AuthFlowNotice,
+  AuthFlowScreen,
+  AuthFlowWindow,
+  useAuthFlow,
+} from '@/components/auth/AuthFlow';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
-import { BevelButton } from '@/components/ui/BevelButton';
+import { useSwitchPlayersGuard } from '@/components/auth/SwitchPlayersGuard';
+import { useProviderSignIn } from '@/components/auth/useProviderSignIn';
 import { Input } from '@/components/ui/Input';
-import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
-import { PressableFX } from '@/components/ui/PressableFX';
-import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
+import { TextLink } from '@/components/ui/TextLink';
+import { PidroSpacing } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
+import { useFlowBack } from '@/hooks/useFlowBack';
 import { t } from '@/i18n';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import type { AuthProvider } from '@/api/auth';
-import { handleClassicFound } from '@/features/auth/classicFound';
-import { handleSocialSignInOutcome } from '@/features/auth/loginSocial';
 
-type LoginField = 'username' | 'password';
+type LoginField = 'identifier' | 'password';
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState('');
+  const params = useLocalSearchParams<{ email?: string; known?: string; fixture?: string }>();
+  const fixture = __DEV__ ? params.fixture : undefined;
+  const [identifier, setIdentifier] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
-  const [socialNotice, setSocialNotice] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Partial<Record<LoginField, string>>>({});
-  const usernameRef = useRef<TextInput>(null);
+  const identifierRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const { user, signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
-  // A guest who signs into another account leaves their guest behind, so
-  // every sign-in method asks first. Holds the method waiting for that answer.
-  const [pendingSwitch, setPendingSwitch] = useState<'password' | AuthProvider | null>(null);
+  const { signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
+  const { guard, modal } = useSwitchPlayersGuard();
+  const providerSignIn = useProviderSignIn(signInWithProvider);
   const router = useRouter();
+  const goBack = useFlowBack();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
-  const { width, height } = useWindowDimensions();
-  const landscape = width > height;
-  const compactLandscape = landscape && height < 500;
+  const { layout, metrics, inputStyle } = useAuthFlow();
+  const landscape = layout === 'landscape';
+  // Sent here from Create account: the address already has an account.
+  const knownAccount = params.known === '1' && !error;
 
   const clearValidationError = useCallback(
     (field: LoginField) => {
@@ -48,25 +55,11 @@ export default function LoginScreen() {
     },
     [clearError]
   );
-  const handleUsernameChange = useCallback(
-    (next: string) => {
-      setUsername(next);
-      clearValidationError('username');
-    },
-    [clearValidationError]
-  );
-  const handlePasswordChange = useCallback(
-    (next: string) => {
-      setPassword(next);
-      clearValidationError('password');
-    },
-    [clearValidationError]
-  );
   const focusPassword = useCallback(() => passwordRef.current?.focus(), []);
 
   const performLogin = useCallback(async () => {
     Keyboard.dismiss();
-    const success = await signIn(username.trim(), password);
+    const success = await signIn(identifier.trim(), password);
     const signedInUser = useAuthStore.getState().user;
     if (success && signedInUser) {
       router.replace(
@@ -77,19 +70,18 @@ export default function LoginScreen() {
         ) as Href
       );
     }
-  }, [password, pendingInvite, router, signIn, username]);
+  }, [identifier, password, pendingInvite, router, signIn]);
 
-  const handleLogin = useCallback(async () => {
-    const normalizedUsername = username.trim();
+  const handleLogin = useCallback(() => {
     if (isLoading) return;
 
     const nextErrors: Partial<Record<LoginField, string>> = {};
-    if (!normalizedUsername) nextErrors.username = 'Enter a username.';
-    if (!password) nextErrors.password = 'Enter a password.';
+    if (!identifier.trim()) nextErrors.identifier = 'Enter your email or username.';
+    if (!password) nextErrors.password = 'Enter your password.';
     setValidationErrors(nextErrors);
 
-    if (nextErrors.username) {
-      usernameRef.current?.focus();
+    if (nextErrors.identifier) {
+      identifierRef.current?.focus();
       return;
     }
     if (nextErrors.password) {
@@ -97,230 +89,174 @@ export default function LoginScreen() {
       return;
     }
 
-    if (user?.guest) {
-      Keyboard.dismiss();
-      setPendingSwitch('password');
-      return;
-    }
-    await performLogin();
-  }, [isLoading, password, performLogin, user?.guest, username]);
-
-  const performProviderLogin = useCallback(
-    async (provider: AuthProvider) => {
-      setSocialNotice(null);
-      const outcome = await signInWithProvider(provider);
-      handleSocialSignInOutcome(outcome, {
-        onSignedIn: () => {
-          if (outcome.status !== 'signed_in') return;
-          router.replace(
-            authenticatedEntryDestination(
-              pendingInvite,
-              useAgeGateStore.getState().ageBand,
-              outcome.session.user
-            ) as Href
-          );
-        },
-        onClassicFound: (claim) => {
-          handleClassicFound(claim, provider);
-          router.replace('/(auth)/claim-classic');
-        },
-        onUnknownIdentity: () =>
-          setSocialNotice(
-            `We couldn’t sign in with that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`
-          ),
-      });
-    },
-    [pendingInvite, router, signInWithProvider]
-  );
+    Keyboard.dismiss();
+    guard(() => void performLogin());
+  }, [guard, identifier, isLoading, password, performLogin]);
 
   const handleProviderLogin = useCallback(
-    async (provider: AuthProvider) => {
+    (provider: AuthProvider) => {
       if (isLoading) return;
-      if (user?.guest) {
-        setPendingSwitch(provider);
-        return;
-      }
-      await performProviderLogin(provider);
+      guard(() => void providerSignIn.start(provider));
     },
-    [isLoading, performProviderLogin, user?.guest]
+    [guard, isLoading, providerSignIn]
+  );
+
+  const createAccount = (
+    <View style={[styles.newHere, landscape && styles.newHereLandscape]}>
+      <PidroText role="body" tone="soft" style={metrics.body}>
+        New to Pidro?
+      </PidroText>
+      <TextLink
+        label="Create account"
+        size={metrics.link}
+        style={styles.newHereLink}
+        onPress={() => router.push('/(auth)/register')}
+      />
+    </View>
   );
 
   return (
-    <AuthScreenFrame
-      title="Welcome back"
-      subtitle={compactLandscape ? undefined : 'Sign in to return to your table.'}
-      error={error}
-      footer={
-        <View style={[styles.footerRows, compactLandscape && styles.footerRowsLandscape]}>
-          <View style={styles.footerRow}>
-            <PidroText role="metadata" tone="soft">
-              New to Pidro?
-            </PidroText>
-            <Link href="/(auth)/register" style={styles.link}>
-              Create an account
-            </Link>
-          </View>
-          <Link
-            href={'/join-code' as Href}
-            style={[styles.link, !compactLandscape && styles.quietLink]}>
-            {t('invite.manual.entry')}
-          </Link>
-          <Link href="/welcome" style={[styles.link, !compactLandscape && styles.quietLink]}>
-            Play as guest
-          </Link>
+    <AuthFlowScreen
+      testID="login-screen"
+      headerTitle="Sign in"
+      onBack={goBack}
+      aside={
+        <View style={[styles.aside, landscape && styles.asideLandscape]}>
+          {createAccount}
+          <TextLink
+            label={t('invite.manual.entry')}
+            size={14}
+            style={landscape ? styles.codeLinkLandscape : undefined}
+            onPress={() => router.push('/join-code' as Href)}
+          />
         </View>
       }>
-      <AuthProviderButtons
-        showEmail={false}
-        showEmailDivider
-        onApple={() => void handleProviderLogin('apple')}
-        onFacebook={() => void handleProviderLogin('facebook')}
-      />
-      {socialNotice ? (
-        <PidroText role="metadata" tone="soft" align="center" accessibilityLiveRegion="polite">
-          {socialNotice}
-        </PidroText>
-      ) : null}
-      <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
-        <View style={compactLandscape && styles.fieldLandscape}>
-          <Input
-            ref={usernameRef}
-            label="Username"
-            placeholder="Enter your username"
-            value={username}
-            onChangeText={handleUsernameChange}
-            error={validationErrors.username}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete="username"
-            textContentType="username"
-            importantForAutofill="yes"
-            clearButtonMode="while-editing"
-            editable={!isLoading}
-            keyboardAppearance="dark"
-            returnKeyType="next"
-            submitBehavior="submit"
-            onSubmitEditing={focusPassword}
-          />
+      <AuthFlowWindow testID="auth-window">
+        {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
+        {knownAccount ? (
+          <AuthFlowNotice tone="info">
+            That email already has a Pidro account. Sign in to carry on.
+          </AuthFlowNotice>
+        ) : null}
+        <AuthProviderButtons
+          showEmail={false}
+          showEmailDivider
+          direction={landscape ? 'row' : 'column'}
+          availability={fixture === 'providers' ? { apple: true, facebook: true } : undefined}
+          onApple={() => handleProviderLogin('apple')}
+          onFacebook={() => handleProviderLogin('facebook')}
+        />
+        {providerSignIn.notice ? <AuthFlowNotice>{providerSignIn.notice}</AuthFlowNotice> : null}
+        <View style={[styles.fields, landscape && styles.fieldsLandscape]}>
+          <View style={landscape && styles.fieldLandscape}>
+            <Input
+              ref={identifierRef}
+              label="Email or username"
+              placeholder="you@example.com"
+              value={identifier}
+              onChangeText={(next) => {
+                setIdentifier(next);
+                clearValidationError('identifier');
+              }}
+              error={validationErrors.identifier}
+              style={inputStyle}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="username"
+              textContentType="username"
+              importantForAutofill="yes"
+              keyboardType="email-address"
+              clearButtonMode="while-editing"
+              editable={!isLoading}
+              keyboardAppearance="dark"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={focusPassword}
+            />
+          </View>
+          <View style={landscape && styles.fieldLandscape}>
+            <Input
+              ref={passwordRef}
+              label="Password"
+              value={password}
+              onChangeText={(next) => {
+                setPassword(next);
+                clearValidationError('password');
+              }}
+              error={validationErrors.password}
+              style={inputStyle}
+              autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
+              importantForAutofill="yes"
+              autoCorrect={false}
+              editable={!isLoading}
+              enablesReturnKeyAutomatically
+              keyboardAppearance="dark"
+              revealPassword
+              secureTextEntry
+              spellCheck={false}
+              returnKeyType="go"
+              submitBehavior="blurAndSubmit"
+              onSubmitEditing={handleLogin}
+            />
+          </View>
         </View>
-        <View style={compactLandscape && styles.fieldLandscape}>
-          <Input
-            ref={passwordRef}
-            label="Password"
-            placeholder="Enter your password"
-            value={password}
-            onChangeText={handlePasswordChange}
-            error={validationErrors.password}
-            autoCapitalize="none"
-            autoComplete="current-password"
-            textContentType="password"
-            importantForAutofill="yes"
-            autoCorrect={false}
-            editable={!isLoading}
-            enablesReturnKeyAutomatically
-            keyboardAppearance="dark"
-            revealPassword
-            secureTextEntry
-            spellCheck={false}
-            returnKeyType="go"
-            submitBehavior="blurAndSubmit"
-            onSubmitEditing={handleLogin}
-          />
-        </View>
-      </View>
-      <PressableFX
-        accessibilityRole="button"
-        accessibilityLabel="Forgot password"
-        onPress={() => router.push('/(auth)/forgot-password')}
-        style={styles.forgot}>
-        <PidroText role="metadata" tone="cyan">
-          Forgot password?
-        </PidroText>
-      </PressableFX>
-      <BevelButton
-        label="Sign in"
-        material="wood"
-        size="md"
-        fullWidth
-        onPress={handleLogin}
-        loading={isLoading}
-      />
-      <Modal
-        isOpen={pendingSwitch !== null}
-        title="Switch players?"
-        description="Guest results do not merge into a different account. Cancel to keep playing with this guest."
-        onClose={() => setPendingSwitch(null)}>
-        <View style={styles.switchActions}>
-          <BevelButton
-            label="Cancel"
-            material="glass"
-            size="sm"
-            fullWidth
-            onPress={() => setPendingSwitch(null)}
-          />
-          <BevelButton
-            label="Switch account"
-            material="wood"
-            size="sm"
-            fullWidth
-            onPress={() => {
-              const method = pendingSwitch;
-              setPendingSwitch(null);
-              if (method === 'password') void performLogin();
-              else if (method) void performProviderLogin(method);
-            }}
-          />
-        </View>
-      </Modal>
-    </AuthScreenFrame>
+        <TextLink
+          label="Forgot password?"
+          size={layout === 'tablet' ? 15 : 14}
+          style={styles.forgot}
+          onPress={() =>
+            router.push({
+              pathname: '/(auth)/forgot-password',
+              params: identifier.trim() ? { identifier: identifier.trim() } : {},
+            })
+          }
+        />
+        <AuthFlowButton label="Sign in" loading={isLoading} onPress={handleLogin} />
+      </AuthFlowWindow>
+      {modal}
+    </AuthFlowScreen>
   );
 }
 
 const styles = StyleSheet.create({
   fields: {
-    gap: PidroSpacing.md,
+    gap: PidroSpacing.sm,
   },
   fieldsLandscape: {
     flexDirection: 'row',
-    gap: 8,
   },
   fieldLandscape: {
-    width: '49%',
+    minWidth: 0,
+    flex: 1,
   },
+  // The 44px target would open a hole between the fields and the button;
+  // pull it in so the link sits as close as the design draws it.
   forgot: {
-    minHeight: PidroLayout.touchTarget,
     alignSelf: 'flex-end',
-    justifyContent: 'center',
-    marginTop: -6,
-    marginBottom: -6,
+    paddingHorizontal: 2,
+    marginVertical: -8,
   },
-  footerRows: {
+  aside: {
     alignItems: 'center',
-    gap: 0,
   },
-  footerRowsLandscape: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: PidroSpacing.xs,
+  asideLandscape: {
+    alignItems: 'flex-start',
   },
-  footerRow: {
+  newHere: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: PidroSpacing.xs,
+    justifyContent: 'center',
   },
-  link: {
-    minWidth: PidroLayout.touchTarget,
-    minHeight: PidroLayout.touchTarget,
-    textAlign: 'center',
-    color: PidroColors.cyanText,
-    ...PidroType.metadata,
-    paddingVertical: 14,
+  newHereLandscape: {
+    justifyContent: 'flex-start',
+    marginLeft: 12,
   },
-  quietLink: {
-    paddingVertical: 8,
+  newHereLink: {
+    paddingHorizontal: 6,
   },
-  switchActions: {
-    gap: 8,
+  codeLinkLandscape: {
+    marginTop: -8,
   },
 });
