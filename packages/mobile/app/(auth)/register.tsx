@@ -55,7 +55,8 @@ export default function RegisterScreen() {
   const fixture = (__DEV__ ? fixtureParam : undefined) as Fixture | undefined;
   const { layout, inputStyle } = useAuthFlow();
   const landscape = layout === 'landscape';
-  const { user, createAccount, saveGuest, signInWithProvider, isLoading } = useAuth();
+  const { user, createAccount, saveGuest, signInWithProvider, isLoading, error, clearError } =
+    useAuth();
   const { guard, modal } = useSwitchPlayersGuard();
   const providerSignIn = useProviderSignIn(signInWithProvider);
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
@@ -162,7 +163,9 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Each answer goes back to the step that owns the field.
+    // Each answer goes back to the step that owns the field, so the hook's
+    // own copy of the message would only say it twice.
+    clearError();
     const { fields, classicNameReserved: reserved, message: failure } = result.error;
     if (fields?.displayName) {
       setNameFieldError(nameError(fields.displayName));
@@ -182,6 +185,7 @@ export default function RegisterScreen() {
     }
   }, [
     busy,
+    clearError,
     createAccount,
     email,
     fixture,
@@ -210,6 +214,8 @@ export default function RegisterScreen() {
         body={'New here or coming back, it’s the same way\u00a0in.'}
         note={'If we know you, you’re signed in. If not, this starts a free\u00a0account.'}>
         <AuthFlowWindow testID="auth-window">
+          {/* A provider that failed or was unavailable reports through the hook. */}
+          {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
           <AuthProviderButtons
             showEmail={false}
             showEmailDivider
@@ -229,6 +235,7 @@ export default function RegisterScreen() {
                 setEmail(next);
                 setEmailError(null);
                 setEmailTaken(false);
+                clearError();
               }}
               error={emailError ?? undefined}
               style={inputStyle}
