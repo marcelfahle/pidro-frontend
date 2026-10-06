@@ -14,6 +14,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
+import { TextLink } from '@/components/ui/TextLink';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
@@ -364,6 +365,17 @@ export default function ClaimClassicScreen() {
                     clearField('classicPassword');
                   }}
                 />
+                <TextLink
+                  label="Forgot your Classic password?"
+                  size={14}
+                  style={styles.forgot}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/(auth)/classic-forgot',
+                      params: login.trim() ? { login: login.trim() } : {},
+                    })
+                  }
+                />
                 <BevelButton
                   label="Verify Classic account"
                   material="wood"
@@ -543,6 +555,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'flex-end',
+  },
+  // Full width so it breaks onto its own line beside the landscape fields.
+  forgot: {
+    width: '100%',
+    alignItems: 'flex-end',
+    paddingHorizontal: 2,
+    marginVertical: -PidroSpacing.xs,
   },
   providerFixtures: {
     gap: PidroSpacing.sm,

@@ -4,6 +4,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { cn } from '@/utils/cn';
 import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
 import { gradientBg } from './Bevel';
+import { Icon } from './Icon';
 import { PidroText } from './PidroText';
 import { PressableFX } from './PressableFX';
 
@@ -53,7 +54,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     }, []);
 
     return (
-      <View className={cn('w-full space-y-2', containerClassName)}>
+      <View className={cn('w-full', containerClassName)}>
         {label && (
           <PidroText role="label" tone="soft" style={styles.label}>
             {label}
@@ -99,9 +100,14 @@ export const Input = forwardRef<TextInput, InputProps>(
           ) : null}
         </View>
         {error && (
-          <PidroText role="metadata" tone="danger" style={styles.error} accessibilityRole="alert">
-            {error}
-          </PidroText>
+          <View style={styles.error} accessibilityRole="alert">
+            <View style={styles.errorIcon}>
+              <Icon name="alert" size={16} color={PidroColors.danger} strokeWidth={2.2} />
+            </View>
+            <PidroText tone="danger" style={styles.errorText}>
+              {error}
+            </PidroText>
+          </View>
         )}
       </View>
     );
@@ -144,8 +150,22 @@ const styles = StyleSheet.create({
     boxShadow:
       '0px 0px 0px 3px rgba(255,120,128,0.18), inset 0px 2px 3px rgba(0,0,0,0.35), 0px 1px 0px rgba(255,255,255,0.06)',
   },
+  // Icon plus words: an error is never carried by the red border alone.
   error: {
     marginTop: PidroSpacing.xs,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  errorIcon: {
+    marginTop: 1.5,
+  },
+  errorText: {
+    minWidth: 0,
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 19,
+    fontWeight: '700',
   },
   passwordToggle: {
     width: PidroLayout.touchTarget + 4,

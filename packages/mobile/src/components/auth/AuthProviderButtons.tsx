@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import Svg, { Path } from 'react-native-svg';
-import { PidroColors, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -15,14 +15,24 @@ export interface AuthProviderButtonsProps {
   onEmail?: () => void;
   showEmail?: boolean;
   showEmailDivider?: boolean;
+  /** Side by side where height is short (phone landscape). */
+  direction?: 'column' | 'row';
   /** Deterministic native-capability override for development fixtures. */
   availability?: SocialProviderAvailability;
 }
 
+function AppleLogo() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="#000000">
+      <Path d="M16.37 12.62c-.02-2.2 1.8-3.26 1.88-3.31-1.02-1.5-2.62-1.7-3.19-1.73-1.36-.14-2.65.8-3.34.8-.69 0-1.75-.78-2.88-.76-1.48.02-2.85.86-3.61 2.19-1.54 2.67-.39 6.62 1.1 8.79.73 1.06 1.6 2.25 2.74 2.2 1.1-.04 1.52-.71 2.85-.71 1.33 0 1.7.71 2.87.69 1.18-.02 1.93-1.08 2.66-2.14.84-1.23 1.18-2.42 1.2-2.48-.03-.01-2.3-.88-2.33-3.5zM14.18 6.15c.6-.73 1.01-1.75.9-2.76-.87.04-1.92.58-2.54 1.31-.56.64-1.05 1.67-.92 2.66.97.08 1.96-.49 2.56-1.21z" />
+    </Svg>
+  );
+}
+
 function FacebookLogo() {
   return (
-    <Svg width={19} height={19} viewBox="0 0 24 24" fill="#ffffff">
-      <Path d="M13.5 21v-7.5h2.52l.38-3h-2.9V8.6c0-.87.24-1.46 1.49-1.46h1.59V4.44c-.28-.04-1.22-.12-2.32-.12-2.3 0-3.87 1.4-3.87 3.98v2.2H7.9v3h2.49V21z" />
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="#ffffff">
+      <Path d="M15.12 5.32H17V2.14A26.1 26.1 0 0 0 14.26 2c-2.72 0-4.58 1.66-4.58 4.7v2.62H6.61v3.56h3.07V22h3.68v-9.12h3.06l.46-3.56h-3.52V7.05c0-1.03.28-1.73 1.76-1.73z" />
     </Svg>
   );
 }
@@ -33,6 +43,7 @@ export function AuthProviderButtons({
   onEmail,
   showEmail = true,
   showEmailDivider = false,
+  direction = 'column',
   availability: availabilityOverride,
 }: AuthProviderButtonsProps) {
   const [detectedAvailability, setDetectedAvailability] = useState<SocialProviderAvailability>({
@@ -54,33 +65,58 @@ export function AuthProviderButtons({
 
   if (!availability.apple && !availability.facebook && !(showEmail && onEmail)) return null;
 
+  const row = direction === 'row' && availability.apple && availability.facebook;
+
   return (
     <View style={styles.stack}>
-      {availability.apple ? (
-        <AppleAuthentication.AppleAuthenticationButton
-          testID="apple-sign-in"
-          buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
-          cornerRadius={13}
-          style={styles.appleButton}
-          onPress={onApple}
-        />
-      ) : null}
-      {availability.facebook ? (
-        <PressableFX
-          accessibilityRole="button"
-          accessibilityLabel="Continue with Facebook"
-          onPress={onFacebook}
-          style={styles.facebookButton}
-          pressedStyle={styles.facebookPressed}>
-          <FacebookLogo />
-          <PidroText style={styles.facebookLabel}>Continue with Facebook</PidroText>
-        </PressableFX>
-      ) : null}
+      <View style={[styles.providers, row && styles.providersRow]}>
+        {availability.apple ? (
+          Platform.OS === 'ios' && !availabilityOverride ? (
+            // White on the navy window: Apple's own button, in the style its
+            // guidelines ask for on a dark surface.
+            <AppleAuthentication.AppleAuthenticationButton
+              testID="apple-sign-in"
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={12}
+              style={[styles.appleButton, row && styles.providerInRow]}
+              onPress={onApple}
+            />
+          ) : (
+            // Apple sign-in is offered on iOS only, with Apple's own button.
+            // This stands in where a fixture forces it on (web, Expo Go), so
+            // previews show the real composition.
+            <PressableFX
+              accessibilityRole="button"
+              accessibilityLabel="Continue with Apple"
+              onPress={onApple}
+              style={[styles.provider, styles.appleStandIn, row && styles.providerInRow]}
+              pressedStyle={styles.appleStandInPressed}>
+              <AppleLogo />
+              <PidroText style={[styles.providerLabel, styles.appleLabel]} numberOfLines={1}>
+                {row ? 'Apple' : 'Continue with Apple'}
+              </PidroText>
+            </PressableFX>
+          )
+        ) : null}
+        {availability.facebook ? (
+          <PressableFX
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Facebook"
+            onPress={onFacebook}
+            style={[styles.provider, styles.facebookButton, row && styles.providerInRow]}
+            pressedStyle={styles.facebookPressed}>
+            <FacebookLogo />
+            <PidroText style={styles.providerLabel} numberOfLines={1}>
+              {row ? 'Facebook' : 'Continue with Facebook'}
+            </PidroText>
+          </PressableFX>
+        ) : null}
+      </View>
       {showEmailDivider && (availability.apple || availability.facebook) ? (
         <View style={styles.dividerRow}>
           <View style={styles.divider} />
-          <PidroText role="metadata" tone="muted">
+          <PidroText role="metadata" tone="soft">
             or with email
           </PidroText>
           <View style={styles.divider} />
@@ -104,31 +140,57 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     gap: PidroSpacing.sm,
   },
+  providers: {
+    gap: PidroSpacing.sm,
+  },
+  providersRow: {
+    flexDirection: 'row',
+  },
+  providerInRow: {
+    width: 'auto',
+    minWidth: 0,
+    flex: 1,
+  },
   appleButton: {
     width: '100%',
     height: 50,
   },
-  facebookButton: {
+  provider: {
     minHeight: 50,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 9,
-    borderRadius: 13,
+    gap: 10,
+    borderRadius: 12,
+    boxShadow: PidroBevel.glassDropShadow,
+  },
+  providerLabel: {
+    fontFamily: PidroFonts.ui,
+    fontSize: 16,
+    lineHeight: 21,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+  appleStandIn: {
+    backgroundColor: '#ffffff',
+  },
+  appleStandInPressed: {
+    backgroundColor: '#e6edf3',
+  },
+  appleLabel: {
+    color: '#000000',
+  },
+  facebookButton: {
     backgroundColor: '#1877F2',
   },
   facebookPressed: {
     backgroundColor: '#1462c9',
   },
-  facebookLabel: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.sm,
+    marginVertical: 2,
   },
   divider: {
     flex: 1,

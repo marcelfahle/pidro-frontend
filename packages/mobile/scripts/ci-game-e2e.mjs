@@ -244,8 +244,8 @@ async function verifyUiLogin(browser, username) {
     });
     await page.reload({ waitUntil: 'domcontentloaded' });
 
-    const userField = page.getByPlaceholder('Enter your username');
-    const passField = page.getByPlaceholder('Enter your password');
+    const userField = page.getByLabel('Email or username', { exact: true });
+    const passField = page.getByLabel('Password', { exact: true });
     const signIn = page.getByRole('button', { name: 'Sign in' });
     await userField.waitFor({ timeout: 30_000 });
     let formReady = false;
