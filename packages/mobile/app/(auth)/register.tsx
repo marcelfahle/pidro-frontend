@@ -2,7 +2,6 @@ import { useCallback, useRef, useState } from 'react';
 import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import { Keyboard, Platform, StyleSheet, TextInput, View } from 'react-native';
 import { publicPlayerName } from '@pidro/shared';
-import { lookupEmail } from '@/api/auth';
 import type { AuthProvider } from '@/api/auth';
 import {
   AuthFlowButton,
@@ -23,7 +22,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { TextLink } from '@/components/ui/TextLink';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
-import { emailStanding, isEmailAddress, type EmailStanding } from '@/features/auth/accountEmail';
+import { isEmailAddress } from '@/features/auth/accountEmail';
 import { useAuth } from '@/hooks/useAuth';
 import { useFlowBack, useHardwareBack } from '@/hooks/useFlowBack';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
@@ -32,11 +31,10 @@ import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 type Step = 'email' | 'password' | 'name';
-type Fixture = 'providers' | 'password' | 'password-new' | 'name' | 'name-taken';
+type Fixture = 'providers' | 'password' | 'name' | 'name-taken';
 
 const FIXTURE_STEP: Partial<Record<Fixture, Step>> = {
   password: 'password',
-  'password-new': 'password',
   name: 'name',
   'name-taken': 'name',
 };
@@ -66,10 +64,6 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState(fixture && FIXTURE_STEP[fixture] ? 'you@example.com' : '');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [emailTaken, setEmailTaken] = useState(false);
-  const [standing, setStanding] = useState<EmailStanding>(
-    fixture === 'password-new' ? 'unknown' : 'unchecked'
-  );
-  const [checkingEmail, setCheckingEmail] = useState(false);
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [name, setName] = useState(
@@ -87,7 +81,7 @@ export default function RegisterScreen() {
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
-  const busy = isLoading || checkingEmail;
+  const busy = isLoading;
 
   const stepBack = useCallback(() => {
     setMessage(null);
@@ -98,15 +92,14 @@ export default function RegisterScreen() {
   useHardwareBack(step !== 'email', stepBack);
 
   const signInInstead = useCallback(
-    (known: boolean) =>
-      router.push({
-        pathname: '/(auth)/login',
-        params: { email: email.trim(), ...(known ? { known: '1' } : {}) },
-      }),
+    () => router.push({ pathname: '/(auth)/login', params: { email: email.trim(), known: '1' } }),
     [email, router]
   );
 
-  const continueWithEmail = useCallback(async () => {
+  // Whether the address already has an account is not asked here, so the
+  // server never has to say. A taken address surfaces when the account is
+  // made, and the player is sent to sign in.
+  const continueWithEmail = useCallback(() => {
     if (busy) return;
     const address = email.trim();
     if (!isEmailAddress(address)) {
@@ -115,16 +108,8 @@ export default function RegisterScreen() {
       return;
     }
     Keyboard.dismiss();
-    setCheckingEmail(true);
-    const answer = await emailStanding(address, lookupEmail);
-    setCheckingEmail(false);
-    if (answer === 'known') {
-      signInInstead(true);
-      return;
-    }
-    setStanding(answer);
     setStep('password');
-  }, [busy, email, signInInstead]);
+  }, [busy, email]);
 
   const continueWithPassword = useCallback(() => {
     if (password.length < MIN_PASSWORD) {
@@ -257,11 +242,11 @@ export default function RegisterScreen() {
                 label="Sign in instead"
                 size={14}
                 style={styles.inlineLink}
-                onPress={() => signInInstead(false)}
+                onPress={signInInstead}
               />
             ) : null}
           </View>
-          <AuthFlowButton label="Continue" loading={checkingEmail} onPress={continueWithEmail} />
+          <AuthFlowButton label="Continue" onPress={continueWithEmail} />
         </AuthFlowWindow>
         {modal}
       </AuthFlowScreen>
@@ -276,11 +261,7 @@ export default function RegisterScreen() {
         headerTitle="Pidro account"
         onBack={stepBack}
         title="Create a password"
-        body={
-          standing === 'unknown'
-            ? `There’s no Pidro account for ${email.trim()} yet, so this starts one.`
-            : `This starts a free Pidro account for ${email.trim()}.`
-        }
+        body={`This starts a free Pidro account for ${email.trim()}.`}
         note={
           guest
             ? 'Next you pick your name. Your guest games come with\u00a0you.'

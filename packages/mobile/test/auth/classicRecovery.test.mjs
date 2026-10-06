@@ -4,7 +4,7 @@ import {
   requestClassicSignInLink,
   sendClassicHelp,
 } from '../../src/features/auth/classicRecovery';
-import { emailStanding, isEmailAddress } from '../../src/features/auth/accountEmail';
+import { isEmailAddress } from '../../src/features/auth/accountEmail';
 
 const apiError = (status, code) => ({
   response: { status, data: code ? { errors: [{ code, detail: `${code} detail` }] } : {} },
@@ -107,15 +107,5 @@ describe('account email', () => {
     expect(isEmailAddress('Bengt')).toBe(false);
     expect(isEmailAddress('bengt@example')).toBe(false);
     expect(isEmailAddress('be ngt@example.com')).toBe(false);
-  });
-
-  it('treats an address as unchecked when the lookup cannot answer', async () => {
-    expect(await emailStanding('a@b.co', async () => 'known')).toBe('known');
-    expect(await emailStanding('a@b.co', async () => 'unknown')).toBe('unknown');
-    expect(
-      await emailStanding('a@b.co', async () => {
-        throw apiError(404);
-      })
-    ).toBe('unchecked');
   });
 });

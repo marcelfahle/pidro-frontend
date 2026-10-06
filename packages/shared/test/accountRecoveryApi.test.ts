@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'bun:test';
 import type { ApiClient } from '../src/api/client';
-import { createAuthApi } from '../src/api/auth';
 import { createClassicApi } from '../src/api/classic';
 
 function recordingApi(responses: unknown[]) {
@@ -53,19 +52,6 @@ describe('account recovery API', () => {
         },
         config: { preserveSessionOnUnauthorized: true },
       },
-    ]);
-  });
-
-  it('reports whether an email already has an account', async () => {
-    const { api, calls } = recordingApi([{ data: { known: true } }, { data: { known: false } }]);
-    const auth = createAuthApi(api);
-
-    await expect(auth.lookupEmail('bengt@example.com')).resolves.toBe('known');
-    await expect(auth.lookupEmail('new@example.com')).resolves.toBe('unknown');
-
-    expect(calls.map(({ path, body }) => ({ path, body }))).toEqual([
-      { path: '/api/v1/auth/identify', body: { email: 'bengt@example.com' } },
-      { path: '/api/v1/auth/identify', body: { email: 'new@example.com' } },
     ]);
   });
 });

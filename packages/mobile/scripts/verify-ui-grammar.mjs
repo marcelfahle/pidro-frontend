@@ -76,7 +76,7 @@ const allCases = [
   { name: 'register', path: '/(auth)/register?fixture=providers', testId: 'auth-window' },
   {
     name: 'register-password',
-    path: '/(auth)/register?fixture=password-new',
+    path: '/(auth)/register?fixture=password',
     testId: 'auth-window',
     authenticated: true,
     authFixture: guestAuthFixture,
@@ -425,28 +425,14 @@ async function assertAuthFormInteractions(page, name, viewport) {
   await email.press('Enter');
   await page.getByText('Check that email address.', { exact: true }).waitFor();
 
-  let lookups = 0;
-  await page.route('**/api/v1/auth/identify', async (route) => {
-    lookups += 1;
-    if (JSON.stringify(route.request().postDataJSON()) !== '{"email":"player@example.com"}') {
-      throw new Error(`register looked up an unexpected email in ${viewport.name}`);
-    }
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({ data: { known: false } }),
-    });
-  });
   await email.fill('player@example.com');
   await email.press('Enter');
 
-  // Step 2: a new address chooses a password.
+  // Step 2: the password. Nothing is looked up; the server is only asked
+  // when the account is made.
   await page
-    .getByText('There’s no Pidro account for player@example.com yet, so this starts one.', {
-      exact: true,
-    })
+    .getByText('This starts a free Pidro account for player@example.com.', { exact: true })
     .waitFor();
-  if (lookups !== 1) throw new Error(`register looked the email up ${lookups} times`);
   const password = page.getByLabel('Password', { exact: true });
   await page.getByRole('button', { name: 'Create account', exact: true }).click();
   await page.getByText('Use 8 characters or more.', { exact: true }).waitFor();

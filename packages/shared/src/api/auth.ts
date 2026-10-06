@@ -148,9 +148,6 @@ interface UserResponseEnvelope {
 
 export type PasswordResetRequestResponse = PasswordResetRequestEnvelope['data'];
 
-/** Whether an email address already has an account. */
-export type EmailLookup = 'known' | 'unknown';
-
 export function createAuthApi(api: ApiClient) {
   const providerLogin = async (
     provider: AuthProvider,
@@ -194,11 +191,9 @@ export function createAuthApi(api: ApiClient) {
       ageTerms: AgeTermsRequest = {}
     ): Promise<LoginResponse> => {
       const request: LoginRequest = { username, password, ...ageTerms };
-      const response = await api.post<AuthResponseEnvelope>(
-        '/api/v1/auth/login',
-        request,
-        { preserveSessionOnUnauthorized: true }
-      );
+      const response = await api.post<AuthResponseEnvelope>('/api/v1/auth/login', request, {
+        preserveSessionOnUnauthorized: true,
+      });
       return response.data.data;
     },
 
@@ -262,15 +257,6 @@ export function createAuthApi(api: ApiClient) {
         password,
       });
       return response.data.data;
-    },
-
-    lookupEmail: async (email: string): Promise<EmailLookup> => {
-      const response = await api.post<{ data: { known: boolean } }>(
-        '/api/v1/auth/identify',
-        { email },
-        { preserveSessionOnUnauthorized: true }
-      );
-      return response.data.data.known ? 'known' : 'unknown';
     },
 
     providerLogin,

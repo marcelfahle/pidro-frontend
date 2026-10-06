@@ -8,7 +8,6 @@ export {
   type CreateGuestRequest,
   type CreateGuestResponse,
   type DeclaredAgeBand,
-  type EmailLookup,
   type FacebookCredential,
   createAuthApi,
   type LoginRequest,

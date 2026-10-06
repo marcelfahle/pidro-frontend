@@ -144,23 +144,22 @@ Real screens with deterministic states; `?fixture=` is read in development only 
 never calls the backend. All sit on the `AuthFlow` scaffold, so each one has a phone,
 a phone-landscape and a tablet layout.
 
-| URL                                    | Shows                                                     | testID                  |
-| -------------------------------------- | --------------------------------------------------------- | ----------------------- |
-| `/login?fixture=providers`             | Sign in with Apple and Facebook forced on                 | `auth-window`           |
-| `/login?email=a@b.co&known=1`          | Sign in after Create account recognised the address       | `auth-window`           |
-| `/register?fixture=providers`          | Pidro account: providers and the email step               | `auth-window`           |
-| `/register?fixture=password-new`       | Create a password, for an address the server doesn't know | `auth-window`           |
-| `/register?fixture=password`           | Create a password, when the lookup could not answer       | `auth-window`           |
-| `/register?fixture=name`               | Pick your name                                            | `auth-window`           |
-| `/register?fixture=name-taken`         | Pick your name: taken, with the Classic claim plaque      | `auth-window`           |
-| `/classic-forgot`                      | Forgot Classic password                                   | `classic-forgot-window` |
-| `/classic-forgot?fixture=sent`         | Sign-in link sent                                         | `classic-link-sent`     |
-| `/classic-forgot?fixture=unavailable`  | Link service down; points to help                         | `classic-forgot-window` |
-| `/classic-forgot?fixture=not-found`    | No Classic account matched                                | `classic-forgot-window` |
-| `/classic-help`                        | Ask support to find a Classic account                     | `classic-help-window`   |
-| `/classic-help?fixture=filled`         | …with the form filled in                                  | `classic-help-window`   |
-| `/classic-help?fixture=sent` / `=mail` | Sent, or handed to the mail app                           | `classic-help-sent`     |
-| `/forgot-password?fixture=sent`        | Password reset requested                                  | `auth-window`           |
+| URL                                    | Shows                                                | testID                  |
+| -------------------------------------- | ---------------------------------------------------- | ----------------------- |
+| `/login?fixture=providers`             | Sign in with Apple and Facebook forced on            | `auth-window`           |
+| `/login?email=a@b.co&known=1`          | Sign in after Create account hit an address in use   | `auth-window`           |
+| `/register?fixture=providers`          | Pidro account: providers and the email step          | `auth-window`           |
+| `/register?fixture=password`           | Create a password                                    | `auth-window`           |
+| `/register?fixture=name`               | Pick your name                                       | `auth-window`           |
+| `/register?fixture=name-taken`         | Pick your name: taken, with the Classic claim plaque | `auth-window`           |
+| `/classic-forgot`                      | Forgot Classic password                              | `classic-forgot-window` |
+| `/classic-forgot?fixture=sent`         | Sign-in link sent                                    | `classic-link-sent`     |
+| `/classic-forgot?fixture=unavailable`  | Link service down; points to help                    | `classic-forgot-window` |
+| `/classic-forgot?fixture=not-found`    | No Classic account matched                           | `classic-forgot-window` |
+| `/classic-help`                        | Ask support to find a Classic account                | `classic-help-window`   |
+| `/classic-help?fixture=filled`         | …with the form filled in                             | `classic-help-window`   |
+| `/classic-help?fixture=sent` / `=mail` | Sent, or handed to the mail app                      | `classic-help-sent`     |
+| `/forgot-password?fixture=sent`        | Password reset requested                             | `auth-window`           |
 
 Use a guest auth fixture to see the guest wording ("Your guest games come with you").
 On a simulator these open through the dev deep-link allowlist in `app/+native-intent.tsx`
