@@ -101,6 +101,13 @@ const allCases = [
     authenticated: true,
   },
   {
+    name: 'classic-guest',
+    path: '/(auth)/claim-classic?fixture=preview',
+    testId: 'claim-classic-screen',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
+  {
     name: 'classic-fresh',
     path: '/(auth)/claim-classic?fixture=preview',
     testId: 'claim-classic-screen',
