@@ -555,6 +555,7 @@ async function assertHomeGuestInteractions(page, name) {
 
 async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   if (!name.startsWith('profile')) return;
+  if (name === 'profile') await page.getByTestId('profile-classic-section').waitFor();
   await page.getByRole('button', { name: 'Delete account', exact: true }).click();
   await page.getByText('Delete your account?', { exact: true }).waitFor();
   // The Classic sentence appears only when the profile shows a Classic section.
