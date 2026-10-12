@@ -91,6 +91,9 @@ export default function ClaimClassicScreen() {
     fixture === 'already-claimed' ? 'This Classic account belongs to another account.' : null
   );
   const [canSignIn, setCanSignIn] = useState(fixture === 'already-claimed');
+  // A guest's password claim sets the email and password the account is recovered with.
+  const guestCredentials = Boolean(user?.guest) && method === 'password';
+  const needsCredentials = (!user && method === 'password') || guestCredentials;
 
   const clearField = useCallback((field: Field) => {
     setFields((current) => ({ ...current, [field]: undefined }));
@@ -123,6 +126,10 @@ export default function ClaimClassicScreen() {
         setError(
           `No Classic account uses that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`
         );
+      } else if (info.code === 'email' || info.code === 'EMAIL_TAKEN') {
+        setFields({ email: info.detail || 'Enter a valid email address.' });
+      } else if (info.code === 'password') {
+        setFields({ password: info.detail || 'Use 8 characters or more.' });
       } else if (info.code === 'ALREADY_CLAIMED' && user) {
         setError('This Classic account is already linked to another Pidro account.');
       } else {
@@ -195,12 +202,10 @@ export default function ClaimClassicScreen() {
   const confirmClaim = useCallback(async () => {
     if (!verification || !method || fixture) return;
     const nextFields: Partial<Record<Field, string>> = {};
-    if (!user) {
-      if (username.trim().length < 3) nextFields.username = 'Use at least 3 characters.';
-      if (method === 'password') {
-        if (!email.trim()) nextFields.email = 'Enter an email address.';
-        if (password.length < 8) nextFields.password = 'Use 8 characters or more.';
-      }
+    if (!user && username.trim().length < 3) nextFields.username = 'Use at least 3 characters.';
+    if (needsCredentials) {
+      if (!email.trim()) nextFields.email = 'Enter an email address.';
+      if (password.length < 8) nextFields.password = 'Use 8 characters or more.';
     }
     if (!verification.classic.name_allowed && displayName.trim().length < 2) {
       nextFields.displayName = 'Choose a public name with at least 2 characters.';
@@ -214,7 +219,7 @@ export default function ClaimClassicScreen() {
       const installId = user ? undefined : await getInstallId();
       const account = {
         ...(!user ? { username: username.trim() } : {}),
-        ...(!user && method === 'password' ? { email: email.trim(), password } : {}),
+        ...(needsCredentials ? { email: email.trim(), password } : {}),
         ...(!verification.classic.name_allowed ? { display_name: displayName.trim() } : {}),
       };
       const result = await classicApi.claim({
@@ -248,6 +253,7 @@ export default function ClaimClassicScreen() {
     email,
     fixture,
     method,
+    needsCredentials,
     password,
     reportRequestError,
     router,
@@ -262,6 +268,36 @@ export default function ClaimClassicScreen() {
     setError(null);
     setCanSignIn(false);
   };
+
+  const credentialFields = (
+    <>
+      <Input
+        label="Email"
+        value={email}
+        error={fields.email}
+        editable={!busy}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoCorrect={false}
+        onChangeText={(value) => {
+          setEmail(value);
+          clearField('email');
+        }}
+      />
+      <Input
+        label="New Pidro password"
+        value={password}
+        error={fields.password}
+        editable={!busy}
+        secureTextEntry
+        revealPassword
+        onChangeText={(value) => {
+          setPassword(value);
+          clearField('password');
+        }}
+      />
+    </>
+  );
 
   return (
     <ScreenShell scroll compact testID="claim-classic-screen">
@@ -463,35 +499,16 @@ export default function ClaimClassicScreen() {
                     clearField('username');
                   }}
                 />
-                {method === 'password' ? (
-                  <>
-                    <Input
-                      label="Email"
-                      value={email}
-                      error={fields.email}
-                      editable={!busy}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      onChangeText={(value) => {
-                        setEmail(value);
-                        clearField('email');
-                      }}
-                    />
-                    <Input
-                      label="New Pidro password"
-                      value={password}
-                      error={fields.password}
-                      editable={!busy}
-                      secureTextEntry
-                      revealPassword
-                      onChangeText={(value) => {
-                        setPassword(value);
-                        clearField('password');
-                      }}
-                    />
-                  </>
-                ) : null}
+                {method === 'password' ? credentialFields : null}
+              </View>
+            ) : null}
+
+            {guestCredentials ? (
+              <View style={styles.form}>
+                {credentialFields}
+                <PidroText role="metadata" tone="muted">
+                  Your guest games come with you.
+                </PidroText>
               </View>
             ) : null}
 
