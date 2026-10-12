@@ -11,10 +11,17 @@ export interface ClassicClaimPreview {
   name_allowed: boolean;
 }
 
+/** Set when the Classic account is linked to a different player. */
+export interface ClassicAlreadyClaimed {
+  sign_in_method: ClassicClaimMethod | null;
+}
+
 export interface ClassicVerification {
   ticket: string;
   expires_at: string;
   classic: ClassicClaimPreview;
+  /** Absent in older answers, which means not claimed. */
+  already_claimed?: ClassicAlreadyClaimed | null;
 }
 
 export type ClassicVerifyRequest =

@@ -33,6 +33,7 @@ describe('Classic provider handoff', () => {
           member_since: '2012-04-03T00:00:00Z',
           name_allowed: true,
         },
+        already_claimed: null,
       },
     });
     expect(takePendingClassicClaim()).toBeNull();
@@ -55,5 +56,28 @@ describe('Classic provider handoff', () => {
     );
 
     expect(takePendingClassicClaim()?.verification.classic.name_allowed).toBe(false);
+  });
+
+  it('passes on that the Classic account is already linked, and how its owner signs in', () => {
+    handleClassicFound(
+      {
+        classic_found: true,
+        ticket: 'claimed-ticket',
+        expires_at: '2026-09-30T12:00:00Z',
+        classic: {
+          name: 'Veteran',
+          games_played: 5,
+          level: 2,
+          member_since: '2016-01-01T00:00:00Z',
+          name_allowed: true,
+        },
+        already_claimed: { sign_in_method: 'apple' },
+      },
+      'apple'
+    );
+
+    expect(takePendingClassicClaim()?.verification.already_claimed).toEqual({
+      sign_in_method: 'apple',
+    });
   });
 });

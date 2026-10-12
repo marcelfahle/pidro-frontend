@@ -46,6 +46,13 @@ const FIXTURE_PREVIEW: ClassicVerification = {
     member_since: '2012-04-03T00:00:00Z',
     name_allowed: true,
   },
+  already_claimed: null,
+};
+
+const SIGNED_IN_WITH = {
+  password: 'You signed in with your email and password.',
+  apple: 'You signed in with Apple.',
+  facebook: 'You signed in with Facebook.',
 };
 
 function memberSince(value: string): string {
@@ -71,6 +78,9 @@ export default function ClaimClassicScreen() {
         ...FIXTURE_PREVIEW.classic,
         ...(fixture === 'rename' ? { name: 'Old Name', name_allowed: false } : {}),
       },
+      ...(fixture === 'already-claimed'
+        ? { already_claimed: { sign_in_method: 'password' as const } }
+        : {}),
     };
   }, [fixture]);
   const [method, setMethod] = useState<ClassicClaimMethod | null>(
@@ -87,10 +97,9 @@ export default function ClaimClassicScreen() {
   const [displayName, setDisplayName] = useState('');
   const [fields, setFields] = useState<Partial<Record<Field, string>>>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(
-    fixture === 'already-claimed' ? 'This Classic account belongs to another account.' : null
-  );
-  const [canSignIn, setCanSignIn] = useState(fixture === 'already-claimed');
+  const [error, setError] = useState<string | null>(null);
+  const [canSignIn, setCanSignIn] = useState(false);
+  const alreadyClaimed = verification?.already_claimed ?? null;
   // A guest's password claim sets the email and password the account is recovered with.
   const guestCredentials = Boolean(user?.guest) && method === 'password';
   const needsCredentials = (!user && method === 'password') || guestCredentials;
@@ -438,9 +447,11 @@ export default function ClaimClassicScreen() {
               <PidroText role="title" tone="gold" align="center">
                 Classic account found
               </PidroText>
-              <PidroText role="body" tone="soft" align="center">
-                Check this is yours before bringing it into your current player.
-              </PidroText>
+              {alreadyClaimed ? null : (
+                <PidroText role="body" tone="soft" align="center">
+                  Check this is yours before bringing it into your current player.
+                </PidroText>
+              )}
             </View>
 
             <Surface variant="plaque" padded style={styles.preview}>
@@ -463,7 +474,38 @@ export default function ClaimClassicScreen() {
               </View>
             </Surface>
 
-            {!verification.classic.name_allowed ? (
+            {alreadyClaimed ? (
+              <View style={styles.form}>
+                <PidroText role="body" tone="soft" align="center">
+                  This Classic account is already linked to a Pidro account.
+                </PidroText>
+                {!user ? (
+                  <>
+                    {alreadyClaimed.sign_in_method ? (
+                      <PidroText role="metadata" tone="muted" align="center">
+                        {SIGNED_IN_WITH[alreadyClaimed.sign_in_method]}
+                      </PidroText>
+                    ) : null}
+                    <BevelButton
+                      label="Sign in to that account"
+                      material="wood"
+                      size="md"
+                      fullWidth
+                      onPress={() => router.replace('/(auth)/login')}
+                    />
+                  </>
+                ) : null}
+                <BevelButton
+                  label="Back"
+                  material="glass"
+                  size="sm"
+                  fullWidth
+                  onPress={resetVerification}
+                />
+              </View>
+            ) : null}
+
+            {!alreadyClaimed && !verification.classic.name_allowed ? (
               <View style={styles.form}>
                 <PidroText role="body" tone="soft">
                   That name can&apos;t be shown in the new game. Pick a new one; your Classic name
@@ -483,7 +525,7 @@ export default function ClaimClassicScreen() {
               </View>
             ) : null}
 
-            {!user ? (
+            {!alreadyClaimed && !user ? (
               <View style={styles.form}>
                 <PidroText role="label">Create your Pidro account</PidroText>
                 <Input
@@ -503,7 +545,7 @@ export default function ClaimClassicScreen() {
               </View>
             ) : null}
 
-            {guestCredentials ? (
+            {!alreadyClaimed && guestCredentials ? (
               <View style={styles.form}>
                 {credentialFields}
                 <PidroText role="metadata" tone="muted">
@@ -512,7 +554,7 @@ export default function ClaimClassicScreen() {
               </View>
             ) : null}
 
-            {!canSignIn ? (
+            {!alreadyClaimed && !canSignIn ? (
               <View style={styles.actions}>
                 <BevelButton
                   label="Back"

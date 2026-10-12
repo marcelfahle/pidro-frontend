@@ -27,6 +27,7 @@ export {
 export { type ApiClient, createApiClient, type SessionClearer, type TokenGetter } from './client';
 export {
   type ClassicApi,
+  type ClassicAlreadyClaimed,
   type ClassicClaimAccount,
   type ClassicClaimMethod,
   type ClassicClaimPreview,

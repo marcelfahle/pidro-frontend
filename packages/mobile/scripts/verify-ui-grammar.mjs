@@ -125,6 +125,11 @@ const allCases = [
     authenticated: true,
   },
   {
+    name: 'classic-conflict-fresh',
+    path: '/(auth)/claim-classic?fixture=already-claimed',
+    testId: 'claim-classic-screen',
+  },
+  {
     name: 'classic-forgot',
     path: '/(auth)/classic-forgot',
     testId: 'classic-forgot-window',
