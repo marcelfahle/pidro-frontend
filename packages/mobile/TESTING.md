@@ -133,6 +133,15 @@ What the suite starts or needs besides Expo web and the backend:
   switched off, `rude-…` has a name that cannot be shown, `nameless-…` has no username,
   `oldtotal-…`, `counter-…` and `lower-…` differ in the games they played. The suite
   starts it itself.
+- A stand-in for Apple's key server and for Facebook on `127.0.0.1:4002`. It makes an RSA
+  key at startup and signs the Apple identity tokens and Facebook Limited Login tokens the
+  journeys ask for; it answers the Graph calls for a classic Facebook access token. The
+  backend is started with `APPLE_JWKS_URL`, `APPLE_AUDIENCE`, `FACEBOOK_JWKS_URL`,
+  `FACEBOOK_GRAPH_URL` and `FACEBOOK_APP_ID` pointing at it (`e2e/ci.sh` has the values) and
+  verifies every token as in production. Expo web must be started with `EXPO_PUBLIC_E2E=1`:
+  only then do the Apple and Facebook buttons appear on web, taking their answer from the
+  journey instead of the native sheet (`src/features/auth/e2eProviders.ts`). The flag is
+  inlined at build time and CI fails if a production export holds `__pidroE2E`.
 - One reserved Classic name, `ReservedRita`, for the journeys where a name belongs to a
   Classic player. Load it into the database once, before the backend starts (insert only,
   so running it again is harmless): from `pidro_backend`,
@@ -141,6 +150,12 @@ What the suite starts or needs besides Expo web and the backend:
   journeys follow that link.
 - The backend with game pacing, so a bot game is over in under a minute: the journeys that
   need a finished game play it out with `scripts/autoplay-full-game.mjs --token`.
+
+Journeys tagged `@second-run` need a backend with lifetimes of a second
+(`CLASSIC_CLAIM_TICKET_TTL_SECONDS=1`, `PASSWORD_RESET_TTL_SECONDS=1`). Both runs use
+`PASSWORD_RESET_DEBUG_TOKENS=false`. `e2e/ci.sh` runs the suite twice, restarting the backend
+in between; `bun run e2e:accounts:second-run` is the second run. The weekly workflow runs the
+same script against `main` and keeps its artifact for 90 days.
 
 To run it on spare ports without touching your daily backend:
 
@@ -164,7 +179,7 @@ VITE_API_URL=http://127.0.0.1:4100 VITE_WS_URL=ws://127.0.0.1:4100/socket \
 
 # Terminal 4, from packages/mobile
 API_BASE_URL=http://127.0.0.1:4100 MOBILE_BASE_URL=http://localhost:8089 \
-bun run e2e:accounts [part of a spec name]
+EXPO_PUBLIC_E2E=1 bun run e2e:accounts [part of a spec name]
 ```
 
 Videos and traces land in `e2e/results/`, the HTML report in `e2e/report/`

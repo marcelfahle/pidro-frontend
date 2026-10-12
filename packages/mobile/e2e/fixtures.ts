@@ -2,17 +2,19 @@ import { test as base, expect } from '@playwright/test';
 import { API } from './support/api';
 import { AGE_ANSWERED, newPlayer, type Player } from './support/player';
 
-type Options = { ageAnswered: boolean };
+type Options = { ageAnswered: boolean; unavailableExpected: boolean };
 
 /**
  * `player` is this test's own identity. `page` has the age gate answered
  * (unless a test says `ageAnswered: false`) and fails the test on an uncaught
  * page error or an unexpected 5xx from the API, even when the screen looks right.
+ * A test about an outage says `unavailableExpected: true`, which allows 503.
  */
 export const test = base.extend<{ player: Player } & Options>({
   ageAnswered: [true, { option: true }],
+  unavailableExpected: [false, { option: true }],
   player: async ({}, use) => use(newPlayer()),
-  page: async ({ page, player, ageAnswered }, use) => {
+  page: async ({ page, player, ageAnswered, unavailableExpected }, use) => {
     await page.addInitScript(
       ({ age, installId }) => {
         if (age && !localStorage.getItem('age-gate-storage'))
@@ -25,7 +27,12 @@ export const test = base.extend<{ player: Player } & Options>({
     const problems: string[] = [];
     page.on('pageerror', (error) => problems.push(`page error: ${error.message}`));
     page.on('response', (response) => {
-      if (response.url().startsWith(API) && response.status() >= 500) {
+      const status = response.status();
+      if (
+        response.url().startsWith(API) &&
+        status >= 500 &&
+        !(unavailableExpected && status === 503)
+      ) {
         problems.push(`${response.status()} ${response.request().method()} ${response.url()}`);
       }
     });
