@@ -8,7 +8,9 @@ const run = promisify(execFile);
 
 /** The room code of the table the page is at. */
 export function tableCode(page: Page) {
-  return /\/game\/([A-Z0-9]+)/.exec(page.url())?.[1] as string;
+  const code = /\/game\/([A-Z0-9]+)/.exec(page.url())?.[1];
+  if (!code) throw new Error(`not at a table: ${page.url()}`);
+  return code;
 }
 
 /**

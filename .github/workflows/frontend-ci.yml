@@ -447,10 +447,18 @@ jobs:
           }
           trap cleanup EXIT
 
+          web_ready=false
           for attempt in $(seq 1 30); do
-            curl --fail --silent http://127.0.0.1:5173/ >/dev/null && break
+            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then
+              web_ready=true
+              break
+            fi
             sleep 1
           done
+          if [ "$web_ready" != "true" ]; then
+            cat /tmp/pidro-web.log
+            exit 1
+          fi
 
           ready=false
           for attempt in $(seq 1 60); do

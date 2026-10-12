@@ -26,6 +26,10 @@ const password = argValue('--password', 'hallohallo');
 const fixedRoom = argValue('--room', null);
 // A session token plays as that player instead of logging in (a guest has no password).
 const fixedToken = argValue('--token', null);
+if (args.includes('--token') && !fixedToken) {
+  console.error('--token needs a session token');
+  process.exit(1);
+}
 const maxMinutes = Number(argValue('--max-minutes', '20'));
 // After game over, ask for a rematch instead of exiting: `now`, or
 // `after-others` to wait until another human has asked (then `--rematch-delay-ms`
