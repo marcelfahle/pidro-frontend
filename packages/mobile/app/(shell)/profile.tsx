@@ -12,6 +12,7 @@ import {
   normalizeBio,
   publicPlayerName,
 } from '@pidro/shared';
+import { deleteAccount } from '@/api/auth';
 import { profileApi, type ClassicProfile } from '@/api/profile';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { Avatar } from '@/components/ui/Avatar';
@@ -54,6 +55,7 @@ function ProfileContent() {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [editor, setEditor] = useState<'photo' | 'bio' | null>(null);
   const [feedbackFor, setFeedbackFor] = useState<'photo' | 'bio' | null>(null);
@@ -320,6 +322,32 @@ function ProfileContent() {
     });
   };
 
+  const handleDeleteAccount = () => {
+    setDeleteError(null);
+    setConfirmation({
+      title: 'Delete your account?',
+      description:
+        'This removes your player, your games and your progress.' +
+        (classic ? ' Your Classic account stays in Classic and can be claimed again later.' : ''),
+      label: 'Delete account',
+      cancelLabel: 'Cancel',
+      proceed: async () => {
+        setBusy(true);
+        try {
+          await deleteAccount();
+          closeEditor();
+          setPendingSignOut(true);
+        } catch (deleteFailure) {
+          setDeleteError(
+            apiErrorInfo(deleteFailure).detail || 'Could not delete your account. Try again.'
+          );
+        } finally {
+          setBusy(false);
+        }
+      },
+    });
+  };
+
   const accountActions = (
     <View className="items-center gap-1 pt-4">
       {user?.guest ? (
@@ -337,6 +365,17 @@ function ProfileContent() {
         </PidroText>
       )}
       <Button label="Sign out" variant="ghost" disabled={busy} onPress={handleSignOut} />
+      <Button
+        label="Delete account"
+        variant="ghost"
+        disabled={busy}
+        onPress={handleDeleteAccount}
+      />
+      {deleteError ? (
+        <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
+          {deleteError}
+        </PidroText>
+      ) : null}
     </View>
   );
 

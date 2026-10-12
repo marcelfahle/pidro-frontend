@@ -57,6 +57,14 @@ const allCases = [
     authenticated: true,
     authFixture: guestAuthFixture,
   },
+  { name: 'profile', path: '/profile', testId: 'profile-screen', authenticated: true },
+  {
+    name: 'profile-guest',
+    path: '/profile',
+    testId: 'profile-screen',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
@@ -545,6 +553,18 @@ async function assertHomeGuestInteractions(page, name) {
   await page.waitForURL((url) => url.pathname.endsWith('/join-code'));
 }
 
+async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
+  if (!name.startsWith('profile')) return;
+  await page.getByRole('button', { name: 'Delete account', exact: true }).click();
+  await page.getByText('Delete your account?', { exact: true }).waitFor();
+  // The Classic sentence appears only when the profile shows a Classic section.
+  const classic = page.getByText(/Your Classic account stays in Classic/);
+  assert.equal((await classic.count()) === 1, name === 'profile', `${name} Classic sentence`);
+  await page.getByRole('button', { name: 'Cancel', exact: true }).waitFor();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: resolve(screenshotDir, `${name}-delete-confirm.png`) });
+}
+
 async function assertAuthSheetKeepsTyping(page, name) {
   if (name !== 'auth-sheet') return;
   await page.getByRole('button', { name: 'Friends', exact: true }).click();
@@ -910,9 +930,9 @@ async function main() {
             });
           });
         }
-        if (testCase.name === 'home' || testCase.name === 'home-guest') {
+        if (['home', 'home-guest', 'profile', 'profile-guest'].includes(testCase.name)) {
           await page.route('**/api/v1/profile', async (route) => {
-            const guest = testCase.name === 'home-guest';
+            const guest = testCase.name.endsWith('-guest');
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
@@ -1006,6 +1026,7 @@ async function main() {
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
+          await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
           if (testCase.verifyReadiness) {

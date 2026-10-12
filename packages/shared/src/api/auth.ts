@@ -259,6 +259,11 @@ export function createAuthApi(api: ApiClient) {
       return response.data.data;
     },
 
+    // No body: the server answers 400 to an empty JSON body.
+    deleteAccount: async (): Promise<void> => {
+      await api.delete('/api/v1/auth/me');
+    },
+
     providerLogin,
   };
 }
