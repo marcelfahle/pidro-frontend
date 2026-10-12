@@ -7,6 +7,7 @@ import {
   type SocialCredentialResult,
   type SocialProviderAvailability,
 } from './socialCredentials';
+import { e2eSocialAvailability, e2eSocialCredential } from './e2eProviders';
 import type { AuthProvider, FacebookCredential } from '@/api/auth';
 
 export const facebookConfigured = Boolean(process.env.EXPO_PUBLIC_FACEBOOK_CLIENT_TOKEN);
@@ -56,6 +57,9 @@ async function facebookSignIn(): Promise<{
 }
 
 export async function getSocialProviderAvailability(): Promise<SocialProviderAvailability> {
+  const e2e = e2eSocialAvailability();
+  if (e2e) return e2e;
+
   let apple = false;
   if (Platform.OS === 'ios') {
     const AppleAuthentication = await import('expo-apple-authentication');
@@ -72,9 +76,12 @@ export async function getSocialProviderAvailability(): Promise<SocialProviderAva
 }
 
 /** Runs the native Apple or Facebook sign-in and maps its outcome. */
-export function requestNativeSocialCredential(
+export async function requestNativeSocialCredential(
   provider: AuthProvider
 ): Promise<SocialCredentialResult> {
+  const e2e = await e2eSocialCredential(provider);
+  if (e2e) return e2e;
+
   return requestSocialCredential(provider, {
     platform: Platform.OS,
     appleSignIn,

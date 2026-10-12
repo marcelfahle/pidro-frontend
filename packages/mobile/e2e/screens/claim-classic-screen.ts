@@ -26,7 +26,7 @@ export class ClaimClassicScreen extends Screen {
       response.url().includes('/api/v1/classic/verify')
     );
     await this.button('Verify Classic account').click();
-    await answered;
+    return answered;
   }
 
   /** The "create your account" form a claim with nobody signed in asks for. */

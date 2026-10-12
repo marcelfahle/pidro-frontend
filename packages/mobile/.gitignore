@@ -36,6 +36,6 @@ skills-lock.json
 thoughts/
 
 # account e2e output
-e2e/report/
-e2e/results/
-e2e/journeys.json
+e2e/report*/
+e2e/results*/
+e2e/journeys*.json

@@ -61,6 +61,15 @@ jobs:
           NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
         run: bunx expo export --platform web --output-dir /tmp/pidro-mobile-web
 
+      # The account journeys' stand-in for the native sign-in sheets (e2eProviders.ts) is
+      # compiled out unless EXPO_PUBLIC_E2E=1; a production bundle must hold none of it.
+      - name: Check the web bundle holds no test seam
+        run: |
+          if grep -rq __pidroE2E /tmp/pidro-mobile-web; then
+            echo "The production web export contains __pidroE2E"
+            exit 1
+          fi
+
   ui-grammar:
     name: UI grammar
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -379,31 +388,6 @@ jobs:
         working-directory: backend
         run: mix pidro.import_classic_name_reservations "$GITHUB_WORKSPACE/packages/mobile/e2e/classic-name-reservations.json"
 
-      - name: Start backend with CI game pacing
-        working-directory: backend
-        env:
-          PORT: '4000'
-          PASSWORD_RESET_DEBUG_TOKENS: 'false'
-          LIFECYCLE_TURN_TIMER_BID_MS: '1200'
-          LIFECYCLE_TURN_TIMER_PLAY_MS: '900'
-          LIFECYCLE_BOT_DELAY_MS: '60'
-          LIFECYCLE_BOT_DELAY_VARIANCE_MS: '40'
-          LIFECYCLE_BOT_MIN_DELAY_MS: '20'
-          LIFECYCLE_TRICK_TRANSITION_DELAY_MS: '80'
-          LIFECYCLE_HAND_TRANSITION_DELAY_MS: '120'
-        run: |
-          nohup mix phx.server > /tmp/pidro-backend.log 2>&1 &
-          for attempt in $(seq 1 90); do
-            if curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms; then
-              echo "backend ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "backend never became ready"
-          cat /tmp/pidro-backend.log
-          exit 1
-
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -436,64 +420,8 @@ jobs:
           CI: '1'
           EXPO_NO_DOTENV: '1'
           NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
-        run: |
-          # The reset email links to the old web client; the journeys follow that link.
-          (cd ../web && NODE_OPTIONS= VITE_API_URL=http://127.0.0.1:4000 VITE_WS_URL=ws://127.0.0.1:4000/socket \
-            bun run dev --host 127.0.0.1 --port 5173 > /tmp/pidro-web.log 2>&1) &
-          web_pid=$!
-          bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
-          expo_pid=$!
-          cleanup() {
-            kill "$expo_pid" "$web_pid" 2>/dev/null || true
-          }
-          trap cleanup EXIT
-
-          web_ready=false
-          for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:5173/ >/dev/null; then
-              web_ready=true
-              break
-            fi
-            sleep 1
-          done
-          if [ "$web_ready" != "true" ]; then
-            cat /tmp/pidro-web.log
-            exit 1
-          fi
-
-          ready=false
-          for attempt in $(seq 1 60); do
-            if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
-              ready=true
-              break
-            fi
-            sleep 1
-          done
-
-          if [ "$ready" != "true" ]; then
-            cat /tmp/pidro-expo.log
-            exit 1
-          fi
-
-          # Build the bundle now, so the first journey does not wait for Metro.
-          bundle=$(curl --silent http://127.0.0.1:8081/home | grep -o 'src="[^"]*\.bundle[^"]*"' | head -1 | cut -d'"' -f2 | sed 's/&amp;/\&/g')
-          curl --fail --silent --output /dev/null "http://127.0.0.1:8081$bundle"
-
-          bun run e2e:accounts
-
-      - name: List the journeys in the job summary
-        if: always()
-        working-directory: packages/mobile
-        run: |
-          if [ -f e2e/journeys.json ]; then
-            {
-              echo '### Account journeys'
-              echo
-              echo '| Journey | Result |'
-              echo '| --- | --- |'
-              jq -r '.. | .specs? // empty | .[] | .title as $title | .tests[] | "| \($title)\(if .projectName == "phone" then "" else " (\(.projectName))" end) | \({expected: "passed", unexpected: "FAILED", flaky: "passed on retry", skipped: "skipped"}[.status] // .status) |"' e2e/journeys.json
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
+          BACKEND_DIR: ${{ github.workspace }}/backend
+        run: e2e/ci.sh
 
       - name: Upload videos, traces and report
         if: always()
@@ -501,8 +429,8 @@ jobs:
         with:
           name: account-e2e-artifacts
           path: |
-            packages/mobile/e2e/results/
-            packages/mobile/e2e/report/
+            packages/mobile/e2e/results*/
+            packages/mobile/e2e/report*/
             /tmp/pidro-backend.log
             /tmp/pidro-expo.log
             /tmp/pidro-web.log

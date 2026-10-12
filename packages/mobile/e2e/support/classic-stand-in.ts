@@ -3,7 +3,10 @@
 //   classic-…  an account that exists      off-…   one that is switched off
 //   rude-…     a name that cannot be shown  other   unknown
 //   nameless-… no username, only a first name (a pre-2017 account)
+//   down-…     a lookup that fails: Classic is unreachable
 //   oldtotal-… / counter-… / lower-…  games: only the old total, a counter above it, one below it
+// A lookup by email or by Facebook id names the same account: `classic-1f@x.example` and the id
+// `classic-1f` are one player.
 // The Classic id is a hash of the login, so parallel tests share nothing.
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -69,7 +72,9 @@ function answer(method: string, url: URL, body: string): [number, object] {
     return [200, { classic: profile(name) }];
   }
   if (method === 'GET' && url.pathname === '/internal/claims/lookup') {
-    const name = (url.searchParams.get('email') ?? '').split('@')[0].toLowerCase();
+    const key = url.searchParams.get('email') ?? url.searchParams.get('fbid') ?? '';
+    const name = key.split('@')[0].toLowerCase();
+    if (name.startsWith('down-')) return [503, { error: 'unavailable' }];
     return KNOWN.test(name) ? [200, { classic: profile(name) }] : [404, { error: 'not found' }];
   }
   return [404, { error: 'not found' }];
