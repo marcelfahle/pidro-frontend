@@ -18,7 +18,6 @@ test('a guest saves their player and keeps it', async ({ page, player }) => {
   await new HomeScreen(page).playOnline.click();
   const sheet = new AuthSheet(page);
   await expect(sheet.root).toBeVisible();
-  await sheet.settle();
 
   await sheet.save(player.email, 'short');
   await expect(sheet.text('Use 8 characters or more.')).toBeVisible();

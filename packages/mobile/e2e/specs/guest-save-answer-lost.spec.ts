@@ -22,7 +22,6 @@ test('when the server saved but the answer was lost, the guest is recovered as t
   await new ProfileScreen(page).saveYourProgress();
   const sheet = new AuthSheet(page);
   await expect(sheet.root).toBeVisible();
-  await sheet.settle();
   await sheet.save(player.email, player.password, player.name);
 
   await expect(sheet.root).toBeHidden();

@@ -38,7 +38,6 @@ test('every way into the Classic claim opens it in front', async ({ page, player
   await page.goto('/profile');
   await profile.saveYourProgress();
   await expect(sheet.root).toBeVisible();
-  await sheet.settle();
   await sheet.root.getByRole('button', { name: 'Claim Pidro Classic' }).click();
   await opensInFront();
 
@@ -46,7 +45,6 @@ test('every way into the Classic claim opens it in front', async ({ page, player
   await page.goto('/profile');
   await profile.saveYourProgress();
   await expect(sheet.root).toBeVisible();
-  await sheet.settle();
   await sheet.save(player.email, player.password, RESERVED_CLASSIC_NAME);
   await sheet.page.getByRole('button', { name: /^Played Classic as ReservedRita\?/ }).click();
   await opensInFront();

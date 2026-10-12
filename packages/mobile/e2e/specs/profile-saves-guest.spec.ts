@@ -12,7 +12,6 @@ test('a guest saves their player from the profile', async ({ page, player }) => 
   await profile.saveYourProgress();
   const sheet = new AuthSheet(page);
   await expect(sheet.root).toBeVisible();
-  await sheet.settle();
   await sheet.save(player.email, player.password, player.name);
 
   await expect(sheet.root).toBeHidden();

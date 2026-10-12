@@ -17,7 +17,6 @@ test('a taken email, a taken name and a Classic name are refused on the field, a
   await new ProfileScreen(page).saveYourProgress();
   const sheet = new AuthSheet(page);
   await expect(sheet.root).toBeVisible();
-  await sheet.settle();
 
   await sheet.save(holder.email, player.password, player.name);
   await expect(sheet.root.getByText(/email/i).first()).toBeVisible();
