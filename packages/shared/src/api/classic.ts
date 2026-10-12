@@ -46,6 +46,23 @@ export interface ClassicClaimRequest extends AgeTermsRequest {
   account?: ClassicClaimAccount;
 }
 
+export interface ClassicSignInLinkRequest {
+  /** Classic username or email, as the player remembers it. */
+  login: string;
+  install_id?: string;
+}
+
+export interface ClassicSignInLink {
+  /** The address the link went to, masked by the server (`be•••••@gmail.com`). */
+  email_hint: string;
+}
+
+export interface ClassicHelpRequest {
+  name: string;
+  email: string;
+  details?: string;
+}
+
 export function createClassicApi(api: ApiClient) {
   return {
     verify: async (request: ClassicVerifyRequest): Promise<ClassicVerification> => {
@@ -62,6 +79,23 @@ export function createClassicApi(api: ApiClient) {
         preserveSessionOnUnauthorized: true,
       });
       return response.data.data;
+    },
+
+    /** Emails a sign-in link to the address on the Classic account. */
+    requestSignInLink: async (request: ClassicSignInLinkRequest): Promise<ClassicSignInLink> => {
+      const response = await api.post<{ data: ClassicSignInLink }>(
+        '/api/v1/classic/sign-in-link',
+        request,
+        { preserveSessionOnUnauthorized: true }
+      );
+      return response.data.data;
+    },
+
+    /** Asks support to find a Classic account from what the player remembers. */
+    requestHelp: async (request: ClassicHelpRequest): Promise<void> => {
+      await api.post('/api/v1/classic/help', request, {
+        preserveSessionOnUnauthorized: true,
+      });
     },
   };
 }

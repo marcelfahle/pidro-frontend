@@ -19,7 +19,17 @@ export const UI_VIEWPORTS = [
     name: 'home-tablet-portrait',
     width: 820,
     height: 1180,
-    cases: ['welcome', 'home', 'home-guest'],
+    cases: [
+      'welcome',
+      'home',
+      'home-guest',
+      'login',
+      'register',
+      'register-name',
+      'classic-forgot',
+      'classic-link-sent',
+      'classic-help',
+    ],
   },
   {
     name: 'tablet-landscape',

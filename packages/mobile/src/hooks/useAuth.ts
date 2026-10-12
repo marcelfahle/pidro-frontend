@@ -11,7 +11,7 @@ import { invitePlatform } from '@/features/invites/platform';
 import type { SocialCredentialResult } from '@/features/auth/socialCredentials';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
-import { runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
+import { guestSaveFailure, runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 
 export type { GuestSaveField, GuestSaveFailure, GuestSaveResult } from '@/features/auth/saveGuest';
@@ -138,29 +138,26 @@ export function useAuth() {
     [setSession]
   );
 
-  const signUp = useCallback(
-    async (username: string, email: string, password: string) => {
-      if (requestInFlight.current) return false;
+  // Registration for the pick-your-name step: the same field-level answers as
+  // saving a guest, so a taken name or email lands on the right step.
+  const createAccount = useCallback(
+    async (displayName: string, email: string, password: string): Promise<GuestSaveResult> => {
+      if (requestInFlight.current) {
+        return { ok: false, error: { message: 'Account creation is already in progress.' } };
+      }
       requestInFlight.current = true;
+      setIsLoading(true);
+      setError(null);
 
       try {
-        setIsLoading(true);
-        setError(null);
-        const response = await authApi.register(username, email, password, storedAgeTerms());
-        setSession({
-          accessToken: response.token,
-          user: response.user,
-        });
-        return true;
-      } catch (e: unknown) {
+        const response = await authApi.register(displayName, email, password, storedAgeTerms());
+        setSession({ accessToken: response.token, user: response.user });
+        return { ok: true };
+      } catch (e) {
         if (e instanceof AxiosError) {
-          console.warn('[Auth] Sign up request failed:', getSafeAxiosErrorDetails(e));
-        } else {
-          console.warn('[Auth] Sign up failed with a non-API error');
+          console.warn('[Auth] Account creation request failed:', getSafeAxiosErrorDetails(e));
         }
-        const message = extractErrorMessage(e, 'Failed to create account');
-        setError(message);
-        return false;
+        return { ok: false, error: guestSaveFailure(e) };
       } finally {
         requestInFlight.current = false;
         setIsLoading(false);
@@ -297,7 +294,7 @@ export function useAuth() {
     isHydrated: hydrated,
     signIn,
     signInWithProvider,
-    signUp,
+    createAccount,
     saveGuest,
     continueAsGuest,
     requestPasswordReset,

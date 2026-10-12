@@ -9,7 +9,18 @@ const APP_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile
  * costs the whole fixture loop. Release builds never reach it — the routes
  * themselves are `__DEV__`-guarded too.
  */
-const DEV_FIXTURE_ROUTES = new Set(['table-dev', 'ui-dev', 'auth-flow-dev']);
+const DEV_FIXTURE_ROUTES = new Set([
+  'table-dev',
+  'ui-dev',
+  'auth-flow-dev',
+  // Account screens with `?fixture=` states (docs/FIXTURE-ROUTES.md).
+  'login',
+  'register',
+  'forgot-password',
+  'claim-classic',
+  'classic-forgot',
+  'classic-help',
+]);
 
 function devFixturePath(path: string): string | null {
   if (!__DEV__) return null;

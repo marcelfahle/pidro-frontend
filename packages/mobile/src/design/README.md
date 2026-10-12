@@ -77,6 +77,26 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
 Sources: [provider placement](https://appandflow.github.io/react-native-safe-area-context/api/safe-area-provider/)
 and [native SafeAreaView / initial metrics guidance](https://appandflow.github.io/react-native-safe-area-context/optimizations/).
 
+## Account screens share one scaffold
+
+Sign in, create account and Classic recovery are built on `AuthFlow`
+(`src/components/auth/AuthFlow.tsx`). It owns the three layouts so no screen
+branches on window size for structure:
+
+- **Phone portrait**: round glass back button and a centred title, then a Bree
+  Serif heading, one or two lines of body, the navy window, and quiet ways out.
+- **Phone landscape** (under 500px tall): the heading and body move into a side
+  column beside the window, with the flow's name as an eyebrow. Decoration
+  yields; the form keeps its height.
+- **Tablet**: a 436px column (380 inside the window, so fields and the capped CTA
+  share an edge), larger type, centred and then lifted a little above the middle.
+
+One wood `AuthFlowButton` per window moves the flow forward; glass is the second
+choice; `TextLink` is the way out. `hero` is reserved for the button that
+finishes a flow (CONTINUE on Pick your name). Errors that belong to a field sit
+under it; anything else is an `AuthFlowNotice` at the top of the window.
+Preview every state from `docs/FIXTURE-ROUTES.md`.
+
 ## Binary settings use inset glass switches
 
 Use `PidroSwitch` for immediate on/off preferences, not a native `Switch` or a
@@ -134,24 +154,27 @@ Table names are generated at creation, not an extra form step.
 
 ## Primitive selection
 
-| Need                           | Use                                                                  |
-| ------------------------------ | -------------------------------------------------------------------- |
-| Any action                     | `BevelButton` (wood = forward, glass = secondary, `icon` for square) |
-| Custom beveled control/surface | `BevelPressable` / `BevelSurface`                                    |
-| Text                           | `PidroText` roles                                                    |
-| Text entry                     | `Input` (label, error, `revealPassword`, full autofill markup)       |
-| Binary preference              | `PidroSwitch` (inset track, glass thumb, explicit On/Off state)      |
-| Panels, cards, plaques         | `Surface`                                                            |
-| Screen scaffold                | `ScreenShell` (+ `ScreenHeader` for sub-screens)                     |
-| Choice with confirm/cancel     | `DecisionWindow` / `Modal`                                           |
-| Home navigation                | `HomeTabBar` (bottom bar portrait, right rail landscape)             |
-| Player identity                | `LevelRing` (avatar in a gold rim)                                   |
-| An earned number               | `RatingPlaque` (gold rim, carved face, Bree Serif figure)            |
-| Progress toward something      | `LeagueProgress` (carved well + gold fill + quiet caption)           |
-| Labelling the one hero CTA     | `CtaBadge` (wraps the control so the badge anchors to it)            |
-| Any icon                       | `Icon` — never inline `<Svg><Path>` in a screen                      |
-| Sign-in surfaces               | `AuthProviderButtons`, `AuthSheet`, `KeepProgressPrompt`             |
-| Selectable custom control      | `PressableFX` (RN 0.85 drops style-function styles)                  |
+| Need                           | Use                                                                     |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| Any action                     | `BevelButton` (wood = forward, glass = secondary, `icon` for square)    |
+| Custom beveled control/surface | `BevelPressable` / `BevelSurface`                                       |
+| Text                           | `PidroText` roles                                                       |
+| Text entry                     | `Input` (label, error, `revealPassword`, full autofill markup)          |
+| Binary preference              | `PidroSwitch` (inset track, glass thumb, explicit On/Off state)         |
+| Panels, cards, plaques         | `Surface`                                                               |
+| Screen scaffold                | `ScreenShell` (+ `ScreenHeader` for sub-screens)                        |
+| Account-flow screen            | `AuthFlowScreen` + `AuthFlowWindow`, `AuthFlowButton`, `AuthFlowNotice` |
+| Back out of a sub-screen       | `BackButton` (round glass, 44 on phones, 48 on tablets)                 |
+| Quiet text action              | `TextLink` (cyan, 800, always a 44px target)                            |
+| Choice with confirm/cancel     | `DecisionWindow` / `Modal`                                              |
+| Home navigation                | `HomeTabBar` (bottom bar portrait, right rail landscape)                |
+| Player identity                | `LevelRing` (avatar in a gold rim)                                      |
+| An earned number               | `RatingPlaque` (gold rim, carved face, Bree Serif figure)               |
+| Progress toward something      | `LeagueProgress` (carved well + gold fill + quiet caption)              |
+| Labelling the one hero CTA     | `CtaBadge` (wraps the control so the badge anchors to it)               |
+| Any icon                       | `Icon` — never inline `<Svg><Path>` in a screen                         |
+| Sign-in surfaces               | `AuthProviderButtons`, `AuthSheet`, `KeepProgressPrompt`                |
+| Selectable custom control      | `PressableFX` (RN 0.85 drops style-function styles)                     |
 
 Legacy: `Button` (old flat variants) is utility-only on unmigrated screens — no new
 call sites. `MenuAction`, `PrimaryButton` are compatibility-only.

@@ -6,6 +6,8 @@ export type {
   ClassicClaimMethod,
   ClassicClaimPreview,
   ClassicClaimRequest,
+  ClassicHelpRequest,
+  ClassicSignInLink,
   ClassicVerification,
   ClassicVerifyRequest,
 } from '@pidro/shared';

@@ -10,6 +10,8 @@ export default function AuthLayout() {
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
       <Stack.Screen name="claim-classic" />
+      <Stack.Screen name="classic-forgot" />
+      <Stack.Screen name="classic-help" />
       <Stack.Screen name="forgot-password" />
       <Stack.Screen name="reset-password" />
     </Stack>

@@ -53,6 +53,24 @@ describe('native invite intent', () => {
     );
   });
 
+  it('opens account fixture states from simulator deep links', () => {
+    expect(
+      redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/classic-forgot?fixture=sent' })
+    ).toBe('/classic-forgot?fixture=sent');
+    expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/register?fixture=name' })).toBe(
+      '/register?fixture=name'
+    );
+
+    globalThis.__DEV__ = false;
+    try {
+      expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/classic-forgot' })).toBe(
+        '/+not-found'
+      );
+    } finally {
+      globalThis.__DEV__ = true;
+    }
+  });
+
   it('never lets an outside origin or a release build reach a harness route', () => {
     expect(redirectSystemPath({ path: 'https://evil.example/--/table-dev' })).toBe('/+not-found');
     expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/settings' })).toBe('/+not-found');

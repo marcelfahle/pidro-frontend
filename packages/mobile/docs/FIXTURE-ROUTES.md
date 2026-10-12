@@ -138,6 +138,34 @@ The real claim screen with deterministic presentation states and no backend muta
 guest/account preview; without one, `preview` also shows the fresh-account fields. testID
 `claim-classic-screen`.
 
+## Account flow — sign in, create account, Classic recovery
+
+Real screens with deterministic states; `?fixture=` is read in development only and
+never calls the backend. All sit on the `AuthFlow` scaffold, so each one has a phone,
+a phone-landscape and a tablet layout.
+
+| URL                                    | Shows                                                | testID                  |
+| -------------------------------------- | ---------------------------------------------------- | ----------------------- |
+| `/login?fixture=providers`             | Sign in with Apple and Facebook forced on            | `auth-window`           |
+| `/login?email=a@b.co&known=1`          | Sign in after Create account hit an address in use   | `auth-window`           |
+| `/register?fixture=providers`          | Pidro account: providers and the email step          | `auth-window`           |
+| `/register?fixture=password`           | Create a password                                    | `auth-window`           |
+| `/register?fixture=name`               | Pick your name                                       | `auth-window`           |
+| `/register?fixture=name-taken`         | Pick your name: taken, with the Classic claim plaque | `auth-window`           |
+| `/classic-forgot`                      | Forgot Classic password                              | `classic-forgot-window` |
+| `/classic-forgot?fixture=sent`         | Sign-in link sent                                    | `classic-link-sent`     |
+| `/classic-forgot?fixture=unavailable`  | Link service down; points to help                    | `classic-forgot-window` |
+| `/classic-forgot?fixture=not-found`    | No Classic account matched                           | `classic-forgot-window` |
+| `/classic-help`                        | Ask support to find a Classic account                | `classic-help-window`   |
+| `/classic-help?fixture=filled`         | …with the form filled in                             | `classic-help-window`   |
+| `/classic-help?fixture=sent` / `=mail` | Sent, or handed to the mail app                      | `classic-help-sent`     |
+| `/forgot-password?fixture=sent`        | Password reset requested                             | `auth-window`           |
+
+Use a guest auth fixture to see the guest wording ("Your guest games come with you").
+On a simulator these open through the dev deep-link allowlist in `app/+native-intent.tsx`
+(`exp://127.0.0.1:8081/--/classic-forgot?fixture=sent`). A fixture is read when the
+route mounts, so switching between two fixtures of the same route needs an app restart.
+
 ## `/join/<code>?fixture=open`
 
 Renders the invite preview with no backend.
@@ -164,7 +192,8 @@ node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/biddi
 renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
 `bun run ui:baselines <runId>`.
 
-`UI_CASES` names: `home` `home-guest` `lobby` `login` `register` `join-code` `join-invite`
+`UI_CASES` names: `home` `home-guest` `lobby` `login` `register` `register-password`
+`register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
 `ui-components` `create-table` `table-waiting` `table-ready` `table-ready-host`
 `table-host-controls` `table-invite` `table-playing` `table-dealer-selection`
 `table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`

@@ -1,99 +1,143 @@
 import { useCallback, useRef, useState } from 'react';
-import { Link, useRouter, type Href } from 'expo-router';
-import { Keyboard, Platform, StyleSheet, TextInput, useWindowDimensions, View } from 'react-native';
-import { AuthSheet } from '@/components/auth/AuthSheet';
-import { AuthScreenFrame } from '@/components/ui/AuthScreenFrame';
-import { BevelButton } from '@/components/ui/BevelButton';
+import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { Keyboard, Platform, StyleSheet, TextInput, View } from 'react-native';
+import { publicPlayerName } from '@pidro/shared';
+import type { AuthProvider } from '@/api/auth';
+import {
+  AuthFlowButton,
+  AuthFlowHeading,
+  AuthFlowNotice,
+  AuthFlowScreen,
+  AuthFlowWindow,
+  useAuthFlow,
+} from '@/components/auth/AuthFlow';
+import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
+import { useSwitchPlayersGuard } from '@/components/auth/SwitchPlayersGuard';
+import { useProviderSignIn } from '@/components/auth/useProviderSignIn';
+import { LogoGlow } from '@/components/home/LogoGlow';
+import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
+import { PidroLogo } from '@/components/ui/PidroLogo';
 import { PidroText } from '@/components/ui/PidroText';
-import { PidroColors, PidroLayout, PidroSpacing, PidroType } from '@/design/tokens';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { TextLink } from '@/components/ui/TextLink';
+import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { isEmailAddress } from '@/features/auth/accountEmail';
 import { useAuth } from '@/hooks/useAuth';
+import { useFlowBack, useHardwareBack } from '@/hooks/useFlowBack';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
-type RegisterField = 'username' | 'email' | 'password';
+type Step = 'email' | 'password' | 'name';
+type Fixture = 'providers' | 'password' | 'name' | 'name-taken';
+
+const FIXTURE_STEP: Partial<Record<Fixture, Step>> = {
+  password: 'password',
+  name: 'name',
+  'name-taken': 'name',
+};
+
+const MIN_PASSWORD = 8;
+
+// The server words a taken name per endpoint; players read one sentence.
+function nameError(detail: string): string {
+  return /taken|another account/i.test(detail) ? 'That name is taken.' : detail;
+}
 
 export default function RegisterScreen() {
-  const { user, signUp, isLoading, error: authError, clearError } = useAuth();
-  const [username, setUsername] = useState('');
-  const [email, setEmail] = useState('');
+  const router = useRouter();
+  const goBack = useFlowBack();
+  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
+  const fixture = (__DEV__ ? fixtureParam : undefined) as Fixture | undefined;
+  const { layout, inputStyle } = useAuthFlow();
+  const landscape = layout === 'landscape';
+  const { user, createAccount, saveGuest, signInWithProvider, isLoading, error, clearError } =
+    useAuth();
+  const { guard, modal } = useSwitchPlayersGuard();
+  const providerSignIn = useProviderSignIn(signInWithProvider);
+  const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
+  const guest = user?.guest === true;
+
+  const [step, setStep] = useState<Step>((fixture && FIXTURE_STEP[fixture]) || 'email');
+  const [email, setEmail] = useState(fixture && FIXTURE_STEP[fixture] ? 'you@example.com' : '');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [emailTaken, setEmailTaken] = useState(false);
   const [password, setPassword] = useState('');
-  const [validationErrors, setValidationErrors] = useState<Partial<Record<RegisterField, string>>>(
-    {}
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [name, setName] = useState(
+    fixture === 'name-taken'
+      ? 'Bengt'
+      : guest
+        ? publicPlayerName(user?.username, '', user?.display_name)
+        : ''
   );
-  const usernameRef = useRef<TextInput>(null);
+  const [nameFieldError, setNameFieldError] = useState<string | null>(
+    fixture === 'name-taken' ? 'That name is taken.' : null
+  );
+  const [classicNameReserved, setClassicNameReserved] = useState(fixture === 'name-taken');
+  const [message, setMessage] = useState<string | null>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
-  const router = useRouter();
-  const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
-  const { width, height } = useWindowDimensions();
-  const landscape = width > height;
-  const compactLandscape = landscape && height < 500;
+  const nameRef = useRef<TextInput>(null);
+  const busy = isLoading;
 
-  const clearValidationError = useCallback(
-    (field: RegisterField) => {
-      setValidationErrors((current) => {
-        if (!current[field]) return current;
-        return { ...current, [field]: undefined };
-      });
-      clearError();
-    },
-    [clearError]
-  );
-  const handleUsernameChange = useCallback(
-    (next: string) => {
-      setUsername(next);
-      clearValidationError('username');
-    },
-    [clearValidationError]
-  );
-  const handleEmailChange = useCallback(
-    (next: string) => {
-      setEmail(next);
-      clearValidationError('email');
-    },
-    [clearValidationError]
-  );
-  const handlePasswordChange = useCallback(
-    (next: string) => {
-      setPassword(next);
-      clearValidationError('password');
-    },
-    [clearValidationError]
-  );
-  const focusEmail = useCallback(() => emailRef.current?.focus(), []);
-  const focusPassword = useCallback(() => passwordRef.current?.focus(), []);
+  const stepBack = useCallback(() => {
+    setMessage(null);
+    if (step === 'name') setStep('password');
+    else if (step === 'password') setStep('email');
+    else goBack();
+  }, [goBack, step]);
+  useHardwareBack(step !== 'email', stepBack);
 
-  const handleRegister = useCallback(async () => {
-    if (isLoading) return;
+  const signInInstead = useCallback(
+    () => router.push({ pathname: '/(auth)/login', params: { email: email.trim(), known: '1' } }),
+    [email, router]
+  );
 
-    const normalizedUsername = username.trim();
-    const normalizedEmail = email.trim();
-    const nextErrors: Partial<Record<RegisterField, string>> = {};
-    if (!normalizedUsername) nextErrors.username = 'Enter a username.';
-    if (!normalizedEmail) nextErrors.email = 'Enter an email address.';
-    if (!password) nextErrors.password = 'Enter a password.';
-
-    setValidationErrors(nextErrors);
-    const firstInvalidField = (['username', 'email', 'password'] as const).find(
-      (field) => nextErrors[field]
-    );
-    if (firstInvalidField) {
-      const refs = {
-        username: usernameRef,
-        email: emailRef,
-        password: passwordRef,
-      };
-      refs[firstInvalidField].current?.focus();
+  // Whether the address already has an account is not asked here, so the
+  // server never has to say. A taken address surfaces when the account is
+  // made, and the player is sent to sign in.
+  const continueWithEmail = useCallback(() => {
+    if (busy) return;
+    const address = email.trim();
+    if (!isEmailAddress(address)) {
+      setEmailError(address ? 'Check that email address.' : 'Enter your email address.');
+      emailRef.current?.focus();
       return;
     }
-
     Keyboard.dismiss();
-    const success = await signUp(normalizedUsername, normalizedEmail, password);
-    const signedInUser = useAuthStore.getState().user;
-    if (success && signedInUser) {
+    setStep('password');
+  }, [busy, email]);
+
+  const continueWithPassword = useCallback(() => {
+    if (password.length < MIN_PASSWORD) {
+      setPasswordError(`Use ${MIN_PASSWORD} characters or more.`);
+      passwordRef.current?.focus();
+      return;
+    }
+    Keyboard.dismiss();
+    setStep('name');
+  }, [password]);
+
+  const finish = useCallback(async () => {
+    // A previewed step has no real email or password behind it.
+    if (busy || (fixture && FIXTURE_STEP[fixture])) return;
+    const publicName = name.trim();
+    if (!publicName) {
+      setNameFieldError('Enter the name other players will see.');
+      nameRef.current?.focus();
+      return;
+    }
+    Keyboard.dismiss();
+    setMessage(null);
+    const result = guest
+      ? await saveGuest(publicName, email.trim(), password)
+      : await createAccount(publicName, email.trim(), password);
+    if (result.ok) {
+      const signedInUser = useAuthStore.getState().user;
+      if (!signedInUser) return;
       router.replace(
         authenticatedEntryDestination(
           pendingInvite,
@@ -101,170 +145,317 @@ export default function RegisterScreen() {
           signedInUser
         ) as Href
       );
+      return;
     }
-  }, [email, isLoading, password, pendingInvite, router, signUp, username]);
 
-  if (user?.guest) {
+    // Each answer goes back to the step that owns the field, so the hook's
+    // own copy of the message would only say it twice.
+    clearError();
+    const { fields, classicNameReserved: reserved, message: failure } = result.error;
+    if (fields?.displayName) {
+      setNameFieldError(nameError(fields.displayName));
+      setClassicNameReserved(Boolean(reserved));
+    } else if (fields?.email) {
+      const taken = /taken|another account/i.test(fields.email);
+      setEmailTaken(taken);
+      setEmailError(
+        taken ? 'That email already has a Pidro account.' : 'Check that email address.'
+      );
+      setStep('email');
+    } else if (fields?.password) {
+      setPasswordError(fields.password);
+      setStep('password');
+    } else {
+      setMessage(failure);
+    }
+  }, [
+    busy,
+    clearError,
+    createAccount,
+    email,
+    fixture,
+    guest,
+    name,
+    password,
+    pendingInvite,
+    router,
+    saveGuest,
+  ]);
+
+  const startProvider = useCallback(
+    (provider: AuthProvider) => {
+      if (busy) return;
+      guard(() => void providerSignIn.start(provider));
+    },
+    [busy, guard, providerSignIn]
+  );
+
+  if (step === 'email') {
     return (
-      <View style={styles.guestSheetHost}>
-        <AuthSheet
-          isOpen
-          onClose={() => router.replace('/home')}
-          onSaved={() => {
-            const signedInUser = useAuthStore.getState().user;
-            if (!signedInUser) return;
-            router.replace(
-              authenticatedEntryDestination(
-                pendingInvite,
-                useAgeGateStore.getState().ageBand,
-                signedInUser
-              ) as Href
-            );
-          }}
-          onClaimClassic={() => router.replace('/(auth)/claim-classic')}
-        />
-      </View>
+      <AuthFlowScreen
+        testID="register-screen"
+        headerTitle="Pidro account"
+        onBack={stepBack}
+        body={'New here or coming back, it’s the same way\u00a0in.'}
+        note={'If we know you, you’re signed in. If not, this starts a free\u00a0account.'}>
+        <AuthFlowWindow testID="auth-window">
+          {/* A provider that failed or was unavailable reports through the hook. */}
+          {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
+          <AuthProviderButtons
+            showEmail={false}
+            showEmailDivider
+            direction={landscape ? 'row' : 'column'}
+            availability={fixture === 'providers' ? { apple: true, facebook: true } : undefined}
+            onApple={() => startProvider('apple')}
+            onFacebook={() => startProvider('facebook')}
+          />
+          {providerSignIn.notice ? <AuthFlowNotice>{providerSignIn.notice}</AuthFlowNotice> : null}
+          <View>
+            <Input
+              ref={emailRef}
+              label="Email"
+              placeholder="you@example.com"
+              value={email}
+              onChangeText={(next) => {
+                setEmail(next);
+                setEmailError(null);
+                setEmailTaken(false);
+                clearError();
+              }}
+              error={emailError ?? undefined}
+              style={inputStyle}
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="username"
+              importantForAutofill="yes"
+              autoCorrect={false}
+              clearButtonMode="while-editing"
+              editable={!busy}
+              keyboardAppearance="dark"
+              keyboardType="email-address"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={continueWithEmail}
+            />
+            {emailTaken ? (
+              <TextLink
+                label="Sign in instead"
+                size={14}
+                style={styles.inlineLink}
+                onPress={signInInstead}
+              />
+            ) : null}
+          </View>
+          <AuthFlowButton label="Continue" onPress={continueWithEmail} />
+        </AuthFlowWindow>
+        {modal}
+      </AuthFlowScreen>
     );
   }
 
-  return (
-    <AuthScreenFrame
-      title="Create your account"
-      subtitle={compactLandscape ? undefined : 'Choose your name and claim a seat at the table.'}
-      error={authError}
-      footer={
-        <View style={styles.footerRows}>
-          <View style={styles.footerRow}>
-            <PidroText role="metadata" tone="soft">
-              Already have an account?
-            </PidroText>
-            <Link href="/(auth)/login" style={styles.link}>
-              Sign in
-            </Link>
-          </View>
-          <Link href="/welcome" style={styles.quietLink}>
-            Play as guest
-          </Link>
-        </View>
-      }>
-      <View style={[styles.fields, compactLandscape && styles.fieldsLandscape]}>
-        <View style={compactLandscape && styles.fieldLandscape}>
-          <Input
-            ref={usernameRef}
-            label="Username"
-            placeholder="Your name"
-            value={username}
-            onChangeText={handleUsernameChange}
-            error={validationErrors.username}
-            autoCapitalize="none"
-            autoCorrect={false}
-            autoComplete={Platform.OS === 'android' ? 'username-new' : 'username'}
-            textContentType="username"
-            importantForAutofill="yes"
-            clearButtonMode="while-editing"
-            editable={!isLoading}
-            keyboardAppearance="dark"
-            returnKeyType="next"
-            submitBehavior="submit"
-            onSubmitEditing={focusEmail}
-          />
-        </View>
-        <View style={compactLandscape && styles.fieldLandscape}>
-          <Input
-            ref={emailRef}
-            label="Email"
-            placeholder="you@email.com"
-            value={email}
-            onChangeText={handleEmailChange}
-            error={validationErrors.email}
-            autoCapitalize="none"
-            autoComplete="email"
-            textContentType="emailAddress"
-            importantForAutofill="yes"
-            autoCorrect={false}
-            clearButtonMode="while-editing"
-            editable={!isLoading}
-            keyboardAppearance="dark"
-            keyboardType="email-address"
-            returnKeyType="next"
-            submitBehavior="submit"
-            onSubmitEditing={focusPassword}
-          />
-        </View>
-        <View style={compactLandscape && styles.fieldLandscape}>
+  if (step === 'password') {
+    const longEnough = password.length >= MIN_PASSWORD;
+    return (
+      <AuthFlowScreen
+        testID="register-screen"
+        headerTitle="Pidro account"
+        onBack={stepBack}
+        title="Create a password"
+        body={`This starts a free Pidro account for ${email.trim()}.`}
+        note={
+          guest
+            ? 'Next you pick your name. Your guest games come with\u00a0you.'
+            : 'Next you pick your name.'
+        }>
+        <AuthFlowWindow testID="auth-window">
           <Input
             ref={passwordRef}
             label="Password"
-            placeholder="Your password"
             value={password}
-            onChangeText={handlePasswordChange}
-            error={validationErrors.password}
+            onChangeText={(next) => {
+              setPassword(next);
+              setPasswordError(null);
+            }}
+            error={passwordError ?? undefined}
+            style={inputStyle}
             autoCapitalize="none"
             autoComplete="new-password"
             textContentType="newPassword"
             importantForAutofill="yes"
             autoCorrect={false}
-            editable={!isLoading}
+            autoFocus={Platform.OS !== 'web'}
             enablesReturnKeyAutomatically
             keyboardAppearance="dark"
             revealPassword
             secureTextEntry
             spellCheck={false}
-            returnKeyType="go"
-            submitBehavior="blurAndSubmit"
-            onSubmitEditing={handleRegister}
+            returnKeyType="next"
+            submitBehavior="submit"
+            onSubmitEditing={continueWithPassword}
           />
+          {passwordError ? null : (
+            <View
+              style={styles.rule}
+              accessible
+              accessibilityLabel={`${MIN_PASSWORD} characters or more${longEnough ? ', met' : ''}`}>
+              <Icon
+                name="check"
+                size={18}
+                strokeWidth={2.4}
+                color={longEnough ? PidroColors.cyan : PidroColors.textMuted}
+              />
+              <PidroText
+                role="metadata"
+                tone={longEnough ? 'default' : 'soft'}
+                style={styles.ruleText}>
+                {MIN_PASSWORD} characters or more
+              </PidroText>
+            </View>
+          )}
+          <AuthFlowButton label="Create account" onPress={continueWithPassword} />
+        </AuthFlowWindow>
+      </AuthFlowScreen>
+    );
+  }
+
+  const title = 'Pick your name';
+  const tablet = layout === 'tablet';
+  return (
+    <AuthFlowScreen
+      testID="register-screen"
+      headerTitle={landscape ? 'Pidro account' : undefined}
+      onBack={stepBack}
+      title={title}
+      body="This is the name other players see."
+      inlineIntro>
+      {landscape ? null : (
+        <View style={[styles.logoStage, tablet && styles.logoStageTablet]} pointerEvents="none">
+          <LogoGlow size={tablet ? 340 : 260} />
+          <PidroLogo width={tablet ? 200 : 150} />
         </View>
-      </View>
-      <BevelButton
-        label="Create account"
-        material="wood"
-        size="md"
-        fullWidth
-        onPress={handleRegister}
-        loading={isLoading}
-      />
-    </AuthScreenFrame>
+      )}
+      <AuthFlowWindow testID="auth-window">
+        {landscape ? null : (
+          <AuthFlowHeading align="center" style={tablet ? undefined : styles.windowTitle}>
+            {title}
+          </AuthFlowHeading>
+        )}
+        {message ? <AuthFlowNotice>{message}</AuthFlowNotice> : null}
+        <Input
+          ref={nameRef}
+          label="Public name"
+          value={name}
+          onChangeText={(next) => {
+            setName(next);
+            setNameFieldError(null);
+            setClassicNameReserved(false);
+            setMessage(null);
+          }}
+          error={nameFieldError ?? undefined}
+          style={inputStyle}
+          maxLength={20}
+          editable={!busy}
+          autoCapitalize="words"
+          autoComplete="nickname"
+          autoCorrect={false}
+          keyboardAppearance="dark"
+          returnKeyType="go"
+          submitBehavior="blurAndSubmit"
+          onSubmitEditing={finish}
+        />
+        {classicNameReserved ? (
+          <PressableFX
+            accessibilityRole="button"
+            accessibilityLabel={`Played Classic as ${name.trim()}? Claim it and keep your games.`}
+            onPress={() => router.push('/(auth)/claim-classic')}
+            style={styles.claimPlaque}>
+            <View style={styles.claimCopy}>
+              <PidroText role="label" style={styles.claimTitle} numberOfLines={1}>
+                Played Classic as {name.trim()}?
+              </PidroText>
+              <PidroText role="metadata" tone="soft" style={styles.claimSubtitle}>
+                Claim it and keep your games.
+              </PidroText>
+            </View>
+            <View style={styles.chip}>
+              <PidroText style={styles.chipLabel}>CLAIM</PidroText>
+            </View>
+          </PressableFX>
+        ) : null}
+        <AuthFlowButton label="CONTINUE" hero loading={isLoading} onPress={finish} />
+      </AuthFlowWindow>
+    </AuthFlowScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  guestSheetHost: {
-    flex: 1,
-    backgroundColor: PidroColors.feltBottom,
+  inlineLink: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 0,
+    marginBottom: -PidroSpacing.xs,
   },
-  fields: {
-    gap: PidroSpacing.md,
-  },
-  fieldsLandscape: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  fieldLandscape: {
-    width: '32%',
-    flexGrow: 1,
-  },
-  footerRows: {
-    alignItems: 'center',
-  },
-  footerRow: {
+  rule: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.xs,
   },
-  link: {
-    minWidth: PidroLayout.touchTarget,
-    minHeight: PidroLayout.touchTarget,
-    textAlign: 'center',
-    color: PidroColors.cyanText,
-    ...PidroType.metadata,
-    paddingVertical: 14,
+  ruleText: {
+    fontSize: 14,
+    lineHeight: 18,
   },
-  quietLink: {
-    minHeight: PidroLayout.touchTarget,
-    color: PidroColors.cyanText,
-    ...PidroType.metadata,
-    paddingVertical: 8,
+  logoStage: {
+    height: 110,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoStageTablet: {
+    height: 150,
+  },
+  windowTitle: {
+    fontSize: 26,
+    lineHeight: 34,
+  },
+  claimPlaque: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.sm,
+    paddingVertical: PidroSpacing.sm,
+    paddingLeft: 14,
+    paddingRight: PidroSpacing.sm,
+    borderWidth: 1,
+    borderRadius: PidroRadii.lg,
+    borderColor: PidroColors.cyanBorderStrong,
+    backgroundColor: PidroColors.panel,
+    boxShadow: PidroColors.plaqueShadow,
+  },
+  claimCopy: {
+    minWidth: 0,
+    flex: 1,
+    gap: 2,
+  },
+  claimTitle: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  claimSubtitle: {
+    fontSize: 13,
+    lineHeight: 17,
+  },
+  chip: {
+    height: 22,
+    flexShrink: 0,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    borderRadius: PidroRadii.full,
+    backgroundColor: PidroColors.cyan,
+  },
+  chipLabel: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '900',
+    letterSpacing: 0.6,
+    color: PidroColors.ink,
   },
 });

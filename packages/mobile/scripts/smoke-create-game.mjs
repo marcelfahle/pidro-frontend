@@ -145,8 +145,8 @@ async function main() {
     });
     await page.evaluate(() => localStorage.clear());
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.getByPlaceholder('Enter your username').fill(username);
-    await page.getByPlaceholder('Enter your password').fill(password);
+    await page.getByLabel('Email or username', { exact: true }).fill(username);
+    await page.getByLabel('Password', { exact: true }).fill(password);
     await page.getByRole('button', { name: 'Sign in' }).click();
     try {
       await page.waitForURL(/\/home$/, { timeout: 15_000 });
