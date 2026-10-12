@@ -108,7 +108,8 @@ export default function HomeScreen() {
           router.push('/lobby');
         } else {
           try {
-            await lobbyApi.leaveRoom('current');
+            // No table left to leave is the state Home wanted.
+            await lobbyApi.leaveRoom('current').catch(() => undefined);
             await createSinglePlayerRoom();
           } catch (retryError) {
             const retryDetail = apiErrorInfo(retryError).detail;
