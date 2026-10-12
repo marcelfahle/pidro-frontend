@@ -6,11 +6,8 @@ import { api, register } from '../support/api';
 import { resetLinkFor } from '../support/mailbox';
 
 // The web page only says the link is no good and offers "Back to Sign In"; the app's own
-// screen offers "Send a new link" only when the link has no token at all (finding 4, PID-181).
-test('a used link is refused, and only a link with no token offers a new one @gap', async ({
-  page,
-  player,
-}) => {
+// screen offers "Send a new link" for a refused link as well as for one with no token (PID-181).
+test('a used link is refused, and the app offers a new one', async ({ page, player }) => {
   await register(player);
   await api('/api/v1/auth/password-reset', { method: 'POST', body: { identifier: player.email } });
   const link = await resetLinkFor(player.email);
@@ -32,7 +29,9 @@ test('a used link is refused, and only a link with no token offers a new one @ga
   const reset = new ResetPasswordScreen(page);
   await reset.setNewPassword('hallohallo3');
   await expect(reset.alert).toBeVisible();
-  await expect(reset.button('Send a new link')).toHaveCount(0);
+  await expect(reset.newPassword).toHaveCount(0);
+  await reset.button('Send a new link').click();
+  await expect(new ForgotPasswordScreen(page).root).toBeVisible();
 
   await page.goto('/reset-password');
   await reset.button('Send a new link').click();
