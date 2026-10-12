@@ -45,6 +45,8 @@ test('a guest claims their Classic account with an email and password and keeps 
   expect((await profile(token)).classic).toMatchObject({ name: player.classicLogin });
 
   // One Classic account per player: a second one is refused.
+  // The guest session is seeded on every load; seed the claimed one after it.
+  await startSignedIn(page, { token, user: session?.user as object });
   await page.goto('/claim-classic');
   await claim.verify(`${player.classicLogin}b`, player.classicPassword);
   await expect(claim.found).toBeVisible();
