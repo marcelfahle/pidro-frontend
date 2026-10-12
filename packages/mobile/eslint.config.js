@@ -17,6 +17,14 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ['e2e/**'],
+    rules: {
+      // Playwright fixtures take a `use` callback and an empty destructure.
+      'react-hooks/rules-of-hooks': 'off',
+      'no-empty-pattern': 'off',
+    },
+  },
+  {
     files: ['src/game/canvas/useCardSprites.tsx'],
     rules: {
       // Reanimated SharedValues are intentionally mutated by worklets. The

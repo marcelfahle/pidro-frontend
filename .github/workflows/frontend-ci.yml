@@ -322,3 +322,159 @@ jobs:
             /tmp/pidro-expo.log
           if-no-files-found: ignore
           retention-days: 14
+
+  account-e2e:
+    name: Account e2e
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v4
+
+      - name: Check out backend
+        uses: actions/checkout@v4
+        with:
+          repository: marcelfahle/pidro-backend
+          path: backend
+
+      - name: Set up Erlang/Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: backend/.tool-versions
+          version-type: strict
+
+      - name: Cache mix deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/deps
+            backend/_build
+          key: mix-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('backend/mix.lock') }}
+
+      - name: Compile backend and prepare database
+        working-directory: backend
+        run: |
+          mix deps.get
+          mix compile
+          mix ecto.create
+          mix ecto.migrate
+
+      - name: Start backend
+        working-directory: backend
+        env:
+          PORT: '4000'
+        run: |
+          nohup mix phx.server > /tmp/pidro-backend.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            if curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms; then
+              echo "backend ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "backend never became ready"
+          cat /tmp/pidro-backend.log
+          exit 1
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Cache bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        run: bun run shared:build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Chromium for the journeys
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run the account journeys
+        working-directory: packages/mobile
+        env:
+          CI: '1'
+          EXPO_NO_DOTENV: '1'
+          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+        run: |
+          bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
+          expo_pid=$!
+          cleanup() {
+            kill "$expo_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            cat /tmp/pidro-expo.log
+            exit 1
+          fi
+
+          # Build the bundle now, so the first journey does not wait for Metro.
+          bundle=$(curl --silent http://127.0.0.1:8081/home | grep -o 'src="[^"]*\.bundle[^"]*"' | head -1 | cut -d'"' -f2 | sed 's/&amp;/\&/g')
+          curl --fail --silent --output /dev/null "http://127.0.0.1:8081$bundle"
+
+          bun run e2e:accounts
+
+      - name: List the journeys in the job summary
+        if: always()
+        working-directory: packages/mobile
+        run: |
+          if [ -f e2e/journeys.json ]; then
+            {
+              echo '### Account journeys'
+              echo
+              echo '| Journey | Result |'
+              echo '| --- | --- |'
+              jq -r '.. | .specs? // empty | .[] | "| \(.title) | \({expected: "passed", unexpected: "FAILED", flaky: "passed on retry", skipped: "skipped"}[.tests[0].status] // .tests[0].status) |"' e2e/journeys.json
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload videos, traces and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-e2e-artifacts
+          path: |
+            packages/mobile/e2e/results/
+            packages/mobile/e2e/report/
+            /tmp/pidro-backend.log
+            /tmp/pidro-expo.log
+          if-no-files-found: ignore
+          retention-days: 14

@@ -116,6 +116,37 @@ Artifacts land in `screenshots/agent-game-e2e/` (override with
 `E2E_ARTIFACT_DIR`). Expect roughly 35s for the solo game and 2–3 minutes for
 the multiplayer UI game at CI pacing.
 
+## Account journeys (the "Account e2e" CI job)
+
+`e2e/` holds sixteen account journeys (age gate, guest, create account, sign in,
+forgot password, saving a guest, claiming a Classic account) on `@playwright/test`,
+one phone project at 390×844. They drive the real Expo web client against a real
+local backend, and each leaves a video; a failing one also leaves a trace. The suite
+starts its own stand-in for Classic on `127.0.0.1:4001`, which is where the dev
+backend already looks for it. A journey tagged `@gap` asserts what the app does
+today where a product fix is still open; the ticket is named in the spec.
+
+To run it on spare ports without touching your daily backend:
+
+```bash
+# Terminal 1, from pidro_backend
+PORT=4100 mix phx.server
+
+# Terminal 2, from packages/mobile
+EXPO_NO_DOTENV=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
+EXPO_PUBLIC_WS_URL=ws://127.0.0.1:4100/socket \
+NODE_OPTIONS="--max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs" \
+../../node_modules/.bin/expo start --web --port 8089
+
+# Terminal 3, from packages/mobile
+API_BASE_URL=http://127.0.0.1:4100 MOBILE_BASE_URL=http://localhost:8089 \
+bun run e2e:accounts [part of a spec name]
+```
+
+Videos and traces land in `e2e/results/`, the HTML report in `e2e/report/`
+(`bunx playwright show-report e2e/report`). Every test makes its own email, name,
+install id and Classic login, so tests run in parallel and a rerun needs no reset.
+
 ## Deferred invite first-install proof
 
 Test generated native projects in a disposable worktree; `ios/` and `android/`

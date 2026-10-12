@@ -62,6 +62,7 @@
         "zustand": "^5.0.11",
       },
       "devDependencies": {
+        "@playwright/test": "1.61.1",
         "@tailwindcss/postcss": "^4.1.18",
         "@tanstack/eslint-plugin-query": "^5.91.4",
         "@types/phoenix": "^1.6.7",
@@ -528,6 +529,8 @@
     "@pidro/shared": ["@pidro/shared@workspace:packages/shared"],
 
     "@pidro/web": ["@pidro/web@workspace:packages/web"],
+
+    "@playwright/test": ["@playwright/test@1.61.1", "", { "dependencies": { "playwright": "1.61.1" }, "bin": { "playwright": "cli.js" } }, "sha512-8nKv6+0RJSL9FE4jYOEGXnPeM/Hg12qZpmqzZjRh3qM0Y7c3z1mrOTfFLids72RDQYVh9WpLEfR5WdpNX4fkig=="],
 
     "@posthog/browser-common": ["@posthog/browser-common@0.9.0", "", { "dependencies": { "@posthog/core": "^1.54.2", "@posthog/types": "^1.412.1" } }, "sha512-EWoVzs1vVY7ihpn8yOjj3jyjriHUEEMVSBNL/TW3hk09fTriWRe76vJXrRg0G0yjTYxHmtlSkNn4mOV24ZEzzA=="],
 
