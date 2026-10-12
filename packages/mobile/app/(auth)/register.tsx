@@ -31,7 +31,7 @@ import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 type Step = 'email' | 'password' | 'name';
-type Fixture = 'providers' | 'password' | 'name' | 'name-taken';
+type Fixture = 'providers' | 'password' | 'name' | 'name-taken' | 'email-taken';
 
 const FIXTURE_STEP: Partial<Record<Fixture, Step>> = {
   password: 'password',
@@ -61,9 +61,13 @@ export default function RegisterScreen() {
   const guest = user?.guest === true;
 
   const [step, setStep] = useState<Step>((fixture && FIXTURE_STEP[fixture]) || 'email');
-  const [email, setEmail] = useState(fixture && FIXTURE_STEP[fixture] ? 'you@example.com' : '');
-  const [emailError, setEmailError] = useState<string | null>(null);
-  const [emailTaken, setEmailTaken] = useState(false);
+  const [email, setEmail] = useState(
+    fixture && (FIXTURE_STEP[fixture] || fixture === 'email-taken') ? 'you@example.com' : ''
+  );
+  const [emailError, setEmailError] = useState<string | null>(
+    fixture === 'email-taken' ? 'That email already has a Pidro account.' : null
+  );
+  const [emailTaken, setEmailTaken] = useState(fixture === 'email-taken');
   const [password, setPassword] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [name, setName] = useState(
@@ -197,7 +201,11 @@ export default function RegisterScreen() {
         headerTitle="Pidro account"
         onBack={stepBack}
         body={'New here or coming back, it’s the same way\u00a0in.'}
-        note={'If we know you, you’re signed in. If not, this starts a free\u00a0account.'}>
+        note={
+          emailTaken
+            ? undefined
+            : 'If we know you, you’re signed in. If not, this starts a free\u00a0account.'
+        }>
         <AuthFlowWindow testID="auth-window">
           {/* A provider that failed or was unavailable reports through the hook. */}
           {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}

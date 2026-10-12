@@ -10,6 +10,7 @@ import {
 } from '@/components/auth/AuthFlow';
 import { useSwitchPlayersGuard } from '@/components/auth/SwitchPlayersGuard';
 import { Input } from '@/components/ui/Input';
+import { resetLinkRefused } from '@/features/auth/resetLink';
 import { useAuth } from '@/hooks/useAuth';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
@@ -17,14 +18,19 @@ import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 
 export default function ResetPasswordScreen() {
-  const { token: rawToken } = useLocalSearchParams<{ token?: string | string[] }>();
+  const { token: rawToken, fixture: fixtureParam } = useLocalSearchParams<{
+    token?: string | string[];
+    fixture?: string;
+  }>();
+  const fixture = __DEV__ ? fixtureParam : undefined;
   const token = Array.isArray(rawToken) ? rawToken[0] : rawToken;
   const [password, setPassword] = useState('');
   const [validationError, setValidationError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
-  const { resetPassword, isLoading, error, clearError } = useAuth();
+  const { resetPassword, isLoading, error, errorCode, clearError } = useAuth();
+  const refused = fixture === 'refused' || resetLinkRefused(errorCode);
   const { guard, modal } = useSwitchPlayersGuard(
     'Resetting this account’s password signs in as that player. Guest results do not merge.'
   );
@@ -64,9 +70,9 @@ export default function ResetPasswordScreen() {
       headerTitle="Sign in"
       onBack={toSignIn}
       title="Choose a new password"
-      body={token ? 'Use 8 characters or more.' : undefined}>
+      body={token && !refused ? 'Use 8 characters or more.' : undefined}>
       <AuthFlowWindow testID="auth-window">
-        {token ? (
+        {token && !refused ? (
           <>
             {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
             <Input
@@ -95,7 +101,9 @@ export default function ResetPasswordScreen() {
           </>
         ) : (
           <>
-            <AuthFlowNotice>This reset link is missing or no longer valid.</AuthFlowNotice>
+            <AuthFlowNotice>
+              {refused && error ? error : 'This reset link is missing or no longer valid.'}
+            </AuthFlowNotice>
             <AuthFlowButton
               label="Send a new link"
               onPress={() => router.replace('/(auth)/forgot-password')}

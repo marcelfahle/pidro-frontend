@@ -64,7 +64,7 @@ function memberSince(value: string): string {
 export default function ClaimClassicScreen() {
   const router = useRouter();
   const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
-  const fixture = fixtureParam as Fixture | undefined;
+  const fixture = (__DEV__ ? fixtureParam : undefined) as Fixture | undefined;
   const { width, height } = useWindowDimensions();
   const compactLandscape = width > height && height < PidroLayout.compactHeight;
   const user = useAuthStore((state) => state.user);

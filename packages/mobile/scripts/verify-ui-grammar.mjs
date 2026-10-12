@@ -83,6 +83,11 @@ const allCases = [
     authFixture: guestAuthFixture,
   },
   {
+    name: 'register-email-taken',
+    path: '/(auth)/register?fixture=email-taken',
+    testId: 'auth-window',
+  },
+  {
     name: 'register-name',
     path: '/(auth)/register?fixture=name-taken',
     testId: 'auth-window',
@@ -145,6 +150,11 @@ const allCases = [
   {
     name: 'reset-password',
     path: '/(auth)/reset-password?token=fixture-token',
+    testId: 'auth-window',
+  },
+  {
+    name: 'reset-password-refused',
+    path: '/(auth)/reset-password?token=fixture-token&fixture=refused',
     testId: 'auth-window',
   },
   { name: 'join-code', path: '/join-code', testId: 'join-code-window' },
