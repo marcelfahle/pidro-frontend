@@ -12,8 +12,11 @@ test('an expired claim says to verify again @second-run', async ({ page, player 
   const { expires_at } = (await verified.json()).data;
   await untilAfter(Date.parse(expires_at) + 1_000);
 
-  await claim.field('Username').fill(player.name);
-  await claim.button('Create account and claim').click();
+  await claim.createAccountAndClaim({
+    username: player.name,
+    email: player.email,
+    password: player.password,
+  });
   await expect(claim.alert).toContainText('Verify your Classic account again');
   await expect(claim.found).toBeHidden();
 
