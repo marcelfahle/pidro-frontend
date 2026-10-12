@@ -102,7 +102,7 @@ jobs:
           CI: '1'
           EXPO_NO_DOTENV: '1'
           # The full fixture matrix retains Metro/SSR modules across many navigations.
-          NODE_OPTIONS: --max-old-space-size=4096 --require ./scripts/tailwind-v3-resolve.cjs
+          NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
           UI_SHOT_DIR: /tmp/ui-grammar-screens
         run: |
           cleanup() {
