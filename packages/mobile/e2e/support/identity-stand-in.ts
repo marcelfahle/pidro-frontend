@@ -67,8 +67,13 @@ function answer(method: string, url: URL, body: string): [number, object] {
   if (method === 'GET' && url.pathname.startsWith('/graph/'))
     return graph(url.pathname, url.searchParams);
   if (method === 'POST' && url.pathname === '/sign') {
-    const { provider, claims } = JSON.parse(body || '{}');
-    return provider in ISSUERS ? [200, { token: sign(provider, claims) }] : [400, {}];
+    try {
+      const { provider, claims } = JSON.parse(body || '{}');
+      if (provider in ISSUERS) return [200, { token: sign(provider, claims) }];
+    } catch {
+      // answered below
+    }
+    return [400, {}];
   }
   return [404, { error: 'not found' }];
 }

@@ -10,7 +10,7 @@ backend=${BACKEND_DIR:-../../backend}
 
 start_backend() {
   (
-    cd "$backend"
+    cd "$backend" || exit 1
     env PORT=4000 \
       LIFECYCLE_TURN_TIMER_BID_MS=1200 LIFECYCLE_TURN_TIMER_PLAY_MS=900 \
       LIFECYCLE_BOT_DELAY_MS=60 LIFECYCLE_BOT_DELAY_VARIANCE_MS=40 \
@@ -21,7 +21,7 @@ start_backend() {
       FACEBOOK_GRAPH_URL=http://127.0.0.1:4002/graph FACEBOOK_APP_ID=1234567890 \
       PASSWORD_RESET_DEBUG_TOKENS=false \
       "$@" nohup mix phx.server >> /tmp/pidro-backend.log 2>&1 &
-  )
+  ) || exit 1
   for _ in $(seq 1 90); do
     curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms && return 0
     sleep 2
@@ -31,6 +31,7 @@ start_backend() {
   exit 1
 }
 
+# A CI runner is ours alone; there is no other Erlang to spare.
 stop_backend() {
   pkill -f beam.smp || true
   while curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms; do sleep 1; done
