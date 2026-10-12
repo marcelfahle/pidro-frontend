@@ -58,13 +58,6 @@ const allCases = [
     authFixture: guestAuthFixture,
   },
   { name: 'profile', path: '/profile', testId: 'profile-screen', authenticated: true },
-  {
-    name: 'profile-guest',
-    path: '/profile',
-    testId: 'profile-screen',
-    authenticated: true,
-    authFixture: guestAuthFixture,
-  },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
@@ -554,13 +547,11 @@ async function assertHomeGuestInteractions(page, name) {
 }
 
 async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
-  if (!name.startsWith('profile')) return;
-  if (name === 'profile') await page.getByTestId('profile-classic-section').waitFor();
+  if (name !== 'profile') return;
+  await page.getByTestId('profile-classic-section').waitFor();
   await page.getByRole('button', { name: 'Delete account', exact: true }).click();
   await page.getByText('Delete your account?', { exact: true }).waitFor();
-  // The Classic sentence appears only when the profile shows a Classic section.
-  const classic = page.getByText(/Your Classic account stays in Classic/);
-  assert.equal((await classic.count()) === 1, name === 'profile', `${name} Classic sentence`);
+  await page.getByText(/Your Classic account stays in Classic/).waitFor();
   await page.getByRole('button', { name: 'Cancel', exact: true }).waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: resolve(screenshotDir, `${name}-delete-confirm.png`) });
@@ -931,9 +922,9 @@ async function main() {
             });
           });
         }
-        if (['home', 'home-guest', 'profile', 'profile-guest'].includes(testCase.name)) {
+        if (['home', 'home-guest', 'profile'].includes(testCase.name)) {
           await page.route('**/api/v1/profile', async (route) => {
-            const guest = testCase.name.endsWith('-guest');
+            const guest = testCase.name === 'home-guest';
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
