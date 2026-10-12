@@ -437,7 +437,7 @@ jobs:
           NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
         run: |
           # The reset email links to the old web client; the journeys follow that link.
-          (cd ../web && VITE_API_URL=http://127.0.0.1:4000 VITE_WS_URL=ws://127.0.0.1:4000/socket \
+          (cd ../web && NODE_OPTIONS= VITE_API_URL=http://127.0.0.1:4000 VITE_WS_URL=ws://127.0.0.1:4000/socket \
             bun run dev --host 127.0.0.1 --port 5173 > /tmp/pidro-web.log 2>&1) &
           web_pid=$!
           bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
