@@ -120,4 +120,27 @@ describe('Classic claim API', () => {
       install_id: 'install-limited',
     });
   });
+
+  it('hands on whether the Classic account is already linked, and how its owner signs in', async () => {
+    const verify = (already_claimed?: unknown) =>
+      createClassicApi({
+        post: async () => ({
+          status: 200,
+          data: {
+            data: {
+              ticket: 't',
+              expires_at: '2026-10-01T12:00:00Z',
+              classic: { name: 'V', games_played: 1, level: 1, member_since: '2012-04-03' },
+              ...(already_claimed === undefined ? {} : { already_claimed }),
+            },
+          },
+        }),
+      } as unknown as ApiClient).verify({ method: 'apple', identity_token: 'x' });
+
+    expect((await verify({ sign_in_method: 'facebook' })).already_claimed).toEqual({
+      sign_in_method: 'facebook',
+    });
+    expect((await verify(null)).already_claimed).toBeNull();
+    expect((await verify()).already_claimed).toBeUndefined();
+  });
 });

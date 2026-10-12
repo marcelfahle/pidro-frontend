@@ -24,6 +24,7 @@ export function handleClassicFound(claim: ClassicFound, method: AuthProvider): v
         // name is the safe fallback until the server explicitly allows it.
         name_allowed: claim.classic.name_allowed === true,
       },
+      already_claimed: claim.already_claimed ?? null,
     },
   };
 }

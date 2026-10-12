@@ -1,4 +1,5 @@
 import type { ApiClient } from './client';
+import type { ClassicAlreadyClaimed } from './classic';
 
 export const TERMS_VERSION = '1';
 
@@ -55,6 +56,7 @@ export interface ClassicFound {
   classic: ClassicPreview;
   ticket: string;
   expires_at: string;
+  already_claimed?: ClassicAlreadyClaimed | null;
 }
 
 export type ProviderLoginResponse =

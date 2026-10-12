@@ -3,7 +3,7 @@ import { ClaimClassicScreen } from '../screens/claim-classic-screen';
 import { claimClassic } from '../support/api';
 import { sessionOf } from '../support/session';
 
-test('a Classic account someone already claimed is refused, with a way to sign in to it', async ({
+test('a Classic account someone already claimed is said so at the preview, with a way to sign in to it', async ({
   page,
   player,
 }) => {
@@ -12,14 +12,10 @@ test('a Classic account someone already claimed is refused, with a way to sign i
   await page.goto('/claim-classic');
   await claim.verify(player.classicLogin, player.classicPassword);
   await expect(claim.found).toBeVisible();
-
-  await claim.createAccountAndClaim({
-    username: `Thief${player.id}`,
-    email: `thief_${player.email}`,
-    password: player.password,
-  });
-  await expect(claim.alert).toBeVisible();
-  await expect(claim.alert).toContainText('belongs to another account');
+  await expect(
+    claim.text('This Classic account is already linked to a Pidro account.')
+  ).toBeVisible();
   await expect(claim.button('Sign in to that account')).toBeVisible();
+  await expect(claim.field('Username')).toHaveCount(0);
   expect((await sessionOf(page))?.user ?? null).toBeNull();
 });
