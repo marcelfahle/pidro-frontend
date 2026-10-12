@@ -354,10 +354,13 @@ jobs:
     steps:
       - name: Check out frontend
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name: Check out backend
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           repository: marcelfahle/pidro-backend
           path: backend
 
