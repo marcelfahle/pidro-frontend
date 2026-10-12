@@ -462,7 +462,7 @@ jobs:
               echo
               echo '| Journey | Result |'
               echo '| --- | --- |'
-              jq -r '.. | .specs? // empty | .[] | "| \(.title) | \(.tests[0].status | sub("expected"; "passed") | sub("unexpected"; "FAILED") | sub("flaky"; "passed on retry")) |"' e2e/journeys.json
+              jq -r '.. | .specs? // empty | .[] | "| \(.title) | \({expected: "passed", unexpected: "FAILED", flaky: "passed on retry", skipped: "skipped"}[.tests[0].status] // .tests[0].status) |"' e2e/journeys.json
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
