@@ -33,13 +33,17 @@ test('a Classic player who cannot sign in asks for help and support receives it'
   expect(mail.text_body).toContain(player.classicLogin);
 });
 
-test('when support cannot be reached the player gets a mail draft instead', async ({
-  page,
-  player,
-}) => {
-  await page.route('**/api/v1/classic/help', (route) => route.fulfill({ status: 503 }));
-  const help = await openHelp(page, player.classicLogin);
-  await help.email.fill(player.email);
-  await help.button('Send to support').click();
-  await expect(help.text('Almost there')).toBeVisible();
+test.describe('support unavailable', () => {
+  test.use({ unavailableExpected: true });
+
+  test('when support cannot be reached the player gets a mail draft instead', async ({
+    page,
+    player,
+  }) => {
+    await page.route('**/api/v1/classic/help', (route) => route.fulfill({ status: 503 }));
+    const help = await openHelp(page, player.classicLogin);
+    await help.email.fill(player.email);
+    await help.button('Send to support').click();
+    await expect(help.text('Almost there')).toBeVisible();
+  });
 });
