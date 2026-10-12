@@ -151,6 +151,7 @@ a phone-landscape and a tablet layout.
 | `/register?fixture=providers`          | Pidro account: providers and the email step          | `auth-window`           |
 | `/register?fixture=password`           | Create a password                                    | `auth-window`           |
 | `/register?fixture=name`               | Pick your name                                       | `auth-window`           |
+| `/register?fixture=email-taken`        | Create account email step: address already has an account | `auth-window`           |
 | `/register?fixture=name-taken`         | Pick your name: taken, with the Classic claim plaque | `auth-window`           |
 | `/classic-forgot`                      | Forgot Classic password                              | `classic-forgot-window` |
 | `/classic-forgot?fixture=sent`         | Sign-in link sent                                    | `classic-link-sent`     |
@@ -159,6 +160,7 @@ a phone-landscape and a tablet layout.
 | `/classic-help`                        | Ask support to find a Classic account                | `classic-help-window`   |
 | `/classic-help?fixture=filled`         | …with the form filled in                             | `classic-help-window`   |
 | `/classic-help?fixture=sent` / `=mail` | Sent, or handed to the mail app                      | `classic-help-sent`     |
+| `/reset-password?token=x&fixture=refused` | Reset link the server refused, offering a new one | `auth-window`           |
 | `/forgot-password?fixture=sent`        | Password reset requested                             | `auth-window`           |
 
 Use a guest auth fixture to see the guest wording ("Your guest games come with you").

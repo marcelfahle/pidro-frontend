@@ -13,6 +13,7 @@ import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
 import { guestSaveFailure, runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
+import { apiErrorInfo } from '@/utils/apiErrors';
 
 export type { GuestSaveField, GuestSaveFailure, GuestSaveResult } from '@/features/auth/saveGuest';
 
@@ -51,6 +52,7 @@ export function useAuth() {
   const { status, user, setSession, clearSession, hydrated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<string | undefined>();
   const requestInFlight = useRef(false);
 
   const signIn = useCallback(
@@ -268,6 +270,7 @@ export function useAuth() {
         return true;
       } catch (e) {
         setError(extractErrorMessage(e, 'Could not reset your password. Try again.'));
+        setErrorCode(apiErrorInfo(e).code);
         return false;
       } finally {
         requestInFlight.current = false;
@@ -283,6 +286,7 @@ export function useAuth() {
 
   const clearError = useCallback(() => {
     setError(null);
+    setErrorCode(undefined);
   }, []);
 
   return {
@@ -290,6 +294,7 @@ export function useAuth() {
     status,
     isLoading,
     error,
+    errorCode,
     isAuthenticated: status === 'authenticated',
     isHydrated: hydrated,
     signIn,
