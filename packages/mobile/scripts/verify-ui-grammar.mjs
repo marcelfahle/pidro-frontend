@@ -127,6 +127,7 @@ const allCases = [
     testId: 'classic-link-sent',
   },
   { name: 'classic-help', path: '/(auth)/classic-help', testId: 'classic-help-window' },
+  { name: 'auth-sheet', path: '/auth-flow-dev', testId: 'auth-flow-dev' },
   { name: 'forgot-password', path: '/(auth)/forgot-password', testId: 'auth-window' },
   {
     name: 'reset-password',
@@ -542,6 +543,16 @@ async function assertHomeGuestInteractions(page, name) {
   await joinCode.waitFor();
   await joinCode.click();
   await page.waitForURL((url) => url.pathname.endsWith('/join-code'));
+}
+
+async function assertAuthSheetKeepsTyping(page, name) {
+  if (name !== 'auth-sheet') return;
+  await page.getByRole('button', { name: 'Friends', exact: true }).click();
+  // Typed the moment the sheet appears, before its slide-in animation ends.
+  const email = page.getByLabel('Email', { exact: true });
+  await email.fill('early@example.com');
+  await page.waitForTimeout(1_000);
+  assert.equal(await email.inputValue(), 'early@example.com', 'auth sheet wiped the typed email');
 }
 
 async function assertWelcomeSettingsInteractions(page, name) {
@@ -995,6 +1006,7 @@ async function main() {
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
+          await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);

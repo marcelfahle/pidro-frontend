@@ -199,7 +199,7 @@ export default function ClaimClassicScreen() {
       if (username.trim().length < 3) nextFields.username = 'Use at least 3 characters.';
       if (method === 'password') {
         if (!email.trim()) nextFields.email = 'Enter an email address.';
-        if (password.length < 8) nextFields.password = 'Use at least 8 characters.';
+        if (password.length < 8) nextFields.password = 'Use 8 characters or more.';
       }
     }
     if (!verification.classic.name_allowed && displayName.trim().length < 2) {
