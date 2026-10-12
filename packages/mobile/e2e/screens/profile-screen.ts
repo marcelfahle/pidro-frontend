@@ -26,6 +26,13 @@ export class ProfileScreen extends Screen {
     await this.page.getByRole('button', { name: 'Sign out', exact: true }).last().click();
   }
 
+  /** Taps Delete account and, on the "Delete your account?" window, confirms. */
+  async deleteAccount() {
+    await this.button('Delete account').first().click();
+    await this.page.getByText('Delete your account?').waitFor();
+    await this.page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
+  }
+
   askToSignOut() {
     return this.button('Sign out').first().click();
   }

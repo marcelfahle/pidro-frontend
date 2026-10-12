@@ -24,6 +24,7 @@ export const login = authApi.login;
 export const register = authApi.register;
 export const upgradeGuest = authApi.upgradeGuest;
 export const createGuest = authApi.createGuest;
+export const deleteAccount = authApi.deleteAccount;
 export const getMe = authApi.getMe;
 export const setAge = authApi.setAge;
 export const requestPasswordReset = authApi.requestPasswordReset;
