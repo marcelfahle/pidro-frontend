@@ -11,7 +11,8 @@ export class AuthSheet extends Screen {
     await this.page.waitForTimeout(1200);
   }
 
-  async save(email: string, password: string) {
+  async save(email: string, password: string, name?: string) {
+    if (name) await this.field('Public name').fill(name);
     await this.field('Email').fill(email);
     await this.field('Password').fill(password);
     await this.button('Save account').click();

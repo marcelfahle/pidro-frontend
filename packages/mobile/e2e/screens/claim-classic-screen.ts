@@ -10,6 +10,11 @@ export class ClaimClassicScreen extends Screen {
     return this.text('Classic account found');
   }
 
+  /** A figure on the preview or the profile, e.g. "Games played". */
+  stat(label: string) {
+    return this.root.getByLabel(`${label}: `);
+  }
+
   async verify(login: string, password: string) {
     await this.text('How did you use Classic?').waitFor();
     if (!(await this.field('Classic username or email').isVisible())) {

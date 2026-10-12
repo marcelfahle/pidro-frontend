@@ -5,7 +5,10 @@ import { WelcomeWindow } from '../screens/welcome-window';
 import { profile, whoAmI } from '../support/api';
 import { sessionOf } from '../support/session';
 
-test('a Classic player claims their account from the first launch', async ({ page, player }) => {
+test('a Classic player claims their account from the first launch @responsive', async ({
+  page,
+  player,
+}) => {
   await page.goto('/');
   await new WelcomeWindow(page).classicPlaque.click({ timeout: 30_000 });
   const claim = new ClaimClassicScreen(page);

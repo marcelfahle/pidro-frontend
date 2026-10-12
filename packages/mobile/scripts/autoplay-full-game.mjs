@@ -8,7 +8,7 @@
  * this verifies the backend loop AND gives us a real game-over room to
  * inspect in the UI.
  *
- * Usage: node scripts/autoplay-full-game.mjs [--user skiatest1] [--room CODE]
+ * Usage: node scripts/autoplay-full-game.mjs [--user skiatest1 | --token T] [--room CODE]
  */
 import { Socket } from 'phoenix';
 import WebSocket from 'ws';
@@ -24,6 +24,8 @@ function argValue(flag, fallback) {
 const username = argValue('--user', 'skiatest1');
 const password = argValue('--password', 'hallohallo');
 const fixedRoom = argValue('--room', null);
+// A session token plays as that player instead of logging in (a guest has no password).
+const fixedToken = argValue('--token', null);
 const maxMinutes = Number(argValue('--max-minutes', '20'));
 // After game over, ask for a rematch instead of exiting: `now`, or
 // `after-others` to wait until another human has asked (then `--rematch-delay-ms`
@@ -58,13 +60,18 @@ async function api(path, method, token, body) {
 }
 
 async function main() {
-  const login = await api('/api/v1/auth/login', 'POST', null, {
-    username,
-    password,
-  });
-  if (!login.ok) throw new Error(`login failed: ${login.status}`);
-  const token = login.payload?.data?.token ?? login.payload?.token;
-  log(`logged in as ${username}`);
+  let token = fixedToken;
+  if (token) {
+    log('playing with the given session token');
+  } else {
+    const login = await api('/api/v1/auth/login', 'POST', null, {
+      username,
+      password,
+    });
+    if (!login.ok) throw new Error(`login failed: ${login.status}`);
+    token = login.payload?.data?.token ?? login.payload?.token;
+    log(`logged in as ${username}`);
+  }
 
   let roomCode = fixedRoom;
   if (roomCode) {

@@ -5,7 +5,7 @@ import { RegisterScreen } from '../screens/register-screen';
 import { WelcomeWindow } from '../screens/welcome-window';
 import { sessionOf } from '../support/session';
 
-test('a new player creates an account, stays signed in, and signs out', async ({
+test('a new player creates an account, stays signed in, and signs out @responsive', async ({
   page,
   player,
 }) => {

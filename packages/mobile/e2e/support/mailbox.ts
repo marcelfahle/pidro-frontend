@@ -10,10 +10,14 @@ export async function mailTo(email: string) {
   return mail;
 }
 
-/** The reset token in the link the email carries. */
-export async function resetTokenFor(email: string) {
+/** The link the reset email carries; in dev it points at the old web client. */
+export async function resetLinkFor(email: string) {
   const mail = await mailTo(email);
   const link = /(https?:\/\/\S+token=\S+)/.exec(mail.text_body)?.[1];
   if (!link) throw new Error(`no link in: ${mail.text_body}`);
-  return new URL(link).searchParams.get('token') as string;
+  return link;
+}
+
+export async function resetTokenFor(email: string) {
+  return new URL(await resetLinkFor(email)).searchParams.get('token') as string;
 }
