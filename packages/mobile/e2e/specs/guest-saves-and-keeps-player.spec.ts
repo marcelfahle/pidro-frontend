@@ -21,7 +21,7 @@ test('a guest saves their player and keeps it', async ({ page, player }) => {
   await sheet.settle();
 
   await sheet.save(player.email, 'short');
-  await expect(sheet.text('Use at least 8 characters.')).toBeVisible();
+  await expect(sheet.text('Use 8 characters or more.')).toBeVisible();
   await sheet.save(player.email, player.password);
   await page.waitForURL(/\/lobby$/);
 

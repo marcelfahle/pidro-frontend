@@ -108,17 +108,6 @@ export function AuthSheet({
     setHandingOff(true);
   };
 
-  // Reopening the sheet after a hand-off shows it again.
-  const [wasOpen, setWasOpen] = useState(isOpen);
-  if (wasOpen !== isOpen) {
-    setWasOpen(isOpen);
-    if (!isOpen) setHandingOff(false);
-  }
-
-  useEffect(() => {
-    if (handingOff && Platform.OS !== 'ios') finishHandOff();
-  });
-
   const resetForm = () => {
     setDisplayName(initialName);
     setEmail('');
@@ -127,6 +116,20 @@ export function AuthSheet({
     setMessage(null);
     setClassicNameReserved(false);
   };
+
+  // Opening or closing starts a clean form (not onShow, which fires after the
+  // slide-in and would wipe what was typed meanwhile). Closing also lets a
+  // hand-off's reopened sheet show again.
+  const [wasOpen, setWasOpen] = useState(isOpen);
+  if (wasOpen !== isOpen) {
+    setWasOpen(isOpen);
+    if (!isOpen) setHandingOff(false);
+    resetForm();
+  }
+
+  useEffect(() => {
+    if (handingOff && Platform.OS !== 'ios') finishHandOff();
+  });
 
   const clearField = (field: GuestSaveField) => {
     setFields((current) => ({ ...current, [field]: undefined }));
@@ -138,7 +141,7 @@ export function AuthSheet({
     const nextFields: Partial<Record<GuestSaveField, string>> = {};
     if (!displayName.trim()) nextFields.displayName = 'Enter your public name.';
     if (!email.trim()) nextFields.email = 'Enter an email address.';
-    if (password.length < 8) nextFields.password = 'Use at least 8 characters.';
+    if (password.length < 8) nextFields.password = 'Use 8 characters or more.';
     if (Object.keys(nextFields).length) {
       setFields(nextFields);
       return;
@@ -162,7 +165,6 @@ export function AuthSheet({
       onDismiss={finishHandOff}
       transparent
       animationType={reduceMotion ? 'none' : 'slide'}
-      onShow={resetForm}
       onRequestClose={onClose}>
       <SafeAreaProvider>
         <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
