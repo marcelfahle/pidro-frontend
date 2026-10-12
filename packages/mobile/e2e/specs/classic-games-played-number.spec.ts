@@ -1,0 +1,36 @@
+import { test, expect } from '../fixtures';
+import { ClaimClassicScreen } from '../screens/claim-classic-screen';
+import { ProfileScreen } from '../screens/profile-screen';
+import { WelcomeWindow } from '../screens/welcome-window';
+
+// What Classic kept: an old total (frozen in 2016) and a counter used since.
+const accounts = [
+  { kind: 'oldtotal', title: 'only the old total', games: '300' },
+  { kind: 'counter', title: 'a counter at or above the old total', games: '1,284' },
+  { kind: 'lower', title: 'a counter below the old total', games: '340' },
+];
+
+for (const { kind, title, games } of accounts) {
+  test(`a Classic account with ${title} shows ${games} games played`, async ({ page, player }) => {
+    await page.goto('/');
+    await new WelcomeWindow(page).classicPlaque.click({ timeout: 30_000 });
+    const claim = new ClaimClassicScreen(page);
+    await claim.verify(`${kind}-${player.id}`, player.classicPassword);
+    await expect(claim.found).toBeVisible();
+    await expect(claim.stat('Games played')).toHaveAttribute(
+      'aria-label',
+      `Games played: ${games}`
+    );
+
+    await claim.createAccountAndClaim({
+      username: player.name,
+      email: player.email,
+      password: player.password,
+    });
+    await page.waitForURL(/\/profile/);
+    await expect(new ProfileScreen(page).stat('Games played')).toHaveAttribute(
+      'aria-label',
+      `Games played: ${games}`
+    );
+  });
+}

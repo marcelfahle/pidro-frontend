@@ -4,7 +4,7 @@ import { LoginScreen } from '../screens/login-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { register } from '../support/api';
 
-test('a player signs in with a wrong password, then with email, then with their name', async ({
+test('a player signs in with a wrong password, then with email, then with their name @responsive', async ({
   page,
   player,
 }) => {

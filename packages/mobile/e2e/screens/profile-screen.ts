@@ -6,6 +6,15 @@ export class ProfileScreen extends Screen {
     super(page, 'profile-screen');
   }
 
+  stat(label: string) {
+    return this.classicSection.getByLabel(`${label}: `);
+  }
+
+  /** Opens the save sheet from the profile. */
+  saveYourProgress() {
+    return this.button('Save your progress').click();
+  }
+
   get classicSection() {
     return this.page.getByTestId('profile-classic-section');
   }

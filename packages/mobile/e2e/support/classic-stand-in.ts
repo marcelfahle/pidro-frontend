@@ -2,6 +2,8 @@
 // for it (empty secret). Stateless: the login says what Classic would answer.
 //   classic-…  an account that exists      off-…   one that is switched off
 //   rude-…     a name that cannot be shown  other   unknown
+//   nameless-… no username, only a first name (a pre-2017 account)
+//   oldtotal-… / counter-… / lower-…  games: only the old total, a counter above it, one below it
 // The Classic id is a hash of the login, so parallel tests share nothing.
 import { createHash } from 'node:crypto';
 import { createServer } from 'node:http';
@@ -10,13 +12,34 @@ export const CLASSIC_PASSWORD = 'classic-pass';
 
 const classicId = (login: string) => createHash('sha1').update(login).digest().readUIntBE(0, 5);
 
+const KNOWN = /^(classic|rude|nameless|oldtotal|counter|lower)-/;
+
+// What a Classic player has played: the old total, and the counter kept since December 2016.
+export const CLASSIC_GAMES = { oldtotal: 300, counter: 1284, lower: 340 };
+
+function games(login: string) {
+  const base = {
+    legacy_played_games: 300,
+    legacy_victories: 160,
+    legacy_losses: 140,
+    total_game: 1284,
+    win_game: 700,
+    lost_game: 584,
+  };
+  if (login.startsWith('oldtotal-'))
+    return { ...base, total_game: null, win_game: null, lost_game: null };
+  if (login.startsWith('lower-')) return { ...base, total_game: 40, win_game: 20, lost_game: 20 };
+  return base;
+}
+
 // Mirrors the production payload pinned in the backend's classic_client_test.exs.
 function profile(login: string) {
+  const nameless = login.startsWith('nameless-');
   return {
     id: classicId(login),
-    username: login.startsWith('rude-') ? 'fuckface' : login,
-    has_username: true,
-    first_name: null,
+    username: login.startsWith('rude-') ? 'fuckface' : nameless ? null : login,
+    has_username: !nameless,
+    first_name: nameless ? 'Gertrude' : null,
     email: `${login}@classic.example`,
     fbid: null,
     member_since: '2012-04-03T10:00:00',
@@ -24,12 +47,7 @@ function profile(login: string) {
     xp: 48_200,
     level: 42,
     games: {
-      legacy_played_games: 300,
-      legacy_victories: 160,
-      legacy_losses: 140,
-      total_game: 1284,
-      win_game: 700,
-      lost_game: 584,
+      ...games(login),
       win_percent: 54,
       games_logged: 900,
       games_started: 950,
@@ -46,15 +64,13 @@ function answer(method: string, url: URL, body: string): [number, object] {
     const { login = '', password } = JSON.parse(body || '{}');
     const name = String(login).toLowerCase();
     if (name.startsWith('off-')) return [403, { error: 'inactive' }];
-    const known = /^(classic|rude)-/.test(name);
+    const known = KNOWN.test(name);
     if (!known || password !== CLASSIC_PASSWORD) return [401, { error: 'invalid' }];
     return [200, { classic: profile(name) }];
   }
   if (method === 'GET' && url.pathname === '/internal/claims/lookup') {
     const name = (url.searchParams.get('email') ?? '').split('@')[0].toLowerCase();
-    return /^(classic|rude)-/.test(name)
-      ? [200, { classic: profile(name) }]
-      : [404, { error: 'not found' }];
+    return KNOWN.test(name) ? [200, { classic: profile(name) }] : [404, { error: 'not found' }];
   }
   return [404, { error: 'not found' }];
 }

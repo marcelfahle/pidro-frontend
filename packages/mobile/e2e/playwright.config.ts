@@ -21,5 +21,16 @@ export default defineConfig({
   },
   projects: [
     { name: 'phone', use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2 } },
+    // The layouts that differ most from the phone run a tagged handful of journeys.
+    {
+      name: 'landscape',
+      grep: /@responsive/,
+      use: { viewport: { width: 844, height: 390 }, deviceScaleFactor: 2 },
+    },
+    {
+      name: 'tablet',
+      grep: /@responsive/,
+      use: { viewport: { width: 820, height: 1180 }, deviceScaleFactor: 2 },
+    },
   ],
 });

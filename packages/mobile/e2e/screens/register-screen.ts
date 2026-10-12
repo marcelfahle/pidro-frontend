@@ -28,6 +28,10 @@ export class RegisterScreen extends Screen {
     await this.enterName(player.name);
   }
 
+  goBack() {
+    return this.button('Go back').click();
+  }
+
   get signInInstead() {
     return this.text('Sign in instead');
   }

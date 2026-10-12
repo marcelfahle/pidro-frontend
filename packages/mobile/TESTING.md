@@ -118,19 +118,39 @@ the multiplayer UI game at CI pacing.
 
 ## Account journeys (the "Account e2e" CI job)
 
-`e2e/` holds sixteen account journeys (age gate, guest, create account, sign in,
-forgot password, saving a guest, claiming a Classic account) on `@playwright/test`,
-one phone project at 390×844. They drive the real Expo web client against a real
-local backend, and each leaves a video; a failing one also leaves a trace. The suite
-starts its own stand-in for Classic on `127.0.0.1:4001`, which is where the dev
-backend already looks for it. A journey tagged `@gap` asserts what the app does
-today where a product fix is still open; the ticket is named in the spec.
+`e2e/` holds the account journeys (age gate, welcome and Home, guest, create account,
+sign in, forgot password, saving a guest, claiming a Classic account, invites, dropped
+connections) on `@playwright/test`. They drive the real Expo web client against a real
+local backend, and each leaves a video; a failing one also leaves a trace. The `phone`
+project (390×844) runs all of them; `landscape` (844×390) and `tablet` (820×1180) run
+the ones tagged `@responsive` in their title. A journey tagged `@gap` asserts what the
+app does today where a product fix is still open; the spec names the ticket.
+
+What the suite starts or needs besides Expo web and the backend:
+
+- A stand-in for Classic on `127.0.0.1:4001`, where the dev backend already looks for it
+  (empty secret). The login says what Classic answers: `classic-…` exists, `off-…` is
+  switched off, `rude-…` has a name that cannot be shown, `nameless-…` has no username,
+  `oldtotal-…`, `counter-…` and `lower-…` differ in the games they played. The suite
+  starts it itself.
+- One reserved Classic name, `ReservedRita`, for the journeys where a name belongs to a
+  Classic player. Load it into the database once, before the backend starts (insert only,
+  so running it again is harmless): from `pidro_backend`,
+  `mix pidro.import_classic_name_reservations <path to packages/mobile/e2e/classic-name-reservations.json>`.
+- The old web client on `127.0.0.1:5173`, because the reset email links to it and the
+  journeys follow that link.
+- The backend with game pacing, so a bot game is over in under a minute: the journeys that
+  need a finished game play it out with `scripts/autoplay-full-game.mjs --token`.
 
 To run it on spare ports without touching your daily backend:
 
 ```bash
-# Terminal 1, from pidro_backend
-PORT=4100 mix phx.server
+# Terminal 1, from pidro_backend (load the reserved name first, see above)
+PORT=4100 \
+LIFECYCLE_TURN_TIMER_BID_MS=1200 LIFECYCLE_TURN_TIMER_PLAY_MS=900 \
+LIFECYCLE_BOT_DELAY_MS=60 LIFECYCLE_BOT_DELAY_VARIANCE_MS=40 \
+LIFECYCLE_BOT_MIN_DELAY_MS=20 LIFECYCLE_TRICK_TRANSITION_DELAY_MS=80 \
+LIFECYCLE_HAND_TRANSITION_DELAY_MS=120 mix phx.server
 
 # Terminal 2, from packages/mobile
 EXPO_NO_DOTENV=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
@@ -138,7 +158,11 @@ EXPO_PUBLIC_WS_URL=ws://127.0.0.1:4100/socket \
 NODE_OPTIONS="--max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs" \
 ../../node_modules/.bin/expo start --web --port 8089
 
-# Terminal 3, from packages/mobile
+# Terminal 3, from packages/web (the port must be 5173: it is in the email link)
+VITE_API_URL=http://127.0.0.1:4100 VITE_WS_URL=ws://127.0.0.1:4100/socket \
+  bun run dev --host 127.0.0.1 --port 5173
+
+# Terminal 4, from packages/mobile
 API_BASE_URL=http://127.0.0.1:4100 MOBILE_BASE_URL=http://localhost:8089 \
 bun run e2e:accounts [part of a spec name]
 ```
