@@ -7,7 +7,7 @@ export class HomeScreen extends Screen {
   }
 
   get playOnline() {
-    return this.page.getByTestId('home-play-online');
+    return this.root.getByTestId('home-play-online');
   }
 
   get signIn() {

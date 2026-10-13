@@ -18,8 +18,6 @@ const classicId = (login: string) => createHash('sha1').update(login).digest().r
 const KNOWN = /^(classic|rude|nameless|oldtotal|counter|lower)-/;
 
 // What a Classic player has played: the old total, and the counter kept since December 2016.
-export const CLASSIC_GAMES = { oldtotal: 300, counter: 1284, lower: 340 };
-
 function games(login: string) {
   const base = {
     legacy_played_games: 300,

@@ -23,6 +23,10 @@ export async function playOutGame(page: Page, token: string) {
   await run(process.execPath, [script, '--token', token, '--room', room], {
     env: { ...process.env, API_BASE_URL: API, WS_BASE_URL: `${API.replace(/^http/, 'ws')}/socket` },
     timeout: 120_000,
+  }).catch((error) => {
+    // Its log is the only account of the game: which hand, which action, what the server said.
+    const log = `${error.stdout ?? ''}${error.stderr ?? ''}`.split('\n').slice(-40).join('\n');
+    throw new Error(`the autoplayer stopped (${error.signal ?? `exit ${error.code}`}):\n${log}`);
   });
   const window = page.getByTestId('game-over-window');
   await expect(window).toBeVisible({ timeout: 30_000 });

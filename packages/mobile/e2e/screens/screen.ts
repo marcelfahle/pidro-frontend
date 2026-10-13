@@ -3,6 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 /**
  * One screen, found by its testID. Expo Router on web keeps earlier screens
  * mounted under the current one, so every locator starts from the top one.
+ * Only a window a Modal opens, which renders outside the screen, is looked up on the page.
  */
 export class Screen {
   readonly root: Locator;
