@@ -57,6 +57,12 @@ const allCases = [
     authenticated: true,
     authFixture: guestAuthFixture,
   },
+  {
+    name: 'home-table-unknown',
+    path: '/home?fixture=table-unknown',
+    testId: 'home-screen',
+    authenticated: true,
+  },
   { name: 'profile', path: '/profile', testId: 'profile-screen', authenticated: true },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
@@ -975,7 +981,7 @@ async function main() {
             });
           });
         }
-        if (['home', 'home-guest', 'profile'].includes(testCase.name)) {
+        if (['home', 'home-guest', 'home-table-unknown', 'profile'].includes(testCase.name)) {
           await page.route('**/api/v1/profile', async (route) => {
             const guest = testCase.name === 'home-guest';
             await route.fulfill({
@@ -1043,12 +1049,16 @@ async function main() {
             await page.getByText('Bengt', { exact: true }).waitFor();
             await page.getByText('28 games · Level 7', { exact: true }).waitFor();
             await page.getByText('3 tables open', { exact: true }).waitFor();
+          } else if (testCase.name === 'home-table-unknown') {
+            await page
+              .getByText('We could not check whether you are at another table.', { exact: false })
+              .waitFor();
           } else if (testCase.name === 'home-guest') {
             await page.getByText('Lucky Moose', { exact: true }).waitFor();
             await page.getByText('Guest · 1 game', { exact: true }).waitFor();
           }
           if (viewport.name === 'landscape' && testCase.name.startsWith('home')) {
-            const expectedHeight = testCase.name === 'home' ? 170 : 150;
+            const expectedHeight = testCase.name === 'home-guest' ? 150 : 170;
             for (const tile of ['home-quick-game', 'home-play-online']) {
               const box = await getStableBox(page.getByTestId(tile), page);
               assert.equal(Math.round(box?.height ?? 0), expectedHeight, `${tile} height`);

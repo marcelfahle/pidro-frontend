@@ -102,7 +102,7 @@ jobs:
         env:
           CI: '1'
           EXPO_NO_DOTENV: '1'
-          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+          NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
           BACKEND_DIR: ${{ github.workspace }}/backend
         run: e2e/ci.sh
 
