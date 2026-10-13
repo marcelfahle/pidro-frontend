@@ -601,17 +601,22 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
 async function assertAuthSheetKeepsTyping(page, name) {
   if (name !== 'auth-sheet') return;
   await page.getByRole('button', { name: 'Friends', exact: true }).click();
-  // Typed the moment the sheet appears, before its slide-in animation ends.
-  const email = page.getByLabel('Email', { exact: true });
-  await email.fill('early@example.com');
-  // Wait for the slide-in itself to end, the moment onShow used to wipe the form.
-  const sliding = await email.evaluate(async (node) => {
+  // Hold the slide-in, type, then let it end: onShow fired there and wiped the form.
+  const sheet = page.getByTestId('auth-sheet');
+  const held = await sheet.evaluate((node) => {
     const slideIn = document.getAnimations().filter((a) => a.effect?.target?.contains(node));
-    await Promise.all(slideIn.map((a) => a.finished));
-    await new Promise((settled) => requestAnimationFrame(() => requestAnimationFrame(settled)));
+    slideIn.forEach((a) => a.pause());
     return slideIn.length;
   });
-  assert.ok(sliding > 0, 'auth sheet email was filled after the slide-in, not during it');
+  assert.ok(held > 0, 'auth sheet had slid in before it could be held');
+  const email = page.getByLabel('Email', { exact: true });
+  await email.fill('early@example.com');
+  await sheet.evaluate(async (node) => {
+    const slideIn = document.getAnimations().filter((a) => a.effect?.target?.contains(node));
+    slideIn.forEach((a) => a.play());
+    await Promise.all(slideIn.map((a) => a.finished));
+    await new Promise((settled) => requestAnimationFrame(() => requestAnimationFrame(settled)));
+  });
   assert.equal(await email.inputValue(), 'early@example.com', 'auth sheet wiped the typed email');
 }
 
