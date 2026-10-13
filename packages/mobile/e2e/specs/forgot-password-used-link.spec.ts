@@ -17,8 +17,10 @@ test('a used link is refused, and the app offers a new one', async ({ page, play
   await web.setNewPassword(player.newPassword);
   await expect(page).toHaveURL(/\/home$/);
 
-  // The web page signed this browser in; the link is opened again signed out.
-  await page.evaluate(() => localStorage.clear());
+  // The web page signed this browser in; sign out there and open the link again. Clearing
+  // storage instead races the web Home, which writes the session back when its profile loads.
+  await page.getByRole('button', { name: 'Log Out' }).click();
+  await expect(page).toHaveURL(/\/login$/);
   await page.goto(link);
   await web.setNewPassword('hallohallo3');
   await expect(web.error).toBeVisible();
