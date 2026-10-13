@@ -10,8 +10,12 @@ test('creating an account with an email that has one points the player to sign i
   await register(player);
   const create = new RegisterScreen(page);
   await page.goto('/register');
+  const note = create.text(/If we know you, you’re signed in/);
+  await expect(note).toBeVisible();
   await create.createAccount({ ...player, name: `Other${player.id}` });
   await expect(create.text('That email already has a Pidro account.')).toBeVisible();
+  // The note would contradict the message, so it is hidden while the message shows.
+  await expect(note).toBeHidden();
 
   await create.signInInstead.click();
   const login = new LoginScreen(page);
