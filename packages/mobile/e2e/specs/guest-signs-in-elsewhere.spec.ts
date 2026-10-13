@@ -22,7 +22,10 @@ test('a guest who signs in to an account is asked before switching players', asy
   await login.signIn(account.email, 'wrong-password');
   await login.switchAccount();
   await expect(login.alert).toBeVisible();
-  expect((await sessionOf(page))?.user).toMatchObject({ id: started.user.id, guest: true });
+  expect(await sessionOf(page)).toMatchObject({
+    accessToken: started.token,
+    user: { id: started.user.id, guest: true },
+  });
   expect(await whoAmI(started.token)).toMatchObject({ id: started.user.id, guest: true });
 
   await login.signIn(account.email, account.password);
