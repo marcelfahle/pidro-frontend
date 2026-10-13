@@ -323,6 +323,10 @@ async function stageTwoMultiplayerVideo() {
   let hostHasLeft = false;
   let lastPhase;
   let interruptedPhase;
+  // The guest's seat never acts, so every third turn timeout the server kicks
+  // it (force_disconnect) and the app rejoins 1.2 s later. A kick on the last
+  // tricks can miss completion and the leave without a terminal frame.
+  let kicked = false;
   let rejoinedWaiting = false;
   let freshGameReceived = false;
   const terminalPhases = ['complete', 'game_over', 'finished'];
@@ -339,10 +343,15 @@ async function stageTwoMultiplayerVideo() {
       if (topic === `game:${roomCode}`) {
         const data = event === 'phx_reply' && payload.status === 'ok' ? payload.response : payload;
         const state = data.state ?? data.game_state;
+        if (event === 'force_disconnect') kicked = true;
+        const kickMissedCompletion =
+          kicked && event === 'phx_reply' && data.readiness?.status === 'waiting' && !state;
+        if (state) kicked = false;
         if (
           interruptCompletion &&
           !interrupted &&
-          (event === 'game_over' ||
+          (kickMissedCompletion ||
+            event === 'game_over' ||
             terminalPhases.includes(state?.phase) ||
             data.readiness?.status === 'finished' ||
             (event === 'readiness_updated' && payload.status === 'finished'))
