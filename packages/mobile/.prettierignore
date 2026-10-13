@@ -4,5 +4,8 @@
 .expo/
 .factory/
 dist/
+e2e/report*/
+e2e/results*/
+e2e/journeys*.json
 node_modules/
 skills-lock.json
