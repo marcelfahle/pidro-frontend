@@ -277,9 +277,14 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
     retriedRef.current = true;
     setSubmitting(true);
     // No table left to leave is the state the invite wanted; the join reports what is wrong.
-    await lobbyApi.leaveRoom('current').catch(() => undefined);
+    // After a failed leave the join asks again, so a player still seated can leave again.
+    const left = await lobbyApi.leaveRoom('current').then(
+      () => true,
+      () => false
+    );
     if (!routeActiveRef.current) return;
-    await redeem(true);
+    if (!left) retriedRef.current = false;
+    await redeem(left);
   }, [redeem]);
 
   const exit = useCallback(() => {
