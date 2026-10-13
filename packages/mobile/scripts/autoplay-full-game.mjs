@@ -291,21 +291,24 @@ async function main() {
     const choice = chooseAction(actions, state);
     if (!choice) return;
     acting = true;
-    // Once answered, act on any state that came meanwhile: after an action chosen from a
-    // stale state is rejected, no new state arrives until this seat acts.
-    const answered = () => {
+    // After an action chosen from a stale state is rejected, no new state arrives until
+    // this seat acts: act on one that came meanwhile. (After an accepted action, one that
+    // came meanwhile is older than the action.)
+    const rejected = () => {
       acting = false;
       if (latest !== payload) handleState(latest);
     };
     setTimeout(() => {
       channel
         .push(choice[0], choice[1])
-        .receive('ok', answered)
+        .receive('ok', () => {
+          acting = false;
+        })
         .receive('error', (err) => {
           log(`action ${choice[0]} rejected: ${JSON.stringify(err)}`);
-          answered();
+          rejected();
         })
-        .receive('timeout', answered);
+        .receive('timeout', rejected);
       log(`-> ${choice[0]} ${JSON.stringify(choice[1]).slice(0, 60)}`);
     }, 400);
   }
