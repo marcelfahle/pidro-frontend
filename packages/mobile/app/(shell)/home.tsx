@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
@@ -28,6 +28,9 @@ import { apiErrorInfo } from '@/utils/apiErrors';
 
 type LobbyCountState = 'loading' | 'ready' | 'failed';
 
+const TABLE_UNKNOWN_ERROR =
+  'We could not check whether you are at another table. Please try again.';
+
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
@@ -41,9 +44,13 @@ export default function HomeScreen() {
   const setStats = useLobbyStore((state) => state.setStats);
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const router = useRouter();
+  const params = useLocalSearchParams<{ fixture?: string }>();
+  const fixture = __DEV__ ? params.fixture : undefined;
   const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [accountSheetReason, setAccountSheetReason] = useState<AuthSheetReason | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null
+  );
   const [identity, setIdentity] = useState<ProfileIdentity | null>(null);
   const [lobbyCountState, setLobbyCountState] = useState<LobbyCountState>('loading');
   const refreshIdentity = useProfileIdentity();
@@ -103,7 +110,10 @@ export default function HomeScreen() {
       const { code, detail } = apiErrorInfo(err);
       if (code === 'ALREADY_IN_ROOM') {
         const lobbyResponse = await lobbyApi.listLobby().catch(() => null);
-        if (lobbyResponse?.lobby.my_rejoinable.length) {
+        if (!lobbyResponse) {
+          // Without the lobby we cannot tell a solo table from a live multiplayer one.
+          setError(TABLE_UNKNOWN_ERROR);
+        } else if (lobbyResponse.lobby.my_rejoinable.length) {
           setError('You already have a multiplayer table. Rejoin it or leave it first.');
           router.push('/lobby');
         } else {

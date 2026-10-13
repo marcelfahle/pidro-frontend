@@ -247,7 +247,8 @@ export default function LobbyScreen() {
           );
         } else {
           try {
-            await lobbyApi.leaveRoom('current');
+            // No table left to leave is the state the lobby wanted.
+            await lobbyApi.leaveRoom('current').catch(() => undefined);
             const retryResponse = await lobbyApi.createRoom(data);
             if (!retryResponse?.code) throw new Error('No room code returned after retry');
             captureAnalytics('room_created', {

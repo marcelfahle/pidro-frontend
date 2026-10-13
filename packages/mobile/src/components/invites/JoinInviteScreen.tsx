@@ -276,20 +276,10 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
     if (retriedRef.current) return;
     retriedRef.current = true;
     setSubmitting(true);
-    try {
-      await lobbyApi.leaveRoom('current');
-      if (!routeActiveRef.current) return;
-      await redeem(true);
-    } catch (caught) {
-      if (!routeActiveRef.current) return;
-      retriedRef.current = false;
-      const outcome = resolveJoinFailure(caught, true);
-      setError(
-        outcome.kind === 'failed' && outcome.detail ? outcome.detail : t('invite.error.redeem')
-      );
-    } finally {
-      if (routeActiveRef.current) setSubmitting(false);
-    }
+    // No table left to leave is the state the invite wanted; the join reports what is wrong.
+    await lobbyApi.leaveRoom('current').catch(() => undefined);
+    if (!routeActiveRef.current) return;
+    await redeem(true);
   }, [redeem]);
 
   const exit = useCallback(() => {
