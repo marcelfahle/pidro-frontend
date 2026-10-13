@@ -71,6 +71,11 @@ describe('Classic help request', () => {
     expect(await sendClassicHelp(help, deps(apiError(422, 'email')))).toEqual({
       status: 'rejected',
       message: 'email detail',
+      field: 'email',
+    });
+    expect(await sendClassicHelp(help, deps(apiError(422, 'name')))).toEqual({
+      status: 'rejected',
+      message: 'name detail',
     });
     expect(await sendClassicHelp(help, deps(apiError(429)))).toEqual({
       status: 'rejected',

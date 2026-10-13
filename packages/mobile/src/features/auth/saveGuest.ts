@@ -41,7 +41,8 @@ export function guestSaveFailure(error: unknown): GuestSaveFailure {
     }
   }
   return {
-    message: data?.errors?.[0]?.detail || data?.message || 'Could not save your account.',
+    message:
+      data?.errors?.[0]?.detail || data?.message || 'Could not save your account. Try again.',
     ...(Object.keys(fields).length ? { fields } : {}),
     ...(classicNameReserved ? { classicNameReserved: true } : {}),
   };

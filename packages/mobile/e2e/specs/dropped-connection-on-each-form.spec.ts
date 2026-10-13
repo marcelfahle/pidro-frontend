@@ -46,6 +46,7 @@ test('a dropped connection on each form is readable, leaves no spinner and keeps
     await screen.enterPassword(player.password);
     await screen.field('Public name').fill(`New${player.id}`);
     await screen.button('CONTINUE').click();
+    await expect(screen.alert).toHaveText('Could not save your account. Try again.');
     await expectRecoverable(screen, screen.button('CONTINUE'), [
       [screen.field('Public name'), `New${player.id}`],
     ]);

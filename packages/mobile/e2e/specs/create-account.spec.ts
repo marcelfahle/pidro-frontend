@@ -15,6 +15,10 @@ test('a new player creates an account, stays signed in, and signs out @responsiv
   await expect(register.root).toBeVisible();
 
   // Bad input is caught before anything is sent.
+  let sent = 0;
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/auth/register')) sent += 1;
+  });
   await register.enterEmail('not-an-email');
   await expect(register.text('Check that email address.')).toBeVisible();
   await register.enterEmail(player.email);
@@ -22,6 +26,9 @@ test('a new player creates an account, stays signed in, and signs out @responsiv
   await expect(register.text('Use 8 characters or more.')).toBeVisible();
 
   await register.enterPassword(player.password);
+  await register.enterName('  ');
+  await expect(register.text('Enter the name other players will see.')).toBeVisible();
+  expect(sent).toBe(0);
   await register.enterName(player.name);
   await expect(new HomeScreen(page).root).toBeVisible();
   await page.waitForURL(/\/home$/);
