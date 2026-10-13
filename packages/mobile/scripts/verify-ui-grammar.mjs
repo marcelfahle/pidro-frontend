@@ -64,6 +64,12 @@ const allCases = [
     testId: 'home-screen',
     authenticated: true,
   },
+  {
+    name: 'game-away',
+    path: '/game/AWAY01?fixture=away',
+    testId: 'game-away-window',
+    authenticated: true,
+  },
   { name: 'profile', path: '/profile', testId: 'profile-screen', authenticated: true },
   {
     name: 'profile-guest',
@@ -1033,6 +1039,10 @@ async function main() {
             });
           });
         }
+        if (testCase.name === 'game-away') {
+          // The away screen needs no server; keep the room and channel requests offline.
+          await page.route('**/api/v1/**', (route) => route.abort());
+        }
         let answerProfile = () => {};
         const profileAnswered = testCase.name.startsWith('profile')
           ? new Promise((answer) => (answerProfile = answer))
@@ -1115,6 +1125,9 @@ async function main() {
             await page
               .getByText('We could not check whether you are at another table.', { exact: false })
               .waitFor();
+          } else if (testCase.name === 'game-away') {
+            await page.getByRole('button', { name: "I'm back" }).waitFor();
+            await page.getByRole('button', { name: 'Back to lobby' }).waitFor();
           } else if (testCase.name === 'home-guest') {
             await page.getByText('Lucky Moose', { exact: true }).waitFor();
             await page.getByText('Guest · 1 game', { exact: true }).waitFor();

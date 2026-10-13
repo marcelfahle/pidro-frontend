@@ -161,7 +161,11 @@ const styles = StyleSheet.create({
  * Route: /game/{room_code}
  */
 export default function GameScreen() {
-  const { code, origin: originParam } = useLocalSearchParams<{ code: string; origin?: string }>();
+  const {
+    code,
+    origin: originParam,
+    fixture,
+  } = useLocalSearchParams<{ code: string; origin?: string; fixture?: string }>();
   const origin = parseGameOrigin(originParam);
   const exitPath = gameExitPath(origin);
   const router = useRouter();
@@ -184,6 +188,8 @@ export default function GameScreen() {
   const readiness = useGameStore((s) => s.readiness);
   const isChannelJoined = useGameStore((s) => s.isChannelJoined);
   const lastError = useGameStore((s) => s.lastError);
+  const away = useGameStore((s) => s.isAway) || (__DEV__ && fixture === 'away');
+  const setAway = useGameStore((s) => s.setAway);
   const handleReady = useCallback(() => {
     if (!readiness || !isChannelJoined || role !== 'player') {
       return Promise.reject(new Error('Reconnect before confirming readiness.'));
@@ -624,6 +630,17 @@ export default function GameScreen() {
           if (code) removeRoom(code);
           router.replace(destination);
         }}
+      />
+    );
+  }
+
+  if (away) {
+    return (
+      <GameJoinFailureScreen
+        failure="away"
+        exitLabel={exitPath === '/home' ? 'Back home' : 'Back to lobby'}
+        onExit={() => router.replace(exitPath)}
+        onReturn={() => setAway(false)}
       />
     );
   }

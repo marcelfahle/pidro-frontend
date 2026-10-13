@@ -12,7 +12,9 @@
  * The registered host first signs in through the real UI. A clean Chromium
  * profile then opens the join route, creates a guest, redeems the invite, and
  * sits at the table. The host's protocol client and server turn timers finish
- * the game while the guest watches in the client, recorded on video. At game
+ * the game while the guest watches in the client, recorded on video. Each time
+ * the server removes the idle guest for missed turns, the guest comes back
+ * through the away screen's I'm back button. At game
  * over the guest presses Play again in the UI, the window shows the vote, the
  * host agrees, and the second game starts in the same room without anybody
  * navigating. Before that game ends, the guest loses its socket and misses
@@ -313,6 +315,7 @@ async function stageTwoMultiplayerVideo() {
     recordVideo: { dir: artifactDir, size: { width: 844, height: 390 } },
   });
   const page = await context.newPage();
+  let keepSeat;
   const pageErrors = [];
   page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
@@ -324,8 +327,9 @@ async function stageTwoMultiplayerVideo() {
   let lastPhase;
   let interruptedPhase;
   // The guest's seat never acts, so every third turn timeout the server kicks
-  // it (force_disconnect) and the app rejoins 1.2 s later. A kick on the last
-  // tricks can miss completion and the leave without a terminal frame.
+  // it (force_disconnect) and the app shows the away screen until the guest
+  // presses I'm back. A kick on the last tricks can miss completion and the
+  // leave without a terminal frame.
   let kicked = false;
   let rejoinedWaiting = false;
   let freshGameReceived = false;
@@ -403,6 +407,25 @@ async function stageTwoMultiplayerVideo() {
     await page.waitForURL(new RegExp(`/game/${roomCode}$`), { timeout: 30_000 });
     log('nameless guest created and invite redeemed through the UI');
 
+    // Keep the guest seated for every scenario below: whenever the server
+    // removes it for missed turns, press I'm back. This polls instead of using
+    // addLocatorHandler because the script also sits in `await autoplayDone`
+    // for a whole game, where no Playwright action would run the handler.
+    let awayReturns = 0;
+    let returning = false;
+    const away = page.getByTestId('game-away-window');
+    keepSeat = setInterval(async () => {
+      if (returning || !(await away.isVisible().catch(() => false))) return;
+      returning = true;
+      awayReturns += 1;
+      log(`guest away after missed turns (${awayReturns}): pressing I'm back`);
+      await page
+        .getByRole('button', { name: "I'm back" })
+        .click({ timeout: 5_000 })
+        .catch(() => {});
+      returning = false;
+    }, 500);
+
     const seen = new Set();
     await captureMilestones(page, seen);
 
@@ -459,8 +482,9 @@ async function stageTwoMultiplayerVideo() {
     }
     await fillTheOpenSeatThroughUi(page, roomCode, seen);
     if (!freshGameReceived) throw new Error('PID-108: no fresh game state after readying');
+    if (awayReturns === 0) throw new Error('the idle guest was never sent to the away screen');
     log(
-      `stage 2 passed: game over, a rematch, then a bot in the seat the host left (milestones: ${[...seen].join(', ')})`
+      `stage 2 passed: game over, a rematch, then a bot in the seat the host left; the guest came back ${awayReturns} time(s) (milestones: ${[...seen].join(', ')})`
     );
     if (pageErrors.length) {
       log(`note: ${pageErrors.length} page error(s) during the game (non-fatal):`);
@@ -471,6 +495,7 @@ async function stageTwoMultiplayerVideo() {
     await page.screenshot({ path: resolve(artifactDir, 'failure.png') }).catch(() => {});
     throw error;
   } finally {
+    clearInterval(keepSeat);
     await context.close(); // flushes the video file
     await browser.close();
     // Chromium can leave more than one video segment; keep the largest as

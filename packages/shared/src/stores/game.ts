@@ -94,6 +94,8 @@ interface GameState {
 
   isChannelJoined: boolean;
   isRejoining: boolean;
+  /** The server removed this player for missing turns; a bot is taking the seat. */
+  isAway: boolean;
   lastError: string | null;
 
   initFromRoom: (params: { room: Room; youPlayerId: string }) => void;
@@ -115,6 +117,7 @@ interface GameState {
   setPlayerRank: (position: Position, rank: PlayerRank | null) => void;
   setChannelStatus: (joined: boolean, rejoining?: boolean) => void;
   setError: (err: string | null) => void;
+  setAway: (away: boolean) => void;
   reset: () => void;
 }
 
@@ -186,6 +189,7 @@ export const useGameStore = create<GameState>((set, get) => ({
     }),
   isChannelJoined: false,
   isRejoining: false,
+  isAway: false,
   lastError: null,
 
   initFromRoom: ({ room, youPlayerId }) =>
@@ -520,6 +524,8 @@ export const useGameStore = create<GameState>((set, get) => ({
 
   setError: (err) => set({ lastError: err }),
 
+  setAway: (away) => set({ isAway: away }),
+
   reset: () =>
     set({
       roomCode: null,
@@ -541,6 +547,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       readiness: null,
       isChannelJoined: false,
       isRejoining: false,
+      isAway: false,
       lastError: null,
     }),
 }));

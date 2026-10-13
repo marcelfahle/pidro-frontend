@@ -18,6 +18,7 @@ import type { LegalAction, ServerGameState } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { waitingRoomEvent, type WaitingRoomEvent } from '../gameRoomEvents';
 import { terminalGameJoinFailure } from '../gameJoinFailure';
+import { reconnectsAfterClose } from '@/features/game/channelReconnect';
 
 let globalGameChannel: Channel | null = null;
 let notifySeatEvent: ((event: SeatEvent) => void) | undefined;
@@ -123,6 +124,8 @@ export const useGameChannel = ({
   const setReadiness = useGameStore((s) => s.setReadiness);
   const setChannelStatus = useGameStore((s) => s.setChannelStatus);
   const setError = useGameStore((s) => s.setError);
+  const setAway = useGameStore((s) => s.setAway);
+  const away = useGameStore((s) => s.isAway);
 
   const onSeatEventRef = useRef(onSeatEvent);
   const onProgressionSummaryRef = useRef(onProgressionSummary);
@@ -139,8 +142,9 @@ export const useGameChannel = ({
   useEffect(() => {
     initRealtime();
 
-    // Don't connect if not enabled (e.g., game not started yet)
-    if (!enabled || !roomCode) {
+    // Don't connect if not enabled (e.g., game not started yet), or while the
+    // player is away until they say they are back.
+    if (!enabled || away || !roomCode) {
       return;
     }
 
@@ -331,9 +335,7 @@ export const useGameChannel = ({
         clearTurnTimer();
         setRole(null);
         setChannelStatus(false, false);
-        setError(
-          'Disconnected for inactivity after repeated turn timeouts. Retry to rejoin when ready.'
-        );
+        setAway(true);
       });
 
       onCurrent('turn_changed', (payload: unknown) => {
@@ -522,8 +524,9 @@ export const useGameChannel = ({
         setRole(useGameStore.getState().role === 'spectator' ? 'spectator' : null);
         // An unexpected close (socket drop, server restart) leaves no channel
         // behind and nothing re-runs the effect — reconnect ourselves while a
-        // screen still needs this topic. Intentional leave() sets refCount 0.
-        if (gameRefCount > 0) {
+        // screen still needs this topic. Intentional leave() sets refCount 0,
+        // and a player the server removed for missed turns stays away.
+        if (reconnectsAfterClose(useGameStore.getState().isAway, gameRefCount)) {
           reconnectTimer = setTimeout(() => {
             reconnectTimer = null;
             if (!disposed && gameRefCount > 0 && !globalGameChannel) {
@@ -553,6 +556,7 @@ export const useGameChannel = ({
   }, [
     roomCode,
     enabled,
+    away,
     setServerState,
     setPresentation,
     setLegalActions,
@@ -566,6 +570,7 @@ export const useGameChannel = ({
     setReadiness,
     setChannelStatus,
     setError,
+    setAway,
   ]);
 };
 
