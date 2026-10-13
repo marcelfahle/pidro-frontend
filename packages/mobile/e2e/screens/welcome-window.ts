@@ -7,11 +7,11 @@ export class WelcomeWindow extends Screen {
   }
 
   get quickGame() {
-    return this.page.getByTestId('welcome-quick-game');
+    return this.root.getByTestId('welcome-quick-game');
   }
 
   get playOnline() {
-    return this.page.getByTestId('welcome-play-online');
+    return this.root.getByTestId('welcome-play-online');
   }
 
   get classicPlaque() {

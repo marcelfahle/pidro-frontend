@@ -115,6 +115,8 @@ async function main() {
   let lastPhase = null;
   let lastScores = '';
   let acting = false;
+  // States that arrive while an action is in flight are only remembered here.
+  let latest = null;
   let finished = false;
   let progressionReceived = false;
   let progressionDeadline = null;
@@ -247,6 +249,7 @@ async function main() {
     if (!state || typeof state !== 'object' || !('phase' in state)) return;
     if (state.phase && readinessDeadline) clearTimeout(readinessDeadline);
     const actions = payload?.legal_actions ?? [];
+    latest = payload;
 
     const scores = JSON.stringify(state.scores ?? null);
     if (state.phase !== lastPhase || scores !== lastScores) {
@@ -288,19 +291,21 @@ async function main() {
     const choice = chooseAction(actions, state);
     if (!choice) return;
     acting = true;
+    // Once answered, act on any state that came meanwhile: after an action chosen from a
+    // stale state is rejected, no new state arrives until this seat acts.
+    const answered = () => {
+      acting = false;
+      if (latest !== payload) handleState(latest);
+    };
     setTimeout(() => {
       channel
         .push(choice[0], choice[1])
-        .receive('ok', () => {
-          acting = false;
-        })
+        .receive('ok', answered)
         .receive('error', (err) => {
           log(`action ${choice[0]} rejected: ${JSON.stringify(err)}`);
-          acting = false;
+          answered();
         })
-        .receive('timeout', () => {
-          acting = false;
-        });
+        .receive('timeout', answered);
       log(`-> ${choice[0]} ${JSON.stringify(choice[1]).slice(0, 60)}`);
     }, 400);
   }

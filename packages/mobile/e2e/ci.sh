@@ -75,12 +75,19 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
   {
     echo '### Account journeys'
     echo
+    # The backend is its main of the moment: a red run with no frontend change starts here.
+    git -C "$backend" log -1 --format='Backend: [%h](https://github.com/marcelfahle/pidro-backend/commit/%H) %s (%cd)' --date=iso
+    echo
     echo '| Journey | Result |'
     echo '| --- | --- |'
     for report in e2e/journeys*.json; do
       [ -f "$report" ] && jq -r '.. | .specs? // empty | .[] | .title as $title | .tests[] | "| \($title)\(if .projectName == "phone" then "" else " (\(.projectName))" end) | \({expected: "passed", unexpected: "FAILED", flaky: "passed on retry", skipped: "skipped"}[.status] // .status) |"' "$report"
     done
   } >> "$GITHUB_STEP_SUMMARY"
+  # A journey that needed its retry leaves the job green; flag it on the run itself.
+  for report in e2e/journeys*.json; do
+    [ -f "$report" ] && jq -r '.. | .specs? // empty | .[] | .title as $title | .tests[] | select(.status == "flaky") | "::warning title=Account journey passed on retry::\($title) (\(.projectName))"' "$report"
+  done
 fi
 
 [ "$first" -eq 0 ] && [ "$second" -eq 0 ]
