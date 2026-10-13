@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -53,6 +53,8 @@ function ProfileContent() {
   const [draft, setDraft] = useState<AvatarDraft | null>(null);
   const [draftUri, setDraftUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -98,11 +100,13 @@ function ProfileContent() {
     });
   };
 
-  usePreventRemove(!!dirty || busy, ({ data }) => {
-    if (busy) {
+  usePreventRemove(!!dirty || busy || deleting, ({ data }) => {
+    if (busy || deleting) {
       setConfirmation({
         title: 'Please wait',
-        description: 'Your photo or bio is still being processed.',
+        description: deleting
+          ? 'Your account is being deleted.'
+          : 'Your photo or bio is still being processed.',
         label: 'OK',
         proceed: () => {},
       });
@@ -332,7 +336,9 @@ function ProfileContent() {
       label: 'Delete account',
       cancelLabel: 'Cancel',
       proceed: async () => {
-        setBusy(true);
+        if (deleteInFlight.current) return;
+        deleteInFlight.current = true;
+        setDeleting(true);
         try {
           await deleteAccount();
           closeEditor();
@@ -342,7 +348,8 @@ function ProfileContent() {
             apiErrorInfo(deleteFailure).detail || 'Could not delete your account. Try again.'
           );
         } finally {
-          setBusy(false);
+          deleteInFlight.current = false;
+          setDeleting(false);
         }
       },
     });
@@ -364,11 +371,16 @@ function ProfileContent() {
           {user.email}
         </PidroText>
       )}
-      <Button label="Sign out" variant="ghost" disabled={busy} onPress={handleSignOut} />
+      <Button
+        label="Sign out"
+        variant="ghost"
+        disabled={busy || deleting}
+        onPress={handleSignOut}
+      />
       <Button
         label="Delete account"
         variant="ghost"
-        disabled={busy}
+        disabled={busy || deleting}
         onPress={handleDeleteAccount}
       />
       {deleteError ? (
@@ -589,6 +601,8 @@ function ProfileContent() {
             </Surface>
           </View>
         </View>
+        {/* The Classic card arrives later; above it the account buttons would move. */}
+        {!twoColumns && accountActions}
         {classic !== undefined ? (
           classic ? (
             <ClassicSection classic={classic} />
@@ -610,7 +624,6 @@ function ProfileContent() {
             </Surface>
           )
         ) : null}
-        {!twoColumns && accountActions}
       </View>
       <Modal
         isOpen={!!confirmation}

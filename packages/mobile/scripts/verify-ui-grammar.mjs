@@ -64,6 +64,13 @@ const allCases = [
     authenticated: true,
   },
   { name: 'profile', path: '/profile', testId: 'profile-screen', authenticated: true },
+  {
+    name: 'profile-guest',
+    path: '/profile',
+    testId: 'profile-screen',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
@@ -574,26 +581,61 @@ async function assertHomeGuestInteractions(page, name) {
   await page.waitForURL((url) => url.pathname.endsWith('/join-code'));
 }
 
+// The Classic card arrives with the profile's own request, after the account buttons.
+async function assertAccountButtonsStayPut(page, name, answerProfile) {
+  if (!name.startsWith('profile')) return;
+  const buttons = ['Save your progress', 'Sign out', 'Delete account'].map((label) =>
+    page.getByRole('button', { name: label, exact: true })
+  );
+  await buttons[2].waitFor();
+  const boxes = () =>
+    Promise.all(buttons.map(async (button) => ((await button.count()) ? button.boundingBox() : null)));
+  const before = await boxes();
+  answerProfile();
+  await page
+    .getByTestId('profile-classic-section')
+    .or(page.getByRole('button', { name: 'Claim Pidro Classic', exact: true }))
+    .waitFor();
+  await page.waitForTimeout(150);
+  assert.deepEqual(await boxes(), before, `${name}: the Classic card moved the account buttons`);
+}
+
 async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
-  if (name !== 'profile') return;
-  await page.getByTestId('profile-classic-section').waitFor();
+  if (!name.startsWith('profile')) return;
+  const classic = name === 'profile';
   await page.getByRole('button', { name: 'Delete account', exact: true }).click();
   await page.getByText('Delete your account?', { exact: true }).waitFor();
-  await page.getByText(/Your Classic account stays in Classic/).waitFor();
+  const classicSentence = page.getByText(/Your Classic account stays in Classic/);
+  if (classic) await classicSentence.waitFor();
+  else assert.equal(await classicSentence.count(), 0, 'the Classic sentence shows without Classic');
   await page.getByRole('button', { name: 'Cancel', exact: true }).waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: resolve(screenshotDir, `${name}-delete-confirm.png`) });
+  if (!classic) return;
   // A refused deletion keeps the player signed in, says why and gives the action back.
-  await page.route('**/api/v1/auth/me', (route) =>
-    route.request().method() === 'DELETE'
-      ? route.fulfill({
-          status: 503,
-          contentType: 'application/json',
-          body: JSON.stringify({ errors: [{ detail: 'Deleting accounts is paused.' }] }),
-        })
-      : route.fallback()
-  );
-  await page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
+  let deletes = 0;
+  let refuse;
+  await page.route('**/api/v1/auth/me', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.fallback();
+    deletes += 1;
+    await new Promise((release) => (refuse = release));
+    await route.fulfill({
+      status: 503,
+      contentType: 'application/json',
+      body: JSON.stringify({ errors: [{ detail: 'Deleting accounts is paused.' }] }),
+    });
+  });
+  // Both taps land before the app re-renders, as a fast double tap can on a phone.
+  await page
+    .getByRole('button', { name: 'Delete account', exact: true })
+    .last()
+    .evaluate((button) => {
+      button.click();
+      button.click();
+    });
+  await page.waitForTimeout(400);
+  assert.equal(deletes, 1, 'a double tap on Delete account sent more than one request');
+  refuse();
   await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
   assert.ok(
     new URL(page.url()).pathname.endsWith('/profile'),
@@ -602,6 +644,15 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   const action = page.getByRole('button', { name: 'Delete account', exact: true });
   assert.equal(await action.count(), 1, 'the confirmation stayed open after a failed deletion');
   assert.ok(await action.isEnabled(), 'Delete account stayed busy after a failed deletion');
+  // Leaving while the deletion runs says so, not that a photo or bio is saving.
+  await action.click();
+  await page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByText('Your account is being deleted.', { exact: true }).waitFor();
+  assert.equal(await page.getByText(/photo or bio/).count(), 0, 'deleting waits on a photo or bio');
+  await page.getByRole('button', { name: 'OK', exact: true }).click();
+  refuse();
+  await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
 }
 
 async function assertAuthSheetKeepsTyping(page, name) {
@@ -981,9 +1032,18 @@ async function main() {
             });
           });
         }
-        if (['home', 'home-guest', 'home-table-unknown', 'profile'].includes(testCase.name)) {
+        let answerProfile = () => {};
+        const profileAnswered = testCase.name.startsWith('profile')
+          ? new Promise((answer) => (answerProfile = answer))
+          : null;
+        if (
+          ['home', 'home-guest', 'home-table-unknown', 'profile', 'profile-guest'].includes(
+            testCase.name
+          )
+        ) {
           await page.route('**/api/v1/profile', async (route) => {
-            const guest = testCase.name === 'home-guest';
+            await profileAnswered;
+            const guest = testCase.name.endsWith('-guest');
             await route.fulfill({
               status: 200,
               contentType: 'application/json',
@@ -1044,6 +1104,7 @@ async function main() {
           if (testCase.verifyDealerSelection || testCase.verifyDealerPrivacy) {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
+          await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, viewport);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();
