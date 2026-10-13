@@ -62,7 +62,7 @@ jobs:
         run: bunx expo export --platform web --output-dir /tmp/pidro-mobile-web
 
       # The account journeys' stand-in for the native sign-in sheets (e2eProviders.ts) is
-      # compiled out unless EXPO_PUBLIC_E2E=1; a production bundle must hold none of it.
+      # compiled out of every release bundle (__DEV__ is false there); this one must hold none of it.
       - name: Check the web bundle holds no test seam
         run: |
           if grep -rq __pidroE2E /tmp/pidro-mobile-web; then
