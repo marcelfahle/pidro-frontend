@@ -100,8 +100,8 @@ function ProfileContent() {
     });
   };
 
-  usePreventRemove(!!dirty || busy || deleting, ({ data }) => {
-    if (busy || deleting) {
+  usePreventRemove(!!dirty || busy, ({ data }) => {
+    if (busy) {
       setConfirmation({
         title: 'Please wait',
         description: deleting
@@ -338,6 +338,7 @@ function ProfileContent() {
       proceed: async () => {
         if (deleteInFlight.current) return;
         deleteInFlight.current = true;
+        setBusy(true);
         setDeleting(true);
         try {
           await deleteAccount();
@@ -349,6 +350,7 @@ function ProfileContent() {
           );
         } finally {
           deleteInFlight.current = false;
+          setBusy(false);
           setDeleting(false);
         }
       },
@@ -372,16 +374,11 @@ function ProfileContent() {
           {user.email}
         </PidroText>
       )}
-      <Button
-        label="Sign out"
-        variant="ghost"
-        disabled={busy || deleting}
-        onPress={handleSignOut}
-      />
+      <Button label="Sign out" variant="ghost" disabled={busy} onPress={handleSignOut} />
       <Button
         label="Delete account"
         variant="ghost"
-        disabled={busy || deleting}
+        disabled={busy}
         onPress={handleDeleteAccount}
       />
       {deleteError ? (
