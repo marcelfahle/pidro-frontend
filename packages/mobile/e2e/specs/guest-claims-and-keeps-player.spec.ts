@@ -3,7 +3,7 @@ import { ClaimClassicScreen } from '../screens/claim-classic-screen';
 import { AuthSheet } from '../screens/auth-sheet';
 import { HomeScreen } from '../screens/home-screen';
 import { ProfileScreen } from '../screens/profile-screen';
-import { guest, profile, whoAmI } from '../support/api';
+import { guest, login, profile, whoAmI } from '../support/api';
 import { sessionOf, startSignedIn } from '../support/session';
 
 test('a guest claims their Classic account with an email and password and keeps their player', async ({
@@ -43,6 +43,8 @@ test('a guest claims their Classic account with an email and password and keeps 
     email: player.email,
   });
   expect((await profile(token)).classic).toMatchObject({ name: player.classicLogin });
+  // The password typed is the way back in.
+  expect((await login(player, player.email)).status).toBe(200);
 
   // One Classic account per player: a second one is refused.
   // The guest session is seeded on every load; seed the claimed one after it.

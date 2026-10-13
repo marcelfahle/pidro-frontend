@@ -18,12 +18,13 @@ test('a taken email, a taken name and a Classic name are refused on the field, a
   const sheet = new AuthSheet(page);
   await expect(sheet.root).toBeVisible();
 
+  // A field's error is the sheet's only alert: no general notice beside it.
+  const alerts = sheet.root.getByRole('alert');
   await sheet.save(holder.email, player.password, player.name);
-  await expect(sheet.root.getByText(/email/i).first()).toBeVisible();
-  await expect(sheet.alert).toHaveCount(0);
+  await expect(alerts).toHaveText([/email/i]);
 
   await sheet.save(player.email, player.password, holder.name);
-  await expect(sheet.root.getByText(/taken|another account/i).first()).toBeVisible();
+  await expect(alerts).toHaveText([/username/i]);
 
   await sheet.save(player.email, player.password, RESERVED_CLASSIC_NAME);
   await expect(sheet.root.getByText('That name is taken.')).toBeVisible();

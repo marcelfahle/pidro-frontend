@@ -12,6 +12,8 @@ test('delete account: confirm, signed out, old sign-in refused', async ({ page, 
 
   expect((await login(player, player.email)).status).toBe(401);
   await page.goto('/login');
-  await new LoginScreen(page).signIn(player.email, player.password);
+  const signIn = new LoginScreen(page);
+  await signIn.signIn(player.email, player.password);
+  await expect(signIn.alert).toBeVisible();
   await expect(page).toHaveURL(/\/login$/);
 });
