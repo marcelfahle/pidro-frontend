@@ -104,7 +104,7 @@ LIFECYCLE_BOT_MIN_DELAY_MS=20 LIFECYCLE_TRICK_TRANSITION_DELAY_MS=80 \
 LIFECYCLE_HAND_TRANSITION_DELAY_MS=120 mix phx.server
 
 # Terminal 2, from packages/mobile
-EXPO_NO_DOTENV=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
+EXPO_NO_DOTENV=1 EXPO_PUBLIC_E2E=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
 EXPO_PUBLIC_WS_URL=ws://127.0.0.1:4100/socket bun run web
 
 # Terminal 3, from packages/mobile
@@ -140,8 +140,9 @@ What the suite starts or needs besides Expo web and the backend:
   `FACEBOOK_GRAPH_URL` and `FACEBOOK_APP_ID` pointing at it (`e2e/ci.sh` has the values) and
   verifies every token as in production. Expo web must be started with `EXPO_PUBLIC_E2E=1`:
   only then do the Apple and Facebook buttons appear on web, taking their answer from the
-  journey instead of the native sheet (`src/features/auth/e2eProviders.ts`). The flag is
-  inlined at build time and CI fails if a production export holds `__pidroE2E`.
+  journey instead of the native sheet (`src/features/auth/e2eProviders.ts`). The seam lives
+  only in a development bundle (`__DEV__`), and CI fails if a production export holds
+  `__pidroE2E`.
 - One reserved Classic name, `ReservedRita`, for the journeys where a name belongs to a
   Classic player. Load it into the database once, before the backend starts (insert only,
   so running it again is harmless): from `pidro_backend`,
@@ -168,7 +169,7 @@ LIFECYCLE_BOT_MIN_DELAY_MS=20 LIFECYCLE_TRICK_TRANSITION_DELAY_MS=80 \
 LIFECYCLE_HAND_TRANSITION_DELAY_MS=120 mix phx.server
 
 # Terminal 2, from packages/mobile
-EXPO_NO_DOTENV=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
+EXPO_NO_DOTENV=1 EXPO_PUBLIC_E2E=1 EXPO_PUBLIC_API_URL=http://127.0.0.1:4100 \
 EXPO_PUBLIC_WS_URL=ws://127.0.0.1:4100/socket \
 NODE_OPTIONS="--max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs" \
 ../../node_modules/.bin/expo start --web --port 8089
@@ -179,7 +180,7 @@ VITE_API_URL=http://127.0.0.1:4100 VITE_WS_URL=ws://127.0.0.1:4100/socket \
 
 # Terminal 4, from packages/mobile
 API_BASE_URL=http://127.0.0.1:4100 MOBILE_BASE_URL=http://localhost:8089 \
-EXPO_PUBLIC_E2E=1 bun run e2e:accounts [part of a spec name]
+  bun run e2e:accounts [part of a spec name]
 ```
 
 Videos and traces land in `e2e/results/`, the HTML report in `e2e/report/`

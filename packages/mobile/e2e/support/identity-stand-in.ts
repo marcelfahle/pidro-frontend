@@ -2,12 +2,12 @@
 // APPLE_JWKS_URL, FACEBOOK_JWKS_URL, FACEBOOK_GRAPH_URL, APPLE_AUDIENCE and FACEBOOK_APP_ID pointing
 // here and checks every token exactly as in production; only the key server and the Graph host differ.
 // The key is made at startup and signs the tokens a journey asks for (POST /sign). A classic Facebook
-// access token carries its own identity: `fb.` and the base64url of {id, email?, ids?, invalid?}.
+// access token carries its own identity: `fb.` and the base64url of {id, email?, invalid?}.
 import { createSign, generateKeyPairSync } from 'node:crypto';
 import { createServer } from 'node:http';
 
 export const IDENTITY_STAND_IN = 'http://127.0.0.1:4002';
-// The same values the CI backend is started with (frontend-ci.yml, account-e2e-weekly.yml).
+// The same values the CI backend is started with (ci.sh).
 export const APPLE_AUDIENCE = 'com.pidro.e2e';
 export const FACEBOOK_APP_ID = '1234567890';
 
@@ -32,7 +32,7 @@ function sign(provider: keyof typeof ISSUERS, claims: object) {
   return `${signed}.${signature}`;
 }
 
-type GraphWho = { id: string; email?: string; ids?: string[]; invalid?: boolean };
+type GraphWho = { id: string; email?: string; invalid?: boolean };
 
 function graph(path: string, query: URLSearchParams): [number, object] {
   const token = query.get('input_token') ?? query.get('access_token') ?? '';
@@ -56,8 +56,7 @@ function graph(path: string, query: URLSearchParams): [number, object] {
   if (!who) return [400, { error: { message: 'Invalid OAuth access token' } }];
   if (path === '/graph/me')
     return [200, { id: who.id, ...(who.email ? { email: who.email } : {}) }];
-  if (path === '/graph/me/ids_for_business')
-    return [200, { data: [who.id, ...(who.ids ?? [])].map((id) => ({ id })) }];
+  if (path === '/graph/me/ids_for_business') return [200, { data: [{ id: who.id }] }];
   return [404, { error: 'not found' }];
 }
 
