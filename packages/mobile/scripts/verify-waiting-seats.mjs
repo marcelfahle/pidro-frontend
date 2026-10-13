@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { assertMinimumTouchTargets, suppressDevOverlays } from './ui-test-utils.mjs';
+import { assertMinimumTouchTargets, suppressDevOverlays, waitForImages } from './ui-test-utils.mjs';
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const shots = process.env.UI_SHOT_DIR ?? '/tmp/pidro-waiting-seats';
@@ -29,6 +29,7 @@ try {
       await page.getByTestId('waiting-seat-west').waitFor();
       await suppressDevOverlays(page);
       await page.evaluate(() => document.fonts.ready);
+      await waitForImages(page);
       for (const scale of [1, 1.5]) {
         if (scale > 1) {
           const scaled = await page.evaluate(() => {
@@ -136,7 +137,10 @@ try {
       0
     );
     assert.equal(await page.getByText('You', { exact: true }).count(), 0);
-    if (viewport.name === 'android') await page.screenshot({ path: `${shots}/spectator.png` });
+    if (viewport.name === 'android') {
+      await waitForImages(page);
+      await page.screenshot({ path: `${shots}/spectator.png` });
+    }
     await page.close();
   }
 
@@ -237,6 +241,7 @@ try {
   await page.getByText('Player profile', { exact: true }).waitFor();
   await page.getByText('Alexandria the Long-Named Player', { exact: true }).last().waitFor();
   await page.waitForTimeout(400); // Let the native modal's fade finish before capturing.
+  await waitForImages(page);
   await page.screenshot({ path: `${shots}/full-name-profile.png` });
   await page.close();
   console.log(

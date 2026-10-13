@@ -9,6 +9,7 @@ import {
   getStableBox,
   suppressDevOverlays,
   UI_VIEWPORTS,
+  waitForImages,
 } from './ui-test-utils.mjs';
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -1131,6 +1132,7 @@ async function main() {
               .waitFor({ state: 'detached', timeout: 7000 });
           }
           await page.waitForTimeout(testCase.path.startsWith('/table-dev') ? 1_200 : 150);
+          await waitForImages(page);
           if (pageErrors.length) {
             throw new Error(`${testCase.name} page errors: ${pageErrors.join(' | ')}`);
           }

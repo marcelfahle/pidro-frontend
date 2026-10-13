@@ -65,6 +65,16 @@ export async function suppressDevOverlays(page) {
   });
 }
 
+// React Native Web paints an Image's source while it is still loading, so a
+// full-screen background (bg.png) fills top-down as its bytes arrive. Wait
+// until every image has loaded and decoded before a capture.
+export async function waitForImages(page) {
+  await page.waitForFunction(() => [...document.images].every((img) => img.complete));
+  await page.evaluate(() =>
+    Promise.all([...document.images].map((img) => img.decode().catch(() => {})))
+  );
+}
+
 export async function getStableBox(locator, page) {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const box = await locator.boundingBox();
