@@ -7,6 +7,7 @@ import {
   type ClassicClaimMethod,
   type ClassicVerification,
 } from '@/api/classic';
+import * as authApi from '@/api/auth';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Input } from '@/components/ui/Input';
@@ -19,6 +20,7 @@ import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import { takePendingClassicClaim } from '@/features/auth/classicFound';
+import { runGuestSave } from '@/features/auth/saveGuest';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
@@ -231,25 +233,60 @@ export default function ClaimClassicScreen() {
         ...(needsCredentials ? { email: email.trim(), password } : {}),
         ...(!verification.classic.name_allowed ? { display_name: displayName.trim() } : {}),
       };
-      const result = await classicApi.claim({
-        ticket: verification.ticket,
-        install_id: installId,
-        ...(Object.keys(account).length ? { account } : {}),
-        ...storedAgeTerms(),
-      });
-      setSession({ accessToken: result.token, user: result.user });
+      const claim = () =>
+        classicApi.claim({
+          ticket: verification.ticket,
+          install_id: installId,
+          ...(Object.keys(account).length ? { account } : {}),
+          ...storedAgeTerms(),
+        });
+      if (guestCredentials) {
+        // This claim saves the guest as Save your progress does, retiring the guest's token,
+        // so an answer lost after the server saved is recovered by signing in.
+        let refusal: unknown = null;
+        const saved = await runGuestSave({
+          original: useAuthStore.getState(),
+          displayName: '',
+          email: email.trim(),
+          password,
+          upgrade: () =>
+            claim().catch((claimError: unknown) => {
+              refusal = claimError;
+              throw claimError;
+            }),
+          login: (identifier, accountPassword) =>
+            authApi.login(identifier, accountPassword, storedAgeTerms()),
+          getSession: useAuthStore.getState,
+          install: (response) => setSession({ accessToken: response.token, user: response.user }),
+          setSessionPreservation: (preserve) =>
+            useAuthStore.getState().setPreserveSessionOnUnauthorized(preserve),
+        });
+        if (!saved.ok) {
+          if (refusal && !saved.error.uncertain) {
+            reportRequestError(refusal, 'We could not claim that Classic account. Try again.');
+          } else {
+            setError(saved.error.message);
+          }
+          return;
+        }
+      } else {
+        const result = await claim();
+        setSession({ accessToken: result.token, user: result.user });
+      }
+      const claimed = useAuthStore.getState().user;
+      if (!claimed) return;
       const pendingInvite = usePendingInviteStore.getState().pendingInvite;
       const destination = authenticatedEntryDestination(
         pendingInvite,
         useAgeGateStore.getState().ageBand,
-        result.user
+        claimed
       );
       if (destination !== '/home') {
         router.replace(destination as Href);
       } else {
         router.replace({
           pathname: '/profile',
-          params: { classicClaimed: result.user.guest ? 'guest' : 'yes' },
+          params: { classicClaimed: claimed.guest ? 'guest' : 'yes' },
         });
       }
     } catch (requestError) {
@@ -261,6 +298,7 @@ export default function ClaimClassicScreen() {
     displayName,
     email,
     fixture,
+    guestCredentials,
     method,
     needsCredentials,
     password,
