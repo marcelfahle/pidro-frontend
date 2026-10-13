@@ -577,6 +577,25 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   await page.getByRole('button', { name: 'Cancel', exact: true }).waitFor();
   await page.waitForTimeout(400);
   await page.screenshot({ path: resolve(screenshotDir, `${name}-delete-confirm.png`) });
+  // A refused deletion keeps the player signed in, says why and gives the action back.
+  await page.route('**/api/v1/auth/me', (route) =>
+    route.request().method() === 'DELETE'
+      ? route.fulfill({
+          status: 503,
+          contentType: 'application/json',
+          body: JSON.stringify({ errors: [{ detail: 'Deleting accounts is paused.' }] }),
+        })
+      : route.fallback()
+  );
+  await page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
+  await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
+  assert.ok(
+    new URL(page.url()).pathname.endsWith('/profile'),
+    'a failed deletion left the profile'
+  );
+  const action = page.getByRole('button', { name: 'Delete account', exact: true });
+  assert.equal(await action.count(), 1, 'the confirmation stayed open after a failed deletion');
+  assert.ok(await action.isEnabled(), 'Delete account stayed busy after a failed deletion');
 }
 
 async function assertAuthSheetKeepsTyping(page, name) {
@@ -585,7 +604,14 @@ async function assertAuthSheetKeepsTyping(page, name) {
   // Typed the moment the sheet appears, before its slide-in animation ends.
   const email = page.getByLabel('Email', { exact: true });
   await email.fill('early@example.com');
-  await page.waitForTimeout(1_000);
+  // Wait for the slide-in itself to end, the moment onShow used to wipe the form.
+  const sliding = await email.evaluate(async (node) => {
+    const slideIn = document.getAnimations().filter((a) => a.effect?.target?.contains(node));
+    await Promise.all(slideIn.map((a) => a.finished));
+    await new Promise((settled) => requestAnimationFrame(() => requestAnimationFrame(settled)));
+    return slideIn.length;
+  });
+  assert.ok(sliding > 0, 'auth sheet email was filled after the slide-in, not during it');
   assert.equal(await email.inputValue(), 'early@example.com', 'auth sheet wiped the typed email');
 }
 

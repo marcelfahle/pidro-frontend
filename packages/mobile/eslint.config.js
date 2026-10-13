@@ -4,7 +4,16 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/**', '.expo/**', '.agents/**', '.claude/**', '.factory/**'],
+    ignores: [
+      'dist/**',
+      '.expo/**',
+      '.agents/**',
+      '.claude/**',
+      '.factory/**',
+      // A local run of the account journeys leaves its report here (gitignored).
+      'e2e/report*/**',
+      'e2e/results*/**',
+    ],
   },
   {
     settings: {
