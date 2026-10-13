@@ -363,6 +363,7 @@ function ProfileContent() {
           material="glass"
           size="sm"
           fullWidth
+          disabled={deleting}
           onPress={() => setAccountSheetOpen(true)}
         />
       ) : null}
