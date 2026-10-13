@@ -30,6 +30,7 @@ test('a dropped connection on each form is readable, leaves no spinner and keeps
     await screen.identifier.fill(player.email);
     await screen.field('Password').fill(player.password);
     await screen.button('Sign in').click();
+    await expect(screen.alert).toHaveText('Could not sign in. Try again.');
     await expectRecoverable(screen, screen.button('Sign in'), [
       [screen.identifier, player.email],
       [screen.field('Password'), player.password],

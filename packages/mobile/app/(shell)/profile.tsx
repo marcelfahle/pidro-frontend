@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -53,6 +53,8 @@ function ProfileContent() {
   const [draft, setDraft] = useState<AvatarDraft | null>(null);
   const [draftUri, setDraftUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const deleteInFlight = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -102,7 +104,9 @@ function ProfileContent() {
     if (busy) {
       setConfirmation({
         title: 'Please wait',
-        description: 'Your photo or bio is still being processed.',
+        description: deleting
+          ? 'Your account is being deleted.'
+          : 'Your photo or bio is still being processed.',
         label: 'OK',
         proceed: () => {},
       });
@@ -332,7 +336,10 @@ function ProfileContent() {
       label: 'Delete account',
       cancelLabel: 'Cancel',
       proceed: async () => {
+        if (deleteInFlight.current) return;
+        deleteInFlight.current = true;
         setBusy(true);
+        setDeleting(true);
         try {
           await deleteAccount();
           closeEditor();
@@ -342,7 +349,9 @@ function ProfileContent() {
             apiErrorInfo(deleteFailure).detail || 'Could not delete your account. Try again.'
           );
         } finally {
+          deleteInFlight.current = false;
           setBusy(false);
+          setDeleting(false);
         }
       },
     });
@@ -356,6 +365,7 @@ function ProfileContent() {
           material="glass"
           size="sm"
           fullWidth
+          disabled={deleting}
           onPress={() => setAccountSheetOpen(true)}
         />
       ) : null}
@@ -589,6 +599,8 @@ function ProfileContent() {
             </Surface>
           </View>
         </View>
+        {/* The Classic card arrives later; above it the account buttons would move. */}
+        {!twoColumns && accountActions}
         {classic !== undefined ? (
           classic ? (
             <ClassicSection classic={classic} />
@@ -610,7 +622,6 @@ function ProfileContent() {
             </Surface>
           )
         ) : null}
-        {!twoColumns && accountActions}
       </View>
       <Modal
         isOpen={!!confirmation}

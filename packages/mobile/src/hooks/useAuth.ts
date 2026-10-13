@@ -75,7 +75,7 @@ export function useAuth() {
         } else {
           console.warn('[Auth] Sign in failed with a non-API error');
         }
-        const message = extractErrorMessage(e, 'Failed to sign in');
+        const message = extractErrorMessage(e, 'Could not sign in. Try again.');
         setError(message);
         return false;
       } finally {

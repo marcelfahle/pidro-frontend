@@ -10,17 +10,8 @@ export class ProfileScreen extends Screen {
     return this.classicSection.getByLabel(`${label}: `);
   }
 
-  /**
-   * The Classic card arrives with the profile's own request and pushes the account buttons
-   * down; a tap before it lands where a button was.
-   */
-  private loaded() {
-    return this.classicSection.or(this.button('Claim Pidro Classic')).waitFor();
-  }
-
   /** Opens the save sheet from the profile. */
   async saveYourProgress() {
-    await this.loaded();
     await this.button('Save your progress').click();
   }
 
@@ -37,14 +28,12 @@ export class ProfileScreen extends Screen {
 
   /** Taps Delete account and, on the "Delete your account?" window, confirms. */
   async deleteAccount() {
-    await this.loaded();
     await this.button('Delete account').first().click();
     await this.page.getByText('Delete your account?').waitFor();
     await this.page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
   }
 
   async askToSignOut() {
-    await this.loaded();
     await this.button('Sign out').first().click();
   }
 
