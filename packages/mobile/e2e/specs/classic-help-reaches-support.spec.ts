@@ -33,6 +33,48 @@ test('a Classic player who cannot sign in asks for help and support receives it'
   expect(mail.text_body).toContain(player.classicLogin);
 });
 
+test('the help form catches what it can and puts the server’s refusal on the field', async ({
+  page,
+  player,
+}) => {
+  let sent = 0;
+  page.on('request', (request) => {
+    if (request.url().includes('/api/v1/classic/help')) sent += 1;
+  });
+  const help = await openHelp(page, player.classicLogin);
+  // A field's error is the form's only alert: no general notice beside it.
+  const alerts = help.root.getByRole('alert');
+
+  await help.name.fill('');
+  await help.button('Send to support').click();
+  await expect(alerts).toHaveText([
+    'Enter the name you played as.',
+    'Enter an email we can reply to.',
+  ]);
+  await help.name.fill(player.classicLogin);
+  await help.button('Send to support').click();
+  await expect(alerts).toHaveText(['Enter an email we can reply to.']);
+  await help.email.fill('not-an-email');
+  await help.button('Send to support').click();
+  await expect(alerts).toHaveText(['Check that email address.']);
+  expect(sent).toBe(0);
+
+  // Looks like an address, but mail cannot be sent to it: the server says so with a 422.
+  await help.email.fill('a,b@example.com');
+  const answered = page.waitForResponse((response) =>
+    response.url().includes('/api/v1/classic/help')
+  );
+  await help.button('Send to support').click();
+  expect((await answered).status()).toBe(422);
+  await expect(alerts).toHaveText(['Check that email address.']);
+  await expect(help.email).toHaveValue('a,b@example.com');
+  await expect(help.text('Almost there')).toBeHidden();
+
+  await help.email.fill(player.email);
+  await help.button('Send to support').click();
+  await expect(help.text('Message sent')).toBeVisible();
+});
+
 test.describe('support unavailable', () => {
   test.use({ unavailableExpected: true });
 

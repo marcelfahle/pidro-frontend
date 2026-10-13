@@ -3,7 +3,7 @@
 //   classic-…  an account that exists      off-…   one that is switched off
 //   rude-…     a name that cannot be shown  other   unknown
 //   nameless-… no username, only a first name (a pre-2017 account)
-//   down-…     a lookup that fails: Classic is unreachable
+//   down-…     a lookup or password check that fails: Classic is unreachable
 //   oldtotal-… / counter-… / lower-…  games: only the old total, a counter above it, one below it
 // A lookup by email or by Facebook id names the same account: `classic-1f@x.example` and the id
 // `classic-1f` are one player.
@@ -64,6 +64,7 @@ function answer(method: string, url: URL, body: string): [number, object] {
   if (method === 'POST' && url.pathname === '/internal/claims/verify_password') {
     const { login = '', password } = JSON.parse(body || '{}');
     const name = String(login).toLowerCase();
+    if (name.startsWith('down-')) return [503, { error: 'unavailable' }];
     if (name.startsWith('off-')) return [403, { error: 'inactive' }];
     const known = KNOWN.test(name);
     if (!known || password !== CLASSIC_PASSWORD) return [401, { error: 'invalid' }];

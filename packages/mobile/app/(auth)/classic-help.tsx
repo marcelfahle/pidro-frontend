@@ -89,6 +89,8 @@ export default function ClassicHelpScreen() {
     );
     setBusy(false);
     if (result.status === 'sent' || result.status === 'mail') setOutcome(result.status);
+    else if (result.status === 'rejected' && result.field === 'email')
+      setFields({ email: 'Check that email address.' });
     else if (result.status === 'rejected') setFailure(result.message);
     else setFailure(`We couldn’t send that. Email us at ${SUPPORT_EMAIL} and we’ll find it.`);
   }, [busy, details, email, fixture, name]);

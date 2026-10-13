@@ -40,7 +40,7 @@ export async function requestClassicSignInLink(
 export type ClassicHelpResult =
   | { status: 'sent' }
   | { status: 'mail' }
-  | { status: 'rejected'; message: string }
+  | { status: 'rejected'; message: string; field?: 'email' }
   | { status: 'failed' };
 
 export function classicHelpMailto({ name, email, details }: ClassicHelpRequest): string {
@@ -69,13 +69,16 @@ export async function sendClassicHelp(
   } catch (error) {
     const status = responseStatus(error);
     if (status === 422 || status === 429) {
+      const { code, detail } = apiErrorInfo(error);
       return {
         status: 'rejected',
         message:
-          apiErrorInfo(error).detail ??
+          detail ??
           (status === 429
             ? 'Too many messages. Wait a minute and try again.'
             : 'Check your details and try again.'),
+        // An address the server cannot mail is the email field's error.
+        ...(code === 'email' ? { field: 'email' as const } : {}),
       };
     }
   }
