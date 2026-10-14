@@ -11,7 +11,7 @@ import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
-import { SeatLayer } from './SeatLayer';
+import { SeatLayer, type SeatLine } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, useTableReserves } from './TableChrome';
@@ -54,14 +54,22 @@ const basePlayers = (turn: RelativePosition): RelativePlayerView[] => [
     isYou: true,
     isOpponent: false,
     isCurrentTurn: turn === 'south',
+    level: 44,
+    pin: 'classic',
   }),
   seat('north', 'north', {
     username: 'Nora',
     isTeammate: true,
     isCurrentTurn: turn === 'north',
+    level: 31,
   }),
-  seat('east', 'east', { username: 'Eli', isCurrentTurn: turn === 'east' }),
-  seat('west', 'west', { username: 'Wynn', isCurrentTurn: turn === 'west' }),
+  seat('east', 'east', { username: 'Eli', isCurrentTurn: turn === 'east', level: 12 }),
+  seat('west', 'west', {
+    username: 'Wynn',
+    isCurrentTurn: turn === 'west',
+    level: 18,
+    pin: 'classic',
+  }),
 ];
 
 const INITIAL_HAND: Card[] = [
@@ -89,9 +97,9 @@ const DEALER_CUTS: Record<Position, Card> = {
 const DEALER_CUT_STATUS = Object.fromEntries(
   Object.entries(DEALER_CUTS).map(([position, card]) => [
     position,
-    `Draws ${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`,
+    { text: `Draws ${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}` },
   ])
-) as Record<RelativePosition, string>;
+) as Record<RelativePosition, SeatLine>;
 
 const COUNTS: Record<string, number> = { south: 6, north: 8, east: 8, west: 7 };
 type Play = { player: Position; card: Card };
@@ -248,7 +256,12 @@ export default function GameCanvasDev({
         statusByRel={
           phase === 'dealer_selection'
             ? DEALER_CUT_STATUS
-            : { north: 'Passed', east: 'Bet 6', west: 'Passed', south: 'Passed' }
+            : {
+                north: { text: 'Passed', tone: 'quiet' },
+                east: { text: 'Bid 6' },
+                west: { text: 'Passed', tone: 'quiet' },
+                [turn]: { text: 'Playing…', tone: 'now' },
+              }
         }
       />
       <TableChromeBars reserves={reserves} />

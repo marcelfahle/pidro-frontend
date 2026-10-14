@@ -1,3 +1,5 @@
+import type { SeatPin } from './game';
+
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished';
 export type SeatType = 'open' | 'ai';
 export type BotDifficulty = 'random' | 'basic' | 'smart';
@@ -19,6 +21,8 @@ export interface ReadinessSnapshot {
       username?: string | null;
       display_name?: string | null;
       avatar_url?: string | null;
+      level?: number | null;
+      pin?: SeatPin | null;
     }
   >;
   ready_players: Position[];
@@ -39,6 +43,8 @@ export interface Player {
   username: string;
   display_name?: string | null;
   avatar_url?: string | null;
+  level?: number | null;
+  pin?: SeatPin | null;
   is_bot?: boolean;
 }
 

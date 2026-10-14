@@ -1,6 +1,8 @@
 import type { Position } from './lobby';
 
 export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
+/** The pin a seat wears: `classic` for a Pidro Classic player. */
+export type SeatPin = 'classic';
 export interface SeatLifecycleSnapshot {
   room_id: string;
   room_code: string;
@@ -15,6 +17,8 @@ export interface SeatLifecycleSnapshot {
       username: string | null;
       display_name?: string | null;
       avatar_url?: string | null;
+      level?: number | null;
+      pin?: SeatPin | null;
       decision: { id: string; player_name: string | null } | null;
     }
   >;
@@ -158,6 +162,9 @@ export interface PlayerMeta {
   isConnected: boolean;
   seatStatus: SeatStatus;
   rank?: PlayerRank | null;
+  /** All-time level; null for bots and open seats. */
+  level?: number | null;
+  pin?: SeatPin | null;
 }
 
 export type RelativePosition = 'north' | 'east' | 'south' | 'west';
@@ -175,6 +182,9 @@ export interface RelativePlayerView {
   isCurrentTurn: boolean;
   seatStatus: SeatStatus;
   rank?: PlayerRank | null;
+  /** All-time level; null for bots and open seats. */
+  level?: number | null;
+  pin?: SeatPin | null;
 }
 
 export interface GameViewModel {

@@ -104,9 +104,11 @@ export function computeLayout(
   const trickCy = portrait ? tableTop + tableHeight * 0.43 : height * 0.49;
   const trickR = clamp(shortest * (portrait ? 0.19 : 0.18), 82, 190);
 
-  // Portrait lifts the fan above the centered south plaque. Landscape keeps
-  // the cards near the bottom edge because the south plaque sits beside them.
-  const handY = tableBottom - cardH * (portrait ? 1.35 : 0.56);
+  // Portrait lifts the fan above the centered south seat: avatar, level chip,
+  // name and status, which do not grow with the cards. Landscape keeps the
+  // cards near the bottom edge because the south seat sits beside them.
+  const southSeat = profile === 'tablet-portrait' ? 140 : 120;
+  const handY = portrait ? tableBottom - southSeat - cardH * 0.5 : tableBottom - cardH * 0.56;
   const northY = tableTop + cardH * (portrait ? 0.48 : 0.22) + 10;
 
   const seats: Record<RelativePosition, Seat> = {

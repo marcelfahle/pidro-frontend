@@ -224,6 +224,16 @@ const allCases = [
   },
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
   {
+    name: 'table-seats-reconnecting',
+    path: '/table-dev?phase=playing&lifecycle=reconnecting',
+    testId: 'seat-north',
+  },
+  {
+    name: 'table-seats-bot',
+    path: '/table-dev?phase=playing&lifecycle=bot_substitute',
+    testId: 'seat-north',
+  },
+  {
     name: 'table-dealer-selection',
     path: '/table-dev?phase=dealer_selection',
     testId: 'seat-north',
@@ -907,7 +917,7 @@ async function assertSeatPlacement(page, viewport) {
     }
   }
 
-  const maxSeatWidth = portrait ? 112 : 126;
+  const maxSeatWidth = portrait ? 112 : 132;
   for (const position of ['north', 'east', 'south', 'west']) {
     if (seats[position].width > maxSeatWidth) {
       throw new Error(

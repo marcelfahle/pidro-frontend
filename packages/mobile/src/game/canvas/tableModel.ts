@@ -11,6 +11,7 @@ import type {
   LegalAction,
   RelativePlayerView,
   RelativePosition,
+  SeatPin,
   SeatStatus,
   Suit,
 } from '@/types/game';
@@ -32,6 +33,8 @@ export type TableSeat = {
   relativePosition: RelativePosition;
   username: string | null;
   avatar_url: string | null;
+  level: number | null;
+  pin: SeatPin | null;
   isYou: boolean;
   isTeammate: boolean;
   isOpponent: boolean;
@@ -180,6 +183,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
           relativePosition: rel,
           username: p.username,
           avatar_url: p.avatar_url ?? null,
+          level: p.level ?? null,
+          pin: p.pin ?? null,
           isYou: p.isYou,
           isTeammate: p.isTeammate,
           isOpponent: p.isOpponent,
