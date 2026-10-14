@@ -17,7 +17,8 @@ import {
   StatusBar,
   StyleSheet,
 } from 'react-native';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLobbyStore } from '@/stores/lobby';
 import { useGameStore } from '@/stores/game';
@@ -25,7 +26,7 @@ import { publicPlayerName, rematchVote, roomWithReadiness, type RematchVote } fr
 import { useAuthStore } from '@/stores/auth';
 import { lobbyApi } from '@/api/lobby';
 import { api } from '@/api/client';
-import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from 'react';
 import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
@@ -203,6 +204,18 @@ export default function GameScreen() {
 
   // Identity snapshots also update direct-link games without a lobby in the stack.
   useLobbyChannel();
+
+  // Turn timers keep running while a player waits on the others, so the table holds
+  // the screen awake while it is focused. One tag per screen, released on blur/unmount.
+  const keepAwakeTag = useId();
+  useFocusEffect(
+    useCallback(() => {
+      const activation = activateKeepAwakeAsync(keepAwakeTag).catch(() => {});
+      return () => {
+        activation.then(() => deactivateKeepAwake(keepAwakeTag)).catch(() => {});
+      };
+    }, [keepAwakeTag])
+  );
 
   const [roomLookup, setRoomLookup] = useState<{
     roomCode: string;
