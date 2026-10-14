@@ -163,7 +163,10 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const hasNoResults = !isLoading && hasQuery && visibleTableCount === 0;
   const isUnavailable = !isLoading && !!error && visibleTableCount === 0;
   const isEmptyLobby =
-    !isLoading && !hasQuery && !isUnavailable && activeRooms.length === 0 &&
+    !isLoading &&
+    !hasQuery &&
+    !isUnavailable &&
+    activeRooms.length === 0 &&
     Object.values(lobby).every((tables) => tables.length === 0);
 
   const loadLobby = useCallback(async () => {
@@ -636,7 +639,7 @@ function EmptyLobby({
   const scale = Math.min(
     1,
     landscape
-      ? (height - insets.top - insets.bottom - 92) / 270
+      ? (height - insets.top - insets.bottom - 92 - PidroLayout.touchTarget - PidroSpacing.sm) / 270
       : (width - insets.left - insets.right - 2 * PidroSpacing.md) / 340
   );
   const at = (value: number) => value * scale;
@@ -657,7 +660,7 @@ function EmptyLobby({
         testID="lobby-empty"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={{ width: at(340), height: at(270) }}>
+        style={{ width: at(340), height: at(270), alignSelf: landscape ? 'flex-start' : 'center' }}>
         <TableTop
           mark={at(40)}
           style={{ left: at(60), top: at(55), width: at(220), height: at(160) }}

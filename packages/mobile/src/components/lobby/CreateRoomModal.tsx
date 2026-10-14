@@ -315,17 +315,18 @@ export function CreateRoomForm({
         contentStyle={[styles.shell, landscape && styles.shellLandscape]}>
         {landscape ? (
           <>
-            <ScrollView
-              style={styles.controls}
-              contentContainerStyle={styles.controlsContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}>
+            <View style={styles.controls}>
               {header}
-              {fields}
-              {key}
-              <View style={styles.spacer} />
+              <ScrollView
+                style={styles.scroll}
+                contentContainerStyle={styles.controlsContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}>
+                {fields}
+                {key}
+              </ScrollView>
               {footer}
-            </ScrollView>
+            </View>
             {table}
           </>
         ) : (
@@ -457,9 +458,8 @@ const styles = StyleSheet.create({
   rules: { gap: PidroSpacing.xs },
   scroll: { flex: 1, minHeight: 0 },
   form: { alignItems: 'center', gap: PidroSpacing.md, paddingBottom: PidroSpacing.sm },
-  controls: { flex: 1, alignSelf: 'stretch' },
+  controls: { flex: 1, alignSelf: 'stretch', gap: PidroSpacing.md },
   controlsContent: { flexGrow: 1, gap: PidroSpacing.md },
-  spacer: { flexGrow: 1 },
   seat: { position: 'absolute' },
   seatRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   seatColumn: { alignItems: 'center', gap: 6 },

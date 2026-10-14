@@ -16,7 +16,7 @@ async function createLouisianaTable(page: Page, token: string) {
     (response) =>
       new URL(response.url()).pathname === '/api/v1/rooms' && response.request().method() === 'POST'
   );
-  await create.getByRole('button', { name: 'Create table', exact: true }).click();
+  await create.getByRole('button', { name: 'Open the table', exact: true }).click();
   const response = await created;
   expect(response.request().postDataJSON().rule_set).toBe('louisiana');
   expect(response.status()).toBe(201);
