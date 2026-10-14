@@ -27,6 +27,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
 import { PidroSpacing } from '@/design/tokens';
+import { avatarParts } from '@/features/avatar';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { computeLayout, type Profile, type RelativePosition } from './layout';
 import type { TableSeat } from './tableModel';
@@ -145,8 +146,23 @@ export function SeatLayer({
     : tableTop + 8;
   const sideBackW = clamp(L.cardW * 0.62, 30, 56);
   const sideStackMaxHeight = sideBackW * (1 + 5 * 0.48);
-  // East and west sit above their side stacks, their bottoms on a common line.
-  const sideSeatBottom = height - (L.trick.cy - sideStackMaxHeight / 2) + PidroSpacing.sm;
+  // East and west sit above their side stacks. In portrait they also stay
+  // below North, so the three opponents read as a triangle.
+  const sideStackTop = L.trick.cy - sideStackMaxHeight / 2;
+  const parts = avatarParts(size);
+  const stackedSeat =
+    size +
+    (parts.level ? parts.level.height + parts.level.bottom + 3 : 4) +
+    parts.name.lineHeight +
+    parts.status.lineHeight;
+  const sideSeatPos = portrait
+    ? {
+        top: Math.max(
+          northSeatTop + stackedSeat + PidroSpacing.sm,
+          sideStackTop - PidroSpacing.sm - stackedSeat
+        ),
+      }
+    : { bottom: height - sideStackTop + PidroSpacing.sm };
   const sideInset = portrait ? 0 : 12;
 
   return (
@@ -247,8 +263,8 @@ export function SeatLayer({
         const edgeOffset = Math.min(L.cardW * 0.28, 18);
         const seatPos =
           rel === 'east'
-            ? { bottom: sideSeatBottom, right: insets.right + sideInset }
-            : { bottom: sideSeatBottom, left: insets.left + sideInset };
+            ? { ...sideSeatPos, right: insets.right + sideInset }
+            : { ...sideSeatPos, left: insets.left + sideInset };
         const backsEdge =
           rel === 'east'
             ? { right: insets.right - edgeOffset }
