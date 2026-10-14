@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Surface } from '@/components/ui/Surface';
-import { LevelRing } from '@/components/home/LevelRing';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { PidroText } from '@/components/ui/PidroText';
 import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
@@ -74,7 +74,7 @@ function SeatPlate({
       <View>
         <View style={[styles.avatar, compact && styles.avatarCompact]}>
           {seat.occupied ? (
-            <LevelRing key={seat.playerId} uri={seat.avatarUrl} size={compact ? 48 : 64} />
+            <PlayerAvatar key={seat.playerId} uri={seat.avatarUrl} size={compact ? 48 : 64} />
           ) : (
             <Feather name="user-plus" size={28} color={PidroColors.textSoft} />
           )}

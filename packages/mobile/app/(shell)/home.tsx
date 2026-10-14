@@ -7,7 +7,7 @@ import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet, type AuthSheetReason } from '@/components/auth/AuthSheet';
 import { ClassicPlaque } from '@/components/home/ClassicPlaque';
-import { LevelRing } from '@/components/home/LevelRing';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { LogoGlow } from '@/components/home/LogoGlow';
 import { usePillClearance } from '@/components/shell/TabPill';
 import { Background } from '@/components/ui/Background';
@@ -166,9 +166,10 @@ export default function HomeScreen() {
         accessibilityLabel="Open your profile"
         onPress={() => router.push('/profile')}
         style={styles.identity}>
-        <LevelRing
+        <PlayerAvatar
           uri={user?.avatar_url}
           size={tablet ? 56 : compactLandscape ? 44 : 48}
+          level={level}
           accessibilityLabel="Your profile picture"
         />
         <View style={styles.identityCopy}>

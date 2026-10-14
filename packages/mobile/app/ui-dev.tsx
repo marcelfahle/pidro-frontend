@@ -6,7 +6,6 @@ import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomMo
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
-import { LevelRing } from '@/components/home/LevelRing';
 import { RatingPlaque } from '@/components/home/RatingPlaque';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
@@ -17,6 +16,7 @@ import { HomeTileButton } from '@/components/ui/HomeTileButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
+import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
@@ -74,7 +74,15 @@ const SWATCHES: { name: string; value: string }[] = [
   { name: 'panel-deep', value: PidroBevel.panelDeep },
 ];
 
-const ICON_NAMES: IconName[] = ['star', 'play', 'friends', 'chevron-right', 'bot'];
+const ICON_NAMES: IconName[] = [
+  'star',
+  'play',
+  'friends',
+  'chevron-right',
+  'bot',
+  'spade',
+  'offline',
+];
 
 // A PNG data URI, not SVG: react-native Image loads PNG on both platforms,
 // while an SVG data URI silently falls back to the placeholder on native.
@@ -95,15 +103,16 @@ function ProgressionGallery() {
       />
 
       <Surface testID="ui-progression-panel" variant="window" style={styles.section} padded>
-        <PidroText role="title">Identity — level ring</PidroText>
+        <PidroText role="title">Identity — player avatar</PidroText>
         <View style={styles.row}>
-          <LevelRing uri={GALLERY_AVATAR} size={36} accessibilityLabel="Small level ring" />
-          <LevelRing uri={GALLERY_AVATAR} accessibilityLabel="Default level ring" />
-          <LevelRing uri={GALLERY_AVATAR} size={64} accessibilityLabel="Large level ring" />
-          <LevelRing uri={null} accessibilityLabel="Level ring with no photo" />
+          <PlayerAvatar uri={GALLERY_AVATAR} size={36} accessibilityLabel="Small avatar" />
+          <PlayerAvatar uri={GALLERY_AVATAR} size={46} accessibilityLabel="Default avatar" />
+          <PlayerAvatar uri={GALLERY_AVATAR} size={64} accessibilityLabel="Large avatar" />
+          <PlayerAvatar uri={null} size={46} accessibilityLabel="Avatar with no photo" />
         </View>
         <PidroText role="metadata" tone="muted">
-          The rim keeps its proportion at every size; the last one has no photo.
+          The ring keeps its proportion at every size; the last one has no photo. Every part:
+          /ui-dev?state=avatars.
         </PidroText>
       </Surface>
 
@@ -166,6 +175,201 @@ function ProgressionGallery() {
   );
 }
 
+// Every state one seat can be in, from the Seat-States board.
+const SEAT_STATES: (Omit<PlayerAvatarProps, 'size'> & { caption: string })[] = [
+  {
+    caption: 'The dealer',
+    name: 'Kalle',
+    level: 18,
+    dealer: true,
+    status: 'Dealing',
+    statusTone: 'now',
+  },
+  {
+    caption: 'Their turn',
+    name: 'Mikko',
+    level: 12,
+    turn: { progress: 0.75 },
+    status: 'Bidding…',
+    statusTone: 'now',
+  },
+  {
+    caption: 'Bid made',
+    name: 'Nora',
+    level: 31,
+    ring: 'lifetime',
+    nameTone: 'partner',
+    status: 'Bid 9',
+  },
+  { caption: 'Passed', name: 'Kalle', level: 18, status: 'Passed', statusTone: 'quiet' },
+  {
+    caption: 'Won the bid',
+    name: 'Nora',
+    level: 31,
+    ring: 'lifetime',
+    nameTone: 'partner',
+    turn: { progress: 0.56 },
+    status: 'Choosing trump…',
+    statusTone: 'now',
+  },
+  {
+    caption: 'Dealer’s second deal',
+    name: 'Kalle',
+    level: 18,
+    dealer: true,
+    turn: { progress: 0.89 },
+    status: 'Picking cards…',
+    statusTone: 'now',
+  },
+  { caption: 'Waiting: says nothing', name: 'Mikko', level: 12 },
+  {
+    caption: 'Last 5 seconds',
+    name: 'Mikko',
+    level: 12,
+    turn: { progress: 0.17, urgent: true },
+    status: 'Playing…',
+    statusTone: 'warning',
+  },
+  {
+    caption: 'Card on the table',
+    name: 'Kalle',
+    level: 18,
+    status: 'Plays A♥',
+    accessibilityLabel: 'Kalle, level 18, plays ace of hearts',
+  },
+  {
+    caption: 'Won the last trick',
+    name: 'Nora',
+    level: 31,
+    ring: 'lifetime',
+    nameTone: 'partner',
+    status: 'Took the trick',
+  },
+  {
+    caption: 'Lost connection',
+    name: 'Jussi',
+    away: 'reconnecting',
+    status: 'Reconnecting…',
+    statusTone: 'danger',
+  },
+  { caption: 'Left mid-game', name: 'Jussi', away: 'bot', status: 'Bot is playing' },
+  { caption: 'A bot seat', name: 'Bot', kind: 'bot', status: 'Bid 7', statusTone: 'quiet' },
+  {
+    caption: 'Before the game',
+    kind: 'open',
+    name: 'Open seat',
+    status: 'Anyone can sit',
+    statusTone: 'quiet',
+  },
+];
+
+/**
+ * The avatar sheet: rings, pins, sizes, every seat state and the three label
+ * positions. Nobody pays yet, so gold and lifetime appear here and nowhere else.
+ */
+function AvatarGallery() {
+  return (
+    <ScreenShell scroll testID="ui-dev-screen" contentStyle={styles.shell}>
+      <ScreenHeader
+        title="Player avatar"
+        subtitle="Ring, pin, level, turn light and dealer chip. Smaller drops parts, never the ring."
+      />
+
+      <Surface testID="ui-avatars-panel" variant="window" style={styles.section} padded>
+        <PidroText role="title">Ring — supporter or not</PidroText>
+        <View style={styles.avatarRow}>
+          <PlayerAvatar uri={GALLERY_AVATAR} size={64} level={6} name="Free" status="Glass" />
+          <PlayerAvatar
+            uri={GALLERY_AVATAR}
+            size={64}
+            ring="gold"
+            level={44}
+            name="Supporter"
+            status="Gold"
+          />
+          <PlayerAvatar
+            uri={GALLERY_AVATAR}
+            size={64}
+            ring="lifetime"
+            level={27}
+            name="Lifetime"
+            status="Gold and a gem"
+          />
+        </View>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">Pin — where you come from</PidroText>
+        <View style={styles.avatarRow}>
+          <PlayerAvatar uri={GALLERY_AVATAR} size={64} pin="classic" level={44} name="Classic" />
+          <PlayerAvatar
+            uri={GALLERY_AVATAR}
+            size={64}
+            pin="founding_tester"
+            level={12}
+            name="Tester"
+          />
+          <PlayerAvatar uri={GALLERY_AVATAR} size={64} level={3} name="No pin" />
+        </View>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">Sizes</PidroText>
+        <View style={[styles.avatarRow, styles.sizes]}>
+          {[104, 64, 56, 44, 36, 24].map((size) => (
+            <View key={size} style={styles.sizeCell}>
+              <PlayerAvatar uri={GALLERY_AVATAR} size={size} pin="classic" level={44} />
+              <PidroText role="metadata" tone="muted">
+                {size}
+              </PidroText>
+            </View>
+          ))}
+        </View>
+      </Surface>
+
+      <PidroText role="title">At the table</PidroText>
+      <View style={styles.seatStates}>
+        {SEAT_STATES.map(({ caption, ...seat }) => (
+          <View key={caption} style={styles.seatCell}>
+            <PlayerAvatar uri={GALLERY_AVATAR} size={56} {...seat} />
+            <PidroText role="metadata" tone="muted" align="center">
+              {caption}
+            </PidroText>
+          </View>
+        ))}
+      </View>
+
+      <PidroText role="title">Label</PidroText>
+      <View style={styles.labels}>
+        <PlayerAvatar
+          uri={GALLERY_AVATAR}
+          size={56}
+          level={18}
+          name="Below"
+          status="Phone portrait"
+        />
+        <PlayerAvatar
+          uri={GALLERY_AVATAR}
+          size={56}
+          level={18}
+          label="right"
+          name="Right"
+          status="Landscape seats"
+        />
+        <PlayerAvatar
+          uri={GALLERY_AVATAR}
+          size={56}
+          level={18}
+          label="left"
+          nameTone="you"
+          name="Left"
+          status="East in landscape"
+        />
+      </View>
+    </ScreenShell>
+  );
+}
+
 function LobbySeatGallery() {
   const { width, height } = useWindowDimensions();
   const [joined, setJoined] = useState('Choose a seat');
@@ -203,6 +407,7 @@ function UiDevHarness() {
   const state = typeof params.state === 'string' ? params.state : 'components';
 
   if (state === 'progression') return <ProgressionGallery />;
+  if (state === 'avatars') return <AvatarGallery />;
   if (state === 'lobby-seats') return <LobbySeatGallery />;
   if (state === 'create-safe-area') {
     // Browser-only layout simulation, not evidence of native modal inset measurement.
@@ -460,6 +665,41 @@ const styles = StyleSheet.create({
   },
   action: {
     minWidth: 130,
+  },
+  avatarRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    justifyContent: 'space-around',
+    rowGap: PidroSpacing.md,
+    paddingTop: PidroSpacing.xs,
+  },
+  sizes: {
+    alignItems: 'flex-end',
+  },
+  sizeCell: {
+    alignItems: 'center',
+    gap: PidroSpacing.sm,
+  },
+  seatStates: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    rowGap: PidroSpacing.lg,
+    paddingTop: PidroSpacing.xs,
+  },
+  seatCell: {
+    width: 116,
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+  },
+  labels: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    gap: PidroSpacing.md,
+    paddingTop: PidroSpacing.xs,
   },
   swatch: {
     alignItems: 'center',

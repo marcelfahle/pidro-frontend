@@ -97,7 +97,8 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ui-dev?state=components`  | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
 | `/ui-dev?state=create`      | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
-| `/ui-dev?state=progression` | Progression HUD primitives: LevelRing (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                              |
+| `/ui-dev?state=progression` | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
+| `/ui-dev?state=avatars`     | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
