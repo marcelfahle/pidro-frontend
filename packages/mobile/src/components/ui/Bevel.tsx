@@ -154,6 +154,7 @@ function BevelGloss(chrome: BevelChrome) {
 }
 
 interface BevelLayersProps extends BevelChrome {
+  fill?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
   children: ReactNode;
 }
@@ -164,6 +165,7 @@ function BevelLayers({
   weight,
   radius,
   pressed,
+  fill = false,
   contentStyle,
   children,
 }: BevelLayersProps) {
@@ -178,12 +180,11 @@ function BevelLayers({
   const { rimPad, keyPad } = chromePads(chrome);
   return (
     <View
-      style={{
-        borderRadius: radius - rimPad,
-        padding: keyPad,
-        backgroundColor: PidroBevel.keyline,
-        flexGrow: 1,
-      }}>
+      style={[
+        styles.keyline,
+        { borderRadius: radius - rimPad, padding: keyPad },
+        fill && styles.fill,
+      ]}>
       {face}
     </View>
   );
@@ -226,6 +227,10 @@ export interface BevelPressableProps extends Omit<PressableProps, 'style' | 'chi
   weight?: BevelWeight;
   radius?: number;
   disabled?: boolean;
+  /** The face fills a rim with a set height (tiles, fixed-height CTAs).
+   *  Off by default: in native Yoga a growing keyline stretches every
+   *  wood button to the free height of its column. */
+  fill?: boolean;
   style?: StyleProp<ViewStyle>;
   contentStyle?: StyleProp<ViewStyle>;
   children: ReactNode;
@@ -237,6 +242,7 @@ export function BevelPressable({
   weight = 'lite',
   radius = 14,
   disabled = false,
+  fill = false,
   style,
   contentStyle,
   onPressIn,
@@ -284,6 +290,7 @@ export function BevelPressable({
         weight={weight}
         radius={radius}
         pressed={pressed}
+        fill={fill}
         contentStyle={contentStyle}>
         {children}
       </BevelLayers>
@@ -292,6 +299,12 @@ export function BevelPressable({
 }
 
 const styles = StyleSheet.create({
+  keyline: {
+    backgroundColor: PidroBevel.keyline,
+  },
+  fill: {
+    flexGrow: 1,
+  },
   face: {
     overflow: 'hidden',
   },

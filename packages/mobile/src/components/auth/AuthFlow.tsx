@@ -348,6 +348,7 @@ export function AuthFlowButton({
       weight={loud ? 'hero' : 'lite'}
       radius={loud ? 18 : wood ? 14 : 13}
       disabled={disabled || loading}
+      fill
       onPress={onPress}
       testID={testID}
       style={[

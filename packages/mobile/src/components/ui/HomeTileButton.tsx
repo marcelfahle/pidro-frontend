@@ -45,6 +45,7 @@ export function HomeTileButton({
       weight={wood ? 'hero' : 'lite'}
       radius={size === 'tablet' ? 18 : wood ? 18 : 13}
       disabled={disabled || loading}
+      fill
       onPress={onPress}
       testID={testID}
       style={[styles.rim, styles[`${size}Rim`], style]}
