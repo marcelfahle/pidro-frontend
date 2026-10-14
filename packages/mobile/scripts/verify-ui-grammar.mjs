@@ -488,7 +488,7 @@ async function assertRulePresentation(page, testCase) {
     }[testCase.name];
   if (badge && !testCase.rulesExplainer) {
     await page.getByTestId(badge).waitFor();
-    assert.ok((await page.getByTestId(badge).innerText()).includes(ruleLabels[ruleSet]));
+    assert.ok((await page.getByTestId(badge).getAttribute('aria-label')).includes(ruleLabels[ruleSet]));
   }
   if (testCase.rulesSelector) {
     const selector = page.getByTestId(testCase.rulesSelector);

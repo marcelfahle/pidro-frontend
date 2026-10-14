@@ -147,6 +147,7 @@ try {
     page.on('dialog', (dialog) => dialog.dismiss());
     await page.goto(`${baseUrl}/lobby`);
     await page.getByTestId('lobby-table-MEK').waitFor();
+    await page.getByTestId('lobby-rule-filter').getByRole('button', { name: 'All', exact: true }).click();
     await page.evaluate(() => document.fonts.ready);
     await suppressDevOverlays(page);
     await equalRows(page, '[data-testid^="lobby-table-"]');

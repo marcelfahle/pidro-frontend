@@ -12,10 +12,24 @@ export function ruleSetLabel(ruleSet: RuleSet) {
   return `${flag} ${t(labelKey)}`;
 }
 
-export function RuleSetChip({ ruleSet, testID }: { ruleSet: RuleSet; testID?: string }) {
+export function RuleSetChip({
+  ruleSet,
+  testID,
+  flagOnly = false,
+}: {
+  ruleSet: RuleSet;
+  testID?: string;
+  flagOnly?: boolean;
+}) {
   return (
-    <Surface variant="subtle" style={styles.chip} testID={testID}>
-      <PidroText role="metadata">{ruleSetLabel(ruleSet)}</PidroText>
+    <Surface
+      variant="subtle"
+      style={styles.chip}
+      testID={testID}
+      accessibilityLabel={ruleSetLabel(ruleSet)}>
+      <PidroText role="metadata">
+        {flagOnly ? ruleSets[ruleSet].flag : ruleSetLabel(ruleSet)}
+      </PidroText>
     </Surface>
   );
 }

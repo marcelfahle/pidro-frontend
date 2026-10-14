@@ -311,13 +311,17 @@ export function GameCanvasTable({
           ...(controller.phase === 'playing'
             ? { top: layout.trick.cy + layout.cardW * 0.4, left: 0, right: 0 }
             : {
-                top: insets.top + PidroLayout.touchTarget + PidroSpacing.md,
-                right: insets.right + PidroSpacing.sm,
+                top: insets.top + PidroSpacing.sm,
+                right: insets.right + PidroLayout.touchTarget + PidroSpacing.lg,
               }),
           alignItems: 'center',
         }}>
         <View style={{ alignSelf: 'center' }}>
-          <RuleSetChip ruleSet={ruleSet} testID="table-rule-set" />
+          <RuleSetChip
+            ruleSet={ruleSet}
+            flagOnly={controller.phase !== 'playing'}
+            testID="table-rule-set"
+          />
         </View>
       </View>
       <RulesExplainer
