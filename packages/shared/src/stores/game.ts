@@ -509,6 +509,8 @@ export const useGameStore = create<GameState>((set, get) => ({
             (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
           avatar_url:
             seat.avatar_url !== undefined ? seat.avatar_url : (previous?.avatar_url ?? null),
+          level: seat.level !== undefined ? seat.level : (previous?.level ?? null),
+          pin: seat.pin !== undefined ? seat.pin : (previous?.pin ?? null),
           isYou: pos === youPosition,
           isTeammate: !!youPosition && pos !== youPosition && isTeammate(youPosition, pos),
           isOpponent: !!youPosition && !isTeammate(youPosition, pos),

@@ -39,10 +39,16 @@ describe('authoritative readiness snapshots', () => {
   test('keeps avatars through ready updates and applies explicit avatar removal', () => {
     const ready = snapshot(5);
     ready.seats.north.avatar_url = 'avatar-v1';
+    ready.seats.north.level = 31;
+    ready.seats.north.pin = 'classic';
     useGameStore.getState().setReadiness(ready);
     expect(useGameStore.getState().playerMeta.north.avatar_url).toBe('avatar-v1');
     useGameStore.getState().setReadiness(snapshot(6, ['north']));
-    expect(useGameStore.getState().playerMeta.north.avatar_url).toBe('avatar-v1');
+    expect(useGameStore.getState().playerMeta.north).toMatchObject({
+      avatar_url: 'avatar-v1',
+      level: 31,
+      pin: 'classic',
+    });
     const removed = snapshot(7);
     removed.seats.north.avatar_url = null;
     useGameStore.getState().setReadiness(removed);
