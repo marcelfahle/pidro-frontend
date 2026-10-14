@@ -52,7 +52,7 @@ try {
       } else await route.fulfill({ status: 503, json: {} });
     });
     await page.goto(`${baseUrl}/lobby`);
-    await page.getByText('No tables available', { exact: true }).waitFor();
+    await page.getByText('No one is at a table yet', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Create table', exact: true }).click();
     const form = page.getByTestId('create-room-window');
     await form.waitFor();
@@ -60,36 +60,55 @@ try {
     await page.waitForFunction(() => [...document.images].every((image) => image.complete));
     await suppressDevOverlays(page);
     const button = (name) => form.getByRole('button', { name, exact: true });
-    const edit = (label, value = 'Open to public') => button(`Edit ${label}: ${value}`);
-    const create = button('Create table');
-    assert.equal(await form.getByRole('button', { name: /^Edit / }).count(), 3);
-    assert.equal(await form.getByRole('textbox').count(), 0, 'creation needs no name input');
-    await form.getByText('vs', { exact: true }).waitFor();
-    await create.click();
+    const seat = (label, value = 'open') => button(`${label}: ${value}. Change`);
+    const sheet = page.getByTestId('create-seat-sheet');
+    const choose = async (label, choice) => {
+      await seat(label).click();
+      await sheet.waitFor();
+      assert.equal(await sheet.getByRole('radio').count(), 3);
+      assert.equal(
+        await sheet
+          .getByRole('radio', { name: 'Open seat', exact: true })
+          .getAttribute('aria-checked'),
+        'true'
+      );
+      await sheet.getByRole('radio', { name: choice, exact: true }).click();
+      assert.equal(
+        await sheet.getByRole('radio', { name: choice, exact: true }).getAttribute('aria-checked'),
+        'true'
+      );
+      const done = sheet.getByRole('button', { name: 'Done', exact: true });
+      const doneBox = await done.boundingBox();
+      assert.ok(doneBox.y >= 0 && doneBox.y + doneBox.height <= viewport.height, 'Done is in view');
+      await assertMinimumTouchTargets(page, 'seat sheet', viewport);
+      await page.screenshot({ path: resolve(output, `${viewport.name}-seat.png`) });
+      await done.click();
+      await sheet.waitFor({ state: 'detached' });
+    };
+    const open = button('Open the table');
+    assert.equal(await form.getByRole('button', { name: /: open\. Change$/ }).count(), 3);
+    const name = form.getByRole('textbox', { name: 'Table name' });
+    assert.equal(await name.inputValue(), `${username}'s table`);
+    assert.equal(await form.getByText(/Seat rules|Preview only|Bot strength/).count(), 0);
+    const openBox = await open.boundingBox();
+    assert.ok(
+      openBox.y >= 0 && openBox.y + openBox.height <= viewport.height,
+      'Open the table stays on screen'
+    );
+    await open.click();
     await form.getByRole('alert').waitFor();
     assert.deepEqual(requests[0], {
       name: `${username}'s table`,
       seats: { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
     });
-    await edit('Your partner').click();
-    await button('Your partner bot').click();
-    assert.equal(await edit('Your partner', 'Bot').getAttribute('aria-expanded'), 'false');
-    assert.equal(await form.getByText(/Bot strength|Bot Difficulty/).count(), 0);
-    await edit('Opponent 2').click();
-    await button('Invite…').click();
-    await form.getByText(/Invitations do not reserve seats/).waitFor();
-    assert.equal(requests.length, 1, 'invitation action must not create a room');
-    await button('Seat rules · Preview only').click();
-    await button('1000 games preview').click();
-    await form
-      .getByLabel('Password · preview only', { exact: true })
-      .fill('example-not-a-real-secret');
-    await form.getByLabel('Password · preview only', { exact: true }).press('Enter');
+    await choose('Partner seat', 'Bot');
+    await choose('Right opponent seat', 'Invite a friend');
+    await seat('Partner seat', 'bot').waitFor();
+    await seat('Right opponent seat', 'invite').waitFor();
+    await name.fill('Friday night');
+    await name.press('Enter');
     assert.equal(requests.length, 1, 'keyboard Done must not create a table');
-    assert.equal(await create.count(), 0, 'preview replaces creation with a close action');
-    const closeBox = await button('Close preview').boundingBox();
-    assert.ok(closeBox.y >= 0 && closeBox.y + closeBox.height <= viewport.height);
-    await assertMinimumTouchTargets(page, 'creation preview', viewport, { checkInputs: true });
+    await assertMinimumTouchTargets(page, 'creation', viewport, { checkInputs: true });
     // No horizontally escaping descendants, including offscreen scroll content.
     const escaping = await form.evaluate((root) =>
       [...root.querySelectorAll('*')]
@@ -100,36 +119,22 @@ try {
         .map((el) => el.textContent?.slice(0, 50))
     );
     assert.deepEqual(escaping, []);
-    await page.screenshot({ path: resolve(output, `${viewport.name}-rules.png`) });
-    await button('Close preview').click();
-    await button('Seat rules · Preview only').click();
-    assert.equal(
-      await form.getByLabel('Password · preview only', { exact: true }).inputValue(),
-      ''
-    );
-    assert.equal(await button('No limit games preview').getAttribute('aria-selected'), 'true');
-    await button('Close rules preview').click();
-    await edit('Opponent 2').click();
-    await create.click();
-    await page.waitForFunction(() =>
-      document.querySelector('[role="alert"]')?.textContent?.includes('Try again')
-    );
+    await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
+    await open.click();
+    for (let tries = 0; requests.length < 2 && tries < 50; tries += 1) {
+      await page.waitForTimeout(100);
+    }
     assert.deepEqual(
       requests[1],
-      {
-        name: `${username}'s table`,
-        seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'open' },
-      },
-      'partner must map to south; previews must never be serialized'
+      { name: 'Friday night', seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'open' } },
+      'partner is seat 3; an invite seat is sent as an open seat'
     );
     await button('Cancel creation').click();
     await page.getByRole('button', { name: 'Create table', exact: true }).click();
-    await edit('Your partner').waitFor();
-    await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
-    await edit('Your partner').click();
-    await page.screenshot({ path: resolve(output, `${viewport.name}-expanded.png`) });
+    await seat('Partner seat').waitFor();
+    assert.equal(await name.inputValue(), `${username}'s table`);
     console.log(
-      `creation ok: ${viewport.name} — defaults, partner mapping, no bot strength, preview isolation, invite notice, reset, keyboard Done, 44px targets, containment`
+      `creation ok: ${viewport.name} — defaults, name field, seat sheet, partner mapping, invite as open, reset, keyboard Done, 44px targets, containment`
     );
     await context.close();
   }
@@ -165,20 +170,18 @@ try {
     };
     await inside(form);
     await inside(form.getByRole('button', { name: 'Cancel creation', exact: true }));
-    await inside(form.getByRole('button', { name: 'Create table', exact: true }));
+    await inside(form.getByRole('button', { name: 'Open the table', exact: true }));
+    const name = form.getByRole('textbox', { name: 'Table name' });
+    await name.scrollIntoViewIfNeeded();
+    await inside(name);
     await page.screenshot({ path: resolve(output, `safe-${preset}-${height}.png`) });
-    await form
-      .getByRole('button', { name: 'Edit Your partner: Open to public', exact: true })
-      .click();
-    await form.getByRole('button', { name: 'Seat rules · Preview only', exact: true }).click();
-    const password = form.getByLabel('Password · preview only', { exact: true });
-    await password.fill('example');
-    await password.scrollIntoViewIfNeeded();
-    await inside(password);
-    await inside(form.getByRole('button', { name: 'Close preview', exact: true }));
-    await page.screenshot({ path: resolve(output, `safe-${preset}-${height}-preview.png`) });
+    await form.getByRole('button', { name: 'Partner seat: open. Change', exact: true }).click();
+    const sheet = page.getByTestId('create-seat-sheet');
+    await inside(sheet.getByRole('radio', { name: 'Open seat', exact: true }));
+    await inside(sheet.getByRole('button', { name: 'Done', exact: true }));
+    await page.screenshot({ path: resolve(output, `safe-${preset}-${height}-seat.png`) });
     console.log(
-      `safe-area layout ok: ${preset} ${width}x${height} — four edges, header/footer, scroll-to-input`
+      `safe-area layout ok: ${preset} ${width}x${height} — four edges, header/footer, name field, seat sheet`
     );
     await page.close();
   }

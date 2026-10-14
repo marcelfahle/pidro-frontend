@@ -30,7 +30,9 @@ export type IconName =
   | 'edit'
   | 'alert'
   | 'spade'
-  | 'offline';
+  | 'offline'
+  | 'link'
+  | 'hash';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   home: { path: 'M3 11l9-8 9 8M5 9v12h5v-7h4v7h5V9', mode: 'stroke' },
@@ -68,6 +70,11 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     mode: 'stroke',
   },
   plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
+  link: {
+    path: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+    mode: 'stroke',
+  },
+  hash: { path: 'M4 9h16M4 15h16M10 3 8 21m8-18-2 18', mode: 'stroke' },
   'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },
   star: {
     path: 'M12 2l2.4 5.7 6.1.5-4.6 4 1.4 6L12 15l-5.3 3.2 1.4-6-4.6-4 6.1-.5z',

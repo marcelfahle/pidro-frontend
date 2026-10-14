@@ -624,7 +624,8 @@ function UiDevHarness() {
       </ScreenShell>
 
       <CreateRoomModal
-        isOpen={state === 'create'}
+        isOpen={state === 'create' || state === 'create-seat'}
+        initialSeat={state === 'create-seat' ? 'seat_3' : null}
         onClose={noop}
         onSubmit={noop}
         username="Alexandria the Long-Named Player"

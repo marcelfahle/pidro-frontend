@@ -89,6 +89,7 @@ const allCases = [
   { name: 'league', path: '/league', testId: 'league-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
+  { name: 'lobby-empty', path: '/lobby', testId: 'lobby-empty', authenticated: true },
   { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
   {
     name: 'welcome-guest',
@@ -199,6 +200,7 @@ const allCases = [
   },
   { name: 'ui-avatars', path: '/ui-dev?state=avatars', testId: 'ui-avatars-panel' },
   { name: 'create-table', path: '/ui-dev?state=create', testId: 'create-room-window' },
+  { name: 'create-seat', path: '/ui-dev?state=create-seat', testId: 'create-seat-sheet' },
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {
     name: 'table-ready',
@@ -1062,6 +1064,20 @@ async function main() {
               }),
             });
           });
+        }
+        if (testCase.name === 'lobby-empty') {
+          await page.route('**/api/v1/lobby', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  my_rejoinable: [],
+                  open_tables: [],
+                  substitute_needed: [],
+                  spectatable: [],
+                },
+              },
+            })
+          );
         }
         if (testCase.name === 'game-away') {
           // The away screen needs no server; keep the room and channel requests offline.

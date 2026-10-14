@@ -29,13 +29,15 @@ export const UI_VIEWPORTS = [
       'classic-forgot',
       'classic-link-sent',
       'classic-help',
+      'lobby-empty',
+      'create-table',
     ],
   },
   {
     name: 'tablet-landscape',
     width: 1024,
     height: 768,
-    cases: ['table-bidding', 'welcome', 'home', 'home-guest'],
+    cases: ['table-bidding', 'welcome', 'home', 'home-guest', 'lobby-empty', 'create-table'],
   },
 ];
 

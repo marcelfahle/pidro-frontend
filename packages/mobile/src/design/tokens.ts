@@ -49,6 +49,11 @@ export const PidroColors = {
   turnUrgent: '#ffb86b',
   turnUrgentTrack: 'rgba(255, 184, 107, 0.22)',
   turnUrgentGlow: 'rgba(255, 184, 107, 0.4)',
+  // The table seen from above on Tables and New table: an open chair, a chosen seat.
+  chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
+  tabletopMark: 'rgba(190, 230, 255, 0.16)',
+  choiceOn: 'rgba(107, 73, 11, 0.45)',
+  radioOff: 'rgba(184, 225, 246, 0.6)',
   plaqueShadow: '0px 4px 14px rgba(1,13,27,0.35), inset 0px 1px 0px rgba(139,234,255,0.12)',
   // A chosen row in a list of choices: gold edge on a warm wash.
   chosenBg: 'rgba(107, 73, 11, 0.45)',
@@ -89,6 +94,10 @@ export const PidroBevel = {
   avatarGlassEdge: '#86CFEE',
   avatarGemGradient: 'linear-gradient(135deg, #ffffff 0%, #c9f7ff 30%, #5fd2ff 65%, #2a76d0 100%)',
   avatarGemGlow: 'rgba(160, 240, 255, 0.85)',
+  // The felt of a table drawn from above, ringed in wood and a gold hairline.
+  tabletopGradient: 'radial-gradient(ellipse at 50% 40%, #1b6aa4 0%, #11558c 55%, #0b3f6c 100%)',
+  tabletopShadow:
+    '0px 0px 0px 2px #E2AF45, 0px 14px 30px rgba(1,13,27,0.55), inset 0px 0px 30px rgba(0,0,0,0.35)',
   glassFaceGradient: 'linear-gradient(180deg, rgba(46,118,178,0.92) 0%, rgba(24,78,128,0.92) 100%)',
   woodGlossGradient:
     'linear-gradient(180deg, rgba(255,248,225,0.24) 0%, rgba(255,248,225,0.07) 100%)',

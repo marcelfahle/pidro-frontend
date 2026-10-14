@@ -1,8 +1,18 @@
-import { useState } from 'react';
-import { Keyboard, Modal, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { clampRoomName } from '@pidro/shared';
+import { useState, type ReactNode } from 'react';
+import {
+  Keyboard,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+} from 'react-native';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { limitRoomNameInput } from '@pidro/shared';
 import type { CreateRoomRequest } from '@/types/lobby';
+import { AuthFlowButton } from '@/components/auth/AuthFlow';
+import { OpenChair, TableTop } from '@/components/lobby/TableTop';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
@@ -10,24 +20,81 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import {
+  PidroBevel,
+  PidroColors,
+  PidroFonts,
+  PidroLayout,
+  PidroRadii,
+  PidroSpacing,
+} from '@/design/tokens';
+import {
+  defaultTableName,
+  newTableRequest,
+  type SeatChoice,
+  type SeatKey,
+} from '@/features/lobby/newTable';
 
 interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: CreateRoomRequest) => void;
+  /** `invite` is true when a seat was marked for an invite: open the table with its invite sheet. */
+  onSubmit: (data: CreateRoomRequest, invite: boolean) => void;
   isLoading?: boolean;
   username?: string;
   avatarUrl?: string | null;
   error?: string | null;
+  /** Fixture only: open with this seat's sheet up. */
+  initialSeat?: SeatKey | null;
 }
 
-type SeatKey = 'seat_2' | 'seat_3' | 'seat_4';
-type SeatType = 'open' | 'ai';
+const SEATS: Record<SeatKey, { role: string; title: string; about: string; spoken: string }> = {
+  seat_3: {
+    role: 'Partner',
+    title: 'Partner seat',
+    about: 'Your partner sits across from you and plays on your team.',
+    spoken: 'Partner seat',
+  },
+  seat_2: {
+    role: 'Opponent',
+    title: 'Opponent seat',
+    about: 'Opponents sit beside you and play against your team.',
+    spoken: 'Left opponent seat',
+  },
+  seat_4: {
+    role: 'Opponent',
+    title: 'Opponent seat',
+    about: 'Opponents sit beside you and play against your team.',
+    spoken: 'Right opponent seat',
+  },
+};
+
+const CHOICES: { value: SeatChoice; label: string; status: string; about: string }[] = [
+  {
+    value: 'open',
+    label: 'Open seat',
+    status: 'Open seat',
+    about: 'Anyone in Tables can sit here.',
+  },
+  { value: 'ai', label: 'Bot', status: 'Bot', about: 'A bot plays this seat for the whole game.' },
+  {
+    value: 'invite',
+    label: 'Invite a friend',
+    status: 'Invite',
+    about:
+      'You get a link to share once the table is open. The seat stays open until someone sits down.',
+  },
+];
+
+const SPOKEN: Record<SeatChoice, string> = { open: 'open', ai: 'bot', invite: 'invite' };
+const statusOf = (choice: SeatChoice) => CHOICES.find((item) => item.value === choice)!.status;
+
+// The drawing is 340×324 on the board; it shrinks to fit narrow or short screens.
+const TABLE_WIDTH = 340;
+const TABLE_HEIGHT = 324;
 
 export function CreateRoomModal(props: CreateRoomModalProps) {
-  // Unmount the draft on dismissal: no stale seat choices or preview passwords on reopen.
+  // Unmount the draft on dismissal: no stale seat choices on reopen.
   if (!props.isOpen) return null;
   return (
     <Modal
@@ -52,265 +119,437 @@ export function CreateRoomForm({
   username,
   avatarUrl,
   error,
+  initialSeat = null,
 }: CreateRoomModalProps) {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const landscape = width > height;
-  const [seats, setSeats] = useState<Record<SeatKey, SeatType>>({
+  const [name, setName] = useState(() => defaultTableName(username));
+  const [seats, setSeats] = useState<Record<SeatKey, SeatChoice>>({
     seat_2: 'open',
     seat_3: 'open',
     seat_4: 'open',
   });
-  const [expanded, setExpanded] = useState<SeatKey | null>(null);
-  const [rules, setRules] = useState(false);
-  const [inviteNotice, setInviteNotice] = useState(false);
+  const [editing, setEditing] = useState<SeatKey | null>(initialSeat);
+
+  const innerWidth = width - insets.left - insets.right;
+  const scale = Math.min(
+    1,
+    landscape
+      ? Math.min(
+          (height - insets.top - insets.bottom - 2 * PidroSpacing.md) / TABLE_HEIGHT,
+          (Math.min(innerWidth, PidroLayout.wideContentMaxWidth) - 2 * PidroSpacing.lg) /
+            2 /
+            TABLE_WIDTH
+        )
+      : (Math.min(innerWidth, PidroLayout.contentMaxWidth) - 2 * PidroSpacing.md) / TABLE_WIDTH
+  );
+  const at = (value: number) => value * scale;
 
   const submit = () => {
-    if (isLoading || rules) return;
+    if (isLoading) return;
     Keyboard.dismiss();
-    onSubmit({
-      name: clampRoomName(`${username ?? 'Player'}'s table`),
-      seats,
-    });
+    const { request, invite } = newTableRequest(name, username, seats);
+    onSubmit(request, invite);
   };
 
-  const seat = (key: SeatKey, label: string) => (
-    <Surface variant="subtle" key={key}>
-      <PressableFX
-        accessibilityRole="button"
-        accessibilityLabel={`Edit ${label}: ${seats[key] === 'ai' ? 'Bot' : 'Open to public'}`}
-        accessibilityState={{ expanded: expanded === key, disabled: isLoading }}
-        aria-expanded={expanded === key}
+  const seatFace = (key: SeatKey) =>
+    seats[key] === 'ai' ? (
+      <PlayerAvatar kind="bot" size={at(56)} />
+    ) : (
+      <OpenChair size={at(56)} invite={seats[key] === 'invite'} />
+    );
+
+  const seatLabel = (title: string, status: string, gold: boolean, center = false) => (
+    <View style={center && styles.seatLabelCenter}>
+      <PidroText role="label" style={gold ? styles.gold : styles.cyan} numberOfLines={1}>
+        {title}
+      </PidroText>
+      <PidroText role="metadata" tone="soft" numberOfLines={1}>
+        {status}
+      </PidroText>
+    </View>
+  );
+
+  const seatButton = (key: SeatKey, style: object, children: ReactNode) => (
+    <PressableFX
+      key={key}
+      accessibilityRole="button"
+      accessibilityLabel={`${SEATS[key].spoken}: ${SPOKEN[seats[key]]}. Change`}
+      disabled={isLoading}
+      onPress={() => {
+        Keyboard.dismiss();
+        setEditing(key);
+      }}
+      style={[styles.seat, style]}>
+      {children}
+    </PressableFX>
+  );
+
+  // Side seats keep room for their labels even when the drawing shrinks.
+  const sideWidth = Math.max(at(84), 84);
+  const table = (
+    <View style={{ width: at(TABLE_WIDTH), height: at(TABLE_HEIGHT) }}>
+      <TableTop
+        mark={at(34)}
+        style={{ left: at(92), top: at(84), width: at(156), height: at(160) }}
+      />
+      {seatButton(
+        'seat_3',
+        [styles.seatRow, { left: at(112), top: 0, minHeight: Math.max(at(56), 44) }],
+        <>
+          {seatFace('seat_3')}
+          {seatLabel(SEATS.seat_3.role, statusOf(seats.seat_3), true)}
+        </>
+      )}
+      {(['seat_2', 'seat_4'] as const).map((key) =>
+        seatButton(
+          key,
+          [
+            styles.seatColumn,
+            {
+              left: at(key === 'seat_2' ? 42 : 298) - sideWidth / 2,
+              top: at(112),
+              width: sideWidth,
+            },
+          ],
+          <>
+            {seatFace(key)}
+            {seatLabel(SEATS[key].role, statusOf(seats[key]), false, true)}
+          </>
+        )
+      )}
+      <View style={[styles.seat, styles.seatRow, { left: at(112), top: at(262) }]}>
+        <PlayerAvatar uri={avatarUrl} size={at(56)} accessibilityLabel="You, the host" />
+        {seatLabel('You', 'Host', true)}
+      </View>
+    </View>
+  );
+
+  const nameField = (
+    <Input
+      label="Table name"
+      value={name}
+      onChangeText={(text) => setName(limitRoomNameInput(text))}
+      editable={!isLoading}
+      autoCorrect={false}
+      returnKeyType="done"
+      onSubmitEditing={Keyboard.dismiss}
+    />
+  );
+
+  const key = (
+    <View style={styles.key}>
+      <View style={styles.keyRow}>
+        <View style={styles.keyItem}>
+          <View style={[styles.dot, styles.dotTeam]} />
+          <PidroText role="metadata" tone="soft">
+            Your team sits across
+          </PidroText>
+        </View>
+        <View style={styles.keyItem}>
+          <View style={[styles.dot, styles.dotOpponents]} />
+          <PidroText role="metadata" tone="soft">
+            Opponents
+          </PidroText>
+        </View>
+      </View>
+      <PidroText role="metadata" tone="soft" align="center">
+        Tap a seat to change who sits there.
+      </PidroText>
+    </View>
+  );
+
+  const header = (
+    <View style={styles.header}>
+      <BevelButton
+        material="glass"
+        size="icon"
+        accessibilityLabel="Cancel creation"
         disabled={isLoading}
-        onPress={() => {
-          Keyboard.dismiss();
-          setExpanded(expanded === key ? null : key);
-          setRules(false);
-          setInviteNotice(false);
-        }}
-        style={styles.seatRow}>
-        <View style={styles.placeholder}>
-          <Icon name={seats[key] === 'ai' ? 'bot' : 'friends'} size={24} />
-        </View>
-        <View style={styles.copy}>
-          <PidroText role="label" numberOfLines={1}>
-            {label}
-          </PidroText>
-          <PidroText role="metadata" tone="soft" accessibilityLiveRegion="polite">
-            {seats[key] === 'ai' ? 'Bot' : 'Open to public'}
-          </PidroText>
-        </View>
-        <View style={expanded === key && styles.expandedChevron}>
-          <Icon name="chevron-right" size={20} />
-        </View>
-      </PressableFX>
-      {expanded === key ? (
-        <View style={styles.editor}>
-          <View style={styles.choices}>
-            {(['open', 'ai'] as const).map((value) => (
-              <BevelButton
-                key={value}
-                material="glass"
-                size="sm"
-                label={`${seats[key] === value ? '✓ ' : ''}${value === 'open' ? 'Public' : 'Bot'}`}
-                accessibilityLabel={`${label} ${value === 'open' ? 'public' : 'bot'}`}
-                accessibilityState={{ selected: seats[key] === value, disabled: isLoading }}
-                aria-selected={seats[key] === value}
-                disabled={isLoading}
-                onPress={() => {
-                  setSeats({ ...seats, [key]: value });
-                  setExpanded(null);
-                  setRules(false);
-                }}
-              />
-            ))}
-            <BevelButton
-              label="Invite…"
-              material="glass"
-              size="sm"
-              disabled={isLoading}
-              onPress={() => setInviteNotice(!inviteNotice)}
-            />
-          </View>
-          {inviteNotice ? (
-            <PidroText role="metadata" tone="soft" accessibilityLiveRegion="polite">
-              Create the table first, then use Invite at the waiting table to share its link.
-              Invitations do not reserve seats.
-            </PidroText>
-          ) : null}
-          {seats[key] === 'open' ? (
-            <>
-              <BevelButton
-                label={rules ? 'Close rules preview' : 'Seat rules · Preview only'}
-                material="glass"
-                size="sm"
-                disabled={isLoading}
-                accessibilityState={{ expanded: rules, disabled: isLoading }}
-                aria-expanded={rules}
-                onPress={() => {
-                  Keyboard.dismiss();
-                  setRules(!rules);
-                }}
-              />
-              {rules ? <SeatRulesPreview /> : null}
-            </>
-          ) : null}
-        </View>
+        onPress={onClose}>
+        <Icon name="arrow-left" size={22} />
+      </BevelButton>
+      <PidroText role="label" style={styles.title}>
+        New table
+      </PidroText>
+    </View>
+  );
+
+  const footer = (
+    <View style={styles.footer}>
+      {error ? (
+        <PidroText role="body" tone="danger" align="center" accessibilityRole="alert">
+          {error}
+        </PidroText>
       ) : null}
-    </Surface>
+      <AuthFlowButton label="Open the table" loading={isLoading} onPress={submit} />
+      <PidroText role="metadata" tone="soft" align="center">
+        It shows up in Tables. Invite friends from the table.
+      </PidroText>
+    </View>
   );
 
   return (
-    <ScreenShell testID="create-room-window" contentStyle={styles.shell}>
-      <View style={styles.header}>
-        <BevelButton
-          material="glass"
-          size="icon"
-          accessibilityLabel="Cancel creation"
-          disabled={isLoading}
-          onPress={onClose}>
-          <Icon name="arrow-left" size={22} />
-        </BevelButton>
-        <PidroText role="label">Create table</PidroText>
-      </View>
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.form}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag">
-        <View style={[styles.teams, landscape && styles.landscape]}>
-          <View style={[styles.team, landscape && styles.teamLandscape]}>
-            <PidroText role="label">Your team</PidroText>
-            <Surface variant="subtle" style={styles.seatRow}>
-              <PlayerAvatar uri={avatarUrl} size={40} />
-              <View style={styles.copy}>
-                <PidroText role="label" numberOfLines={1}>
-                  {username ?? 'You'}
-                </PidroText>
-                <PidroText role="metadata" tone="gold">
-                  You · Host
-                </PidroText>
-              </View>
-            </Surface>
-            {seat('seat_3', 'Your partner')}
-          </View>
-          <View style={styles.versus}>
-            <PidroText role="metadata" tone="muted">
-              vs
-            </PidroText>
-          </View>
-          <View style={[styles.team, landscape && styles.teamLandscape]}>
-            <PidroText role="label">Opponents</PidroText>
-            {seat('seat_2', 'Opponent 1')}
-            {seat('seat_4', 'Opponent 2')}
-          </View>
-        </View>
-        {error ? (
-          <PidroText role="body" tone="danger" accessibilityRole="alert">
-            {error}
-          </PidroText>
-        ) : null}
-      </ScrollView>
-      <View style={styles.footer}>
-        {rules ? (
-          <PidroText role="metadata" tone="soft">
-            Preview only · nothing is applied
-          </PidroText>
-        ) : null}
-        <BevelButton
-          label={rules ? 'Close preview' : 'Create table'}
-          material={rules ? 'glass' : 'wood'}
-          size="sm"
-          loading={isLoading}
-          onPress={
-            rules
-              ? () => {
-                  Keyboard.dismiss();
-                  setRules(false);
-                }
-              : submit
-          }
-          style={styles.createAction}
+    <View style={styles.root}>
+      <ScreenShell
+        testID="create-room-window"
+        compact={!landscape}
+        contentStyle={[styles.shell, landscape && styles.shellLandscape]}>
+        {landscape ? (
+          <>
+            <ScrollView
+              style={styles.controls}
+              contentContainerStyle={styles.controlsContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}>
+              {header}
+              {nameField}
+              {key}
+              <View style={styles.spacer} />
+              {footer}
+            </ScrollView>
+            {table}
+          </>
+        ) : (
+          <>
+            {header}
+            <ScrollView
+              style={styles.scroll}
+              contentContainerStyle={styles.form}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}>
+              {nameField}
+              {table}
+              {key}
+            </ScrollView>
+            {footer}
+          </>
+        )}
+      </ScreenShell>
+      {editing ? (
+        <SeatSheet
+          seat={editing}
+          choice={seats[editing]}
+          onChoose={(choice) => setSeats({ ...seats, [editing]: choice })}
+          onDone={() => setEditing(null)}
         />
-      </View>
-    </ScreenShell>
+      ) : null}
+    </View>
   );
 }
 
-function SeatRulesPreview() {
-  const [minimum, setMinimum] = useState(0);
-  const [password, setPassword] = useState('');
-  // Deliberately isolated from the creation draft and discarded on close.
+function SeatSheet({
+  seat,
+  choice,
+  onChoose,
+  onDone,
+}: {
+  seat: SeatKey;
+  choice: SeatChoice;
+  onChoose: (choice: SeatChoice) => void;
+  onDone: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
+  // Short landscape screens set the three choices side by side so Done stays in view.
+  const wide = width > height;
   return (
-    <View style={styles.section}>
-      <Surface variant="subtle" style={styles.notice} accessibilityRole="alert">
-        <PidroText role="metadata" tone="gold">
-          Preview only. Passwords and minimum games are not available yet. Nothing here is saved or
-          enforced; this seat stays public. Use an example password only.
-        </PidroText>
-      </Surface>
-      <PidroText role="metadata">Minimum completed games · preview</PidroText>
-      <View style={styles.choices}>
-        {[0, 100, 1000].map((value) => (
-          <BevelButton
-            key={value}
-            material="glass"
-            size="sm"
-            label={`${minimum === value ? '✓ ' : ''}${value || 'No limit'}`}
-            accessibilityLabel={`${value || 'No limit'} games preview`}
-            accessibilityState={{ selected: minimum === value }}
-            aria-selected={minimum === value}
-            onPress={() => setMinimum(value)}
-          />
-        ))}
-      </View>
-      <Input
-        label="Password · preview only"
-        placeholder="Example password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        revealPassword
-        autoComplete="off"
-        autoCorrect={false}
-        autoCapitalize="none"
-        returnKeyType="done"
-        onSubmitEditing={Keyboard.dismiss}
+    <View style={[styles.overlay, { paddingTop: insets.top }]} testID="create-seat-sheet">
+      <Pressable
+        accessibilityLabel="Close"
+        onPress={onDone}
+        style={[StyleSheet.absoluteFill, styles.scrim]}
       />
+      <View
+        accessibilityViewIsModal
+        style={[
+          styles.sheet,
+          wide && styles.sheetWide,
+          {
+            paddingBottom: insets.bottom + PidroSpacing.md,
+            paddingLeft: insets.left + 20,
+            paddingRight: insets.right + 20,
+          },
+        ]}>
+        <View style={styles.grabber} />
+        <View style={styles.sheetCopy}>
+          <PidroText accessibilityRole="header" style={styles.sheetTitle}>
+            {SEATS[seat].title}
+          </PidroText>
+          <PidroText role="metadata" tone="soft">
+            {SEATS[seat].about}
+          </PidroText>
+        </View>
+        <ScrollView
+          style={styles.choicesScroll}
+          contentContainerStyle={[styles.choices, wide && styles.choicesWide]}
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Who sits here">
+          {CHOICES.map((item) => {
+            const checked = item.value === choice;
+            return (
+              <PressableFX
+                key={item.value}
+                accessibilityRole="radio"
+                accessibilityLabel={item.label}
+                accessibilityHint={item.about}
+                accessibilityState={{ checked }}
+                aria-checked={checked}
+                onPress={() => onChoose(item.value)}
+                style={[styles.choice, checked && styles.choiceOn, wide && styles.choiceWide]}>
+                <View style={styles.choiceIcon}>
+                  {item.value === 'ai' ? (
+                    <Icon name="bot" size={22} />
+                  ) : (
+                    <Icon
+                      name={item.value === 'invite' ? 'link' : 'plus'}
+                      size={20}
+                      color={item.value === 'invite' ? PidroBevel.textGold : PidroColors.cyanText}
+                      strokeWidth={2.4}
+                    />
+                  )}
+                </View>
+                <View style={styles.choiceCopy}>
+                  <PidroText role="label">{item.label}</PidroText>
+                  <PidroText role="metadata" tone="soft">
+                    {item.about}
+                  </PidroText>
+                </View>
+                <View style={[styles.radio, checked && styles.radioOn, wide && styles.radioWide]}>
+                  {checked ? <View style={styles.radioDot} /> : null}
+                </View>
+              </PressableFX>
+            );
+          })}
+        </ScrollView>
+        <AuthFlowButton label="Done" onPress={onDone} style={styles.done} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  shell: { flex: 1, gap: PidroSpacing.sm },
+  root: { flex: 1 },
+  shell: { flex: 1, gap: PidroSpacing.md },
+  shellLandscape: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.sm },
+  title: { fontSize: 17, lineHeight: 22 },
   scroll: { flex: 1, minHeight: 0 },
-  form: { gap: PidroSpacing.md, paddingBottom: PidroSpacing.sm },
-  teams: { gap: PidroSpacing.md },
-  landscape: { flexDirection: 'row', alignItems: 'flex-start' },
-  team: { minWidth: 0, gap: PidroSpacing.xs },
-  teamLandscape: { flex: 1 },
-  versus: { alignSelf: 'center', alignItems: 'center', justifyContent: 'center' },
-  section: { gap: PidroSpacing.xs },
-  seatRow: {
-    minHeight: PidroLayout.touchTarget,
+  form: { alignItems: 'center', gap: PidroSpacing.md, paddingBottom: PidroSpacing.sm },
+  controls: { flex: 1, alignSelf: 'stretch' },
+  controlsContent: { flexGrow: 1, gap: PidroSpacing.md },
+  spacer: { flexGrow: 1 },
+  seat: { position: 'absolute' },
+  seatRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  seatColumn: { alignItems: 'center', gap: 6 },
+  seatLabelCenter: { alignItems: 'center' },
+  gold: { color: PidroBevel.textGold },
+  cyan: { color: PidroColors.cyanText },
+  key: { alignSelf: 'stretch', gap: PidroSpacing.xs },
+  keyRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    columnGap: 20,
+    rowGap: PidroSpacing.xxs,
+  },
+  keyItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dot: { width: 10, height: 10, borderRadius: PidroRadii.full },
+  dotTeam: { backgroundColor: PidroBevel.textGold },
+  dotOpponents: { backgroundColor: PidroColors.cyanText },
+  footer: { alignSelf: 'stretch', alignItems: 'center', gap: 10 },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  scrim: { backgroundColor: PidroColors.backdrop },
+  sheet: {
+    width: '100%',
+    maxWidth: 560,
+    maxHeight: '100%',
+    gap: 14,
+    paddingTop: 10,
+    borderTopLeftRadius: PidroRadii.lg,
+    borderTopRightRadius: PidroRadii.lg,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: PidroColors.cyanBorder,
+    backgroundColor: PidroColors.panelStrong,
+  },
+  grabber: {
+    alignSelf: 'center',
+    width: 40,
+    height: 5,
+    borderRadius: PidroRadii.full,
+    backgroundColor: PidroColors.borderStrong,
+  },
+  sheetCopy: { gap: 2, paddingHorizontal: PidroSpacing.xxs },
+  sheetTitle: {
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 26,
+    lineHeight: 32,
+    color: PidroBevel.textGold,
+    ...PidroBevel.labelShadow,
+  },
+  sheetWide: { maxWidth: 820 },
+  choicesScroll: { flexShrink: 1 },
+  choices: { gap: 10 },
+  choicesWide: { flexDirection: 'row' },
+  choice: {
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: PidroSpacing.sm,
-    padding: PidroSpacing.xs,
+    gap: 14,
+    paddingVertical: PidroSpacing.sm,
+    paddingHorizontal: 14,
+    borderRadius: PidroRadii.lg,
+    borderWidth: 1,
+    borderColor: PidroColors.border,
+    backgroundColor: PidroColors.panelSoft,
   },
-  copy: { flex: 1, minWidth: 0 },
-  placeholder: {
-    width: 40,
-    height: 40,
-    borderRadius: PidroRadii.full,
+  choiceWide: { flex: 1, flexDirection: 'column', alignItems: 'flex-start', gap: PidroSpacing.xs },
+  choiceOn: {
+    paddingVertical: 11,
+    paddingHorizontal: 13,
+    borderWidth: 2,
+    borderColor: PidroBevel.rim,
+    backgroundColor: PidroColors.choiceOn,
+  },
+  choiceIcon: {
+    width: 44,
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: PidroColors.panel,
+    borderRadius: PidroRadii.full,
+    borderWidth: 1,
+    borderColor: PidroColors.borderStrong,
+    backgroundColor: PidroColors.panelStrong,
   },
-  expandedChevron: { transform: [{ rotate: '90deg' }] },
-  editor: { padding: PidroSpacing.xs, paddingTop: 0, gap: PidroSpacing.xs },
-  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
-  notice: { padding: PidroSpacing.sm, borderColor: PidroColors.goldDark },
-  footer: { alignItems: 'center', gap: PidroSpacing.xs },
-  createAction: { alignSelf: 'center' },
+  choiceCopy: { flex: 1, minWidth: 0, gap: 2 },
+  radio: {
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: PidroRadii.full,
+    borderWidth: 2,
+    borderColor: PidroColors.radioOff,
+  },
+  radioWide: { position: 'absolute', top: PidroSpacing.sm, right: PidroSpacing.sm },
+  radioOn: { borderColor: PidroBevel.textGold },
+  radioDot: {
+    width: 10,
+    height: 10,
+    borderRadius: PidroRadii.full,
+    backgroundColor: PidroBevel.textGold,
+  },
+  done: { marginTop: PidroSpacing.xxs },
 });
