@@ -19,17 +19,12 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
-import { createSoloRoom } from '@/features/game/solo';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
-import { gameRoute } from '@/navigation/gameRoute';
+import { TABLE_UNKNOWN_ERROR, useQuickGame } from '@/hooks/useQuickGame';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
-import { apiErrorInfo } from '@/utils/apiErrors';
 
 type LobbyCountState = 'loading' | 'ready' | 'failed';
-
-const TABLE_UNKNOWN_ERROR =
-  'We could not check whether you are at another table. Please try again.';
 
 export default function HomeScreen() {
   const { width, height } = useWindowDimensions();
@@ -42,21 +37,20 @@ export default function HomeScreen() {
   const lobby = useLobbyStore((state) => state.lobby);
   const setLobby = useLobbyStore((state) => state.setLobby);
   const setStats = useLobbyStore((state) => state.setStats);
-  const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const router = useRouter();
   const params = useLocalSearchParams<{ fixture?: string }>();
   const fixture = __DEV__ ? params.fixture : undefined;
-  const [singlePlayerLoading, setSinglePlayerLoading] = useState(false);
   const [accountSheetReason, setAccountSheetReason] = useState<AuthSheetReason | null>(null);
-  const [error, setError] = useState<string | null>(
-    fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null
-  );
   const [identity, setIdentity] = useState<ProfileIdentity | null>(null);
   const [lobbyCountState, setLobbyCountState] = useState<LobbyCountState>('loading');
   const refreshIdentity = useProfileIdentity();
   const rawPillClearance = usePillClearance();
   const pillClearance = guest ? { bottom: 0, right: 0 } : rawPillClearance;
   const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
+  const quickGame = useQuickGame(
+    playerName,
+    fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null
+  );
 
   useLobbyChannel(
     useCallback(() => {
@@ -93,54 +87,6 @@ export default function HomeScreen() {
       };
     }, [guest, refreshIdentity, setLobby, setStats])
   );
-
-  const createSinglePlayerRoom = async () => {
-    const response = await createSoloRoom(playerName);
-    if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
-    router.replace(gameRoute(response.code, 'single-player'));
-  };
-
-  const handleSinglePlayer = async () => {
-    setSinglePlayerLoading(true);
-    setError(null);
-
-    try {
-      await createSinglePlayerRoom();
-    } catch (err: unknown) {
-      const { code, detail } = apiErrorInfo(err);
-      if (code === 'ALREADY_IN_ROOM') {
-        const lobbyResponse = await lobbyApi.listLobby().catch(() => null);
-        if (!lobbyResponse) {
-          // Without the lobby we cannot tell a solo table from a live multiplayer one.
-          setError(TABLE_UNKNOWN_ERROR);
-        } else if (lobbyResponse.lobby.my_rejoinable.length) {
-          setError('You already have a multiplayer table. Rejoin it or leave it first.');
-          router.push('/lobby');
-        } else {
-          try {
-            // No table left to leave is the state Home wanted.
-            await lobbyApi.leaveRoom('current').catch(() => undefined);
-            await createSinglePlayerRoom();
-          } catch (retryError) {
-            const retryDetail = apiErrorInfo(retryError).detail;
-            setError(
-              retryDetail
-                ? `We could not start a solo game: ${retryDetail}`
-                : 'We could not clear your previous solo table. Please try again.'
-            );
-          }
-        }
-      } else {
-        setError(
-          detail
-            ? `We could not start a solo game: ${detail}`
-            : 'We could not start a solo game. Please try again.'
-        );
-      }
-    } finally {
-      setSinglePlayerLoading(false);
-    }
-  };
 
   const games = identity?.games_played;
   const level = identity?.veteran?.level;
@@ -217,10 +163,10 @@ export default function HomeScreen() {
         tablet && styles.actionsTablet,
         compactLandscape && styles.actionsLandscape,
       ]}>
-      {error ? (
+      {quickGame.error ? (
         <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
           <PidroText role="metadata" tone="danger" align="center">
-            {error}
+            {quickGame.error}
           </PidroText>
         </Surface>
       ) : null}
@@ -239,8 +185,8 @@ export default function HomeScreen() {
           subtitle="You and three bots"
           status={guest ? 'No sign-up' : undefined}
           size={tileSize}
-          loading={singlePlayerLoading}
-          onPress={handleSinglePlayer}
+          loading={quickGame.loading}
+          onPress={quickGame.start}
           testID="home-quick-game"
           style={!guest && compactLandscape && styles.accountLandscapeTile}
         />

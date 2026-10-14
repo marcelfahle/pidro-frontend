@@ -9,12 +9,15 @@ import {
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
+import { OpenChair, TableTop } from '@/components/lobby/TableTop';
+import { AuthFlowButton, AuthFlowHeading } from '@/components/auth/AuthFlow';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
@@ -22,7 +25,9 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
+import { TextLink } from '@/components/ui/TextLink';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { useQuickGame } from '@/hooks/useQuickGame';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
@@ -81,6 +86,7 @@ export default function LobbyScreen() {
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const pendingAccountActionRef = useRef<(() => Promise<void>) | null>(null);
   const realtimeRevisionRef = useRef(0);
+  const quickGame = useQuickGame(playerName);
 
   const requestAccount = (retry: () => Promise<void>) => {
     pendingAccountActionRef.current = retry;
@@ -124,9 +130,9 @@ export default function LobbyScreen() {
   const visibleTableCount =
     rejoinableTables.length + openTables.length + substituteTables.length + watchTables.length;
   const hasQuery = query.trim().length > 0;
-  const isEmptyLobby = !isLoading && !hasQuery && visibleTableCount === 0;
   const hasNoResults = !isLoading && hasQuery && visibleTableCount === 0;
   const isUnavailable = !isLoading && !!error && visibleTableCount === 0;
+  const isEmptyLobby = !isLoading && !hasQuery && visibleTableCount === 0 && !isUnavailable;
 
   const loadLobby = useCallback(async () => {
     const revisionAtStart = realtimeRevisionRef.current;
@@ -211,9 +217,13 @@ export default function LobbyScreen() {
 
   const handleCreateRoom = async (
     data: CreateRoomRequest,
+    invite = false,
     mayRequestAccount = true,
     showFailureAlert = false
   ) => {
+    // An invite seat is an open seat; the waiting table opens with its invite sheet up.
+    const openTable = (code: string) =>
+      router.replace(invite ? `/game/${code}?invite=true` : `/game/${code}`);
     const reportFailure = (message: string) => {
       if (showFailureAlert) Alert.alert('Could not create table', message);
       else setCreateError(message);
@@ -229,12 +239,12 @@ export default function LobbyScreen() {
       });
       if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
       setIsCreateModalOpen(false);
-      router.replace(`/game/${response.code}`);
+      openTable(response.code);
     } catch (createRoomError: unknown) {
       const { code, detail } = apiErrorInfo(createRoomError);
       if (code === 'ACCOUNT_REQUIRED') {
         if (mayRequestAccount) {
-          requestAccount(() => handleCreateRoom(data, false, true));
+          requestAccount(() => handleCreateRoom(data, invite, false, true));
         } else {
           reportFailure(detail || 'Your account could not be confirmed. Please try again.');
         }
@@ -259,13 +269,13 @@ export default function LobbyScreen() {
               upsertLobbyRoom(retryResponse.room, 'my_rejoinable');
             }
             setIsCreateModalOpen(false);
-            router.replace(`/game/${retryResponse.code}`);
+            openTable(retryResponse.code);
             return;
           } catch (retryError) {
             const retryInfo = apiErrorInfo(retryError);
             if (retryInfo.code === 'ACCOUNT_REQUIRED') {
               if (mayRequestAccount) {
-                requestAccount(() => handleCreateRoom(data, false, true));
+                requestAccount(() => handleCreateRoom(data, invite, false, true));
               } else {
                 reportFailure(
                   retryInfo.detail || 'Your account could not be confirmed. Please try again.'
@@ -335,16 +345,19 @@ export default function LobbyScreen() {
             Tables
           </PidroText>
         </View>
-        {landscape ? search : null}
-        <PidroText
-          role="metadata"
-          tone="soft"
-          accessibilityLabel={`${stats.online_players} players online`}>
-          <PidroText role="metadata" style={styles.onlineDot}>
-            ●{' '}
+        {landscape && !isEmptyLobby ? search : null}
+        {landscape && isEmptyLobby ? <View style={styles.headerTitle} /> : null}
+        {stats.online_players > 1 ? (
+          <PidroText
+            role="metadata"
+            tone="soft"
+            accessibilityLabel={`${stats.online_players} players online`}>
+            <PidroText role="metadata" style={styles.onlineDot}>
+              ●{' '}
+            </PidroText>
+            {stats.online_players} online
           </PidroText>
-          {stats.online_players} online
-        </PidroText>
+        ) : null}
         <BevelButton
           material="glass"
           size="icon"
@@ -353,9 +366,17 @@ export default function LobbyScreen() {
           <Icon name="plus" size={22} />
         </BevelButton>
       </View>
-      {!landscape ? search : null}
+      {!landscape && !isEmptyLobby ? search : null}
 
       <View style={styles.content}>
+        {quickGame.error ? (
+          <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
+            <PidroText role="metadata" tone="danger">
+              {quickGame.error}
+            </PidroText>
+          </Surface>
+        ) : null}
+
         {error && !isUnavailable ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger">
@@ -377,14 +398,13 @@ export default function LobbyScreen() {
             description="We couldn’t load the tables. Please try again."
             actionLabel="Try again"
             onAction={loadLobby}
-            quiet
           />
         ) : isEmptyLobby ? (
-          <LobbyEmptyState
-            title="No tables available"
-            description="Create a table and invite your friends."
-            actionLabel="Create a table"
-            onAction={handleNewTable}
+          <EmptyLobby
+            onStart={handleNewTable}
+            onJoinCode={() => router.push('/join-code')}
+            onQuickGame={quickGame.start}
+            quickGameLoading={quickGame.loading}
           />
         ) : hasNoResults ? (
           <LobbyEmptyState
@@ -392,7 +412,6 @@ export default function LobbyScreen() {
             description="Try a table name or code, or clear your search."
             actionLabel="Clear search"
             onAction={() => setQuery('')}
-            quiet
           />
         ) : (
           <ScrollView
@@ -510,13 +529,11 @@ function LobbyEmptyState({
   description,
   actionLabel,
   onAction,
-  quiet = false,
 }: {
   title: string;
   description: string;
   actionLabel: string;
   onAction: () => void;
-  quiet?: boolean;
 }) {
   return (
     <ScrollView style={styles.roomScroll} keyboardShouldPersistTaps="handled">
@@ -531,11 +548,97 @@ function LobbyEmptyState({
         </View>
         <BevelButton
           label={actionLabel}
-          material={quiet ? 'glass' : 'wood'}
+          material="glass"
           size="sm"
           onPress={onAction}
           style={styles.emptyAction}
         />
+      </View>
+    </ScrollView>
+  );
+}
+
+/** Nobody is playing: the table from above and the three ways to start. */
+function EmptyLobby({
+  onStart,
+  onJoinCode,
+  onQuickGame,
+  quickGameLoading,
+}: {
+  onStart: () => void;
+  onJoinCode: () => void;
+  onQuickGame: () => void;
+  quickGameLoading: boolean;
+}) {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const landscape = width > height;
+  const tablet = Math.min(width, height) >= 700;
+  // The drawing is 340×270; it shrinks to fit a narrow phone or a short landscape screen.
+  const scale = Math.min(
+    1,
+    landscape
+      ? (height - insets.top - insets.bottom - 92) / 270
+      : (width - insets.left - insets.right - 2 * PidroSpacing.md) / 340
+  );
+  const at = (value: number) => value * scale;
+  const chair = (left: number, top: number) => (
+    <OpenChair size={at(52)} style={[styles.emptyChair, { left: at(left), top: at(top) }]} />
+  );
+
+  return (
+    <ScrollView
+      style={styles.roomScroll}
+      contentContainerStyle={[
+        styles.emptyLobby,
+        landscape && styles.emptyLobbyLandscape,
+        tablet && styles.emptyLobbyTablet,
+      ]}
+      showsVerticalScrollIndicator={false}>
+      <View
+        testID="lobby-empty"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={{ width: at(340), height: at(270) }}>
+        <TableTop
+          mark={at(40)}
+          style={{ left: at(60), top: at(55), width: at(220), height: at(160) }}
+        />
+        {chair(144, 2)}
+        {chair(4, 109)}
+        {chair(284, 109)}
+        {chair(144, 216)}
+      </View>
+      <View
+        style={
+          landscape ? styles.emptyColumnLandscape : [styles.emptyColumn, tablet && styles.grow0]
+        }>
+        <View style={styles.emptyLobbyCopy}>
+          <AuthFlowHeading align="center" hero>
+            No one is at a table yet
+          </AuthFlowHeading>
+          <PidroText role="body" tone="soft" align="center">
+            Start one and it shows up here for everyone. Open seats wait for players, and any seat
+            can be a bot.
+          </PidroText>
+        </View>
+        {landscape || tablet ? null : <View style={styles.emptySpacer} />}
+        <View style={styles.emptyActions}>
+          <AuthFlowButton label="Start a table" onPress={onStart} />
+          <BevelButton
+            label="Join with a table code"
+            material="glass"
+            size="md"
+            fullWidth
+            leadingIcon={<Icon name="hash" size={18} />}
+            onPress={onJoinCode}
+          />
+          <TextLink
+            label="Or play a quick game with bots"
+            disabled={quickGameLoading}
+            onPress={onQuickGame}
+          />
+        </View>
       </View>
     </ScrollView>
   );
@@ -653,6 +756,40 @@ const styles = StyleSheet.create({
   },
   emptyAction: {
     alignSelf: 'center',
+  },
+  emptyLobby: {
+    flexGrow: 1,
+    alignItems: 'center',
+    gap: PidroSpacing.md,
+    paddingTop: PidroSpacing.xs,
+  },
+  emptyLobbyLandscape: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: PidroSpacing.xl,
+    paddingTop: 0,
+  },
+  // A tablet has room to spare: the whole stack sits together in the middle.
+  emptyLobbyTablet: { justifyContent: 'center', paddingBottom: PidroSpacing.xxl },
+  emptyChair: { position: 'absolute' },
+  emptyLobbyCopy: { gap: PidroSpacing.xs },
+  emptyColumn: {
+    width: '100%',
+    maxWidth: 400,
+    flexGrow: 1,
+    gap: PidroSpacing.md,
+  },
+  emptyColumnLandscape: {
+    flex: 1,
+    maxWidth: 400,
+    justifyContent: 'center',
+    gap: PidroSpacing.sm,
+  },
+  emptySpacer: { flexGrow: 1 },
+  grow0: { flexGrow: 0 },
+  emptyActions: {
+    alignItems: 'stretch',
+    gap: PidroSpacing.sm,
   },
   actionRoom: {
     minHeight: 68,

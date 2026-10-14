@@ -166,7 +166,8 @@ export default function GameScreen() {
     code,
     origin: originParam,
     fixture,
-  } = useLocalSearchParams<{ code: string; origin?: string; fixture?: string }>();
+    invite,
+  } = useLocalSearchParams<{ code: string; origin?: string; fixture?: string; invite?: string }>();
   const origin = parseGameOrigin(originParam);
   const exitPath = gameExitPath(origin);
   const router = useRouter();
@@ -240,7 +241,8 @@ export default function GameScreen() {
     progressionResult?.roomCode === code ? progressionResult.summary : null;
   const [restoreFailureCode, setRestoreFailureCode] = useState<string | null>(null);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  // New table with an invite seat lands here with the invite sheet already up.
+  const [inviteOpen, setInviteOpen] = useState(invite === 'true');
   const [controlsBusy, setControlsBusy] = useState(false);
   const controlsBusyRef = useRef(false);
   const [joiningName, setJoiningName] = useState<string | null>(null);

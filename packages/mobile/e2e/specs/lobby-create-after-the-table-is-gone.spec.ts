@@ -26,7 +26,7 @@ test('a new table is created when the old one is already gone', async ({ page, p
   await page.getByRole('button', { name: 'Create table' }).first().click();
   await page
     .getByTestId('create-room-window')
-    .getByRole('button', { name: 'Create table' })
+    .getByRole('button', { name: 'Open the table' })
     .click();
   expect((await left).status()).toBe(404);
   await page.waitForURL(/\/game\/[A-Z0-9]+/);

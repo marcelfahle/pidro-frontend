@@ -97,6 +97,7 @@ try {
     const page = await context.newPage();
     let state = 'populated';
     const joins = [];
+    const creates = [];
     await page.addInitScript(() => {
       localStorage.setItem(
         'age-gate-storage',
@@ -116,7 +117,10 @@ try {
     });
     await page.route('**/api/v1/**', async (route) => {
       const path = new URL(route.request().url()).pathname;
-      if (path.endsWith('/join')) {
+      if (path.endsWith('/rooms') && route.request().method() === 'POST') {
+        creates.push(route.request().postDataJSON());
+        await route.fulfill({ status: 503, json: { errors: [{ detail: 'Try again fixture' }] } });
+      } else if (path.endsWith('/join')) {
         joins.push({ path, body: route.request().postDataJSON() });
         await route.fulfill({
           json: { data: { room: rooms[0], assigned_position: 'west' } },
@@ -185,16 +189,25 @@ try {
       state = next;
       await page.reload();
       await page
-        .getByText(next === 'empty' ? 'No tables available' : 'Couldn’t load tables', {
+        .getByText(next === 'empty' ? 'No one is at a table yet' : 'Couldn’t load tables', {
           exact: true,
         })
         .waitFor();
       await suppressDevOverlays(page);
       await assertMinimumTouchTargets(page, `lobby-${next}`, viewport);
-      await compactEmptyState(page);
+      if (next === 'error') await compactEmptyState(page);
       await page.screenshot({ path: resolve(output, `${viewport.name}-${next}.png`) });
       if (next === 'empty') {
-        await page.getByRole('button', { name: 'Create a table', exact: true }).click();
+        assert.equal(await page.getByText(/ online$/).count(), 0, 'no one else is online');
+        assert.equal(await page.getByRole('textbox', { name: 'Search tables' }).count(), 0);
+        // The quick-game link starts the same solo table as Home's tile.
+        await page.getByRole('link', { name: 'Or play a quick game with bots' }).click();
+        await page.getByText(/We could not start a solo game/).waitFor();
+        assert.deepEqual(creates.at(-1).seats, { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' });
+        await page.getByRole('button', { name: 'Join with a table code', exact: true }).click();
+        await page.waitForURL((url) => url.pathname === '/join-code');
+        await page.goBack();
+        await page.getByRole('button', { name: 'Start a table', exact: true }).click();
         await page.getByTestId('create-room-window').waitFor();
       } else {
         state = 'populated';
@@ -210,6 +223,7 @@ try {
       0,
       'watchable games must not be described as an empty lobby'
     );
+    assert.equal(await page.getByTestId('lobby-empty').count(), 0);
     await page.goto(`${baseUrl}/ui-dev?state=lobby-seats`);
     await page.getByTestId('lobby-table-SAMPLE0').waitFor();
     await equalRows(page, '[data-testid^="lobby-table-"]');
@@ -231,7 +245,7 @@ try {
       .click();
     assert.equal(await page.getByTestId('lobby-gallery-joined').textContent(), 'SAMPLE2: west');
     console.log(
-      `lobby ok: ${viewport.name} — equal rows, team order, touch targets, join payload, search, create, empty/error, 100/1000 badges`
+      `lobby ok: ${viewport.name} — equal rows, team order, touch targets, join payload, search, create, empty (quick game, join code, start)/error, 100/1000 badges`
     );
     await context.close();
   }

@@ -97,6 +97,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ui-dev?state=components`  | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
 | `/ui-dev?state=create`      | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
+| `/ui-dev?state=create-seat` | CreateRoomModal with the partner's seat sheet up. testID `create-seat-sheet`                                                                                                                |
 | `/ui-dev?state=progression` | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
 | `/ui-dev?state=avatars`     | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 
@@ -107,12 +108,13 @@ refresh with `bun run ui:baselines <runId>`.
 and `1000` badges plus long names. These are presentation samples, not live seat
 restrictions: the server does not yet supply or enforce minimum games.
 `node scripts/verify-lobby.mjs` checks the real lobby with mocked API responses at
-four phone sizes, including direct seat joins, search, create, empty/error states,
+four phone sizes, including direct seat joins, search, create, error states, the
+empty Tables screen (start a table, join with a code, the quick game Home also starts)
 and the badge gallery. Captures go to `/tmp/pidro-lobby` (or `UI_SHOT_DIR`).
 
 `node scripts/verify-create-room.mjs` checks creation at the same four phone sizes:
-partner-to-south mapping, public/bot defaults, shared difficulty, invitation notice,
-discarded password/minimum-games previews, reset on dismissal, keyboard Done,
+the default table name, the seat sheet (open, bot, invite a friend), partner-to-south
+mapping, an invite seat sent as an open seat, reset on dismissal, keyboard Done,
 touch targets and horizontal containment. API responses are mocked; captures go
 to `/tmp/pidro-create` (or `UI_SHOT_DIR`). These browser checks do not verify native
 keyboard avoidance or safe-area behavior. `/ui-dev?state=create` is interactive,
@@ -206,9 +208,9 @@ node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/biddi
 renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
 `bun run ui:baselines <runId>`.
 
-`UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby` `login` `register` `register-password`
+`UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby` `lobby-empty` `login` `register` `register-password`
 `register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
-`ui-components` `create-table` `table-waiting` `table-ready` `table-ready-host`
+`ui-components` `create-table` `create-seat` `table-waiting` `table-ready` `table-ready-host`
 `table-host-controls` `table-invite` `table-playing` `table-dealer-selection`
 `table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`
 `table-game-over`
