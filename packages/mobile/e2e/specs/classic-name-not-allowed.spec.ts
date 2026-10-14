@@ -23,8 +23,9 @@ test('a Classic name that cannot be shown is kept private and a new one is picke
   });
   await page.waitForURL(/\/profile/);
   const screen = new ProfileScreen(page);
-  await expect(screen.classicSection).toBeVisible();
+  await expect(screen.classicChip).toBeVisible();
   await expect(screen.root).not.toContainText('fuckface', { ignoreCase: true });
+  await expect(await screen.openBadges()).not.toContainText('fuckface', { ignoreCase: true });
 
   const token = (await sessionOf(page))?.accessToken as string;
   expect(JSON.stringify(await profile(token))).not.toMatch(/fuckface/i);

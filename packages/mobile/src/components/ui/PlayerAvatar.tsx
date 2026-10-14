@@ -310,8 +310,8 @@ function TurnArc({
   );
 }
 
-/** A struck coin: the pin, and the glass bot badge. */
-function Coin({
+/** A struck coin: the pin, and the glass bot badge. Placed absolutely unless `style` says otherwise. */
+export function Coin({
   material,
   size,
   rim,

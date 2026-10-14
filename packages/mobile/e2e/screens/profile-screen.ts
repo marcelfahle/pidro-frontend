@@ -1,13 +1,15 @@
 import type { Page } from '@playwright/test';
 import { Screen } from './screen';
+import { SettingsScreen } from './settings-screen';
 
 export class ProfileScreen extends Screen {
   constructor(page: Page) {
     super(page, 'profile-screen');
   }
 
+  /** One number of the record, where Classic and Pidro games add up. */
   stat(label: string) {
-    return this.classicSection.getByLabel(`${label}: `);
+    return this.root.getByTestId('profile-record').getByLabel(`${label}: `);
   }
 
   /** Opens the save sheet from the profile. */
@@ -15,34 +17,28 @@ export class ProfileScreen extends Screen {
     await this.button('Save your progress').click();
   }
 
-  get classicSection() {
-    return this.root.getByTestId('profile-classic-section');
+  /** The "Pidro Classic · Level n" chip a Classic player wears under their name. */
+  get classicChip() {
+    return this.root.getByTestId('profile-classic-chip');
   }
 
-  /** Taps Sign out and, on the "Sign out?" window, confirms. */
+  /** Opens the badge sheet from the Classic chip. */
+  async openBadges() {
+    await this.classicChip.click();
+    const sheet = this.page.getByTestId('badge-sheet');
+    await sheet.waitFor();
+    return sheet;
+  }
+
+  /** Sign out and Delete account live in Settings, behind "Account and sign-in". */
+  async openAccount() {
+    await this.button('Account and sign-in').click();
+    const settings = new SettingsScreen(this.page);
+    await settings.root.waitFor();
+    return settings;
+  }
+
   async signOut() {
-    await this.askToSignOut();
-    await this.page.getByText('Sign out?').waitFor();
-    await this.page.getByRole('button', { name: 'Sign out', exact: true }).last().click();
-  }
-
-  /** Taps Delete account and, on the "Delete your account?" window, confirms. */
-  async deleteAccount() {
-    await this.button('Delete account').first().click();
-    await this.page.getByText('Delete your account?').waitFor();
-    await this.page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
-  }
-
-  async askToSignOut() {
-    await this.button('Sign out').first().click();
-  }
-
-  // A guest who signs out is first offered saving the account.
-  get savePrompt() {
-    return this.page.getByText('Save this guest before signing out?');
-  }
-
-  get saveAccount() {
-    return this.page.getByRole('button', { name: 'Save account', exact: true });
+    await (await this.openAccount()).signOut();
   }
 }

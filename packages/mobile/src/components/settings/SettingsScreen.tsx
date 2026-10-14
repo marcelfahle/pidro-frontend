@@ -4,8 +4,10 @@ import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
+import { AccountSection } from '@/components/settings/AccountSection';
 import { AppUpdateSection } from '@/components/settings/AppUpdateSection';
 import { PidroSpacing } from '@/design/tokens';
+import { useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 
 export function SettingsScreen({
@@ -21,6 +23,7 @@ export function SettingsScreen({
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
   const toggleSound = useSettingsStore((state) => state.toggleSound);
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
+  const signedIn = useAuthStore((state) => Boolean(state.user));
 
   return (
     <ScreenShell
@@ -51,6 +54,7 @@ export function SettingsScreen({
           onValueChange={toggleHaptic}
         />
       </Surface>
+      {signedIn ? <AccountSection /> : null}
       <AppUpdateSection />
     </ScreenShell>
   );

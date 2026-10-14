@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
 import { usePreventRemove } from 'expo-router/react-navigation';
@@ -12,21 +12,34 @@ import {
   normalizeBio,
   publicPlayerName,
 } from '@pidro/shared';
-import { deleteAccount } from '@/api/auth';
-import { profileApi, type ClassicProfile } from '@/api/profile';
+import { profileApi, type ProfileIdentity } from '@/api/profile';
 import { apiErrorInfo } from '@/utils/apiErrors';
-import { Avatar } from '@/components/ui/Avatar';
 import { AuthSheet } from '@/components/auth/AuthSheet';
+import { BadgeSheet } from '@/components/profile/BadgeSheet';
+import { gradientBg } from '@/components/ui/Bevel';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
+import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
+import { Coin, PlayerAvatar } from '@/components/ui/PlayerAvatar';
+import { PressableFX } from '@/components/ui/PressableFX';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
+import { TextLink } from '@/components/ui/TextLink';
 import { Input } from '@/components/ui/Input';
 import { Modal } from '@/components/ui/Modal';
-import { PidroLayout, PidroSpacing } from '@/design/tokens';
+import {
+  PidroBevel,
+  PidroColors,
+  PidroFonts,
+  PidroLayout,
+  PidroRadii,
+  PidroSpacing,
+} from '@/design/tokens';
+import { levelProgress, monthName, winRate, wornPin } from '@/features/profile';
 import { authStore, useAuthStore } from '@/stores/auth';
+import { useSettingsStore } from '@/stores/settings';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { usePillClearance } from '@/components/shell/TabPill';
 
@@ -45,7 +58,6 @@ function ProfileContent() {
   const pillClearance = usePillClearance();
   const horizontalPadding = width > height ? PidroSpacing.lg : PidroSpacing.md;
   const user = useAuthStore((state) => state.user);
-  const clearSession = useAuthStore((state) => state.clearSession);
   const { classicClaimed } = useLocalSearchParams<{ classicClaimed?: string }>();
   const router = useRouter();
   const navigation = useNavigation();
@@ -53,27 +65,28 @@ function ProfileContent() {
   const [draft, setDraft] = useState<AvatarDraft | null>(null);
   const [draftUri, setDraftUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const deleteInFlight = useRef(false);
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [editor, setEditor] = useState<'photo' | 'bio' | null>(null);
   const [feedbackFor, setFeedbackFor] = useState<'photo' | 'bio' | null>(null);
   const [refreshError, setRefreshError] = useState(false);
   const [bioDraft, setBioDraft] = useState('');
   const [bioBaseline, setBioBaseline] = useState('');
-  const [pendingSignOut, setPendingSignOut] = useState(false);
   const [accountSheetOpen, setAccountSheetOpen] = useState(classicClaimed === 'guest');
-  const [classic, setClassic] = useState<ClassicProfile | null | undefined>(undefined);
+  const [badgesOpen, setBadgesOpen] = useState(false);
+  const [identity, setIdentity] = useState<ProfileIdentity | undefined>(undefined);
+  const classic = identity?.classic ?? null;
+  const pinChoice = useSettingsStore((state) => (user ? state.pins[user.id] : undefined));
+  const setPin = useSettingsStore((state) => state.setPin);
+  const pin = wornPin(pinChoice, !!classic);
+  // The cards wait for the profile's answer so nothing below them moves when it lands.
+  const [answered, setAnswered] = useState(false);
   const [confirmation, setConfirmation] = useState<{
     title: string;
     description: string;
     label: string;
     cancelLabel?: string;
-    secondaryLabel?: string;
-    secondary?: () => void;
     proceed: () => void;
   } | null>(null);
   const dirty =
@@ -104,9 +117,7 @@ function ProfileContent() {
     if (busy) {
       setConfirmation({
         title: 'Please wait',
-        description: deleting
-          ? 'Your account is being deleted.'
-          : 'Your photo or bio is still being processed.',
+        description: 'Your photo or bio is still being processed.',
         label: 'OK',
         proceed: () => {},
       });
@@ -115,20 +126,15 @@ function ProfileContent() {
     }
   });
 
-  useEffect(() => {
-    if (!pendingSignOut || dirty || busy) return;
-    clearSession();
-    router.replace('/welcome');
-  }, [pendingSignOut, dirty, busy, clearSession, router]);
-
   useFocusEffect(
     useCallback(() => {
       void refreshIdentity()
-        .then((identity) => {
-          if (identity) setClassic(identity.classic ?? null);
+        .then((next) => {
+          if (next) setIdentity(next);
           setRefreshError(false);
         })
-        .catch(() => setRefreshError(true));
+        .catch(() => setRefreshError(true))
+        .finally(() => setAnswered(true));
     }, [refreshIdentity])
   );
 
@@ -295,99 +301,20 @@ function ProfileContent() {
     }
   };
 
-  const handleSignOut = () => {
-    if (user?.guest) {
-      setConfirmation({
-        title: 'Save this guest before signing out?',
-        description:
-          'Signing out removes access to this unsaved player on this device. Inactive guest accounts are eligible for deletion after 30 days.',
-        label: 'Sign out anyway',
-        cancelLabel: 'Cancel',
-        secondaryLabel: 'Save account',
-        secondary: () => setAccountSheetOpen(true),
-        proceed: () => {
-          closeEditor();
-          setPendingSignOut(true);
-        },
-      });
-      return;
-    }
-    setConfirmation({
-      title: 'Sign out?',
-      description: dirty
-        ? 'Your unsaved changes will be discarded.'
-        : 'You can sign back in anytime.',
-      label: 'Sign out',
-      cancelLabel: 'Cancel',
-      proceed: () => {
-        closeEditor();
-        setPendingSignOut(true);
-      },
-    });
-  };
+  const name = publicPlayerName(user?.username, 'Player', user?.display_name);
+  const veteran = identity?.veteran;
+  const avatarSize = shortWindow ? 104 : 124;
+  const level = levelProgress(veteran);
 
-  const handleDeleteAccount = () => {
-    setDeleteError(null);
-    setConfirmation({
-      title: 'Delete your account?',
-      description:
-        'This removes your player, your games and your progress.' +
-        (classic ? ' Your Classic account stays in Classic and can be claimed again later.' : ''),
-      label: 'Delete account',
-      cancelLabel: 'Cancel',
-      proceed: async () => {
-        if (deleteInFlight.current) return;
-        deleteInFlight.current = true;
-        setBusy(true);
-        setDeleting(true);
-        try {
-          await deleteAccount();
-          closeEditor();
-          setPendingSignOut(true);
-        } catch (deleteFailure) {
-          setDeleteError(
-            apiErrorInfo(deleteFailure).detail || 'Could not delete your account. Try again.'
-          );
-        } finally {
-          deleteInFlight.current = false;
-          setBusy(false);
-          setDeleting(false);
-        }
-      },
-    });
-  };
-
-  const accountActions = (
-    <View className="items-center gap-1 pt-4">
-      {user?.guest ? (
-        <BevelButton
-          label="Save your progress"
-          material="glass"
-          size="sm"
-          fullWidth
-          disabled={deleting}
-          onPress={() => setAccountSheetOpen(true)}
-        />
-      ) : null}
-      {user?.email && (
-        <PidroText role="metadata" tone="muted" align="center">
-          {user.email}
-        </PidroText>
-      )}
-      <Button label="Sign out" variant="ghost" disabled={busy} onPress={handleSignOut} />
-      <Button
-        label="Delete account"
-        variant="ghost"
-        disabled={busy}
-        onPress={handleDeleteAccount}
-      />
-      {deleteError ? (
-        <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
-          {deleteError}
-        </PidroText>
-      ) : null}
-    </View>
-  );
+  const saveProgress = user?.guest ? (
+    <BevelButton
+      label="Save your progress"
+      material="glass"
+      size="sm"
+      fullWidth
+      onPress={() => setAccountSheetOpen(true)}
+    />
+  ) : null;
 
   return (
     <ScreenShell
@@ -399,33 +326,71 @@ function ProfileContent() {
         paddingRight: horizontalPadding + pillClearance.right,
       }}>
       <View className={shortWindow ? 'gap-3' : 'gap-6'}>
-        <ScreenHeader title="Your profile" onBack={() => router.back()} />
+        <ScreenHeader
+          title="Your profile"
+          onBack={() => router.back()}
+          trailing={
+            editor !== 'photo' ? (
+              <BevelButton
+                label="Edit photo"
+                material="glass"
+                size="sm"
+                disabled={busy}
+                leadingIcon={<Icon name="edit" size={16} />}
+                onPress={() => beginEdit('photo')}
+              />
+            ) : null
+          }
+        />
         {refreshError && (
           <PidroText role="metadata" tone="danger" accessibilityRole="alert">
             Could not refresh your profile. Reopen it to try again.
           </PidroText>
         )}
-        <View className={twoColumns ? 'flex-row items-start gap-4' : 'gap-6'}>
-          <View testID="profile-identity-column" className={twoColumns ? 'w-[38%]' : 'w-full'}>
-            <Surface variant="card" className="gap-4" padded>
-              <View className="flex-row items-center gap-4">
-                <Avatar
+        <View className={twoColumns ? 'flex-row items-start gap-4' : 'gap-4'}>
+          <View
+            testID="profile-identity-column"
+            className={twoColumns ? 'w-[38%] gap-4' : 'w-full gap-4'}>
+            <View style={styles.identity}>
+              <PressableFX
+                accessibilityRole="button"
+                accessibilityLabel="Your badges"
+                onPress={() => setBadgesOpen(true)}
+                style={styles.avatarButton}>
+                <PlayerAvatar
+                  size={avatarSize}
                   uri={draftUri ?? user?.avatar_url}
-                  // Override the bundled fallback's intrinsic RN Web dimensions.
-                  style={{ width: shortWindow ? 64 : 80, height: shortWindow ? 64 : 80 }}
-                  className="rounded-full"
-                  resizeMode="cover"
-                  accessibilityLabel="Profile picture"
+                  level={veteran?.level}
+                  pin={pin}
                 />
-                <View className="min-w-0 flex-1 gap-1">
-                  <PidroText role="title" numberOfLines={2}>
-                    {publicPlayerName(user?.username, 'Player', user?.display_name)}
+              </PressableFX>
+              <PidroText style={styles.name} align="center" numberOfLines={2}>
+                {name}
+              </PidroText>
+              {veteran ? (
+                <PidroText role="label" align="center">
+                  {veteran.title ? `${veteran.title} · ` : ''}Level {veteran.level}
+                </PidroText>
+              ) : null}
+              {classic ? (
+                <PressableFX
+                  testID="profile-classic-chip"
+                  accessibilityRole="button"
+                  onPress={() => setBadgesOpen(true)}
+                  style={styles.classicChip}>
+                  <Coin material="wood" size={28} rim={2} style={styles.inlineCoin}>
+                    <Icon name="spade" size={13} color={PidroBevel.textGold} />
+                  </Coin>
+                  <PidroText role="label">
+                    Pidro Classic{classic.level != null ? ` · Level ${classic.level}` : ''}
                   </PidroText>
-                  <PidroText role="metadata" tone="muted">
-                    This is how other players see you.
-                  </PidroText>
-                </View>
-              </View>
+                  <Icon name="chevron-right" size={16} color={PidroBevel.rim} />
+                </PressableFX>
+              ) : null}
+            </View>
+            {editor === 'photo' ||
+            progress != null ||
+            (feedbackFor === 'photo' && (error || status)) ? (
               <View className="gap-3">
                 {feedbackFor === 'photo' && error ? (
                   <PidroText role="metadata" tone="danger" accessibilityRole="alert">
@@ -507,121 +472,232 @@ function ProfileContent() {
                       )}
                     </View>
                   </>
-                ) : (
-                  <Button
-                    label="Edit photo"
-                    variant="outline"
-                    disabled={busy}
-                    onPress={() => beginEdit('photo')}
-                  />
-                )}
-              </View>
-            </Surface>
-            {twoColumns && accountActions}
-          </View>
-          <View testID="profile-bio-column" className={twoColumns ? 'min-w-0 flex-1' : 'w-full'}>
-            <Surface variant="panel" className="gap-3" padded>
-              <View className="flex-row items-center justify-between gap-3">
-                <PidroText role="label">About me</PidroText>
-                {editor !== 'bio' ? (
-                  <Button
-                    label={user?.bio ? 'Edit' : 'Add'}
-                    accessibilityLabel={user?.bio ? 'Edit bio' : 'Add bio'}
-                    variant="ghost"
-                    size="sm"
-                    disabled={busy}
-                    onPress={() => beginEdit('bio')}
-                  />
                 ) : null}
               </View>
-              {editor === 'bio' ? (
-                <>
-                  <Input
-                    accessibilityLabel="About me"
-                    autoFocus
-                    multiline
-                    numberOfLines={shortWindow ? 3 : 5}
-                    value={bioDraft}
-                    editable={!busy}
-                    onChangeText={(text) => {
-                      setBioDraft(text);
-                      setError(null);
-                    }}
-                    error={bioError(bioDraft) ?? error ?? undefined}
-                    className={shortWindow ? 'min-h-20 py-3' : 'min-h-28 py-3'}
-                    textAlignVertical="top"
-                    placeholder="A little about you, on or off the table…"
-                  />
-                  <View className="flex-row flex-wrap justify-between gap-3">
-                    <PidroText role="metadata" tone="muted">
-                      Visible to other players
-                    </PidroText>
-                    <PidroText
-                      role="metadata"
-                      tone={bioLength(bioDraft) > BIO_MAX_LENGTH ? 'danger' : 'muted'}
-                      align="right">
-                      {BIO_MAX_LENGTH - bioLength(bioDraft)} remaining
-                    </PidroText>
-                  </View>
-                  <View className="flex-row gap-2">
-                    <View className="flex-1">
+            ) : null}
+            {twoColumns && saveProgress}
+          </View>
+          <View
+            testID="profile-bio-column"
+            className={twoColumns ? 'min-w-0 flex-1 gap-4' : 'w-full gap-4'}>
+            {answered ? (
+              <>
+                {veteran?.xp != null ? (
+                  <Surface variant="window" padded style={styles.xp} testID="profile-xp">
+                    <View style={styles.xpTop}>
+                      <View style={styles.figure}>
+                        <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
+                          All time
+                        </PidroText>
+                        <PidroText role="title" style={styles.number}>
+                          {veteran.xp.toLocaleString()} XP
+                        </PidroText>
+                      </View>
+                      {level.caption ? (
+                        <PidroText role="metadata" tone="soft" align="right">
+                          {level.caption}
+                        </PidroText>
+                      ) : null}
+                    </View>
+                    <View
+                      accessible
+                      accessibilityRole="progressbar"
+                      accessibilityLabel={level.caption ?? 'Level progress'}
+                      accessibilityValue={{
+                        min: 0,
+                        max: 100,
+                        now: Math.round(level.fraction * 100),
+                      }}
+                      style={styles.well}>
+                      <View
+                        style={[
+                          styles.fill,
+                          gradientBg(PidroBevel.goldRimGradient),
+                          { width: `${level.fraction * 100}%` },
+                        ]}
+                      />
+                    </View>
+                    {identity?.xp ? (
+                      <>
+                        <View style={styles.rule} />
+                        <View style={styles.periods}>
+                          <View style={styles.figure}>
+                            <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
+                              This week
+                            </PidroText>
+                            <PidroText role="title" style={styles.number}>
+                              {identity.xp.this_week.toLocaleString()} XP
+                            </PidroText>
+                            <TextLink
+                              label="Leagues are coming"
+                              size={14}
+                              onPress={() => router.replace('/league')}
+                              style={styles.leagueLink}
+                            />
+                          </View>
+                          <View style={[styles.figure, styles.month]}>
+                            <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
+                              {monthName()}
+                            </PidroText>
+                            <PidroText role="title" style={styles.number}>
+                              {identity.xp.this_month.toLocaleString()} XP
+                            </PidroText>
+                          </View>
+                        </View>
+                      </>
+                    ) : null}
+                  </Surface>
+                ) : null}
+                {identity?.record ? (
+                  <Surface variant="subtle" style={styles.record} testID="profile-record">
+                    {[
+                      {
+                        label: 'Games played',
+                        caption: 'games',
+                        value: identity.record.games.toLocaleString(),
+                      },
+                      {
+                        label: 'Wins',
+                        caption: 'wins',
+                        value: identity.record.wins.toLocaleString(),
+                      },
+                      {
+                        label: 'Win rate',
+                        caption: 'win rate',
+                        value: winRate(identity.record.win_rate),
+                      },
+                    ].map((stat, index) => (
+                      <View
+                        key={stat.label}
+                        accessible
+                        accessibilityLabel={`${stat.label}: ${stat.value}`}
+                        style={[styles.stat, index === 1 && styles.middleStat]}>
+                        <PidroText role="title" align="center" style={styles.number}>
+                          {stat.value}
+                        </PidroText>
+                        <PidroText role="metadata" tone="soft" align="center">
+                          {stat.caption}
+                        </PidroText>
+                      </View>
+                    ))}
+                  </Surface>
+                ) : null}
+                <Surface variant="subtle" className="gap-3" padded>
+                  <View className="flex-row items-center justify-between gap-3">
+                    <PidroText role="label">About me</PidroText>
+                    {editor !== 'bio' ? (
                       <Button
-                        label="Cancel"
-                        variant="outline"
+                        label={user?.bio ? 'Edit' : 'Add'}
+                        accessibilityLabel={user?.bio ? 'Edit bio' : 'Add bio'}
+                        variant="ghost"
+                        size="sm"
                         disabled={busy}
-                        onPress={closeEditor}
+                        onPress={() => beginEdit('bio')}
                       />
-                    </View>
-                    <View className="flex-1">
-                      <Button
-                        label="Save bio"
-                        loading={busy}
-                        disabled={!dirty || !!bioError(bioDraft)}
-                        onPress={saveBio}
-                      />
-                    </View>
+                    ) : null}
                   </View>
-                </>
-              ) : (
-                <PidroText
-                  role="body"
-                  className="break-words"
-                  tone={user?.bio ? 'default' : 'muted'}>
-                  {user?.bio ||
-                    'Share a little about yourself. A favorite Pidro memory is a good start.'}
-                </PidroText>
-              )}
-              {feedbackFor === 'bio' && status && (
-                <PidroText role="metadata" tone="cyan" accessibilityLiveRegion="polite">
-                  {status}
-                </PidroText>
-              )}
-            </Surface>
+                  {editor === 'bio' ? (
+                    <>
+                      <Input
+                        accessibilityLabel="About me"
+                        autoFocus
+                        multiline
+                        numberOfLines={shortWindow ? 3 : 5}
+                        value={bioDraft}
+                        editable={!busy}
+                        onChangeText={(text) => {
+                          setBioDraft(text);
+                          setError(null);
+                        }}
+                        error={bioError(bioDraft) ?? error ?? undefined}
+                        className={shortWindow ? 'min-h-20 py-3' : 'min-h-28 py-3'}
+                        textAlignVertical="top"
+                        placeholder="A little about you, on or off the table…"
+                      />
+                      <View className="flex-row flex-wrap justify-between gap-3">
+                        <PidroText role="metadata" tone="muted">
+                          Visible to other players
+                        </PidroText>
+                        <PidroText
+                          role="metadata"
+                          tone={bioLength(bioDraft) > BIO_MAX_LENGTH ? 'danger' : 'muted'}
+                          align="right">
+                          {BIO_MAX_LENGTH - bioLength(bioDraft)} remaining
+                        </PidroText>
+                      </View>
+                      <View className="flex-row gap-2">
+                        <View className="flex-1">
+                          <Button
+                            label="Cancel"
+                            variant="outline"
+                            disabled={busy}
+                            onPress={closeEditor}
+                          />
+                        </View>
+                        <View className="flex-1">
+                          <Button
+                            label="Save bio"
+                            loading={busy}
+                            disabled={!dirty || !!bioError(bioDraft)}
+                            onPress={saveBio}
+                          />
+                        </View>
+                      </View>
+                    </>
+                  ) : (
+                    <PidroText
+                      role="body"
+                      className="break-words"
+                      tone={user?.bio ? 'default' : 'muted'}>
+                      {user?.bio ||
+                        'Share a little about yourself. A favorite Pidro memory is a good start.'}
+                    </PidroText>
+                  )}
+                  {feedbackFor === 'bio' && status && (
+                    <PidroText role="metadata" tone="cyan" accessibilityLiveRegion="polite">
+                      {status}
+                    </PidroText>
+                  )}
+                </Surface>
+                {!twoColumns && saveProgress}
+                <PressableFX
+                  accessibilityRole="button"
+                  accessibilityLabel="Account and sign-in"
+                  accessibilityHint={user?.email ?? undefined}
+                  onPress={() => router.replace('/settings')}
+                  style={styles.accountRow}>
+                  <Icon name="mail" size={20} />
+                  <View style={styles.accountCopy}>
+                    <PidroText role="label">Account and sign-in</PidroText>
+                    <PidroText role="metadata" tone="soft" numberOfLines={1}>
+                      {user?.email ??
+                        (user?.guest ? 'Guest, not saved yet' : 'Sign out, delete account')}
+                    </PidroText>
+                  </View>
+                  <Icon name="chevron-right" size={18} />
+                </PressableFX>
+                {identity && !classic ? (
+                  <Surface variant="panel" padded style={styles.claim}>
+                    <View style={styles.claimHeading}>
+                      <PidroText role="label">Pidro Classic</PidroText>
+                      <PidroText role="body" tone="soft">
+                        Played the original game? Bring your Classic name and career into this
+                        profile.
+                      </PidroText>
+                    </View>
+                    <BevelButton
+                      label="Claim Pidro Classic"
+                      material="glass"
+                      size="sm"
+                      fullWidth
+                      onPress={() => router.push('/(auth)/claim-classic')}
+                    />
+                  </Surface>
+                ) : null}
+              </>
+            ) : null}
           </View>
         </View>
-        {/* The Classic card arrives later; above it the account buttons would move. */}
-        {!twoColumns && accountActions}
-        {classic !== undefined ? (
-          classic ? (
-            <ClassicSection classic={classic} />
-          ) : (
-            <Surface variant="panel" padded style={styles.classicSection}>
-              <View style={styles.classicHeading}>
-                <PidroText role="label">Pidro Classic</PidroText>
-                <PidroText role="body" tone="soft">
-                  Played the original game? Bring your Classic name and career into this profile.
-                </PidroText>
-              </View>
-              <BevelButton
-                label="Claim Pidro Classic"
-                material="glass"
-                size="sm"
-                fullWidth
-                onPress={() => router.push('/(auth)/claim-classic')}
-              />
-            </Surface>
-          )
-        ) : null}
       </View>
       <Modal
         isOpen={!!confirmation}
@@ -637,19 +713,6 @@ function ProfileContent() {
                 onPress={() => setConfirmation(null)}
               />
             )}
-            {confirmation.secondaryLabel && confirmation.secondary ? (
-              <BevelButton
-                label={confirmation.secondaryLabel}
-                material="wood"
-                size="sm"
-                fullWidth
-                onPress={() => {
-                  const secondary = confirmation.secondary;
-                  setConfirmation(null);
-                  secondary?.();
-                }}
-              />
-            ) : null}
             <Button
               label={confirmation.label}
               variant={confirmation.cancelLabel ? 'destructive' : 'outline'}
@@ -671,104 +734,100 @@ function ProfileContent() {
           router.push('/(auth)/claim-classic');
         }}
       />
+      <BadgeSheet
+        isOpen={badgesOpen}
+        onClose={() => setBadgesOpen(false)}
+        uri={draftUri ?? user?.avatar_url}
+        level={veteran?.level}
+        classic={classic}
+        pin={pin}
+        onChoosePin={(choice) => user && setPin(user.id, choice)}
+      />
     </ScreenShell>
   );
 }
 
-function ClassicSection({ classic }: { classic: ClassicProfile }) {
-  const metrics = [
-    classic.games_played != null
-      ? { label: 'Games played', value: classic.games_played.toLocaleString() }
-      : null,
-    classic.wins != null ? { label: 'Wins', value: classic.wins.toLocaleString() } : null,
-    classic.losses != null ? { label: 'Losses', value: classic.losses.toLocaleString() } : null,
-    classic.win_rate != null
-      ? { label: 'Win rate', value: `${Math.round(classic.win_rate * 100)}%` }
-      : null,
-    classic.level != null ? { label: 'Classic level', value: String(classic.level) } : null,
-  ].filter((metric): metric is { label: string; value: string } => metric !== null);
-
-  return (
-    <Surface testID="profile-classic-section" variant="card" padded style={styles.classicSection}>
-      <View style={styles.classicHeading}>
-        <PidroText role="title" tone="gold">
-          Pidro Classic
-        </PidroText>
-        {classic.name ? (
-          <PidroText role="label">Played as {classic.name}</PidroText>
-        ) : (
-          <PidroText role="metadata" tone="muted">
-            Classic name kept private
-          </PidroText>
-        )}
-      </View>
-      {metrics.length ? (
-        <View style={styles.classicMetrics}>
-          {metrics.map((metric) => (
-            <View
-              key={metric.label}
-              style={styles.classicMetric}
-              accessible
-              accessibilityLabel={`${metric.label}: ${metric.value}`}>
-              <PidroText role="title" tone="gold" align="center">
-                {metric.value}
-              </PidroText>
-              <PidroText role="metadata" tone="muted" align="center">
-                {metric.label}
-              </PidroText>
-            </View>
-          ))}
-        </View>
-      ) : null}
-      {classic.member_since || classic.claimed_at ? (
-        <View style={styles.classicDates}>
-          {classic.member_since ? (
-            <PidroText role="metadata" tone="soft">
-              Member since {formatClassicDate(classic.member_since)}
-            </PidroText>
-          ) : null}
-          {classic.claimed_at ? (
-            <PidroText role="metadata" tone="soft">
-              Claimed on {formatClassicDate(classic.claimed_at)}
-            </PidroText>
-          ) : null}
-        </View>
-      ) : null}
-    </Surface>
-  );
-}
-
-function formatClassicDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(undefined, {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
-}
-
 const styles = StyleSheet.create({
-  classicSection: {
-    gap: PidroSpacing.md,
+  identity: {
+    alignItems: 'center',
+    gap: 6,
   },
-  classicHeading: {
-    gap: PidroSpacing.xxs,
+  avatarButton: {
+    borderRadius: PidroRadii.full,
+    marginBottom: PidroSpacing.sm,
   },
-  classicMetrics: {
+  name: {
+    fontFamily: PidroFonts.display,
+    fontWeight: '400',
+    fontSize: 32,
+    lineHeight: 40,
+    color: PidroBevel.textGold,
+    textShadowColor: 'rgba(20, 8, 0, 0.6)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+  },
+  classicChip: {
+    minHeight: PidroLayout.touchTarget,
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: PidroSpacing.xs,
+    marginTop: 6,
+    paddingLeft: PidroSpacing.xxs,
+    paddingRight: PidroSpacing.sm,
+    borderRadius: PidroRadii.full,
+    borderWidth: 1,
+    borderColor: PidroBevel.rim,
+    backgroundColor: PidroColors.panel,
   },
-  classicMetric: {
-    minWidth: 104,
-    flexGrow: 1,
-    gap: PidroSpacing.xxs,
-  },
-  classicDates: {
+  inlineCoin: { position: 'relative' },
+  xp: { gap: PidroSpacing.sm },
+  xpTop: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
-    gap: PidroSpacing.xs,
+    flexWrap: 'wrap',
+    gap: PidroSpacing.sm,
   },
+  figure: { minWidth: 0, flex: 1, gap: 2 },
+  eyebrow: { letterSpacing: 1, textTransform: 'uppercase' },
+  number: { fontWeight: '900', fontVariant: ['tabular-nums'] },
+  well: {
+    height: 12,
+    borderRadius: PidroRadii.full,
+    borderWidth: 1,
+    borderColor: PidroColors.border,
+    backgroundColor: PidroColors.ink,
+    overflow: 'hidden',
+  },
+  fill: { height: '100%', borderRadius: PidroRadii.full },
+  rule: { height: 1, backgroundColor: PidroColors.border },
+  periods: { flexDirection: 'row', gap: PidroSpacing.sm },
+  month: {
+    borderLeftWidth: 1,
+    borderLeftColor: PidroColors.border,
+    paddingLeft: PidroSpacing.sm,
+  },
+  leagueLink: { alignSelf: 'flex-start', alignItems: 'flex-start', paddingHorizontal: 0 },
+  record: { flexDirection: 'row', paddingVertical: 14, paddingHorizontal: PidroSpacing.xs },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  middleStat: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: PidroColors.border,
+  },
+  accountRow: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.sm,
+    paddingVertical: PidroSpacing.xs,
+    paddingHorizontal: 14,
+    borderRadius: PidroRadii.surface,
+    borderWidth: 1,
+    borderColor: PidroColors.border,
+    backgroundColor: PidroColors.glass,
+  },
+  accountCopy: { minWidth: 0, flex: 1, gap: 2 },
+  claim: { gap: PidroSpacing.md },
+  claimHeading: { gap: PidroSpacing.xxs },
 });

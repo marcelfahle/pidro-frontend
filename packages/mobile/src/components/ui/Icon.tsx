@@ -27,6 +27,7 @@ export type IconName =
   | 'bot'
   | 'cards'
   | 'mail'
+  | 'edit'
   | 'alert'
   | 'spade'
   | 'offline';
@@ -56,6 +57,7 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     path: 'M5.5 5h13A2.5 2.5 0 0 1 21 7.5v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 16.5v-9A2.5 2.5 0 0 1 5.5 5zM3.5 7.5l8.5 6 8.5-6',
     mode: 'stroke',
   },
+  edit: { path: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z', mode: 'stroke' },
   alert: { path: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V13M12 16.5h.01', mode: 'stroke' },
   spade: {
     path: 'M12 3c-3 3.6-7 6.2-7 10 0 2.2 1.7 3.8 3.8 3.8 1.2 0 2.2-.5 2.7-1.3-.2 1.7-.9 3.2-2.3 4.5h5.6c-1.4-1.3-2.1-2.8-2.3-4.5.5.8 1.5 1.3 2.7 1.3 2.1 0 3.8-1.6 3.8-3.8 0-3.8-4-6.4-7-10z',

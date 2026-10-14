@@ -38,7 +38,15 @@ export interface ProfileIdentity {
   games_played?: number;
   veteran?: {
     level: number;
+    xp?: number;
+    title?: string;
+    /** XP into the current level and the level's span, or "max" at the top. */
+    progress?: [number, number] | 'max';
   };
+  /** XP earned since Monday and since the 1st, both UTC. */
+  xp?: { this_week: number; this_month: number };
+  /** Pidro and Classic games added up. `win_rate` is 0 to 1. */
+  record?: { games: number; wins: number; losses: number; win_rate: number };
   classic: ClassicProfile | null;
 }
 

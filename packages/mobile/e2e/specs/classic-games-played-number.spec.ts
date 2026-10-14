@@ -28,9 +28,12 @@ for (const { kind, title, games } of accounts) {
       password: player.password,
     });
     await page.waitForURL(/\/profile/);
-    await expect(new ProfileScreen(page).stat('Games played')).toHaveAttribute(
+    // A new account has no Pidro games yet, so its record is the Classic number.
+    const profile = new ProfileScreen(page);
+    await expect(profile.stat('Games played')).toHaveAttribute(
       'aria-label',
       `Games played: ${games}`
     );
+    await expect(await profile.openBadges()).toContainText(`${games} games`);
   });
 }

@@ -31,7 +31,7 @@ test('a guest claims their Classic account with an email and password and keeps 
   await claim.field('New Pidro password').fill(player.password);
   await claim.button('Claim this Classic account').click();
   await page.waitForURL(/\/profile/);
-  await expect(new ProfileScreen(page).classicSection).toBeVisible();
+  await expect(new ProfileScreen(page).classicChip).toBeVisible();
   const session = await sessionOf(page);
   expect(session?.user?.id).toBe(started.user.id);
   expect(session?.user?.guest).toBeFalsy();
