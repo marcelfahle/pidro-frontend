@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import type { Position, PositionPreference, Room } from '../types/lobby';
+import type { Position, PositionPreference, Room, RoomConfig } from '../types/lobby';
 import type { InviteArrivalSource } from '../utils/inviteLink';
 import { normalizeInviteCode } from '../utils/inviteLink';
 import { normalizeRoom } from '../utils/rooms';
@@ -18,6 +18,7 @@ export type InviteSeatHint = PositionPreference | 'partner';
 
 export interface InvitePreview {
   code: string;
+  config?: RoomConfig;
   state: InviteState;
   host: string | null;
   seats_taken: number;

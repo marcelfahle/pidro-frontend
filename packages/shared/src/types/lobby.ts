@@ -1,6 +1,7 @@
 import type { SeatPin } from './game';
 
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished';
+export type RuleSet = 'finnish' | 'louisiana';
 export type SeatType = 'open' | 'ai';
 export type BotDifficulty = 'random' | 'basic' | 'smart';
 export type Position = 'north' | 'east' | 'south' | 'west';
@@ -8,6 +9,7 @@ export type PositionPreference = Position | 'north_south' | 'east_west';
 
 export interface ReadinessSnapshot {
   room_id: string;
+  config?: RoomConfig;
   ready_epoch: number;
   snapshot_revision: number;
   status: RoomStatus;
@@ -33,6 +35,7 @@ export interface ReadinessSnapshot {
  * shape over REST and over the lobby channel.
  */
 export interface RoomConfig {
+  rule_set: RuleSet;
   name: string | null;
   bot_difficulty: BotDifficulty;
   solo: boolean;
@@ -94,6 +97,7 @@ export interface LobbyCategories {
 /** Everything the server accepts when creating a room. Any other key is rejected. */
 export interface CreateRoomRequest {
   name?: string;
+  rule_set?: RuleSet;
   seats?: {
     seat_2: SeatType;
     seat_3: SeatType;

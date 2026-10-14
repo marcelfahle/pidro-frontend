@@ -24,7 +24,19 @@ export default function JoinInviteRoute() {
   const code = normalizeInviteCode(typeof params.code === 'string' ? params.code : '');
   const source = isInviteArrivalSource(params.source) ? params.source : undefined;
   const fixture = useMemo(
-    () => (__DEV__ && params.fixture === 'open' ? { ...OPEN_FIXTURE, code: code ?? '' } : null),
+    (): InvitePreview | null =>
+      __DEV__ && ['open', 'finnish', 'louisiana'].includes(params.fixture ?? '')
+        ? {
+            ...OPEN_FIXTURE,
+            code: code ?? '',
+            config: {
+              name: null,
+              solo: false,
+              bot_difficulty: 'basic',
+              rule_set: params.fixture === 'louisiana' ? 'louisiana' : 'finnish',
+            },
+          }
+        : null,
     [code, params.fixture]
   );
   const authHydrated = useAuthStore((state) => state.hydrated);

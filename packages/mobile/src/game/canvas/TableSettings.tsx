@@ -8,15 +8,18 @@ import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useSettingsStore } from '@/stores/settings';
 import { TableUtilityWindow } from './TableUtilityWindow';
+import { t } from '@/i18n';
 
 export function TableSettings({
   onLeave,
   isSpectator = false,
   isGameOver = false,
+  onRules,
 }: {
   onLeave: () => void;
   isSpectator?: boolean;
   isGameOver?: boolean;
+  onRules?: () => void;
 }) {
   const insets = useSafeAreaInsets();
   const [panel, setPanel] = useState<'settings' | 'leave' | null>(null);
@@ -60,6 +63,17 @@ export function TableSettings({
           </>
         ) : (
           <>
+            {onRules && (
+              <BevelButton
+                material="glass"
+                label={t('rules.menu')}
+                testID="table-rules-menu"
+                onPress={() => {
+                  close();
+                  onRules();
+                }}
+              />
+            )}
             <View style={styles.row}>
               <View style={styles.copy}>
                 <PidroText role="label">Sound</PidroText>

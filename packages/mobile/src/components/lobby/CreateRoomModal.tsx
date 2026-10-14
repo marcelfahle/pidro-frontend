@@ -10,6 +10,10 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { limitRoomNameInput } from '@pidro/shared';
+import type { RuleSet } from '@pidro/shared';
+import { RuleSetSelector } from '@/components/rules/RuleSet';
+import { useSettingsStore } from '@/stores/settings';
+import { t } from '@/i18n';
 import type { CreateRoomRequest } from '@/types/lobby';
 import { AuthFlowButton } from '@/components/auth/AuthFlow';
 import { OpenChair, TableTop } from '@/components/lobby/TableTop';
@@ -46,6 +50,7 @@ interface CreateRoomModalProps {
   error?: string | null;
   /** Fixture only: open with this seat's sheet up. */
   initialSeat?: SeatKey | null;
+  initialRuleSet?: RuleSet;
 }
 
 const SEATS: Record<SeatKey, { role: string; title: string; about: string; spoken: string }> = {
@@ -120,7 +125,10 @@ export function CreateRoomForm({
   avatarUrl,
   error,
   initialSeat = null,
+  initialRuleSet,
 }: CreateRoomModalProps) {
+  const preferredRuleSet = useSettingsStore((state) => state.preferredRuleSet);
+  const [ruleSet, setRuleSet] = useState<RuleSet>(initialRuleSet ?? preferredRuleSet);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const landscape = width > height;
@@ -150,7 +158,7 @@ export function CreateRoomForm({
     if (isLoading) return;
     Keyboard.dismiss();
     const { request, invite } = newTableRequest(name, username, seats);
-    onSubmit(request, invite);
+    onSubmit({ ...request, rule_set: ruleSet }, invite);
   };
 
   const seatFace = (key: SeatKey) =>
@@ -238,6 +246,12 @@ export function CreateRoomForm({
         returnKeyType="done"
         onSubmitEditing={Keyboard.dismiss}
       />
+      <View testID="create-rule-set" style={styles.rules}>
+        <RuleSetSelector value={ruleSet} onChange={setRuleSet} disabled={isLoading} />
+        <PidroText role="metadata" tone="soft" testID="create-rule-description">
+          {t(`rules.description.${ruleSet}`)}
+        </PidroText>
+      </View>
     </View>
   );
 
@@ -440,6 +454,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.sm },
   title: { fontSize: 17, lineHeight: 22 },
   fields: { alignSelf: 'stretch', gap: PidroSpacing.md },
+  rules: { gap: PidroSpacing.xs },
   scroll: { flex: 1, minHeight: 0 },
   form: { alignItems: 'center', gap: PidroSpacing.md, paddingBottom: PidroSpacing.sm },
   controls: { flex: 1, alignSelf: 'stretch' },

@@ -1,4 +1,4 @@
-import type { Position } from './lobby';
+import type { Position, RuleSet } from './lobby';
 
 export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
 /** The pin a seat wears: `classic` for a Pidro Classic player. */
@@ -81,6 +81,7 @@ export interface ServerTrick {
 
 export interface ServerGameState {
   phase: GamePhase;
+  variant?: RuleSet;
   winner?: 'north_south' | 'east_west' | null;
   hand_number?: number | null;
   current_player: Position | null;

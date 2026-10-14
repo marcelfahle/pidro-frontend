@@ -15,6 +15,8 @@ import type { Position, Room } from '@/types/lobby';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { WatchingBadge } from './WatchingBadge';
+import { RuleSetChip } from '@/components/rules/RuleSet';
+import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 type RelPosition = 'top' | 'right' | 'bottom' | 'left';
@@ -123,6 +125,7 @@ function SeatPlate({
 
 interface Props {
   room: Room;
+  rulesFixtureSeen?: boolean;
   youPlayerId: string;
   isSpectator?: boolean;
   onLeave: () => void;
@@ -142,6 +145,7 @@ interface Props {
 
 export function WaitingTable({
   room,
+  rulesFixtureSeen,
   youPlayerId,
   isSpectator = false,
   onLeave,
@@ -168,6 +172,8 @@ export function WaitingTable({
     ? null
     : (POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null);
   const [tableMenuOpen, setTableMenuOpen] = useState(false);
+  const ruleSet = room.config?.rule_set ?? 'finnish';
+  const rules = useRulesExplainer(ruleSet, isSpectator || !youPosition, rulesFixtureSeen);
   const [selectedSeat, setSelectedSeat] = useState<SeatInfo | null>(null);
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [readyBusy, setReadyBusy] = useState(false);
@@ -203,6 +209,12 @@ export function WaitingTable({
 
   return (
     <Background>
+      <RulesExplainer
+        ruleSet={ruleSet}
+        tableCode={room.code}
+        open={rules.open}
+        onClose={rules.dismiss}
+      />
       <View
         testID="waiting-table"
         style={{
@@ -220,6 +232,13 @@ export function WaitingTable({
             onPress={onLeave}
           />
           <View style={styles.toolbarSpace} />
+          <BevelButton
+            label={t('rules.menu')}
+            material="glass"
+            size="sm"
+            testID="waiting-rules-menu"
+            onPress={rules.show}
+          />
           {canManageTable && openSeats > 0 && (
             <BevelButton
               accessibilityLabel={t('table.invite')}
@@ -243,6 +262,7 @@ export function WaitingTable({
           testID="waiting-seats-scroll"
           style={styles.scroll}
           contentContainerStyle={[styles.content, compact && styles.compactContent]}>
+          <RuleSetChip ruleSet={ruleSet} testID="waiting-rule-set" />
           {!compact && (
             <View style={styles.heading}>
               <PidroText role="display" align="center">

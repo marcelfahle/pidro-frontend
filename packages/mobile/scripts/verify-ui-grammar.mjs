@@ -90,6 +90,79 @@ const allCases = [
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'lobby-empty', path: '/lobby', testId: 'lobby-empty', authenticated: true },
+  ...['mixed', 'louisiana', 'rules-empty'].map((fixture) => ({
+    name: `lobby-${fixture}`,
+    path: `/lobby?fixture=${fixture}`,
+    testId: 'lobby-screen',
+    authenticated: true,
+    rulesLobby: fixture,
+  })),
+  ...['finnish', 'louisiana'].flatMap((ruleSet) => [
+    {
+      name: `create-table-${ruleSet}`,
+      path: `/ui-dev?state=create&fixture=${ruleSet}`,
+      testId: 'create-room-window',
+      ruleSet,
+      rulesSelector: 'create-rule-set',
+    },
+    {
+      name: `settings-${ruleSet}`,
+      path: `/ui-dev?state=settings&fixture=${ruleSet}`,
+      testId: 'settings-screen',
+      ruleSet,
+      rulesSelector: 'settings-preferred-rules',
+    },
+    ...[false, true].map((authenticated) => ({
+      name: `join-${ruleSet}-${authenticated ? 'confirm' : 'preview'}`,
+      path: `/join/7KQ4M2XB?fixture=${ruleSet}`,
+      testId: 'join-invite-window',
+      authenticated,
+      ruleSet,
+      rulesBadge: 'invite-rule-set',
+    })),
+  ]),
+  {
+    name: 'join-louisiana-manual-confirm',
+    path: '/join/7KQ4M2XB?source=typed&fixture=louisiana',
+    testId: 'join-invite-window',
+    authenticated: true,
+    ruleSet: 'louisiana',
+    rulesBadge: 'invite-rule-set',
+  },
+  {
+    name: 'join-code-louisiana-confirm',
+    path: '/join-code',
+    testId: 'join-invite-window',
+    authenticated: true,
+    ruleSet: 'louisiana',
+    rulesBadge: 'invite-rule-set',
+    manualCode: true,
+  },
+  ...[
+    'finnish',
+    'louisiana',
+    'louisiana-explainer',
+    'louisiana-game-over',
+    'louisiana-waiting',
+    'louisiana-waiting-explainer',
+  ].map((fixture) => ({
+    name: `table-${fixture}`,
+    path: `/table-dev?fixture=${fixture}`,
+    testId: fixture.endsWith('explainer')
+      ? 'rules-explainer'
+      : fixture.includes('waiting')
+        ? 'waiting-table'
+        : fixture.endsWith('game-over')
+          ? 'game-over-window'
+          : 'seat-north',
+    ruleSet: fixture.startsWith('louisiana') ? 'louisiana' : 'finnish',
+    rulesBadge: fixture.includes('waiting')
+      ? 'waiting-rule-set'
+      : fixture.endsWith('game-over')
+        ? 'game-over-rule-set'
+        : 'table-rule-set',
+    rulesExplainer: fixture.endsWith('explainer'),
+  })),
   { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
   {
     name: 'welcome-guest',
@@ -369,6 +442,171 @@ async function assertFocused(locator, message) {
   }
 }
 
+const ruleLabels = { finnish: 'Finnish', louisiana: 'Louisiana' };
+const ruleDescriptions = {
+  finnish: 'Only trumps are played. Minimum bid 6.',
+  louisiana: 'Follow suit, nobody sits out. Minimum bid 7.',
+};
+const ruleFacts = {
+  finnish: [
+    'Only trumps are played, including the same-color five.',
+    'The highest trump wins the trick.',
+    'A player with no trumps sits out for the rest of the hand.',
+    'The minimum bid is 6.',
+  ],
+  louisiana: [
+    'Non-trumps are played: follow the led suit or play a trump. When trump is led, follow trump if you can.',
+    'The highest trump wins. With no trump, the highest card of the led suit wins.',
+    'Nobody sits out. Every player plays all six tricks.',
+    'The minimum bid is 7.',
+  ],
+};
+
+async function assertRulesExplainer(page, ruleSet) {
+  await page.getByTestId('rules-explainer').waitFor();
+  assert.ok(
+    (await page.getByTestId('rules-explainer-rule-set').innerText()).includes(ruleLabels[ruleSet])
+  );
+  for (const [index, fact] of ruleFacts[ruleSet].entries()) {
+    assert.equal(await page.getByTestId(`rules-fact-${index}`).innerText(), fact);
+  }
+  assert.equal(
+    await page.getByTestId('rules-feedback').innerText(),
+    'Not the rules you play? Tell us'
+  );
+  assert.equal(await page.getByTestId('rules-done').innerText(), 'Got it');
+}
+
+async function assertRulePresentation(page, testCase) {
+  const ruleSet = testCase.ruleSet ?? 'finnish';
+  const badge =
+    testCase.rulesBadge ??
+    {
+      'table-waiting': 'waiting-rule-set',
+      'table-game-over': 'game-over-rule-set',
+    }[testCase.name];
+  if (badge && !testCase.rulesExplainer) {
+    await page.getByTestId(badge).waitFor();
+    assert.ok((await page.getByTestId(badge).innerText()).includes(ruleLabels[ruleSet]));
+  }
+  if (testCase.rulesSelector) {
+    const selector = page.getByTestId(testCase.rulesSelector);
+    await selector.waitFor();
+    assert.equal(
+      await selector
+        .getByRole('button', { name: new RegExp(ruleLabels[ruleSet]) })
+        .getAttribute('aria-selected'),
+      'true'
+    );
+    if (testCase.rulesSelector === 'create-rule-set') {
+      assert.equal(
+        await page.getByTestId('create-rule-description').innerText(),
+        ruleDescriptions[ruleSet]
+      );
+    }
+  }
+  if (badge === 'invite-rule-set') {
+    if (testCase.authenticated)
+      await page.getByText('Ready to join as Bengt.', { exact: true }).waitFor();
+    else await page.getByLabel('Your display name', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Join table', exact: true }).waitFor();
+  }
+  if (testCase.rulesExplainer) await assertRulesExplainer(page, ruleSet);
+  if (testCase.rulesLobby) {
+    const filter = page.getByTestId('lobby-rule-filter');
+    const choice = testCase.rulesLobby === 'mixed' ? 'All' : 'Louisiana';
+    assert.equal(
+      await filter.getByRole('button', { name: new RegExp(choice) }).getAttribute('aria-selected'),
+      'true'
+    );
+    for (const prefix of ['MY', 'OPEN', 'SUB', 'WATCH']) {
+      assert.equal(
+        await page.getByTestId(`room-rules-${prefix}FI`).count(),
+        testCase.rulesLobby === 'mixed' ? 1 : 0
+      );
+      assert.equal(
+        await page.getByTestId(`room-rules-${prefix}LA`).count(),
+        testCase.rulesLobby === 'rules-empty' ? 0 : 1
+      );
+      if (testCase.rulesLobby !== 'rules-empty') {
+        assert.ok(
+          (await page.getByTestId(`room-rules-${prefix}LA`).innerText()).includes('Louisiana')
+        );
+      }
+    }
+    if (testCase.rulesLobby === 'rules-empty')
+      await page.getByText('No 🇺🇸 Louisiana tables match this filter.', { exact: true }).waitFor();
+  }
+}
+
+async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
+  if (testCase.rulesSelector) {
+    const other = testCase.ruleSet === 'finnish' ? 'louisiana' : 'finnish';
+    const button = page
+      .getByTestId(testCase.rulesSelector)
+      .getByRole('button', { name: new RegExp(ruleLabels[other]) });
+    await button.click();
+    assert.equal(await button.getAttribute('aria-selected'), 'true');
+    if (testCase.rulesSelector === 'create-rule-set')
+      assert.equal(
+        await page.getByTestId('create-rule-description').innerText(),
+        ruleDescriptions[other]
+      );
+  }
+  if (testCase.rulesLobby) {
+    if (testCase.rulesLobby === 'rules-empty') {
+      await page.getByRole('button', { name: 'Show all rules', exact: true }).click();
+      assert.equal(
+        await page
+          .getByTestId('lobby-rule-filter')
+          .getByRole('button', { name: 'All', exact: true })
+          .getAttribute('aria-selected'),
+        'true'
+      );
+      assert.equal(
+        await page.getByText('No 🇺🇸 Louisiana tables match this filter.', { exact: true }).count(),
+        0
+      );
+    }
+    await page
+      .getByTestId('lobby-rule-filter')
+      .getByRole('button', { name: /Finnish/ })
+      .click();
+    for (const prefix of ['MY', 'OPEN', 'SUB', 'WATCH']) {
+      assert.equal(await page.getByTestId(`room-rules-${prefix}LA`).count(), 0);
+      assert.ok((await page.getByTestId(`room-rules-${prefix}FI`).innerText()).includes('Finnish'));
+    }
+  }
+  const waiting =
+    testCase.name === 'table-waiting' ||
+    testCase.name === 'table-louisiana-waiting' ||
+    testCase.name === 'table-louisiana-waiting-explainer';
+  const playing =
+    testCase.name === 'table-finnish' ||
+    testCase.name === 'table-louisiana' ||
+    testCase.name === 'table-louisiana-explainer';
+  if (!waiting && !playing) return;
+  if (testCase.rulesExplainer) {
+    await page.getByTestId('rules-done').click();
+    await page.getByTestId(testCase.rulesBadge).waitFor();
+    assert.ok(
+      (await page.getByTestId(testCase.rulesBadge).innerText()).includes(
+        ruleLabels[testCase.ruleSet]
+      )
+    );
+  }
+  if (waiting) await page.getByTestId('waiting-rules-menu').click();
+  else {
+    await page.getByRole('button', { name: 'Table settings', exact: true }).click();
+    await page.getByTestId('table-rules-menu').click();
+  }
+  await assertRulesExplainer(page, testCase.ruleSet ?? 'finnish');
+  await assertMinimumTouchTargets(page, `${testCase.name}-rules`, viewport);
+  await page.screenshot({ path: resolve(screenshotDir, `${testCase.name}-rules-reopened.png`) });
+  await page.getByTestId('rules-done').click();
+  await page.getByTestId('rules-explainer').waitFor({ state: 'hidden' });
+}
+
 async function assertPasswordReveal(page, password, name, viewport) {
   const passwordValue = 'correct horse battery staple';
   await password.fill(passwordValue);
@@ -621,7 +859,7 @@ async function assertAccountButtonsStayPut(page, name, answerProfile) {
     await row.waitFor();
     return;
   }
-  if (!name.startsWith('settings')) return answerProfile();
+  if (name !== 'settings') return answerProfile();
   const buttons = ['Sign out', 'Delete account'].map((label) =>
     page.getByRole('button', { name: label, exact: true })
   );
@@ -1008,6 +1246,8 @@ async function main() {
         if (
           viewport.tableOnly &&
           !testCase.path.startsWith('/table-dev') &&
+          !testCase.ruleSet &&
+          !testCase.rulesLobby &&
           testCase.name !== 'join-invite' &&
           !viewport.entryCases?.includes(testCase.name)
         )
@@ -1076,6 +1316,34 @@ async function main() {
                   spectatable: [],
                 },
               },
+            })
+          );
+        }
+        if (testCase.manualCode) {
+          await page.route('**/api/v1/invites/7KQ4M2XB', (route) =>
+            route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                data: {
+                  invite: {
+                    code: '7KQ4M2XB',
+                    state: 'open',
+                    host: 'Marcel',
+                    seats_taken: 2,
+                    seats_total: 4,
+                    seat_hint: 'partner',
+                    label: 'Friday game',
+                    expires_at: '2099-09-03T15:30:00Z',
+                    config: {
+                      name: null,
+                      solo: false,
+                      bot_difficulty: 'basic',
+                      rule_set: 'louisiana',
+                    },
+                  },
+                },
+              }),
             })
           );
         }
@@ -1160,6 +1428,14 @@ async function main() {
             throw new Error(`${testCase.path} returned ${response?.status() ?? 'no response'}`);
           }
           await suppressDevOverlays(page);
+          if (testCase.manualCode) {
+            await page.getByTestId('invite-code-input').fill('7kq4-m2xb');
+            await page.getByRole('button', { name: 'Continue', exact: true }).click();
+            await page.waitForURL(
+              (url) =>
+                url.pathname === '/join/7KQ4M2XB' && url.searchParams.get('source') === 'typed'
+            );
+          }
           if (testCase.name === 'table-bidding') {
             await assertBiddingRevealSequence(page, viewport);
           }
@@ -1178,6 +1454,7 @@ async function main() {
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, viewport);
+          await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();
             await page.getByText('28 games · Level 7', { exact: true }).waitFor();
@@ -1200,7 +1477,10 @@ async function main() {
               assert.equal(Math.round(box?.height ?? 0), expectedHeight, `${tile} height`);
             }
           }
-          if (testCase.name.startsWith('table-game-over')) {
+          if (
+            testCase.name.startsWith('table-game-over') ||
+            testCase.name === 'table-louisiana-game-over'
+          ) {
             await page
               .getByTestId('victory-confetti')
               .waitFor({ state: 'detached', timeout: 7000 });
@@ -1221,6 +1501,7 @@ async function main() {
           await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
+          await assertRuleInteractions(page, testCase, viewport, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);
             for (const position of ['north', 'east', 'south', 'west']) {

@@ -8,8 +8,14 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import type { RuleSet } from '@pidro/shared';
+import { RuleSetChip, RuleSetSelector, ruleSetLabel } from '@/components/rules/RuleSet';
+import { filterRuleSet, lobbyRuleSetFilter } from '@/features/rules/ruleSets';
+import { lobbyFixture } from '@/features/rules/fixtures';
+import { useSettingsStore } from '@/stores/settings';
+import { t } from '@/i18n';
 import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
@@ -61,17 +67,33 @@ function filterByQuery(rooms: Room[], query: string): Room[] {
 }
 
 export default function LobbyScreen() {
+  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
+  return <LobbyContent key={fixtureParam ?? 'live'} fixture={lobbyFixture(fixtureParam)} />;
+}
+
+function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
+  useLobbyChannel(onUpdate);
+  return null;
+}
+
+function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
   const router = useRouter();
+  const preferred = useSettingsStore((state) => state.preferredRuleSet);
+  const savedFilter = useSettingsStore((state) => state.lobbyRuleSetFilter);
+  const saveFilter = useSettingsStore((state) => state.setLobbyRuleSetFilter);
+  const [fixtureFilter, setFixtureFilter] = useState<RuleSet | 'all'>(fixture?.filter ?? 'all');
+  const filter = fixture ? fixtureFilter : lobbyRuleSetFilter(preferred, savedFilter);
+  const changeFilter = fixture ? setFixtureFilter : saveFilter;
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const user = useAuthStore((state) => state.user);
   const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
   const {
-    rooms,
-    lobby,
+    rooms: storedRooms,
+    lobby: storedLobby,
     stats,
-    isLoading,
-    error,
+    isLoading: storedLoading,
+    error: storedError,
     setRooms,
     setLobby,
     setStats,
@@ -79,6 +101,10 @@ export default function LobbyScreen() {
     setError,
     upsertLobbyRoom,
   } = useLobbyStore();
+  const lobby = fixture?.lobby ?? storedLobby;
+  const rooms = fixture ? Object.values(fixture.lobby).flat() : storedRooms;
+  const isLoading = fixture ? false : storedLoading;
+  const error = fixture ? null : storedError;
   const [query, setQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -98,8 +124,6 @@ export default function LobbyScreen() {
     realtimeRevisionRef.current += 1;
   }, []);
 
-  useLobbyChannel(markRealtimeUpdate);
-
   const activeRooms = useMemo(
     () =>
       uniqueRooms([
@@ -113,28 +137,37 @@ export default function LobbyScreen() {
   const openTables = useMemo(
     () =>
       filterByQuery(
-        lobby.open_tables.filter((room) => !roomHasUser(room, user?.id)),
+        filterRuleSet(
+          lobby.open_tables.filter((room) => !roomHasUser(room, user?.id)),
+          filter
+        ),
         query
       ),
-    [lobby.open_tables, query, user?.id]
+    [lobby.open_tables, query, user?.id, filter]
   );
-  const rejoinableTables = useMemo(() => filterByQuery(activeRooms, query), [activeRooms, query]);
+  const rejoinableTables = useMemo(
+    () => filterByQuery(filterRuleSet(activeRooms, filter), query),
+    [activeRooms, query, filter]
+  );
   const substituteTables = useMemo(
-    () => filterByQuery(lobby.substitute_needed, query),
-    [lobby.substitute_needed, query]
+    () => filterByQuery(filterRuleSet(lobby.substitute_needed, filter), query),
+    [lobby.substitute_needed, query, filter]
   );
   const watchTables = useMemo(
-    () => filterByQuery(lobby.spectatable, query),
-    [lobby.spectatable, query]
+    () => filterByQuery(filterRuleSet(lobby.spectatable, filter), query),
+    [lobby.spectatable, query, filter]
   );
   const visibleTableCount =
     rejoinableTables.length + openTables.length + substituteTables.length + watchTables.length;
   const hasQuery = query.trim().length > 0;
   const hasNoResults = !isLoading && hasQuery && visibleTableCount === 0;
   const isUnavailable = !isLoading && !!error && visibleTableCount === 0;
-  const isEmptyLobby = !isLoading && !hasQuery && visibleTableCount === 0 && !isUnavailable;
+  const isEmptyLobby =
+    !isLoading && !hasQuery && !isUnavailable && activeRooms.length === 0 &&
+    Object.values(lobby).every((tables) => tables.length === 0);
 
   const loadLobby = useCallback(async () => {
+    if (fixture) return;
     const revisionAtStart = realtimeRevisionRef.current;
     setLoading(true);
     setError(null);
@@ -159,13 +192,14 @@ export default function LobbyScreen() {
     } finally {
       setLoading(false);
     }
-  }, [setError, setLoading, setLobby, setRooms, setStats]);
+  }, [fixture, setError, setLoading, setLobby, setRooms, setStats]);
 
   useEffect(() => {
     loadLobby();
   }, [loadLobby]);
 
   const handleJoinRoom = async (code: string, position?: Position, mayRequestAccount = true) => {
+    if (fixture) return;
     try {
       const response = await lobbyApi.joinRoom(code, position);
       captureAnalytics('room_joined', { join_source: 'lobby' });
@@ -202,6 +236,7 @@ export default function LobbyScreen() {
   };
 
   const handleWatchRoom = async (code: string, mayRequestAccount = true) => {
+    if (fixture) return;
     try {
       await lobbyApi.watchRoom(code);
       router.push(`/game/${code}`);
@@ -221,6 +256,7 @@ export default function LobbyScreen() {
     mayRequestAccount = true,
     showFailureAlert = false
   ) => {
+    if (fixture) return;
     // An invite seat is an open seat; the waiting table opens with its invite sheet up.
     const openTable = (code: string) =>
       router.replace(invite ? `/game/${code}?invite=true` : `/game/${code}`);
@@ -304,6 +340,7 @@ export default function LobbyScreen() {
   };
 
   const handleNewTable = () => {
+    if (fixture) return;
     if (activeRoom) {
       Alert.alert('Current table', `You are already at table ${activeRoom.code}.`, [
         { text: 'Cancel', style: 'cancel' },
@@ -329,6 +366,7 @@ export default function LobbyScreen() {
 
   return (
     <ScreenShell testID="lobby-screen" contentStyle={styles.shell}>
+      {!fixture ? <LobbyRealtime onUpdate={markRealtimeUpdate} /> : null}
       <View style={styles.header}>
         <BevelButton
           material="glass"
@@ -347,15 +385,15 @@ export default function LobbyScreen() {
         </View>
         {landscape && !isEmptyLobby ? search : null}
         {landscape && isEmptyLobby ? <View style={styles.headerTitle} /> : null}
-        {stats.online_players > 1 ? (
+        {(fixture ? 8 : stats.online_players) > 1 ? (
           <PidroText
             role="metadata"
             tone="soft"
-            accessibilityLabel={`${stats.online_players} players online`}>
+            accessibilityLabel={`${fixture ? 8 : stats.online_players} players online`}>
             <PidroText role="metadata" style={styles.onlineDot}>
               ●{' '}
             </PidroText>
-            {stats.online_players} online
+            {fixture ? 8 : stats.online_players} online
           </PidroText>
         ) : null}
         <BevelButton
@@ -367,6 +405,9 @@ export default function LobbyScreen() {
         </BevelButton>
       </View>
       {!landscape && !isEmptyLobby ? search : null}
+      <View testID="lobby-rule-filter">
+        <RuleSetSelector value={filter} onChange={changeFilter} includeAll />
+      </View>
 
       <View style={styles.content}>
         {quickGame.error ? (
@@ -399,12 +440,24 @@ export default function LobbyScreen() {
             actionLabel="Try again"
             onAction={loadLobby}
           />
+        ) : !isLoading && !isEmptyLobby && visibleTableCount === 0 && filter !== 'all' ? (
+          <LobbyEmptyState
+            title={t('rules.empty', { rules: ruleSetLabel(filter) })}
+            description=""
+            actionLabel={t('rules.showAll')}
+            onAction={() => {
+              changeFilter('all');
+              setQuery('');
+            }}
+          />
         ) : isEmptyLobby ? (
           <EmptyLobby
             onStart={handleNewTable}
             onJoinCode={() => router.push('/join-code')}
             onQuickGame={quickGame.start}
             quickGameLoading={quickGame.loading}
+            filter={filter}
+            onShowAll={() => changeFilter('all')}
           />
         ) : hasNoResults ? (
           <LobbyEmptyState
@@ -435,7 +488,9 @@ export default function LobbyScreen() {
                     room={room}
                     label="Rejoin"
                     primary
-                    onPress={() => router.push(`/game/${room.code}`)}
+                    onPress={() => {
+                      if (!fixture) router.push(`/game/${room.code}`);
+                    }}
                   />
                 ))}
               </View>
@@ -564,11 +619,15 @@ function EmptyLobby({
   onJoinCode,
   onQuickGame,
   quickGameLoading,
+  filter,
+  onShowAll,
 }: {
   onStart: () => void;
   onJoinCode: () => void;
   onQuickGame: () => void;
   quickGameLoading: boolean;
+  filter: RuleSet | 'all';
+  onShowAll: () => void;
 }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -621,6 +680,14 @@ function EmptyLobby({
             Start one and it shows up here for everyone. Open seats wait for players, and any seat
             can be a bot.
           </PidroText>
+          {filter !== 'all' ? (
+            <>
+              <PidroText role="metadata" tone="soft" align="center">
+                {t('rules.empty', { rules: ruleSetLabel(filter) })}
+              </PidroText>
+              <TextLink label={t('rules.showAll')} onPress={onShowAll} />
+            </>
+          ) : null}
         </View>
         {landscape || tablet ? null : <View style={styles.emptySpacer} />}
         <View style={styles.emptyActions}>
@@ -679,6 +746,10 @@ function ActionRoomRow({
         <PidroText role="label" numberOfLines={1}>
           {roomName}
         </PidroText>
+        <RuleSetChip
+          ruleSet={room.config?.rule_set ?? 'finnish'}
+          testID={`room-rules-${room.code}`}
+        />
         <PidroText role="metadata" tone="muted" numberOfLines={1}>
           Table {room.code} · {room.status} · {players}/4
         </PidroText>
@@ -695,6 +766,8 @@ function ActionRoomRow({
 
 const styles = StyleSheet.create({
   shell: {
+    flex: 1,
+    minHeight: 0,
     gap: PidroSpacing.sm,
   },
   content: {

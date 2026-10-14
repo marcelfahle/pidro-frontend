@@ -187,6 +187,43 @@ missed turns: a bot is taking the seat, I'm back joins again. testID `game-away-
 Renders the invite preview with no backend.
 Canonical: `/join/7KQ4M2XB?source=copy&fixture=open` — testID `join-invite-window`.
 
+## Rule-set fixtures
+
+Development-only, no backend needed (except the real manual-code path, mocked by
+the grammar script). Lobby requires an authenticated auth fixture. Invite routes
+show a guest name-entry preview without auth, or the same table's confirmation
+with an authenticated fixture.
+
+| URL | Shows |
+| --- | --- |
+| `/ui-dev?state=create&fixture=finnish` / `fixture=louisiana` | Selected creation rules and description |
+| `/lobby?fixture=mixed` | Finnish and Louisiana badges in all four categories; All filter |
+| `/lobby?fixture=louisiana` | Louisiana filter across all categories |
+| `/lobby?fixture=rules-empty` | Empty Louisiana filter; Show all rules recovery |
+| `/ui-dev?state=settings&fixture=finnish` / `fixture=louisiana` | Preferred rules selector |
+| `/join/7KQ4M2XB?fixture=finnish` / `fixture=louisiana` | Rules badge in guest preview or authenticated confirmation |
+| `/join/7KQ4M2XB?source=typed&fixture=louisiana` | Manual-code arrival at the same confirmation |
+| `/table-dev?fixture=louisiana` | Playing table badge; Table settings → Table rules |
+| `/table-dev?fixture=louisiana-explainer` | First-encounter rules explainer, four facts, feedback and Got it |
+| `/table-dev?fixture=louisiana-game-over` | Game-over rules badge |
+| `/table-dev?fixture=louisiana-waiting` | Waiting rules badge and Table rules action |
+| `/table-dev?fixture=louisiana-waiting-explainer` | Waiting first-encounter explainer; dismiss and reopen |
+
+The actual `/join-code` form routes to `/join/7KQ4M2XB?source=typed`;
+`manual` is **not** a valid arrival source. It ends at the same authenticated
+confirmation as an invite link, not a separate manual-code confirmation screen.
+`join-code-louisiana-confirm` exercises that form with a mocked Louisiana preview.
+
+Grammar cases: `create-table-finnish`, `create-table-louisiana`, `lobby-mixed`,
+`lobby-louisiana`, `lobby-rules-empty`, `settings-finnish`, `settings-louisiana`,
+`join-finnish-preview`, `join-finnish-confirm`, `join-louisiana-preview`,
+`join-louisiana-confirm`, `join-louisiana-manual-confirm`, `join-code-louisiana-confirm`,
+`table-louisiana`, `table-louisiana-explainer`, `table-louisiana-game-over`,
+`table-louisiana-waiting`, `table-louisiana-waiting-explainer`.
+All run at 390×844, 844×390 and 667×375. Existing Finnish playing, waiting and
+game-over cases also check badges; playing/waiting reopen the rules from the menu
+and capture an additional `-rules-reopened.png` screenshot.
+
 ---
 
 ## Scripted checks (Playwright against Expo web)

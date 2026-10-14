@@ -40,7 +40,7 @@ test('a room with a null config name falls back to the room code', () => {
 test('the config stays on the normalized room', () => {
   const config = { name: 'Friday night', bot_difficulty: 'smart', solo: false };
   const room = normalizeRoom({ code: 'E4W2', config });
-  expect(room.config).toEqual(config);
+  expect(room.config).toEqual({ ...config, rule_set: 'finnish' });
   expect(room.config?.bot_difficulty).toBe('smart');
 });
 

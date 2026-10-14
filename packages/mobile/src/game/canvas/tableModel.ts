@@ -17,7 +17,7 @@ import type {
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import type { GameTableController } from '@/game/useGameTableController';
-import { sortCards } from '@/utils/cards';
+import { isTrumpCard, sortCards } from '@/utils/cards';
 import { cardKey, type CardKey } from './cardKey';
 
 export type TableCard = {
@@ -119,7 +119,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
       key,
       textureKey,
       card: c,
-      isTrump: !!trumpSuit && c.suit === trumpSuit,
+      isTrump: isTrumpCard(c, trumpSuit),
       isLegalPlay: legalPlayKeys.has(textureKey),
       isCurrentTrick,
     };

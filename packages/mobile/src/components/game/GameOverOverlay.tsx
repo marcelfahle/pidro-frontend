@@ -11,6 +11,7 @@ import type { RematchVote } from '@pidro/shared';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 import { VictoryConfetti } from './VictoryConfetti';
+import { RuleSetChip } from '@/components/rules/RuleSet';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
@@ -99,6 +100,7 @@ export function GameOverOverlay({
               align="center">
               {outcome}
             </PidroText>
+            <RuleSetChip ruleSet={serverState.variant ?? 'finnish'} testID="game-over-rule-set" />
             <View style={styles.teams}>
               {[true, false].map((first) => (
                 <View

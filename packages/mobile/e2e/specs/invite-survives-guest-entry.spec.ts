@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { JoinInviteScreen } from '../screens/join-invite-screen';
 import { WelcomeWindow } from '../screens/welcome-window';
 import { inviteToTable } from '../support/api';
 import { newPlayer } from '../support/player';
@@ -11,6 +12,7 @@ test('an invite survives guest entry and ends at that table', async ({ page }) =
   await expect(welcome.root.getByText(`Table ${code}`)).toBeVisible();
 
   await welcome.quickGame.click();
+  await new JoinInviteScreen(page).joinTable();
   await page.waitForURL(`**/game/${room}`);
   await expect(page.getByTestId('waiting-table')).toBeVisible();
 });

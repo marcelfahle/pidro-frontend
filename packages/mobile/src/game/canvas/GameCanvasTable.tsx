@@ -6,7 +6,7 @@
  * module is imported. Native imports this module directly.
  */
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { RematchVote } from '@pidro/shared';
@@ -33,9 +33,13 @@ import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import { TableChromeBars, useTableReserves } from './TableChrome';
+import { computeLayout } from './layout';
+import { RuleSetChip } from '@/components/rules/RuleSet';
+import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 
 type Props = {
   room: Room;
+  rulesFixtureSeen?: boolean;
   progressionSummary?: ProgressionSummary | null;
   onLeave: () => void;
   onPlayAgain?: () => void;
@@ -218,6 +222,7 @@ export function GameCanvasTable({
   playAgainLabel,
   showGuestSave,
   onSaveGuest,
+  rulesFixtureSeen,
 }: Props) {
   const controller = useGameTableController(room);
   const role = useGameStore((state) => state.role);
@@ -238,6 +243,14 @@ export function GameCanvasTable({
   const insets = useSafeAreaInsets();
   const reserves = useTableReserves();
   const { topReserve, bottomReserve } = reserves;
+  const ruleSet = controller.serverState?.variant ?? 'finnish';
+  const rules = useRulesExplainer(
+    ruleSet,
+    isSpectator || !controller.youPositionAbs,
+    rulesFixtureSeen
+  );
+  const { width, height } = useWindowDimensions();
+  const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
 
   const {
     trumpSuit,
@@ -290,6 +303,25 @@ export function GameCanvasTable({
       />
 
       <TableChromeBars reserves={reserves} />
+      <View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: layout.trick.cy + layout.cardW * 0.4,
+          left: 0,
+          right: 0,
+          alignItems: 'center',
+        }}>
+        <View style={{ alignSelf: 'center' }}>
+          <RuleSetChip ruleSet={ruleSet} testID="table-rule-set" />
+        </View>
+      </View>
+      <RulesExplainer
+        ruleSet={ruleSet}
+        tableCode={room.code}
+        open={rules.open}
+        onClose={rules.dismiss}
+      />
 
       {/* Gold scoreboard plaque (top-left) — matches the original */}
       {!(isGameOver && roomFinished) && (
@@ -312,7 +344,12 @@ export function GameCanvasTable({
 
       {!(isGameOver && roomFinished) && (
         <>
-          <TableSettings onLeave={onLeave} isSpectator={isSpectator} isGameOver={isGameOver} />
+          <TableSettings
+            onLeave={onLeave}
+            isSpectator={isSpectator}
+            isGameOver={isGameOver}
+            onRules={rules.show}
+          />
           {isSpectator && <WatchingBadge />}
         </>
       )}

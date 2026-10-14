@@ -3,7 +3,8 @@ import { Room, Position } from '@/types/lobby';
 import { RoomTeamDisplay } from './RoomTeamDisplay';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
-import { PidroSpacing, PidroType } from '@/design/tokens';
+import { RuleSetChip } from '@/components/rules/RuleSet';
+import { PidroSpacing } from '@/design/tokens';
 
 interface RoomCardProps {
   room: Room;
@@ -43,6 +44,10 @@ export function RoomCard({
         <PidroText role="label" numberOfLines={1}>
           {roomName}
         </PidroText>
+        <RuleSetChip
+          ruleSet={room.config?.rule_set ?? 'finnish'}
+          testID={`room-rules-${room.code}`}
+        />
       </View>
 
       <View style={compact && styles.teamsCompact}>
@@ -77,7 +82,7 @@ const styles = StyleSheet.create({
   },
   titleCopy: {
     minWidth: 0,
-    height: PidroType.label.lineHeight * 1.5,
+    gap: PidroSpacing.xxs,
   },
   titleCompact: {
     width: '26%',
