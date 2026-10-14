@@ -209,7 +209,7 @@ export function PlayerAvatar({
           style={[
             styles.copy,
             below
-              ? { marginTop: levelClearance, alignItems: 'center' }
+              ? { marginTop: levelClearance, alignItems: 'center', maxWidth: '100%' }
               : { alignItems: label === 'right' ? 'flex-start' : 'flex-end' },
           ]}>
           <PidroText

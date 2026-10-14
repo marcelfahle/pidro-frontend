@@ -60,13 +60,23 @@ const WAITING_ROOM: Room = {
     {
       seat_index: 1,
       status: 'occupied',
-      player: { id: 'p-south', username: 'Alexandria the Long-Named Player' },
+      player: {
+        id: 'p-south',
+        username: 'Alexandria the Long-Named Player',
+        level: 44,
+        pin: 'classic',
+      },
       position: 'south',
     },
     {
       seat_index: 2,
       status: 'occupied',
-      player: { id: 'p-west', username: 'mfios1', avatar_url: fixtureAvatar('i', '#437d9e') },
+      player: {
+        id: 'p-west',
+        username: 'mfios1',
+        avatar_url: fixtureAvatar('i', '#437d9e'),
+        level: 18,
+      },
       position: 'west',
     },
     {

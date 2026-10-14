@@ -92,6 +92,8 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
               display_name: displayName,
               is_bot: isBot,
               avatar_url: value?.avatar_url ?? null,
+              level: value?.level,
+              pin: value?.pin,
             }
           : null,
       player_id: playerId,

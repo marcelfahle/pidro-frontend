@@ -162,18 +162,18 @@ export const useGameStore = create<GameState>((set, get) => ({
             ) ?? current.youPositionAbs);
       for (const position of POSITIONS) {
         const seat = snapshot.seats[position];
+        const known = Object.values(current.playerMeta).find(
+          (meta) => seat.player_id != null && meta.playerId === seat.player_id,
+        );
         const isYou = current.role === 'player' && position === youPositionAbs;
         const teammate = youPositionAbs != null && isTeammate(youPositionAbs, position);
         playerMeta[position] = {
           ...playerMeta[position],
           playerId: seat.player_id,
           username: publicPlayerName(seat.username, 'Player', seat.display_name),
-          avatar_url:
-            seat.avatar_url !== undefined
-              ? seat.avatar_url
-              : Object.values(current.playerMeta).find(
-                  (meta) => seat.player_id != null && meta.playerId === seat.player_id,
-                )?.avatar_url ?? null,
+          avatar_url: seat.avatar_url !== undefined ? seat.avatar_url : (known?.avatar_url ?? null),
+          level: seat.level !== undefined ? seat.level : (known?.level ?? null),
+          pin: seat.pin !== undefined ? seat.pin : (known?.pin ?? null),
           seatStatus: seat.status,
           isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
           isYou,
@@ -261,6 +261,14 @@ export const useGameStore = create<GameState>((set, get) => ({
               : sameOccupant
                 ? previous.avatar_url
                 : null,
+          level:
+            seat?.player?.level !== undefined
+              ? seat.player.level
+              : sameOccupant
+                ? previous.level
+                : null,
+          pin:
+            seat?.player?.pin !== undefined ? seat.player.pin : sameOccupant ? previous.pin : null,
           isYou: youPos === pos,
           isTeammate: false,
           isOpponent: false,
@@ -306,6 +314,8 @@ export const useGameStore = create<GameState>((set, get) => ({
           ...meta,
           username: publicPlayerName(player.username, meta.username ?? 'Player', player.display_name),
           ...(player.avatar_url !== undefined ? { avatar_url: player.avatar_url } : {}),
+          ...(player.level !== undefined ? { level: player.level } : {}),
+          ...(player.pin !== undefined ? { pin: player.pin } : {}),
         };
       }
       return { playerMeta };
@@ -579,6 +589,14 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
                 snapshot.seats[position].avatar_url !== undefined
                   ? snapshot.seats[position].avatar_url
                   : known?.avatar_url,
+              level:
+                snapshot.seats[position].level !== undefined
+                  ? snapshot.seats[position].level
+                  : known?.level,
+              pin:
+                snapshot.seats[position].pin !== undefined
+                  ? snapshot.seats[position].pin
+                  : known?.pin,
               is_bot: snapshot.seats[position].occupant_type === 'bot',
             }
           : null,
@@ -631,6 +649,8 @@ export function useGameViewModel(): GameViewModel | null {
         isCurrentTurn,
         seatStatus: meta.seatStatus,
         rank: meta.rank ?? null,
+        level: meta.level ?? null,
+        pin: meta.pin ?? null,
       };
     });
 

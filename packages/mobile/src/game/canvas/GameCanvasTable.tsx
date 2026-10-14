@@ -30,7 +30,7 @@ import { useHandPresentationReady } from './useHandPresentationReady';
 import { useDealPresentation } from './useDealPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
-import { SeatLayer } from './SeatLayer';
+import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import { TableChromeBars, useTableReserves } from './TableChrome';
 
@@ -73,7 +73,7 @@ function trickCardForPlayer(state: ServerGameState | null, absolutePosition: str
 function statusText(
   player: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'][number],
   state: ServerGameState | null
-): string {
+): SeatLine | null {
   const phase = state?.phase ?? 'bidding';
   const absolutePosition = player.absolutePosition;
   const bid = state?.bids?.[absolutePosition as keyof NonNullable<ServerGameState['bids']>];
@@ -81,43 +81,48 @@ function statusText(
   const playedCard = trickCardForPlayer(state, absolutePosition);
   const lastTrick =
     state?.tricks && state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
+  const now = (text: string): SeatLine | null =>
+    player.isCurrentTurn ? { text, tone: 'now' } : null;
 
   switch (phase) {
     case 'dealer_selection':
-      if (cut) return `Draws ${cardLabel(cut)}`;
-      if (playedCard) return `Draws ${cardLabel(playedCard)}`;
-      return player.isCurrentTurn ? 'Drawing' : 'Waiting';
+      if (cut) return { text: `Draws ${cardLabel(cut)}` };
+      if (playedCard) return { text: `Draws ${cardLabel(playedCard)}` };
+      return now('Drawing…');
     case 'bidding':
-      if (bid === 'pass') return 'Passed';
-      if (typeof bid === 'number') return `Bet ${bid}`;
-      return player.isCurrentTurn ? 'Bidding' : 'Waiting';
+      if (bid === 'pass') return { text: 'Passed', tone: 'quiet' };
+      if (typeof bid === 'number') return { text: `Bid ${bid}` };
+      return now('Bidding…');
     case 'declaring':
     case 'declaring_trump':
     case 'trump_declaration':
-      if (player.isCurrentTurn) return 'Naming';
-      return state?.trump ? `Trump ${SUIT_SYMBOLS[state.trump]}` : 'Waiting';
+      if (player.isCurrentTurn) return { text: 'Choosing trump…', tone: 'now' };
+      return state?.trump ? { text: `Trump ${SUIT_SYMBOLS[state.trump]}` } : null;
     case 'discarding':
     case 'second_deal':
-      return player.isCurrentTurn ? 'Selecting hand' : 'Waiting';
+      return now('Picking cards…');
     case 'playing':
-      if (playedCard) return `Plays ${cardLabel(playedCard)}`;
-      if (player.isCurrentTurn) return 'Turn';
-      if (lastTrick?.winner === absolutePosition) return 'Won trick';
-      return 'Ready';
+      if (playedCard) return { text: `Plays ${cardLabel(playedCard)}` };
+      if (player.isCurrentTurn) return now('Playing…');
+      if (lastTrick?.winner === absolutePosition) return { text: 'Took the trick' };
+      return null;
     case 'scoring':
     case 'hand_complete':
-      return 'Ready';
+      return null;
     case 'complete':
     case 'game_over':
-      return 'Finished';
+      return { text: 'Finished' };
     default:
-      return player.isCurrentTurn ? 'Turn' : 'Waiting';
+      return now('Playing…');
   }
 }
 
+/** The turn light turns urgent for the last five seconds. */
+const URGENT_MS = 5_000;
+
 function useTurnTimerProgress(
   turnTimer: ActiveTurnTimer | null
-): { position: string; progress: number } | null {
+): { position: string; turn: SeatTurn } | null {
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -150,7 +155,10 @@ function useTurnTimerProgress(
   const countdownRemainingMs = Math.min(turnTimer.durationMs, remainingTotalMs);
   return {
     position: turnTimer.position,
-    progress: countdownRemainingMs / turnTimer.durationMs,
+    turn: {
+      progress: countdownRemainingMs / turnTimer.durationMs,
+      urgent: countdownRemainingMs <= URGENT_MS,
+    },
   };
 }
 
@@ -168,20 +176,20 @@ function TimedSeatLayer({
   dealing: boolean;
   topReserve: number;
   bottomReserve: number;
-  statusByRel: Partial<Record<RelativePosition, string>> | undefined;
+  statusByRel: Partial<Record<RelativePosition, SeatLine | null>> | undefined;
   players: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'];
 }) {
   const turnTimer = useGameStore((state) => state.turnTimer);
   const timerProgress = useTurnTimerProgress(turnTimer);
-  const timerProgressByRel = timerProgress
+  const turnByRel = timerProgress
     ? players.reduce(
         (acc, player) => {
           if (player.absolutePosition === timerProgress.position) {
-            acc[player.relativePosition] = timerProgress.progress;
+            acc[player.relativePosition] = timerProgress.turn;
           }
           return acc;
         },
-        {} as Partial<Record<RelativePosition, number>>
+        {} as Partial<Record<RelativePosition, SeatTurn>>
       )
     : undefined;
 
@@ -193,7 +201,7 @@ function TimedSeatLayer({
       topReserve={topReserve}
       bottomReserve={bottomReserve}
       statusByRel={statusByRel}
-      timerProgressByRel={timerProgressByRel}
+      turnByRel={turnByRel}
     />
   );
 }
@@ -250,10 +258,12 @@ export function GameCanvasTable({
 
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
-      acc[player.relativePosition] = model.dealStage ? 'Dealing' : statusText(player, serverState);
+      acc[player.relativePosition] = model.dealStage
+        ? { text: 'Dealing' }
+        : statusText(player, serverState);
       return acc;
     },
-    {} as Partial<Record<RelativePosition, string>>
+    {} as Partial<Record<RelativePosition, SeatLine | null>>
   );
   return (
     <GestureHandlerRootView testID="game-table" style={{ flex: 1, backgroundColor: T.bgDeep }}>

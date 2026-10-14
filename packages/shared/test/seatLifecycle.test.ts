@@ -79,6 +79,27 @@ describe("seat lifecycle boundary", () => {
     expect(useGameStore.getState().playerMeta.east.avatar_url).toBeNull();
   });
 
+  test('carries level and pin with the player, and drops them when a bot takes the seat', () => {
+    useGameStore.setState({ roomCode: 'ABCD' });
+    const first = snapshot();
+    first.seats.north = {
+      status: 'normal', player_id: 'anna', username: 'Anna', level: 31, pin: 'classic', decision: null,
+    };
+    useGameStore.getState().applySeatLifecycle(first);
+    expect(useGameStore.getState().playerMeta.north).toMatchObject({ level: 31, pin: 'classic' });
+    const moved = snapshot('room-1', 2);
+    moved.seats.east = { status: 'normal', player_id: 'anna', username: 'Anna', decision: null };
+    useGameStore.getState().applySeatLifecycle(moved);
+    expect(useGameStore.getState().playerMeta.east).toMatchObject({ level: 31, pin: 'classic' });
+    expect(useGameStore.getState().playerMeta.north).toMatchObject({ level: null, pin: null });
+    const bot = snapshot('room-1', 3);
+    bot.seats.east = {
+      status: 'permanent_bot', player_id: null, username: 'Bot', level: null, pin: null, decision: null,
+    };
+    useGameStore.getState().applySeatLifecycle(bot);
+    expect(useGameStore.getState().playerMeta.east).toMatchObject({ level: null, pin: null });
+  });
+
   test("accepts complete events and replies, rejecting incomplete or invalid seats", () => {
     const valid = snapshot();
     expect(lifecycleFromReply(valid)).toBe(valid);
