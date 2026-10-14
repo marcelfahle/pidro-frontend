@@ -71,7 +71,8 @@ export function PlayerAvatar({
   const parts = avatarParts(size);
   const seated = kind !== 'open';
   const gold = ring !== 'glass' && kind === 'player';
-  const showLevel = seated && level != null && parts.level;
+  const chip = seated && level != null ? parts.level : null;
+  const arc = turn && seated ? parts.turn : null;
   const spoken =
     accessibilityLabel ??
     (name || kind !== 'player'
@@ -80,7 +81,7 @@ export function PlayerAvatar({
 
   const avatar = (
     <View style={{ width: size, height: size }}>
-      {turn && seated ? <TurnLight size={size} urgent={turn.urgent} /> : null}
+      {turn && arc ? <TurnLight size={size} urgent={turn.urgent} /> : null}
 
       {seated ? (
         <View
@@ -118,7 +119,7 @@ export function PlayerAvatar({
         </View>
       )}
 
-      {turn && seated && parts.turn ? <TurnArc size={size} parts={parts} turn={turn} /> : null}
+      {turn && arc ? <TurnArc size={size} arc={arc} turn={turn} /> : null}
 
       {ring === 'lifetime' && gold && parts.gem ? (
         <View
@@ -149,15 +150,15 @@ export function PlayerAvatar({
         </Coin>
       ) : null}
 
-      {showLevel ? (
-        <View pointerEvents="none" style={[styles.levelRow, { bottom: parts.level!.bottom }]}>
+      {chip ? (
+        <View pointerEvents="none" style={[styles.levelRow, { bottom: chip.bottom }]}>
           <View
             style={[
               styles.level,
               {
-                minWidth: parts.level!.minWidth,
-                height: parts.level!.height,
-                paddingHorizontal: parts.level!.padding,
+                minWidth: chip.minWidth,
+                height: chip.height,
+                paddingHorizontal: chip.padding,
                 borderColor: gold ? PidroBevel.rim : PidroBevel.avatarGlassEdge,
                 opacity: away ? AWAY_OPACITY : 1,
               },
@@ -166,8 +167,8 @@ export function PlayerAvatar({
               style={[
                 styles.levelText,
                 {
-                  fontSize: parts.level!.fontSize,
-                  lineHeight: parts.level!.height - 3,
+                  fontSize: chip.fontSize,
+                  lineHeight: chip.height - 3,
                   color: gold ? PidroBevel.textGold : PidroColors.text,
                 },
               ]}
@@ -193,7 +194,7 @@ export function PlayerAvatar({
 
   const hasLabel = !!(name || status);
   const below = label === 'below';
-  const levelClearance = showLevel ? parts.level!.height + parts.level!.bottom + 3 : 4;
+  const levelClearance = chip ? chip.height + chip.bottom + 3 : 4;
 
   return (
     <View
@@ -263,14 +264,14 @@ function TurnLight({ size, urgent }: { size: number; urgent?: boolean }) {
 
 function TurnArc({
   size,
-  parts,
+  arc,
   turn,
 }: {
   size: number;
-  parts: ReturnType<typeof avatarParts>;
+  arc: { radius: number; stroke: number };
   turn: { progress: number; urgent?: boolean };
 }) {
-  const { radius, stroke } = parts.turn!;
+  const { radius, stroke } = arc;
   const box = Math.ceil((radius + stroke) * 2);
   const center = box / 2;
   const length = 2 * Math.PI * radius;
