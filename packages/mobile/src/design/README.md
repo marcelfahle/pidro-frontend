@@ -168,7 +168,7 @@ Table names are generated at creation, not an extra form step.
 | Quiet text action              | `TextLink` (cyan, 800, always a 44px target)                            |
 | Choice with confirm/cancel     | `DecisionWindow` / `Modal`                                              |
 | Home navigation                | `HomeTabBar` (bottom bar portrait, right rail landscape)                |
-| Player identity                | `LevelRing` (avatar in a gold rim)                                      |
+| Player identity                | `PlayerAvatar` (ring, pin, level, turn light, dealer; sizes drop parts) |
 | An earned number               | `RatingPlaque` (gold rim, carved face, Bree Serif figure)               |
 | Progress toward something      | `LeagueProgress` (carved well + gold fill + quiet caption)              |
 | Labelling the one hero CTA     | `CtaBadge` (wraps the control so the badge anchors to it)               |
@@ -184,9 +184,11 @@ call sites. `MenuAction`, `PrimaryButton` are compatibility-only.
 Home's corner HUD is its own small grammar, and it follows the material rule
 rather than inventing a third treatment.
 
-- **Identity is framed, numbers are mounted, progress is carved.** `LevelRing`
-  frames the avatar in the same gold gradient a wood control uses — the player
-  is part of the furniture, not a photo pasted on top. `RatingPlaque` mounts an
+- **Identity is framed, numbers are mounted, progress is carved.** `PlayerAvatar`
+  frames the photo in a ring — opaque glass for everyone, gold for a supporter —
+  so the player is part of the furniture, not a photo pasted on top. It is the
+  one way a player is drawn: Home, lobby, waiting table, game over, the table
+  and the profile. Sheet: `/ui-dev?state=avatars`. `RatingPlaque` mounts an
   earned number like brass: gold rim, carved navy face, Bree Serif figure with
   the usual 1px optical lift. `LeagueProgress` is a **well** (dark, inset,
   hairline border), because progress is something the table records, not a

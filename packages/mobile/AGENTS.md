@@ -21,7 +21,7 @@ treatments in screens.
   (carved-in wells), `PidroText`, `Surface`, `ScreenShell`, `DecisionWindow`, `Modal`,
   `PressableFX`, `TabPill` (the floating shell pill), `LogoGlow`, `AuthProviderButtons`, `AuthSheet`,
   `KeepProgressPrompt`, `Icon` (never inline `<Svg><Path>` in a screen), and the
-  progression HUD — `LevelRing`, `RatingPlaque`, `LeagueProgress`, `CtaBadge`
+  progression HUD — `PlayerAvatar`, `RatingPlaque`, `LeagueProgress`, `CtaBadge`
   (sheet: `/ui-dev?state=progression`). Legacy `Button` is utility-only on old screens — do not add
   call sites; migrate to `BevelButton` when touching a screen. `MenuAction` and
   `PrimaryButton` are compatibility-only.

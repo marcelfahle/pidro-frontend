@@ -3,7 +3,7 @@ import { Keyboard, Modal, ScrollView, StyleSheet, useWindowDimensions, View } fr
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { clampRoomName } from '@pidro/shared';
 import type { CreateRoomRequest } from '@/types/lobby';
-import { LevelRing } from '@/components/home/LevelRing';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
@@ -181,7 +181,7 @@ export function CreateRoomForm({
           <View style={[styles.team, landscape && styles.teamLandscape]}>
             <PidroText role="label">Your team</PidroText>
             <Surface variant="subtle" style={styles.seatRow}>
-              <LevelRing uri={avatarUrl} size={40} />
+              <PlayerAvatar uri={avatarUrl} size={40} />
               <View style={styles.copy}>
                 <PidroText role="label" numberOfLines={1}>
                   {username ?? 'You'}

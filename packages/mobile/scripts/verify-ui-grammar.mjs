@@ -189,6 +189,7 @@ const allCases = [
     path: '/ui-dev?state=progression',
     testId: 'ui-progression-panel',
   },
+  { name: 'ui-avatars', path: '/ui-dev?state=avatars', testId: 'ui-avatars-panel' },
   { name: 'create-table', path: '/ui-dev?state=create', testId: 'create-room-window' },
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {

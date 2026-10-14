@@ -27,7 +27,9 @@ export type IconName =
   | 'bot'
   | 'cards'
   | 'mail'
-  | 'alert';
+  | 'alert'
+  | 'spade'
+  | 'offline';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   home: { path: 'M3 11l9-8 9 8M5 9v12h5v-7h4v7h5V9', mode: 'stroke' },
@@ -55,6 +57,14 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     mode: 'stroke',
   },
   alert: { path: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7.5V13M12 16.5h.01', mode: 'stroke' },
+  spade: {
+    path: 'M12 3c-3 3.6-7 6.2-7 10 0 2.2 1.7 3.8 3.8 3.8 1.2 0 2.2-.5 2.7-1.3-.2 1.7-.9 3.2-2.3 4.5h5.6c-1.4-1.3-2.1-2.8-2.3-4.5.5.8 1.5 1.3 2.7 1.3 2.1 0 3.8-1.6 3.8-3.8 0-3.8-4-6.4-7-10z',
+    mode: 'fill',
+  },
+  offline: {
+    path: 'M3 3l18 18M8.5 16.5a5 5 0 0 1 7 0M4.5 12.5a10 10 0 0 1 5-2.6M14.5 9.9a10 10 0 0 1 5 2.6M12 20h.01',
+    mode: 'stroke',
+  },
   plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
   'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },
   star: {

@@ -42,6 +42,13 @@ export const PidroColors = {
   successBg: 'rgba(21, 101, 63, 0.68)',
   warning: '#ffd98a',
   warningBg: 'rgba(107, 73, 11, 0.72)',
+  // The turn light at the table: light, never gold (gold means a supporter).
+  turnLight: '#c9f7ff',
+  turnLightTrack: 'rgba(139, 234, 255, 0.22)',
+  turnLightGlow: 'rgba(139, 234, 255, 0.35)',
+  turnUrgent: '#ffb86b',
+  turnUrgentTrack: 'rgba(255, 184, 107, 0.22)',
+  turnUrgentGlow: 'rgba(255, 184, 107, 0.4)',
   plaqueShadow: '0px 4px 14px rgba(1,13,27,0.35), inset 0px 1px 0px rgba(139,234,255,0.12)',
 } as const;
 
@@ -69,6 +76,12 @@ export const PidroBevel = {
   woodFaceGradient: 'linear-gradient(180deg, #B57A31 0%, #91541C 42%, #6C370E 78%, #4E2509 100%)',
   glassRimGradient:
     'linear-gradient(180deg, rgba(170,235,255,0.72) 0%, rgba(60,140,190,0.55) 50%, rgba(16,72,112,0.68) 100%)',
+  // The avatar's free-player ring: opaque, unlike the button rim above.
+  avatarGlassRingGradient:
+    'linear-gradient(180deg, #D8F6FF 0%, #86CFEE 32%, #3A8BC0 66%, #17507E 100%)',
+  avatarGlassEdge: '#86CFEE',
+  avatarGemGradient: 'linear-gradient(135deg, #ffffff 0%, #c9f7ff 30%, #5fd2ff 65%, #2a76d0 100%)',
+  avatarGemGlow: 'rgba(160, 240, 255, 0.85)',
   glassFaceGradient: 'linear-gradient(180deg, rgba(46,118,178,0.92) 0%, rgba(24,78,128,0.92) 100%)',
   woodGlossGradient:
     'linear-gradient(180deg, rgba(255,248,225,0.24) 0%, rgba(255,248,225,0.07) 100%)',
@@ -94,6 +107,12 @@ export const PidroBevel = {
   labelShadow: {
     textShadowColor: 'rgba(20, 8, 0, 0.6)',
     textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
+  },
+  // Names and status sit on the felt with no plate behind them.
+  feltLabelShadow: {
+    textShadowColor: 'rgba(0, 12, 24, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   glassLabelShadow: {

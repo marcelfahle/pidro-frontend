@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LevelRing } from '@/components/home/LevelRing';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
@@ -138,7 +138,7 @@ export function GameOverOverlay({
                         <View
                           key={player.absolutePosition}
                           style={[styles.player, wide && styles.playerWide]}>
-                          <LevelRing uri={player.avatar_url} size={compact ? 32 : 44} />
+                          <PlayerAvatar uri={player.avatar_url} size={compact ? 32 : 44} />
                           <PidroText role="label" numberOfLines={2} style={styles.playerName}>
                             {displayName(player)}
                           </PidroText>

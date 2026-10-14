@@ -5,7 +5,7 @@ import { POSITION_TO_INDEX } from '@/utils/positions';
 import { PidroColors, PidroRadii, PidroSpacing, PidroType } from '@/design/tokens';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroText } from '@/components/ui/PidroText';
-import { LevelRing } from '@/components/home/LevelRing';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BevelPressable } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { SeatRequirementBadge } from './SeatRequirementBadge';
@@ -113,7 +113,7 @@ export function RoomTeamDisplay({
       const playerName = publicPlayerName(player.username, 'Player', player.display_name);
       const content = (
         <>
-          <LevelRing uri={player.avatar_url} size={48} />
+          <PlayerAvatar uri={player.avatar_url} size={48} />
           <PidroText role="metadata" style={styles.name} numberOfLines={1}>
             {playerName}
           </PidroText>
