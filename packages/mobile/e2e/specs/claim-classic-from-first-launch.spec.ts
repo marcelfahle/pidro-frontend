@@ -27,7 +27,7 @@ test('a Classic player claims their account from the first launch @responsive', 
     password: player.password,
   });
   await page.waitForURL(/\/profile/);
-  await expect(new ProfileScreen(page).classicSection).toBeVisible();
+  await expect(new ProfileScreen(page).classicChip).toBeVisible();
 
   const session = await sessionOf(page);
   expect(session?.user).toMatchObject({ guest: false, email: player.email });

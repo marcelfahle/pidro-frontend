@@ -24,7 +24,7 @@ for (const shape of shapes) {
     await claim.field('Username').fill(player.name);
     await claim.button('Create account and claim').click();
     await page.waitForURL(/\/profile/);
-    await expect(new ProfileScreen(page).classicSection).toBeVisible();
+    await expect(new ProfileScreen(page).classicChip).toBeVisible();
 
     const claimed = await sessionOf(page);
     expect((await profile(claimed?.accessToken as string)).classic).toMatchObject({

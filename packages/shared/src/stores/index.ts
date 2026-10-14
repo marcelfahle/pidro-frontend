@@ -2,7 +2,7 @@ export { useLobbyStore } from './lobby';
 export { useGameStore, useGameViewModel, roomWithReadiness } from './game';
 export { useUIStore } from './ui';
 export { createAuthStore, type AuthStore, type AuthState, type AuthStatus } from './auth';
-export { createSettingsStore, type SettingsStore } from './settings';
+export { createSettingsStore, type PinChoice, type SettingsStore } from './settings';
 export { createAgeGateStore, type AgeGateState, type AgeGateStore } from './ageGate';
 export {
   createPendingInviteStore,

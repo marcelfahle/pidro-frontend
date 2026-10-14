@@ -7,7 +7,7 @@ import { startSignedIn } from '../support/session';
 test('delete account: confirm, signed out, old sign-in refused', async ({ page, player }) => {
   await startSignedIn(page, await register(player));
   await page.goto('/profile');
-  await new ProfileScreen(page).deleteAccount();
+  await (await new ProfileScreen(page).openAccount()).deleteAccount();
   await page.waitForURL(/\/welcome$/);
 
   expect((await login(player, player.email)).status).toBe(401);

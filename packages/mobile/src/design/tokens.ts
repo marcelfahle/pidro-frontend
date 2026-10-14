@@ -50,6 +50,13 @@ export const PidroColors = {
   turnUrgentTrack: 'rgba(255, 184, 107, 0.22)',
   turnUrgentGlow: 'rgba(255, 184, 107, 0.4)',
   plaqueShadow: '0px 4px 14px rgba(1,13,27,0.35), inset 0px 1px 0px rgba(139,234,255,0.12)',
+  // A chosen row in a list of choices: gold edge on a warm wash.
+  chosenBg: 'rgba(107, 73, 11, 0.45)',
+  // The small league cards: a playing card's paper, ink and red suits.
+  leagueCardFace: '#fbfbf7',
+  leagueCardInk: '#1b1b1b',
+  leagueCardRed: '#c3172f',
+  leagueCardEdge: 'rgba(0, 0, 0, 0.3)',
 } as const;
 
 /**

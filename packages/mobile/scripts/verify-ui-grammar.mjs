@@ -78,7 +78,15 @@ const allCases = [
     authenticated: true,
     authFixture: guestAuthFixture,
   },
+  {
+    name: 'profile-badges',
+    path: '/profile',
+    testId: 'badge-sheet',
+    authenticated: true,
+    open: 'Your badges',
+  },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
+  { name: 'league', path: '/league', testId: 'league-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
@@ -589,28 +597,36 @@ async function assertHomeGuestInteractions(page, name) {
   await page.waitForURL((url) => url.pathname.endsWith('/join-code'));
 }
 
-// The Classic card arrives with the profile's own request, after the account buttons.
+// The profile's cards wait for its request, so the account row never moves under a finger:
+// it is not there before the answer. In Settings, Sign out and Delete account stay put.
 async function assertAccountButtonsStayPut(page, name, answerProfile) {
-  if (!name.startsWith('profile')) return;
-  const buttons = ['Save your progress', 'Sign out', 'Delete account'].map((label) =>
+  if (name === 'profile' || name === 'profile-guest') {
+    const row = page.getByRole('button', { name: 'Account and sign-in', exact: true });
+    await page.getByRole('button', { name: 'Your badges', exact: true }).waitFor();
+    await page.waitForTimeout(150);
+    assert.equal(await row.count(), 0, `${name}: the account row showed before the profile`);
+    answerProfile();
+    await row.waitFor();
+    return;
+  }
+  if (!name.startsWith('settings')) return answerProfile();
+  const buttons = ['Sign out', 'Delete account'].map((label) =>
     page.getByRole('button', { name: label, exact: true })
   );
-  await buttons[2].waitFor();
-  const boxes = () =>
-    Promise.all(buttons.map(async (button) => ((await button.count()) ? button.boundingBox() : null)));
+  await buttons[1].waitFor();
+  const boxes = () => Promise.all(buttons.map((button) => button.boundingBox()));
   const before = await boxes();
   answerProfile();
-  await page
-    .getByTestId('profile-classic-section')
-    .or(page.getByRole('button', { name: 'Claim Pidro Classic', exact: true }))
-    .waitFor();
-  await page.waitForTimeout(150);
-  assert.deepEqual(await boxes(), before, `${name}: the Classic card moved the account buttons`);
+  await page.waitForTimeout(300);
+  assert.deepEqual(await boxes(), before, `${name}: the profile answer moved the account buttons`);
 }
 
 async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
-  if (!name.startsWith('profile')) return;
+  if (name !== 'profile' && name !== 'profile-guest') return;
   const classic = name === 'profile';
+  // Delete account lives in Settings, one row away from the profile.
+  await page.getByRole('button', { name: 'Account and sign-in', exact: true }).click();
+  await page.waitForURL((url) => url.pathname.endsWith('/settings'));
   await page.getByRole('button', { name: 'Delete account', exact: true }).click();
   await page.getByText('Delete your account?', { exact: true }).waitFor();
   const classicSentence = page.getByText(/Your Classic account stays in Classic/);
@@ -645,17 +661,14 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   assert.equal(deletes, 1, 'a double tap on Delete account sent more than one request');
   refuse();
   await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
-  assert.ok(
-    new URL(page.url()).pathname.endsWith('/profile'),
-    'a failed deletion left the profile'
-  );
+  assert.ok(new URL(page.url()).pathname.endsWith('/settings'), 'a failed deletion left Settings');
   const action = page.getByRole('button', { name: 'Delete account', exact: true });
   assert.equal(await action.count(), 1, 'the confirmation stayed open after a failed deletion');
   assert.ok(await action.isEnabled(), 'Delete account stayed busy after a failed deletion');
   // Leaving while the deletion runs says so, not that a photo or bio is saving.
   await action.click();
   await page.getByRole('button', { name: 'Delete account', exact: true }).last().click();
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
+  await page.getByRole('button', { name: 'League', exact: true }).click();
   await page.getByText('Your account is being deleted.', { exact: true }).waitFor();
   assert.equal(await page.getByText(/photo or bio/).count(), 0, 'deleting waits on a photo or bio');
   await page.getByRole('button', { name: 'OK', exact: true }).click();
@@ -1045,13 +1058,20 @@ async function main() {
           await page.route('**/api/v1/**', (route) => route.abort());
         }
         let answerProfile = () => {};
-        const profileAnswered = testCase.name.startsWith('profile')
+        const profileAnswered = ['profile', 'profile-guest', 'settings'].includes(testCase.name)
           ? new Promise((answer) => (answerProfile = answer))
           : null;
         if (
-          ['home', 'home-guest', 'home-table-unknown', 'profile', 'profile-guest'].includes(
-            testCase.name
-          )
+          [
+            'home',
+            'home-guest',
+            'home-table-unknown',
+            'profile',
+            'profile-guest',
+            'profile-badges',
+            'settings',
+            'league',
+          ].includes(testCase.name)
         ) {
           await page.route('**/api/v1/profile', async (route) => {
             await profileAnswered;
@@ -1067,8 +1087,18 @@ async function main() {
                   avatar_url: null,
                   bio: null,
                   games_played: guest ? 1 : 28,
-                  veteran: { level: guest ? 2 : 7 },
-                  classic: guest ? null : { games_played: 1862, level: 14 },
+                  veteran: guest
+                    ? { level: 2, xp: 410, title: 'Newcomer', progress: [90, 400] }
+                    : { level: 7, xp: 2140, title: 'Regular', progress: [340, 720] },
+                  xp: guest
+                    ? { this_week: 410, this_month: 410 }
+                    : { this_week: 1240, this_month: 2140 },
+                  record: guest
+                    ? { games: 1, wins: 1, losses: 0, win_rate: 1 }
+                    : { games: 1890, wins: 1011, losses: 879, win_rate: 1011 / 1890 },
+                  classic: guest
+                    ? null
+                    : { name: 'Bengt64', games_played: 1862, wins: 998, losses: 864, level: 14 },
                 },
               }),
             });
@@ -1115,6 +1145,10 @@ async function main() {
           }
           if (testCase.verifyDealerSelection || testCase.verifyDealerPrivacy) {
             await assertDealerSecondDeal(page, testCase, viewport);
+          }
+          if (testCase.open) {
+            await page.getByRole('button', { name: testCase.open, exact: true }).click();
+            await page.waitForTimeout(600);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, viewport);

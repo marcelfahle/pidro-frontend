@@ -23,7 +23,7 @@ test('a Classic account with no username claims by its email and shows the first
   });
   await page.waitForURL(/\/profile/);
   const screen = new ProfileScreen(page);
-  await expect(screen.classicSection).toContainText('Played as Gertrude');
+  await expect(await screen.openBadges()).toContainText(/as Gertrude/);
   const token = (await sessionOf(page))?.accessToken as string;
   expect((await profile(token)).classic).toMatchObject({ name: 'Gertrude' });
 });

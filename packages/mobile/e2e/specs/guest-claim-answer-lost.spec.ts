@@ -28,7 +28,7 @@ test('when a guest’s claim was saved but the answer was lost, they are recover
   await claim.button('Claim this Classic account').click();
 
   await page.waitForURL(/\/profile/);
-  await expect(new ProfileScreen(page).classicSection).toBeVisible();
+  await expect(new ProfileScreen(page).classicChip).toBeVisible();
   expect(attempts).toBe(1);
   const session = await sessionOf(page);
   expect(session?.user).toMatchObject({ id: started.user.id, guest: false });

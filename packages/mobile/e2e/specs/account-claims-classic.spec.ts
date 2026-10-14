@@ -21,7 +21,7 @@ test('a saved account claims its Classic account and keeps its player', async ({
   await claim.button('Claim this Classic account').click();
 
   await page.waitForURL(/\/profile/);
-  await expect(new ProfileScreen(page).classicSection).toBeVisible();
+  await expect(new ProfileScreen(page).classicChip).toBeVisible();
   const session = await sessionOf(page);
   expect(session?.user).toMatchObject({ id: account.user.id, guest: false, email: player.email });
   const token = session?.accessToken as string;

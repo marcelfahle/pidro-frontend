@@ -20,6 +20,9 @@ try {
     display_name: null,
     avatar_url: null,
     bio: 'Always up for one more hand. Coffee helps. ☕',
+    veteran: { level: 44, xp: 158320, title: 'Mainstay', progress: [3320, 7000] },
+    xp: { this_week: 1240, this_month: 5880 },
+    record: { games: 2076, wins: 1131, losses: 945, win_rate: 1131 / 2076 },
     classic: {
       name: 'SofiaClassic',
       games_played: 1284,
@@ -31,31 +34,28 @@ try {
       claimed_at: '2026-09-30T00:00:00Z',
     },
   };
-  await page.addInitScript(
-    (user) => {
-      localStorage.setItem(
-        'age-gate-storage',
-        JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
-      );
-      localStorage.setItem(
-        'auth-storage',
-        JSON.stringify({
-          state: {
-            accessToken: 'profile-ui-token',
-            refreshToken: null,
-            user: {
-              ...user,
-              id: user.user_id,
-              email: 'sofia@example.com',
-              age_band: '18_plus',
-            },
+  await page.addInitScript((user) => {
+    localStorage.setItem(
+      'age-gate-storage',
+      JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
+    );
+    localStorage.setItem(
+      'auth-storage',
+      JSON.stringify({
+        state: {
+          accessToken: 'profile-ui-token',
+          refreshToken: null,
+          user: {
+            ...user,
+            id: user.user_id,
+            email: 'sofia@example.com',
+            age_band: '18_plus',
           },
-          version: 0,
-        })
-      );
-    },
-    identity
-  );
+        },
+        version: 0,
+      })
+    );
+  }, identity);
   let failSave = true;
   let releaseSave;
   let holdSave = false;
@@ -89,9 +89,41 @@ try {
   await page.goto(baseURL);
   await button('Open your profile').click();
   await visible(button('Edit bio'));
-  await visible(page.getByTestId('profile-classic-section'));
+  await visible(page.getByText('Mainstay · Level 44', { exact: true }));
+  await visible(page.getByText('3,680 XP to Level 45', { exact: true }));
+  for (const label of ['Games played: 2,076', 'Wins: 1,131', 'Win rate: 54%']) {
+    await visible(page.getByTestId('profile-record').getByLabel(label, { exact: true }));
+  }
   await assertMinimumTouchTargets(page, 'profile', { name: 'portrait' });
   await capture('profile-native-clean');
+
+  // The Classic chip opens the badge sheet; the pin chosen there stays on this device.
+  const pinOnAvatar = () =>
+    page.getByRole('button', { name: 'Your badges' }).locator('svg').count();
+  const pinned = await pinOnAvatar();
+  await button('Pidro Classic · Level 42').click();
+  const sheet = page.getByTestId('badge-sheet');
+  await visible(sheet.getByText('Level 42 in Classic · 1,284 games as SofiaClassic'));
+  const radio = (name) => sheet.getByRole('radio', { name: new RegExp(`^${name}\\.`) });
+  assert.equal(await radio('Pidro Classic').getAttribute('aria-checked'), 'true');
+  assert.equal(await radio('Founding Tester').isDisabled(), true);
+  await assertMinimumTouchTargets(page, 'badges', { name: 'portrait' });
+  await capture('profile-badges');
+  await radio('No pin').click();
+  assert.equal(await radio('No pin').getAttribute('aria-checked'), 'true');
+  await sheet.getByRole('button', { name: 'Done', exact: true }).click();
+  await sheet.waitFor({ state: 'hidden' });
+  assert.ok((await pinOnAvatar()) < pinned, 'No pin left the Classic pin on the avatar');
+  const stored = await page.evaluate(() => localStorage.getItem('settings-storage'));
+  assert.equal(
+    JSON.parse(stored).state.pins['profile-ui-user'],
+    'none',
+    'the pin choice was not kept'
+  );
+  await button('Your badges').click();
+  await radio('Pidro Classic').click();
+  await sheet.getByRole('button', { name: 'Done', exact: true }).click();
+  await sheet.waitFor({ state: 'hidden' });
 
   const viewports = [
     { name: 'phone-landscape', width: 844, height: 390 },
@@ -121,16 +153,14 @@ try {
     await page.setViewportSize(viewport);
     await capture(`profile-${viewport.name}`);
     await checkLayout(viewport);
-    assertInsideViewport(
-      'identity',
-      await page.getByTestId('profile-identity-column').boundingBox(),
-      viewport
-    );
-    assertInsideViewport(
-      'bio',
-      await page.getByTestId('profile-bio-column').boundingBox(),
-      viewport
-    );
+    // The columns scroll; they must fit across the window.
+    for (const column of ['profile-identity-column', 'profile-bio-column']) {
+      const box = await page.getByTestId(column).boundingBox();
+      assert.ok(
+        box.x >= 0 && box.x + box.width <= viewport.width,
+        `${column} fits ${viewport.name}`
+      );
+    }
   }
   await page.setViewportSize({ width: 390, height: 844 });
   await button('Edit bio').click();
@@ -144,11 +174,6 @@ try {
     assert.equal(await input.inputValue(), 'Friends, cards, and a little Finnish sisu.');
     for (const name of ['Cancel', 'Save bio']) {
       assertInsideViewport(name, await button(name).boundingBox(), viewport);
-    }
-    if (viewport.width >= 640) {
-      for (const name of ['Go back', 'Sign out']) {
-        assertInsideViewport(name, await button(name).boundingBox(), viewport);
-      }
     }
   }
   await page.setViewportSize({ width: 390, height: 844 });
@@ -229,22 +254,26 @@ try {
   await button('Edit photo').click();
   await capture('profile-native-photo-edit');
   await button('Done').click();
+  // Sign out lives in Settings. Leaving with a draft asks first, as Back does.
+  await button('Add bio').click();
+  await input.fill('Unsaved sign-out draft.');
+  await button('Account and sign-in').click();
+  await button('Keep editing').click();
+  assert.equal(await input.inputValue(), 'Unsaved sign-out draft.');
+  await button('Account and sign-in').click();
+  await button('Discard changes').click();
+  await page.waitForURL(/\/settings$/);
+  await visible(page.getByText('sofia@example.com', { exact: true }));
   await button('Sign out').click();
   await visible(page.getByText('Sign out?', { exact: true }));
   await button('Cancel').click();
-  await button('Add bio').click();
-  await input.fill('Unsaved sign-out draft.');
-  await button('Sign out').click();
-  await visible(page.getByText('Your unsaved changes will be discarded.', { exact: true }));
-  await button('Cancel').last().click();
-  assert.equal(await input.inputValue(), 'Unsaved sign-out draft.');
   await button('Sign out').click();
   await button('Sign out').last().click();
   await page.waitForURL(/\/welcome$/);
   assert.equal(await page.evaluate(() => localStorage.getItem('auth-storage')), null);
   assert.deepEqual(errors, []);
   console.log(
-    'Profile UI passed: phone portrait/landscape, compact landscape, iPad portrait/landscape/Pro/split view, preserved drafts, bounded columns, 44pt targets, validation, retry, navigation guards and confirmations.'
+    'Profile UI passed: phone portrait/landscape, compact landscape, iPad portrait/landscape/Pro/split view, record and XP, badge sheet and pin choice, preserved drafts, bounded columns, 44pt targets, validation, retry, navigation guards and sign-out through Settings.'
   );
 } finally {
   await browser.close();
