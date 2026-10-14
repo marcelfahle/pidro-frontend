@@ -56,7 +56,10 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await expect(page.getByTestId('rules-explainer')).toBeVisible();
   await expect(page.getByTestId('rules-explainer-rule-set')).toContainText('Louisiana');
 
-  // Keep the explanation unseen: navigate without dismissing or leaving the seat.
+  // The server hides waiting tables without a connected human. Keep this seat
+  // connected while finding the table from another tab on the same device.
+  const seatedPage = page;
+  page = await page.context().newPage();
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
   await page
@@ -70,6 +73,7 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
     .click();
   await page.waitForURL(`**/game/${first}`);
   await expect(page.getByTestId('waiting-rule-set').last()).toContainText('🇺🇸 Louisiana');
+  await seatedPage.close();
   await expect(page.getByTestId('rules-explainer')).toBeVisible();
   await page.getByTestId('rules-done').click();
   await expect(page.getByTestId('rules-explainer')).not.toBeVisible();

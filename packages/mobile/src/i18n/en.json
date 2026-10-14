@@ -92,6 +92,8 @@
   "rules.description.finnish": "Only trumps are played. Minimum bid 6.",
   "rules.description.louisiana": "Follow suit, nobody sits out. Minimum bid 7.",
   "rules.empty": "No %{rules} tables match this filter.",
+  "rules.emptySearch": "No %{rules} tables match your search.",
+  "rules.searchHint": "Try another name or code, or show all rules without clearing your search.",
   "rules.showAll": "Show all rules",
   "rules.title": "Rules at this table",
   "rules.menu": "Table rules",

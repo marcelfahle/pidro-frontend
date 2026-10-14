@@ -19,7 +19,13 @@ export function useRulesExplainer(ruleSet: RuleSet, spectator: boolean, fixtureS
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   return {
-    open: open || (!dismissed && shouldExplainLouisiana(ruleSet, fixtureSeen ?? seen, spectator)),
+    open:
+      open ||
+      shouldExplainLouisiana(
+        ruleSet,
+        fixtureSeen === undefined ? seen : fixtureSeen || dismissed,
+        spectator
+      ),
     show: () => setOpen(true),
     dismiss: () => {
       setOpen(false);

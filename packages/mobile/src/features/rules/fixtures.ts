@@ -18,8 +18,12 @@ function room(code: string, ruleSet: RuleSet, status: Room['status']): Room {
 
 export function lobbyFixture(
   value?: string
-): { lobby: LobbyCategories; filter: RuleSet | 'all' } | undefined {
-  if (!__DEV__ || !['mixed', 'louisiana', 'rules-empty'].includes(value ?? '')) return;
+): { lobby: LobbyCategories; filter: RuleSet | 'all'; query: string } | undefined {
+  if (
+    !__DEV__ ||
+    !['mixed', 'louisiana', 'rules-empty', 'rules-search-empty'].includes(value ?? '')
+  )
+    return;
   const pair = (prefix: string, status: Room['status']) => [
     room(`${prefix}FI`, 'finnish', status),
     room(`${prefix}LA`, 'louisiana', status),
@@ -35,5 +39,9 @@ export function lobbyFixture(
       lobby[category] = lobby[category].filter((table) => table.config?.rule_set === 'finnish');
     }
   }
-  return { lobby, filter: value === 'mixed' ? 'all' : 'louisiana' };
+  return {
+    lobby,
+    filter: value === 'mixed' ? 'all' : 'louisiana',
+    query: value === 'rules-search-empty' ? 'No such table' : '',
+  };
 }

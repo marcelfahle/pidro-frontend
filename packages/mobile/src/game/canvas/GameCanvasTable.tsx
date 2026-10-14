@@ -36,6 +36,7 @@ import { TableChromeBars, useTableReserves } from './TableChrome';
 import { computeLayout } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
+import { PidroLayout, PidroSpacing } from '@/design/tokens';
 
 type Props = {
   room: Room;
@@ -307,9 +308,12 @@ export function GameCanvasTable({
         pointerEvents="none"
         style={{
           position: 'absolute',
-          top: layout.trick.cy + layout.cardW * 0.4,
-          left: 0,
-          right: 0,
+          ...(controller.phase === 'playing'
+            ? { top: layout.trick.cy + layout.cardW * 0.4, left: 0, right: 0 }
+            : {
+                top: insets.top + PidroLayout.touchTarget + PidroSpacing.md,
+                right: insets.right + PidroSpacing.sm,
+              }),
           alignItems: 'center',
         }}>
         <View style={{ alignSelf: 'center' }}>

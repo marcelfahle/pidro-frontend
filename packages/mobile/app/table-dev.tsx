@@ -234,11 +234,13 @@ function TableDevHarness() {
   const rulesFixtureSeen = !fixture?.endsWith('explainer');
   const phase = fixture?.endsWith('game-over')
     ? 'game_over'
-    : fixture?.includes('waiting')
-      ? 'waiting'
-      : typeof params.phase === 'string'
-        ? params.phase
-        : 'playing';
+    : fixture?.endsWith('bidding')
+      ? 'bidding'
+      : fixture?.includes('waiting')
+        ? 'waiting'
+        : typeof params.phase === 'string'
+          ? params.phase
+          : 'playing';
   const autoPlay = params.autoplay === 'true';
   const [isHandReady, setIsHandReady] = useState(false);
   const [dismissed, setDismissed] = useState(0);

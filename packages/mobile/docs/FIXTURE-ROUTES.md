@@ -200,10 +200,12 @@ with an authenticated fixture.
 | `/lobby?fixture=mixed` | Finnish and Louisiana badges in all four categories; All filter |
 | `/lobby?fixture=louisiana` | Louisiana filter across all categories |
 | `/lobby?fixture=rules-empty` | Empty Louisiana filter; Show all rules recovery |
+| `/lobby?fixture=rules-search-empty` | Search with no Louisiana matches; Show all preserves the query |
 | `/ui-dev?state=settings&fixture=finnish` / `fixture=louisiana` | Preferred rules selector |
 | `/join/7KQ4M2XB?fixture=finnish` / `fixture=louisiana` | Rules badge in guest preview or authenticated confirmation |
 | `/join/7KQ4M2XB?source=typed&fixture=louisiana` | Manual-code arrival at the same confirmation |
 | `/table-dev?fixture=louisiana` | Playing table badge; Table settings → Table rules |
+| `/table-dev?fixture=louisiana-bidding` | Server minimum bid 7; badge clear of the bid grid |
 | `/table-dev?fixture=louisiana-explainer` | First-encounter rules explainer, four facts, feedback and Got it |
 | `/table-dev?fixture=louisiana-game-over` | Game-over rules badge |
 | `/table-dev?fixture=louisiana-waiting` | Waiting rules badge and Table rules action |
@@ -215,12 +217,12 @@ confirmation as an invite link, not a separate manual-code confirmation screen.
 `join-code-louisiana-confirm` exercises that form with a mocked Louisiana preview.
 
 Grammar cases: `create-table-finnish`, `create-table-louisiana`, `lobby-mixed`,
-`lobby-louisiana`, `lobby-rules-empty`, `settings-finnish`, `settings-louisiana`,
+`lobby-louisiana`, `lobby-rules-empty`, `lobby-rules-search-empty`, `settings-finnish`, `settings-louisiana`,
 `join-finnish-preview`, `join-finnish-confirm`, `join-louisiana-preview`,
 `join-louisiana-confirm`, `join-louisiana-manual-confirm`, `join-code-louisiana-confirm`,
-`table-louisiana`, `table-louisiana-explainer`, `table-louisiana-game-over`,
+`table-finnish`, `table-louisiana`, `table-louisiana-bidding`, `table-louisiana-explainer`, `table-louisiana-game-over`,
 `table-louisiana-waiting`, `table-louisiana-waiting-explainer`.
-All run at 390×844, 844×390 and 667×375. Existing Finnish playing, waiting and
+All run at 390×844, 844×390 and 667×375. Finnish playing, waiting and
 game-over cases also check badges; playing/waiting reopen the rules from the menu
 and capture an additional `-rules-reopened.png` screenshot.
 

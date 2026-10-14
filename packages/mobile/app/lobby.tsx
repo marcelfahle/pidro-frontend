@@ -105,7 +105,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const rooms = fixture ? Object.values(fixture.lobby).flat() : storedRooms;
   const isLoading = fixture ? false : storedLoading;
   const error = fixture ? null : storedError;
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(fixture?.query ?? '');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -442,13 +442,12 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           />
         ) : !isLoading && !isEmptyLobby && visibleTableCount === 0 && filter !== 'all' ? (
           <LobbyEmptyState
-            title={t('rules.empty', { rules: ruleSetLabel(filter) })}
-            description=""
+            title={t(hasQuery ? 'rules.emptySearch' : 'rules.empty', {
+              rules: ruleSetLabel(filter),
+            })}
+            description={hasQuery ? t('rules.searchHint') : ''}
             actionLabel={t('rules.showAll')}
-            onAction={() => {
-              changeFilter('all');
-              setQuery('');
-            }}
+            onAction={() => changeFilter('all')}
           />
         ) : isEmptyLobby ? (
           <EmptyLobby

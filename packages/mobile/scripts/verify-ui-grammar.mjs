@@ -90,7 +90,7 @@ const allCases = [
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
   { name: 'lobby-empty', path: '/lobby', testId: 'lobby-empty', authenticated: true },
-  ...['mixed', 'louisiana', 'rules-empty'].map((fixture) => ({
+  ...['mixed', 'louisiana', 'rules-empty', 'rules-search-empty'].map((fixture) => ({
     name: `lobby-${fixture}`,
     path: `/lobby?fixture=${fixture}`,
     testId: 'lobby-screen',
@@ -141,6 +141,7 @@ const allCases = [
   ...[
     'finnish',
     'louisiana',
+    'louisiana-bidding',
     'louisiana-explainer',
     'louisiana-game-over',
     'louisiana-waiting',
@@ -512,7 +513,23 @@ async function assertRulePresentation(page, testCase) {
     await page.getByRole('button', { name: 'Join table', exact: true }).waitFor();
   }
   if (testCase.rulesExplainer) await assertRulesExplainer(page, ruleSet);
+  if (testCase.name === 'table-louisiana-bidding') {
+    await page.getByTestId('bidding-window').waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Bid 6', exact: true }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Bid 7', exact: true }).isEnabled(), true);
+    assert.equal(
+      boxesOverlap(
+        await page.getByTestId('bidding-window').boundingBox(),
+        await page.getByTestId('table-rule-set').boundingBox()
+      ),
+      false
+    );
+  }
   if (testCase.rulesLobby) {
+    if (testCase.rulesLobby === 'rules-search-empty') {
+      await page.getByText('No 🇺🇸 Louisiana tables match your search.', { exact: true }).waitFor();
+      return;
+    }
     const filter = page.getByTestId('lobby-rule-filter');
     const choice = testCase.rulesLobby === 'mixed' ? 'All' : 'Louisiana';
     assert.equal(
@@ -540,6 +557,15 @@ async function assertRulePresentation(page, testCase) {
 }
 
 async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
+  if (testCase.rulesLobby === 'rules-search-empty') {
+    await page.getByRole('button', { name: 'Show all rules', exact: true }).click();
+    assert.equal(
+      await page.getByRole('textbox', { name: 'Search tables', exact: true }).inputValue(),
+      'No such table'
+    );
+    await page.getByText('No matching tables', { exact: true }).waitFor();
+    return;
+  }
   if (testCase.rulesSelector) {
     const other = testCase.ruleSet === 'finnish' ? 'louisiana' : 'finnish';
     const button = page

@@ -83,6 +83,10 @@ describe('authoritative readiness snapshots', () => {
     expect(useGameStore.getState().readyPlayers).toEqual([]);
     expect(useGameStore.getState().playerMeta.east.playerId).toBe('replacement');
     expect(roomWithReadiness(room, reset).seats?.[1].player?.id).toBe('replacement');
+    reset.config = { name: null, solo: false, bot_difficulty: 'basic', rule_set: 'louisiana' };
+    const rematchRoom = roomWithReadiness(room, reset);
+    expect(rematchRoom.config?.rule_set).toBe('louisiana');
+    expect(roomWithReadiness(rematchRoom, snapshot(8)).config?.rule_set).toBe('louisiana');
   });
 
   test('disconnect/reconnect hydration stays pending until the server confirms', () => {
