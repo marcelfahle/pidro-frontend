@@ -94,13 +94,15 @@ export function GameOverOverlay({
             testID="game-over-window"
             variant="window"
             style={[styles.panel, compact && styles.panelCompact]}>
-            <PidroText
-              role={compact ? 'title' : 'display'}
-              accessibilityRole="header"
-              align="center">
-              {outcome}
-            </PidroText>
-            <RuleSetChip ruleSet={serverState.variant ?? 'finnish'} testID="game-over-rule-set" />
+            <View style={styles.heading}>
+              <PidroText
+                role={compact ? 'title' : 'display'}
+                accessibilityRole="header"
+                align="center">
+                {outcome}
+              </PidroText>
+              <RuleSetChip ruleSet={serverState.variant ?? 'finnish'} testID="game-over-rule-set" />
+            </View>
             <View style={styles.teams}>
               {[true, false].map((first) => (
                 <View
@@ -232,6 +234,13 @@ const styles = StyleSheet.create({
     gap: PidroSpacing.xl,
   },
   panelCompact: { paddingVertical: PidroSpacing.md, gap: PidroSpacing.sm },
+  heading: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+  },
   teams: { flexDirection: 'row' },
   team: { flex: 1, minWidth: 0, gap: PidroSpacing.xs, paddingHorizontal: PidroSpacing.xs },
   secondTeam: { borderLeftWidth: 1, borderLeftColor: PidroColors.border },

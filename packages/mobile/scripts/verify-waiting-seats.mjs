@@ -133,9 +133,10 @@ try {
     await page.getByText('North / South', { exact: true }).waitFor();
     await page.getByText('East / West', { exact: true }).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: /I'm ready|Table|Invite|^Manage / }).count(),
+      await page.getByRole('button', { name: /I'm ready|^Table$|Invite|^Manage / }).count(),
       0
     );
+    await page.getByRole('button', { name: 'Table rules', exact: true }).waitFor();
     assert.equal(await page.getByText('You', { exact: true }).count(), 0);
     if (viewport.name === 'android') {
       await waitForImages(page);
