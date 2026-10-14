@@ -206,15 +206,18 @@ export default function GameScreen() {
   useLobbyChannel();
 
   // Turn timers keep running while a player waits on the others, so the table holds
-  // the screen awake while it is focused. One tag per screen, released on blur/unmount.
-  const keepAwakeTag = useId();
+  // the screen awake while it is focused. Each focus gets its own tag, so a late release
+  // from the last visit cannot drop this one; released on blur/unmount.
+  const keepAwakeId = useId();
+  const keepAwakeVisits = useRef(0);
   useFocusEffect(
     useCallback(() => {
-      const activation = activateKeepAwakeAsync(keepAwakeTag).catch(() => {});
+      const tag = `${keepAwakeId}:${(keepAwakeVisits.current += 1)}`;
+      const activation = activateKeepAwakeAsync(tag).catch(() => {});
       return () => {
-        activation.then(() => deactivateKeepAwake(keepAwakeTag)).catch(() => {});
+        activation.then(() => deactivateKeepAwake(tag)).catch(() => {});
       };
-    }, [keepAwakeTag])
+    }, [keepAwakeId])
   );
 
   const [roomLookup, setRoomLookup] = useState<{
