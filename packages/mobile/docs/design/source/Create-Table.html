@@ -1,0 +1,60 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+</style>
+</head><body>
+
+<main class="felt" style="width: 390px; height: 844px; box-sizing: border-box; padding: 59px 25px 34px; display: flex; flex-direction: column; gap: 16px">
+
+<header style="display: flex; align-items: center; gap: 12px">
+<a class="glass" href="Lobby-Empty.dc.html" aria-label="Back to Tables" style="width: 44px; height: 44px"><span class="face"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></span></a>
+<h1 class="label" style="font-size: 17px">New table</h1>
+</header>
+
+<div>
+<label class="field-label" for="table-name">Table name</label>
+<input class="input" id="table-name" type="text" value="Bengt’s table">
+</div>
+
+<div style="position: relative; width: 340px; height: 324px; flex-shrink: 0">
+<div class="tabletop" aria-hidden="true" style="left: 92px; top: 84px; width: 156px; height: 160px; display: flex; align-items: center; justify-content: center">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="rgba(190,230,255,0.16)"><path d="M12 3c-3 3.6-7 6.2-7 10 0 2.2 1.7 3.8 3.8 3.8 1.2 0 2.2-.5 2.7-1.3-.2 1.7-.9 3.2-2.3 4.5h5.6c-1.4-1.3-2.1-2.8-2.3-4.5.5.8 1.5 1.3 2.7 1.3 2.1 0 3.8-1.6 3.8-3.8 0-3.8-4-6.4-7-10z"></path></svg>
+</div>
+
+<a href="Create-Seat.dc.html" aria-label="Partner seat: open. Change" style="position: absolute; left: 112px; top: 0; display: flex; align-items: center; gap: 10px; text-decoration: none; min-height: 56px">
+<span class="chair-open" style="width: 56px; height: 56px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></span>
+<span style="display: flex; flex-direction: column"><span class="label" style="font-size: 14px; color: #FFD447">Partner</span><span class="meta">Open seat</span></span>
+</a>
+
+<a href="Create-Seat.dc.html" aria-label="Left opponent seat: bot. Change" style="position: absolute; left: 0; top: 112px; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none">
+<span class="glass" style="width: 56px; height: 56px; border-radius: 999px"><span class="face" style="border-radius: 999px"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"></rect><path d="M12 8V5.5"></path><circle cx="12" cy="4.2" r="1.2"></circle><path d="M9.5 12.5v2M14.5 12.5v2"></path></svg></span></span>
+<span style="display: flex; flex-direction: column; align-items: center"><span class="label" style="font-size: 14px; color: #8beaff">Opponent</span><span class="meta">Bot</span></span>
+</a>
+
+<a href="Create-Seat.dc.html" aria-label="Right opponent seat: open. Change" style="position: absolute; left: 256px; top: 112px; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-decoration: none">
+<span class="chair-open" style="width: 56px; height: 56px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></span>
+<span style="display: flex; flex-direction: column; align-items: center"><span class="label" style="font-size: 14px; color: #8beaff">Opponent</span><span class="meta">Open seat</span></span>
+</a>
+
+<div style="position: absolute; left: 112px; top: 262px; display: flex; align-items: center; gap: 10px">
+<span style="position: relative; width: 56px; height: 56px"><span class="ring" style="width: 56px; height: 56px; padding: 2.5px"><span class="face-initial" style="font-size: 25px">B</span></span><span class="medal" style="right: -5px; top: -3px; width: 20px; height: 20px; padding: 1.5px" aria-label="Pidro Classic"><span class="coin"><svg width="10" height="10" viewBox="0 0 24 24" fill="#FFD447" aria-hidden="true"><path d="M12 3c-3 3.6-7 6.2-7 10 0 2.2 1.7 3.8 3.8 3.8 1.2 0 2.2-.5 2.7-1.3-.2 1.7-.9 3.2-2.3 4.5h5.6c-1.4-1.3-2.1-2.8-2.3-4.5.5.8 1.5 1.3 2.7 1.3 2.1 0 3.8-1.6 3.8-3.8 0-3.8-4-6.4-7-10z"></path></svg></span></span></span>
+<span style="display: flex; flex-direction: column"><span class="label" style="font-size: 14px; color: #FFD447">You</span><span class="meta">Host</span></span>
+</div>
+</div>
+
+<div style="display: flex; justify-content: center; gap: 20px">
+<span class="meta" style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 999px; background: #FFD447"></span>Your team sits across</span>
+<span class="meta" style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 999px; background: #8beaff"></span>Opponents</span>
+</div>
+<p class="meta" style="text-align: center; margin-top: -8px">Tap a seat to change who sits there.</p>
+
+<span style="flex-grow: 1"></span>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px">
+<a class="wood" href="Create-Table.dc.html" style="width: 340px; height: 66px"><span class="face" style="font-size: 24px; letter-spacing: 0.5px">Open the table</span></a>
+<p class="meta" style="text-align: center">It shows up in Tables. Invite friends from the table.</p>
+</div>
+</main>
+</body></html>
