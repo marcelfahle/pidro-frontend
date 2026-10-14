@@ -8,7 +8,7 @@ import { createGuest } from '@/api/auth';
 import { invitesApi } from '@/api/invites';
 import { lobbyApi } from '@/api/lobby';
 import { BevelButton } from '@/components/ui/BevelButton';
-import { Button } from '@/components/ui/Button';
+import { RuleSetChip } from '@/components/rules/RuleSet';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -72,7 +72,6 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
   const retriedRef = useRef(false);
   const redeemingRef = useRef(false);
   const guestCreatingRef = useRef(false);
-  const autoRedeemedCodeRef = useRef<string | null>(null);
   const routeActiveRef = useRef(true);
   const storesHydrated = authHydrated && pendingHydrated;
 
@@ -84,8 +83,8 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
   }, []);
 
   useEffect(() => {
-    if (pendingHydrated) setPendingInvite(code, source);
-  }, [code, pendingHydrated, setPendingInvite, source]);
+    if (pendingHydrated && !fixture) setPendingInvite(code, source);
+  }, [code, fixture, pendingHydrated, setPendingInvite, source]);
 
   const loadPreview = useCallback(async () => {
     if (!pendingHydrated || fixture) return;
@@ -131,7 +130,6 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
   }, [loadPreview]);
 
   const retryPreview = useCallback(() => {
-    autoRedeemedCodeRef.current = null;
     setLoading(true);
     setError(null);
     setTerminalLoadError(false);
@@ -158,7 +156,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
 
   const redeem = useCallback(
     async (alreadyRetried: boolean) => {
-      if (redeemingRef.current) return;
+      if (fixture || redeemingRef.current) return;
       redeemingRef.current = true;
       setSubmitting(true);
       setError(null);
@@ -193,7 +191,6 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
           setConfirmLeave(true);
           setError(outcome.detail ?? t('invite.error.alreadyInRoom'));
         } else if (outcome.kind === 'sessionCleared') {
-          autoRedeemedCodeRef.current = null;
           setError(t('invite.error.sessionExpired'));
         } else {
           setError(outcome.detail ?? t('invite.error.redeem'));
@@ -203,23 +200,20 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
         if (routeActiveRef.current) setSubmitting(false);
       }
     },
-    [applyStateChange, clearPendingInvite, code, router, setPendingInvite, source, upsertRoom]
+    [
+      applyStateChange,
+      clearPendingInvite,
+      code,
+      fixture,
+      router,
+      setPendingInvite,
+      source,
+      upsertRoom,
+    ]
   );
 
-  useEffect(() => {
-    if (
-      storesHydrated &&
-      user &&
-      preview?.state === 'open' &&
-      autoRedeemedCodeRef.current !== code
-    ) {
-      autoRedeemedCodeRef.current = code;
-      void redeem(false);
-    }
-  }, [code, preview?.state, redeem, storesHydrated, user]);
-
   const submitGuest = useCallback(async () => {
-    if (guestCreatingRef.current) return;
+    if (fixture || guestCreatingRef.current) return;
     const validation = validateDisplayName(displayName);
     if (validation.error) {
       setNameError(t(`invite.name.${validation.error}`));
@@ -241,7 +235,6 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       });
       if (!routeActiveRef.current) return;
       captureAnalytics('guest_created', { arrival_source: source ?? 'direct' });
-      autoRedeemedCodeRef.current = code;
       setSession({ accessToken: session.token, user: session.user });
       const destination = authenticatedEntryDestination(
         usePendingInviteStore.getState().pendingInvite,
@@ -270,7 +263,17 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       guestCreatingRef.current = false;
       if (routeActiveRef.current) setSubmitting(false);
     }
-  }, [applyStateChange, code, displayName, redeem, router, setPendingInvite, setSession, source]);
+  }, [
+    applyStateChange,
+    code,
+    displayName,
+    fixture,
+    redeem,
+    router,
+    setPendingInvite,
+    setSession,
+    source,
+  ]);
 
   const leaveAndRetry = useCallback(async () => {
     if (retriedRef.current) return;
@@ -324,6 +327,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
                 total: preview.seats_total,
               })}
             </PidroText>
+            <RuleSetChip ruleSet={preview.config?.rule_set ?? 'finnish'} testID="invite-rule-set" />
             {messageKey ? (
               <PidroText role="body" tone="soft" align="center">
                 {t(messageKey)}
@@ -339,25 +343,28 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
         ) : null}
 
         {!flowLoading && terminalLoadError ? (
-          <Button label={t('invite.exit')} variant="outline" onPress={exit} />
+          <BevelButton label={t('invite.exit')} material="glass" onPress={exit} />
         ) : null}
 
         {!flowLoading &&
         !terminalLoadError &&
         (availability === 'recoverable' || (!preview && error)) ? (
-          <Button label={t('common.tryAgain')} onPress={retryPreview} loading={submitting} />
+          <BevelButton label={t('common.tryAgain')} onPress={retryPreview} loading={submitting} />
         ) : null}
 
         {!flowLoading && availability === 'moved' ? (
           movedCode ? (
-            <Button label={t('invite.followHost')} onPress={() => followMovedInvite(movedCode)} />
+            <BevelButton
+              label={t('invite.followHost')}
+              onPress={() => followMovedInvite(movedCode)}
+            />
           ) : (
-            <Button label={t('invite.exit')} variant="outline" onPress={exit} />
+            <BevelButton label={t('invite.exit')} material="glass" onPress={exit} />
           )
         ) : null}
 
         {!flowLoading && availability === 'terminal' ? (
-          <Button label={t('invite.exit')} variant="outline" onPress={exit} />
+          <BevelButton label={t('invite.exit')} material="glass" onPress={exit} />
         ) : null}
 
         {!flowLoading && availability === 'joinable' && !user ? (
@@ -420,9 +427,10 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
                     name: publicPlayerName(user.username, 'Player', user.display_name),
                   })}
             </PidroText>
-            {error && !confirmLeave && !submitting ? (
-              <Button
-                label={t('common.tryAgain')}
+            {!confirmLeave ? (
+              <BevelButton
+                label={t('invite.join')}
+                loading={submitting}
                 onPress={() => void redeem(retriedRef.current)}
               />
             ) : null}
@@ -431,14 +439,14 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
 
         {confirmLeave ? (
           <View style={styles.actions}>
-            <Button
+            <BevelButton
               label={t('common.cancel')}
-              variant="outline"
+              material="glass"
               onPress={() => setConfirmLeave(false)}
             />
-            <Button
+            <BevelButton
               label={t('invite.leaveAndJoin')}
-              variant="destructive"
+              tone="danger"
               onPress={leaveAndRetry}
               loading={submitting}
             />

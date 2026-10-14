@@ -50,6 +50,9 @@ export function BiddingActions({
   }, [legalActions]);
 
   const showBiddingPanel = serverState?.phase === 'bidding';
+  const bidValues = ALL_BID_VALUES.filter(
+    (amount) => amount >= (serverState?.config?.min_bid ?? 6)
+  );
   const canAct = isYourTurn && isHandReady && (bidOptions.length > 0 || canPass);
 
   const sendAction = async (event: 'bid' | 'pass', payload: Record<string, unknown>) => {
@@ -103,7 +106,7 @@ export function BiddingActions({
       pointerEvents="box-none">
       <View testID="bidding-window" style={styles.panel}>
         <View testID="bidding-grid" style={[styles.bidGrid, { width: gridWidth, gap: GRID_GAP }]}>
-          {ALL_BID_VALUES.map((amount) => {
+          {bidValues.map((amount) => {
             const isLegal = legalBidSet.has(amount);
             return (
               <PressableFX

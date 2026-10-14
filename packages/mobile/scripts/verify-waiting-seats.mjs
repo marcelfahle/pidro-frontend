@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { assertMinimumTouchTargets, suppressDevOverlays, waitForImages } from './ui-test-utils.mjs';
+import {
+  assertInsideViewport,
+  assertMinimumTouchTargets,
+  suppressDevOverlays,
+  waitForImages,
+} from './ui-test-utils.mjs';
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const shots = process.env.UI_SHOT_DIR ?? '/tmp/pidro-waiting-seats';
@@ -46,6 +51,13 @@ try {
             return texts.length;
           });
           assert(scaled > 0, `${viewport.name}/${phase}: text-scale selector matched no elements`);
+        }
+        for (const button of await page.getByTestId('waiting-toolbar').getByRole('button').all()) {
+          assertInsideViewport(
+            `${phase}/${scale} toolbar ${await button.innerText()}`,
+            await button.boundingBox(),
+            viewport
+          );
         }
         const boxes = [];
         for (const position of positions) {
@@ -133,9 +145,10 @@ try {
     await page.getByText('North / South', { exact: true }).waitFor();
     await page.getByText('East / West', { exact: true }).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: /I'm ready|Table|Invite|^Manage / }).count(),
+      await page.getByRole('button', { name: /I'm ready|^Table$|Invite|^Manage / }).count(),
       0
     );
+    await page.getByRole('button', { name: 'Table rules', exact: true }).waitFor();
     assert.equal(await page.getByText('You', { exact: true }).count(), 0);
     if (viewport.name === 'android') {
       await waitForImages(page);

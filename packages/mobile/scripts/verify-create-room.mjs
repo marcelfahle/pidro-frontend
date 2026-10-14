@@ -99,6 +99,7 @@ try {
     await form.getByRole('alert').waitFor();
     assert.deepEqual(requests[0], {
       name: `${username}'s table`,
+      rule_set: 'finnish',
       seats: { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
     });
     await choose('Partner seat', 'Bot');
@@ -126,7 +127,11 @@ try {
     }
     assert.deepEqual(
       requests[1],
-      { name: 'Friday night', seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'open' } },
+      {
+        name: 'Friday night',
+        rule_set: 'finnish',
+        seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'open' },
+      },
       'partner is seat 3; an invite seat is sent as an open seat'
     );
     await button('Cancel creation').click();

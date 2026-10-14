@@ -1,10 +1,12 @@
 import { lobbyApi } from '@/api/lobby';
 import { clampRoomName } from '@pidro/shared';
+import { useSettingsStore } from '@/stores/settings';
+import { quickGameRequest } from '@/features/rules/ruleSets';
 
 export async function createSoloRoom(playerName: string) {
   const response = await lobbyApi.createRoom({
+    ...quickGameRequest(useSettingsStore.getState().preferredRuleSet),
     name: clampRoomName(`${playerName}'s solo table`),
-    seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' },
   });
   if (!response?.code) throw new Error('No room code returned');
   return response;

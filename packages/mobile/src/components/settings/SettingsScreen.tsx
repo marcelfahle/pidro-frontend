@@ -1,4 +1,10 @@
 import { StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import { useLocalSearchParams } from 'expo-router';
+import type { RuleSet } from '@pidro/shared';
+import { RuleSetSelector } from '@/components/rules/RuleSet';
+import { ruleSetFixture } from '@/features/rules/fixtures';
+import { t } from '@/i18n';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -24,6 +30,11 @@ export function SettingsScreen({
   const toggleSound = useSettingsStore((state) => state.toggleSound);
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
   const signedIn = useAuthStore((state) => Boolean(state.user));
+  const preferredRuleSet = useSettingsStore((state) => state.preferredRuleSet);
+  const setPreferredRuleSet = useSettingsStore((state) => state.setPreferredRuleSet);
+  const { fixture } = useLocalSearchParams<{ fixture?: string }>();
+  const initialFixture = ruleSetFixture(fixture);
+  const [fixtureChoice, setFixtureChoice] = useState<RuleSet | undefined>();
 
   return (
     <ScreenShell
@@ -41,6 +52,13 @@ export function SettingsScreen({
         onBack={onBack}
       />
       <Surface variant="window" style={styles.panel} padded>
+        <Surface variant="subtle" style={styles.rulesRow} testID="settings-preferred-rules">
+          <PidroText role="label">{t('rules.preferred')}</PidroText>
+          <RuleSetSelector
+            value={initialFixture ? (fixtureChoice ?? initialFixture) : preferredRuleSet}
+            onChange={initialFixture ? setFixtureChoice : setPreferredRuleSet}
+          />
+        </Surface>
         <SettingRow
           title="Sound"
           subtitle="Play game sound effects."
@@ -87,6 +105,7 @@ function SettingRow({
 const styles = StyleSheet.create({
   shell: { gap: PidroSpacing.md },
   panel: { gap: PidroSpacing.sm },
+  rulesRow: { gap: PidroSpacing.xs, padding: PidroSpacing.sm },
   row: {
     minHeight: 72,
     flexDirection: 'row',

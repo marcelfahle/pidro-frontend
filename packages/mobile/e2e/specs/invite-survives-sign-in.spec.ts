@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { JoinInviteScreen } from '../screens/join-invite-screen';
 import { LoginScreen } from '../screens/login-screen';
 import { WelcomeWindow } from '../screens/welcome-window';
 import { inviteToTable, register } from '../support/api';
@@ -13,6 +14,7 @@ test('an invite survives sign in and ends at that table', async ({ page, player 
 
   await welcome.root.getByRole('link', { name: 'Sign in' }).click();
   await new LoginScreen(page).signIn(player.email, player.password);
+  await new JoinInviteScreen(page).joinTable();
   await page.waitForURL(`**/game/${room}`);
   await expect(page.getByTestId('waiting-table')).toBeVisible();
 });

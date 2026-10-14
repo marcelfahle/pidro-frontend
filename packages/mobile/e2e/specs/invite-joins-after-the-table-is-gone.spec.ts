@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { JoinInviteScreen } from '../screens/join-invite-screen';
 import { inviteToTable, register } from '../support/api';
 import { newPlayer } from '../support/player';
 import { startSignedIn } from '../support/session';
@@ -27,6 +28,7 @@ test('an invite joins when the table it asked to leave is already gone', async (
   const left = page.waitForResponse((response) => response.url().endsWith('/current/leave'));
 
   await page.goto(`/join/${code}`);
+  await new JoinInviteScreen(page).joinTable();
   await page
     .getByRole('button', { name: 'Leave current table and join' })
     .click({ timeout: 30_000 });

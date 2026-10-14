@@ -19,7 +19,7 @@ import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
-import type { Card, Invite, SeatStatus } from '@pidro/shared';
+import type { Card, Invite, RuleSet, SeatStatus } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
@@ -207,6 +207,7 @@ export default function TableDevRoute() {
 
 function TableDevHarness() {
   const params = useLocalSearchParams<{
+    fixture?: string;
     phase?: string;
     autoplay?: string;
     invite?: string;
@@ -228,7 +229,18 @@ function TableDevHarness() {
     clear?: string;
     guest?: string;
   }>();
-  const phase = typeof params.phase === 'string' ? params.phase : 'playing';
+  const fixture = params.fixture;
+  const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
+  const rulesFixtureSeen = !fixture?.endsWith('explainer');
+  const phase = fixture?.endsWith('game-over')
+    ? 'game_over'
+    : fixture?.endsWith('bidding')
+      ? 'bidding'
+      : fixture?.includes('waiting')
+        ? 'waiting'
+        : typeof params.phase === 'string'
+          ? params.phase
+          : 'playing';
   const autoPlay = params.autoplay === 'true';
   const [isHandReady, setIsHandReady] = useState(false);
   const [dismissed, setDismissed] = useState(0);
@@ -249,7 +261,7 @@ function TableDevHarness() {
   const [waitingLocked, setWaitingLocked] = useState(false);
 
   if (
-    (params.role || phase === 'second_deal') &&
+    (fixture || params.role || phase === 'second_deal') &&
     !phase.startsWith('waiting') &&
     !phase.startsWith('ready')
   ) {
@@ -264,6 +276,8 @@ function TableDevHarness() {
             deal={params.deal}
             dealer={params.dealer}
             autoClear={params.clear === 'true'}
+            ruleSet={ruleSet}
+            rulesFixtureSeen={rulesFixtureSeen}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -322,7 +336,21 @@ function TableDevHarness() {
         <SafeAreaProvider>
           <FixtureInsets preset={params.safeArea}>
             <WaitingTable
-              room={fixtureRoom}
+              room={
+                fixture
+                  ? {
+                      ...fixtureRoom,
+                      config: {
+                        name: null,
+                        bot_difficulty: 'basic',
+                        solo: false,
+                        ...fixtureRoom.config,
+                        rule_set: ruleSet,
+                      },
+                    }
+                  : fixtureRoom
+              }
+              rulesFixtureSeen={fixture ? rulesFixtureSeen : undefined}
               isSpectator={params.role === 'spectator'}
               readyPlayers={full ? readyPlayers : ['north']}
               readyDisabled={false}
@@ -441,6 +469,8 @@ function RolePreview({
   deal,
   dealer,
   autoClear,
+  ruleSet = 'finnish',
+  rulesFixtureSeen,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -449,19 +479,23 @@ function RolePreview({
   deal?: string;
   dealer?: string;
   autoClear?: boolean;
+  ruleSet?: RuleSet;
+  rulesFixtureSeen?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
     const previewPhase =
-      phase === 'bidding'
-        ? 'bidding'
-        : phase === 'declaring'
-          ? 'declaring'
-          : phase === 'second_deal'
-            ? 'second_deal'
-            : 'playing';
+      phase === 'game_over'
+        ? 'game_over'
+        : phase === 'bidding'
+          ? 'bidding'
+          : phase === 'declaring'
+            ? 'declaring'
+            : phase === 'second_deal'
+              ? 'second_deal'
+              : 'playing';
     const dealerPosition = ['north', 'east', 'south', 'west'].includes(dealer ?? '')
       ? (dealer as Position)
       : previewPhase === 'second_deal'
@@ -494,11 +528,13 @@ function RolePreview({
     store.setYouPosition('south');
     store.setChannelStatus(true);
     store.setServerState({
+      variant: ruleSet,
+      config: { min_bid: ruleSet === 'louisiana' ? 7 : 6 },
       phase: deal === 'true' ? 'dealing' : previewPhase,
       current_player: previewPhase === 'second_deal' ? dealerPosition : 'south',
       trump: previewPhase === 'playing' || previewPhase === 'second_deal' ? 'spades' : null,
       dealer: dealerPosition,
-      scores: { north_south: 36, east_west: 29 },
+      scores: { north_south: previewPhase === 'game_over' ? 62 : 36, east_west: 29 },
       hand_number: 4,
       players: {
         north: {
@@ -526,6 +562,7 @@ function RolePreview({
                     : [
                         { rank: 14, suit: 'spades' },
                         { rank: 13, suit: 'hearts' },
+                        ...(ruleSet === 'louisiana' ? [{ rank: 5, suit: 'clubs' as const }] : []),
                       ],
         },
       },
@@ -556,9 +593,9 @@ function RolePreview({
     store.setLegalActions(
       previewPhase === 'bidding'
         ? [
-            ...([6, 7, 8, 9, 10, 11, 12, 13, 14] as const).map(
-              (amount) => ({ type: 'bid', amount }) as const
-            ),
+            ...([6, 7, 8, 9, 10, 11, 12, 13, 14] as const)
+              .filter((amount) => amount >= (ruleSet === 'louisiana' ? 7 : 6))
+              .map((amount) => ({ type: 'bid', amount }) as const),
             ...(canPass ? ([{ type: 'pass' }] as const) : []),
           ]
         : previewPhase === 'declaring'
@@ -569,7 +606,12 @@ function RolePreview({
             ? dealerPosition === 'south' && role === 'player'
               ? [{ type: 'select_hand' as const, cards: [] }]
               : []
-            : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
+            : ruleSet === 'louisiana'
+              ? [
+                  { type: 'play_card', card: { rank: 13, suit: 'hearts' } },
+                  { type: 'play_card', card: { rank: 5, suit: 'clubs' } },
+                ]
+              : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
     );
     if (previewPhase === 'playing') {
       store.setTurnTimer({
@@ -593,7 +635,7 @@ function RolePreview({
       if (presentationTimer) clearTimeout(presentationTimer);
       store.reset();
     };
-  }, [role, phase, canPass, deal, dealer, autoClear]);
+  }, [role, phase, canPass, deal, dealer, autoClear, ruleSet]);
 
   useEffect(() => {
     if (!Table || deal !== 'true') return;
@@ -618,7 +660,11 @@ function RolePreview({
   }, [Table, deal, dealer, role, phase, canPass]);
   return (
     <View className="flex-1">
-      {Table ? <Table room={WAITING_ROOM} onLeave={() => {}} /> : <Loading />}
+      {Table ? (
+        <Table room={WAITING_ROOM} rulesFixtureSeen={rulesFixtureSeen} onLeave={() => {}} />
+      ) : (
+        <Loading />
+      )}
       {feedback === 'timed' ? (
         <TimedTableFeedback />
       ) : (

@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures';
+import { JoinInviteScreen } from '../screens/join-invite-screen';
 import { RegisterScreen } from '../screens/register-screen';
 import { WelcomeWindow } from '../screens/welcome-window';
 import { inviteToTable } from '../support/api';
@@ -12,6 +13,7 @@ test('an invite survives create account and ends at that table', async ({ page, 
 
   await welcome.playOnline.click();
   await new RegisterScreen(page).createAccount(player);
+  await new JoinInviteScreen(page).joinTable();
   await page.waitForURL(`**/game/${room}`);
   await expect(page.getByTestId('waiting-table')).toBeVisible();
 });

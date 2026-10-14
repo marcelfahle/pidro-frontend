@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures';
 import { ClaimClassicScreen } from '../screens/claim-classic-screen';
+import { JoinInviteScreen } from '../screens/join-invite-screen';
 import { WelcomeWindow } from '../screens/welcome-window';
 import { inviteToTable } from '../support/api';
 import { newPlayer } from '../support/player';
@@ -19,6 +20,7 @@ test('an invite survives a Classic claim and ends at that table', async ({ page,
     email: player.email,
     password: player.password,
   });
+  await new JoinInviteScreen(page).joinTable();
   await page.waitForURL(`**/game/${room}`);
   await expect(page.getByTestId('waiting-table')).toBeVisible();
 });

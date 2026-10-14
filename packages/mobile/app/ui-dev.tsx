@@ -4,6 +4,8 @@ import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-context';
 import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
+import { ruleSetFixture } from '@/features/rules/fixtures';
+import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { RatingPlaque } from '@/components/home/RatingPlaque';
@@ -403,9 +405,10 @@ function LobbySeatGallery() {
 }
 
 function UiDevHarness() {
-  const params = useLocalSearchParams<{ state?: string; safeArea?: string }>();
+  const params = useLocalSearchParams<{ state?: string; safeArea?: string; fixture?: string }>();
   const state = typeof params.state === 'string' ? params.state : 'components';
 
+  if (state === 'settings') return <SettingsScreen key={params.fixture} onBack={noop} />;
   if (state === 'progression') return <ProgressionGallery />;
   if (state === 'avatars') return <AvatarGallery />;
   if (state === 'lobby-seats') return <LobbySeatGallery />;
@@ -626,6 +629,8 @@ function UiDevHarness() {
       <CreateRoomModal
         isOpen={state === 'create' || state === 'create-seat'}
         initialSeat={state === 'create-seat' ? 'seat_3' : null}
+        key={params.fixture}
+        initialRuleSet={ruleSetFixture(params.fixture)}
         onClose={noop}
         onSubmit={noop}
         username="Alexandria the Long-Named Player"

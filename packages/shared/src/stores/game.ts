@@ -568,6 +568,7 @@ export const useGameStore = create<GameState>((set, get) => ({
 export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room {
   return {
     ...room,
+    config: snapshot.config ?? room.config,
     id: snapshot.room_id,
     status: snapshot.status,
     positions: snapshot.positions,

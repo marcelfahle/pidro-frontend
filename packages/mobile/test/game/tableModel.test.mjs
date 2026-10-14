@@ -47,6 +47,32 @@ const build = (overrides = {}) =>
     ...overrides,
   });
 
+describe('server play legality', () => {
+  it('keeps a legal nontrump bright, an illegal trump blocked, and identifies the left five', () => {
+    const nontrump = { suit: 'hearts', rank: 13 };
+    const trump = { suit: 'spades', rank: 14 };
+    const leftFive = { suit: 'clubs', rank: 5 };
+    const model = build({
+      phase: 'playing',
+      trumpSuit: 'spades',
+      yourHand: [nontrump, trump, leftFive],
+      canPlay: true,
+      legalActions: [
+        { type: 'play_card', card: nontrump },
+        { type: 'play_card', card: leftFive },
+      ],
+    });
+    const cards = Object.fromEntries(model.yourHand.map((card) => [card.key, card]));
+    expect(cards.hearts_13.isLegalPlay).toBe(true);
+    expect(cards.hearts_13.isTrump).toBe(false);
+    expect(cards.spades_14.isLegalPlay).toBe(false);
+    expect(cards.spades_14.isTrump).toBe(true);
+    expect(cards.clubs_5.isLegalPlay).toBe(true);
+    expect(cards.clubs_5.isTrump).toBe(true);
+    expect([...model.legalPlayKeys].sort()).toEqual(['clubs_5', 'hearts_13']);
+  });
+});
+
 describe('deal order', () => {
   it('preserves server receive order separately from the sorted display, without mutating the hand', () => {
     const hand = Object.freeze([
