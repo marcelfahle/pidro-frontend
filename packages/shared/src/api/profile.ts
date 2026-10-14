@@ -47,7 +47,6 @@ export interface ProfileIdentity {
   xp?: { this_week: number; this_month: number };
   /** Pidro and Classic games added up. `win_rate` is 0 to 1. */
   record?: { games: number; wins: number; losses: number; win_rate: number };
-  heritage?: { key: string; label: string; value: unknown }[];
   classic: ClassicProfile | null;
 }
 
