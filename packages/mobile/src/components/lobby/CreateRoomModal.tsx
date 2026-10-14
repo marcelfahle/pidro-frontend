@@ -226,16 +226,19 @@ export function CreateRoomForm({
     </View>
   );
 
-  const nameField = (
-    <Input
-      label="Table name"
-      value={name}
-      onChangeText={(text) => setName(limitRoomNameInput(text))}
-      editable={!isLoading}
-      autoCorrect={false}
-      returnKeyType="done"
-      onSubmitEditing={Keyboard.dismiss}
-    />
+  // What the table is called, and how it plays: a Rules row sits under the name.
+  const fields = (
+    <View style={styles.fields}>
+      <Input
+        label="Table name"
+        value={name}
+        onChangeText={(text) => setName(limitRoomNameInput(text))}
+        editable={!isLoading}
+        autoCorrect={false}
+        returnKeyType="done"
+        onSubmitEditing={Keyboard.dismiss}
+      />
+    </View>
   );
 
   const key = (
@@ -304,7 +307,7 @@ export function CreateRoomForm({
               keyboardShouldPersistTaps="handled"
               showsVerticalScrollIndicator={false}>
               {header}
-              {nameField}
+              {fields}
               {key}
               <View style={styles.spacer} />
               {footer}
@@ -320,7 +323,7 @@ export function CreateRoomForm({
               keyboardShouldPersistTaps="handled"
               keyboardDismissMode="on-drag"
               showsVerticalScrollIndicator={false}>
-              {nameField}
+              {fields}
               {table}
               {key}
             </ScrollView>
@@ -436,6 +439,7 @@ const styles = StyleSheet.create({
   shellLandscape: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.lg },
   header: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.sm },
   title: { fontSize: 17, lineHeight: 22 },
+  fields: { alignSelf: 'stretch', gap: PidroSpacing.md },
   scroll: { flex: 1, minHeight: 0 },
   form: { alignItems: 'center', gap: PidroSpacing.md, paddingBottom: PidroSpacing.sm },
   controls: { flex: 1, alignSelf: 'stretch' },
