@@ -131,10 +131,12 @@ export function SeatLayer({
   const size = AVATAR_SIZE[L.profile];
   const tablet = L.profile.startsWith('tablet');
   // Portrait names sit in a fixed column so a long one truncates instead of
-  // pushing the seat off its axis; landscape caps the label's reach.
+  // pushing the seat off its axis; landscape caps the label's reach and leaves
+  // the turn light room, as the boards do.
+  const gap = tablet ? 14 : 10;
   const seatWidth = portrait
     ? { width: tablet ? 128 : 96 }
-    : { maxWidth: size + 8 + (tablet ? 140 : 80) };
+    : { maxWidth: size + gap + (tablet ? 140 : 78), gap };
   const tableTop = insets.top + topReserve;
   // Floating portrait scores no longer mask the fan behind a header band.
   const northBackTop = portrait ? tableTop + PidroSpacing.xs : tableTop - L.cardH * 0.36;
