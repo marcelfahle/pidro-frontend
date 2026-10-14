@@ -3,7 +3,12 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
-import { assertMinimumTouchTargets, suppressDevOverlays, waitForImages } from './ui-test-utils.mjs';
+import {
+  assertInsideViewport,
+  assertMinimumTouchTargets,
+  suppressDevOverlays,
+  waitForImages,
+} from './ui-test-utils.mjs';
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const shots = process.env.UI_SHOT_DIR ?? '/tmp/pidro-waiting-seats';
@@ -46,6 +51,13 @@ try {
             return texts.length;
           });
           assert(scaled > 0, `${viewport.name}/${phase}: text-scale selector matched no elements`);
+        }
+        for (const button of await page.getByTestId('waiting-toolbar').getByRole('button').all()) {
+          assertInsideViewport(
+            `${phase}/${scale} toolbar ${await button.innerText()}`,
+            await button.boundingBox(),
+            viewport
+          );
         }
         const boxes = [];
         for (const position of positions) {

@@ -477,6 +477,7 @@ export function WaitingTable({
 const styles = StyleSheet.create({
   toolbar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: PidroSpacing.xs,
     paddingHorizontal: PidroSpacing.md,
