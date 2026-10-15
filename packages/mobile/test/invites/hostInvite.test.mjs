@@ -3,6 +3,8 @@ import { setLocale } from '@pidro/shared';
 import {
   availableMoveTargets,
   canManageRoom,
+  firstUnfilledSeat,
+  friendSeatTitle,
   inviteShareMessage,
   seatDisplayName,
 } from '../../src/features/invites/hostControls.ts';
@@ -31,6 +33,24 @@ const room = {
 };
 
 describe('waiting-table host controls', () => {
+  it('opens the first unfilled seat and names its relationship to the current host seat', () => {
+    expect(firstUnfilledSeat(room)).toBe('south');
+    expect(friendSeatTitle(room, 'south')).toBe('Partner');
+    const held = {
+      ...room,
+      seats: room.seats.map((seat) =>
+        seat.position === 'south' ? { ...seat, held_for: { user_id: 'friend' } } : seat
+      ),
+    };
+    expect(firstUnfilledSeat(held)).toBe('west');
+    expect(availableMoveTargets(held, 'east')).toEqual(['west']);
+    expect(friendSeatTitle({ ...room, host_id: 'guest-1' }, 'west')).toBe('Partner');
+    expect(friendSeatTitle({ ...room, host_id: 'guest-1' }, 'south')).toBe('Opponent');
+    expect(
+      firstUnfilledSeat({ ...held, positions: { ...held.positions, west: 'last' } })
+    ).toBeUndefined();
+  });
+
   it('shares in the current locale with the original URL and dashed invite code', () => {
     const invite = {
       url: 'https://example.com/i/7KQ4M2XB',

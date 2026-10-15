@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'bun:test';
 import { setLocale } from '@pidro/shared';
 import {
+  chooseFriend,
   chooseRequirement,
   chooseSeat,
   defaultSeats,
+  findFriends,
   newTableRequest,
   tableFooter,
 } from '../../src/features/lobby/newTable';
@@ -32,17 +34,20 @@ describe('new table request', () => {
   it('defaults to two public seats and a bot, without sending a name', () => {
     expect(newTableRequest('finnish', defaultSeats)).toEqual({
       request: { rule_set: 'finnish', seats: { seat_2: 'open', seat_3: 'open', seat_4: 'ai' } },
-      invite: false,
+      invite: [],
     });
   });
 
-  it('preserves the rules and maps Friend to open, with an invite after creation', () => {
+  it('shares a link for the selected position after creation', () => {
     expect(
       newTableRequest('louisiana', { seat_2: 'ai', seat_3: 'invite', seat_4: 'open' })
     ).toEqual({
       request: { rule_set: 'louisiana', seats: { seat_2: 'ai', seat_3: 'open', seat_4: 'open' } },
-      invite: true,
+      invite: ['south'],
     });
+    expect(
+      newTableRequest('finnish', { seat_2: 'invite', seat_3: 'ai', seat_4: 'invite' }).invite
+    ).toEqual(['east', 'west']);
   });
 
   it('sends requirements only for open seats, preserving Anyone as the old string', () => {
@@ -72,6 +77,46 @@ describe('new table request', () => {
 });
 
 describe('seat draft', () => {
+  it('holds picked friends only at creation and drops a hold when its seat changes', () => {
+    const nora = { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'offline' };
+    const kalle = { ...nora, user_id: 'kalle', display_name: 'Kalle', presence: 'online' };
+    const before = draft();
+    const selected = chooseFriend(chooseFriend(before, 'seat_2', nora), 'seat_3', kalle);
+    expect(before).toEqual(draft());
+    expect(
+      newTableRequest('louisiana', selected.seats, selected.requirements, selected.invited)
+    ).toEqual({
+      request: {
+        rule_set: 'louisiana',
+        seats: {
+          seat_2: { type: 'held', user_id: 'nora' },
+          seat_3: { type: 'held', user_id: 'kalle' },
+          seat_4: 'ai',
+        },
+      },
+      invite: [],
+    });
+    const changed = chooseSeat(selected, 'seat_2', 'open');
+    expect(
+      newTableRequest('finnish', changed.seats, changed.requirements, changed.invited).request.seats
+    ).toEqual({ seat_2: 'open', seat_3: { type: 'held', user_id: 'kalle' }, seat_4: 'ai' });
+    const link = chooseSeat(selected, 'seat_3', 'invite');
+    expect(newTableRequest('finnish', link.seats, link.requirements, link.invited).invite).toEqual([
+      'south',
+    ]);
+  });
+
+  it('filters the supplied friends without changing their server order or presence', () => {
+    const friends = [
+      { user_id: '1', display_name: 'Nora', presence: 'at_table' },
+      { user_id: '2', display_name: 'Kalle', presence: 'online' },
+      { user_id: '3', display_name: 'ＮＯＲＭＡ', presence: 'offline' },
+    ];
+    expect(findFriends(friends, ' nor ')).toEqual([friends[0], friends[2]]);
+    expect(findFriends(friends, '')).toEqual(friends);
+    expect(findFriends(friends, 'z')).toEqual([]);
+  });
+
   it('Open commits at once: one tap changes the seat, nothing waits on a second tap', () => {
     const before = draft();
     expect(chooseSeat(before, 'seat_4', 'open')).toEqual({

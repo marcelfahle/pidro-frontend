@@ -40,8 +40,9 @@ export interface Invite {
 }
 
 export interface MintInviteRequest {
-  seat_hint: InviteSeatHint | null;
-  label: string | null;
+  seat_hint?: InviteSeatHint | null;
+  label?: string | null;
+  position?: Position;
   platform?: InvitePlatform;
 }
 

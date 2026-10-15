@@ -1,5 +1,6 @@
 import type { ApiClient } from './client';
 import type { ClassicAlreadyClaimed } from './classic';
+import type { SeatInvitation } from '../types/lobby';
 
 export const TERMS_VERSION = '1';
 
@@ -145,6 +146,7 @@ interface PasswordResetRequestEnvelope {
 interface UserResponseEnvelope {
   data: {
     user: User;
+    seat_invitations?: SeatInvitation[];
   };
 }
 
@@ -239,6 +241,11 @@ export function createAuthApi(api: ApiClient) {
     getMe: async (): Promise<User> => {
       const response = await api.get<UserResponseEnvelope>('/api/v1/auth/me');
       return response.data.data.user;
+    },
+
+    getSeatInvitations: async (): Promise<SeatInvitation[]> => {
+      const response = await api.get<UserResponseEnvelope>('/api/v1/auth/me');
+      return response.data.data.seat_invitations ?? [];
     },
 
     setAge: async (request: SetAgeRequest): Promise<User> => {

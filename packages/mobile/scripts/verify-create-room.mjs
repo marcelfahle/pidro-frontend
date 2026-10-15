@@ -129,6 +129,10 @@ try {
     await requirement(form, 'Partner seat', '100+').click();
     await rowsAndTargets(form);
     await radio(form, 'Left opponent seat', 'Friend').click();
+    const friendSheet = page.getByTestId('friend-seat-sheet');
+    await friendSheet.waitFor();
+    await friendSheet.getByRole('button', { name: 'Share a link instead', exact: true }).click();
+    await friendSheet.waitFor({ state: 'hidden' });
     await checked(radio(form, 'Left opponent seat', 'Friend'));
     assert.equal(
       await form.getByTestId('create-footer').textContent(),

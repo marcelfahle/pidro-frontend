@@ -25,23 +25,27 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
       ? player?.is_bot || id?.startsWith('bot_')
         ? 'bot'
         : 'player'
-      : category === 'substitute_needed'
-        ? 'sub'
-        : 'open';
+      : seat?.held_for
+        ? 'held'
+        : category === 'substitute_needed'
+          ? 'sub'
+          : 'open';
     const minGames = kind === 'open' ? (seat?.min_games ?? 0) : 0;
     return {
       position,
       id,
       kind,
       name:
-        kind === 'bot'
-          ? t('social.bot')
-          : occupied
-            ? publicPlayerName(player?.username, t('social.player'), player?.display_name)
-            : kind === 'sub'
-              ? t('social.sit_in')
-              : t('social.open'),
-      avatarUrl: player?.avatar_url,
+        kind === 'held'
+          ? seat!.held_for!.display_name
+          : kind === 'bot'
+            ? t('social.bot')
+            : occupied
+              ? publicPlayerName(player?.username, t('social.player'), player?.display_name)
+              : kind === 'sub'
+                ? t('social.sit_in')
+                : t('social.open'),
+      avatarUrl: kind === 'held' ? seat!.held_for!.avatar_url : player?.avatar_url,
       minGames,
       requirementReason:
         kind === 'open' &&
@@ -53,6 +57,7 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
           : undefined,
       canJoin:
         !occupied &&
+        kind !== 'held' &&
         !room.locked &&
         (category === 'open_tables' || category === 'substitute_needed') &&
         (room.available_positions?.includes(position) ?? true),

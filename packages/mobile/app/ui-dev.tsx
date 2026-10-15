@@ -6,6 +6,7 @@ import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomMo
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { ruleSetFixture } from '@/features/rules/fixtures';
 import { createTableFixture } from '@/features/lobby/fixtures';
+import { friendsFixture } from '@/features/friends/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
@@ -667,6 +668,11 @@ function UiDevHarness() {
         initialDraft={createTableFixture(params.fixture)}
         key={params.fixture}
         initialRuleSet={ruleSetFixture(params.fixture)}
+        fixtureFriends={
+          friendsFixture(params.fixture === 'sheet-empty' ? 'empty' : 'list')?.friends
+        }
+        initialFriendSeat={params.fixture?.startsWith('sheet-') ? 'seat_3' : undefined}
+        initialFriendId={params.fixture === 'sheet-picked' ? 'nora' : undefined}
         onClose={noop}
         onSubmit={noop}
         username="Alexandria the Long-Named Player"

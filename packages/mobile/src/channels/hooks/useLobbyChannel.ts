@@ -6,6 +6,8 @@ import { initRealtime } from '@/bootstrap/realtime';
 import { useLobbyStore } from '@/stores/lobby';
 import { refreshFriends } from '@/stores/friends';
 import { authStore } from '@/stores/auth';
+import { getSeatInvitations } from '@/api/auth';
+import type { SeatInvitation } from '@pidro/shared';
 import {
   flattenLobbyCategories,
   hasLobbyCategories,
@@ -44,6 +46,43 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
 
       const channel = phoenixSocket.channel('lobby');
       let presences = {};
+      let invitationEvents: (() => void)[] | null = null;
+
+      const refreshInvitations = async () => {
+        const token = authStore.getState().accessToken;
+        const events: (() => void)[] = [];
+        invitationEvents = events;
+        try {
+          const invitations = await getSeatInvitations();
+          if (
+            globalChannel !== channel ||
+            token !== authStore.getState().accessToken ||
+            invitationEvents !== events
+          )
+            return;
+          authStore.getState().setSeatInvitations(invitations);
+          // Events delivered during /me are newer than its snapshot.
+          events.forEach((apply) => apply());
+        } catch {
+          setTimeout(() => {
+            if (globalChannel === channel && token === authStore.getState().accessToken)
+              void refreshInvitations();
+          }, 5000);
+        } finally {
+          if (invitationEvents === events) invitationEvents = null;
+        }
+      };
+
+      channel.on('seat_invitation', (invitation: SeatInvitation) => {
+        const apply = () => authStore.getState().receiveSeatInvitation(invitation);
+        invitationEvents?.push(apply);
+        apply();
+      });
+      channel.on('seat_invitation_gone', (seat: Pick<SeatInvitation, 'code' | 'position'>) => {
+        const apply = () => authStore.getState().removeSeatInvitation(seat);
+        invitationEvents?.push(apply);
+        apply();
+      });
 
       channel.on('friends_changed', () => {
         if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
@@ -53,6 +92,7 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
         .join()
         .receive('ok', (response: any) => {
           if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
+          void refreshInvitations();
           onRealtimeUpdateRef.current?.();
           // Batch updates to avoid navigation context issues
           unstable_batchedUpdates(() => {

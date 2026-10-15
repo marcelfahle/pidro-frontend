@@ -1,6 +1,7 @@
 import { emptyLobbyCategories, POSITION_TO_INDEX } from '@pidro/shared';
-import type { LobbyCategories, Position, Room } from '@pidro/shared';
+import type { LobbyCategories, Position, Room, SeatInvitation } from '@pidro/shared';
 import { defaultSeats, type TableDraft } from './newTable';
+import { friendsFixture } from '@/features/friends/fixtures';
 
 export function createTableFixture(value?: string): TableDraft | undefined {
   if (!__DEV__) return;
@@ -10,9 +11,35 @@ export function createTableFixture(value?: string): TableDraft | undefined {
         ? { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' }
         : value === 'open'
           ? { seat_2: 'open', seat_3: 'open', seat_4: 'open' }
-          : { ...defaultSeats, ...(value === 'friend' ? { seat_3: 'invite' as const } : {}) },
+          : {
+              ...defaultSeats,
+              ...(['friend', 'invited'].includes(value ?? '') ? { seat_3: 'invite' as const } : {}),
+            },
     requirements: value === 'requirement' ? { seat_2: 100 } : {},
+    ...(value === 'invited' ? { invited: { seat_3: friendsFixture('list')!.friends[0] } } : {}),
   };
+}
+
+export function seatInvitationsFixture(value?: string): SeatInvitation[] | undefined {
+  if (!__DEV__ || value !== 'invitations') return;
+  return [
+    {
+      code: 'NORA',
+      position: 'south',
+      host_id: 'nora',
+      host: { user_id: 'nora', display_name: 'Nora', avatar_url: null },
+      rule_set: 'finnish',
+      held_since: '2026-10-15T12:00:00Z',
+    },
+    {
+      code: 'KALLE',
+      position: 'east',
+      host_id: 'kalle',
+      host: { user_id: 'kalle', display_name: 'Kalle', avatar_url: null },
+      rule_set: 'louisiana',
+      held_since: '2026-10-15T12:01:00Z',
+    },
+  ];
 }
 
 function room(code: string, names: (string | null)[], louisiana = false, playing = false): Room {
@@ -55,6 +82,8 @@ export function lobbyFixture(
       'substitute',
       'watch',
       'search-empty',
+      'held',
+      'invitations',
     ].includes(value ?? '')
   )
     return;
@@ -88,11 +117,20 @@ export function lobbyFixture(
   lobby.substitute_needed[0].game = { hand: 3, scores: { north_south: 12, east_west: 9 } };
   lobby.substitute_needed[0].seats!.find((seat) => seat.status === 'free')!.vacated_by = 'Jussi';
   lobby.spectatable[0].game = { hand: 4, scores: { north_south: 34, east_west: 21 } };
+  if (value === 'held') {
+    lobby.open_tables[0].seats!.find((seat) => seat.position === 'south')!.held_for = {
+      user_id: 'nora',
+      display_name: 'Nora',
+      avatar_url: null,
+    };
+  }
   const categories: Record<string, keyof LobbyCategories> = {
     rejoin: 'my_rejoinable',
     open: 'open_tables',
     badges: 'open_tables',
     locked: 'open_tables',
+    held: 'open_tables',
+    invitations: 'open_tables',
     substitute: 'substitute_needed',
     watch: 'spectatable',
   };

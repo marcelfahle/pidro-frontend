@@ -1,7 +1,9 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, StyleSheet, View } from 'react-native';
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { ActivityIndicator, Modal, Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import type { RuleSet } from '@pidro/shared';
+import type { FriendPlayer, Position, RuleSet } from '@pidro/shared';
+import { useRouter } from 'expo-router';
+import { FriendSeatSheet } from '@/components/invites/FriendSeatSheet';
 import { useSettingsStore } from '@/stores/settings';
 import type { CreateRoomRequest } from '@/types/lobby';
 import { OpenChair } from '@/components/lobby/OpenChair';
@@ -25,6 +27,7 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
 import {
+  chooseFriend,
   chooseRequirement,
   chooseSeat,
   defaultSeats,
@@ -38,14 +41,17 @@ import {
 interface CreateRoomModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Friend uses the existing share-link sheet once the table exists. */
-  onSubmit: (data: CreateRoomRequest, invite: boolean) => void;
+  onSubmit: (data: CreateRoomRequest, invite: Position[]) => void;
   isLoading?: boolean;
   username?: string;
   avatarUrl?: string | null;
   error?: string | null;
   initialDraft?: TableDraft;
   initialRuleSet?: RuleSet;
+  fixtureFriends?: FriendPlayer[];
+  initialFriendSeat?: SeatKey;
+  initialFriendId?: string;
+  onAddFriends?: () => void;
 }
 
 const SEATS: { key: SeatKey; label: TranslationKey; spoken: TranslationKey }[] = [
@@ -66,10 +72,24 @@ const RULES: { value: RuleSet; label: TranslationKey; detail: TranslationKey }[]
 ];
 
 export function CreateRoomModal(props: CreateRoomModalProps) {
+  const router = useRouter();
+  const [handingOff, setHandingOff] = useState(false);
+  const pending = useRef(false);
+  const finishHandoff = () => {
+    if (!pending.current) return;
+    pending.current = false;
+    setHandingOff(false);
+    props.onClose();
+    router.push('/friends');
+  };
+  useEffect(() => {
+    if (handingOff && Platform.OS !== 'ios') finishHandoff();
+  });
   if (!props.isOpen) return null;
   return (
     <Modal
-      visible
+      visible={!handingOff}
+      onDismiss={finishHandoff}
       supportedOrientations={['portrait', 'landscape']}
       animationType="none"
       onRequestClose={() => {
@@ -77,7 +97,13 @@ export function CreateRoomModal(props: CreateRoomModalProps) {
       }}>
       {/* A native modal is a separate native root. */}
       <SafeAreaProvider>
-        <CreateRoomForm {...props} />
+        <CreateRoomForm
+          {...props}
+          onAddFriends={() => {
+            pending.current = true;
+            setHandingOff(true);
+          }}
+        />
       </SafeAreaProvider>
     </Modal>
   );
@@ -91,16 +117,27 @@ export function CreateRoomForm({
   error,
   initialDraft,
   initialRuleSet,
+  fixtureFriends,
+  initialFriendSeat,
+  initialFriendId,
+  onAddFriends,
 }: CreateRoomModalProps) {
   const { t } = useTranslation();
+  const router = useRouter();
   const preferredRuleSet = useSettingsStore((state) => state.preferredRuleSet);
   const [ruleSet, setRuleSet] = useState<RuleSet>(initialRuleSet ?? preferredRuleSet);
   const [draft, setDraft] = useState<TableDraft>(
     initialDraft ?? { seats: { ...defaultSeats }, requirements: {} }
   );
+  const [friendSeat, setFriendSeat] = useState<SeatKey | null>(initialFriendSeat ?? null);
   const submit = () => {
     if (isLoading) return;
-    const { request, invite } = newTableRequest(ruleSet, draft.seats, draft.requirements);
+    const { request, invite } = newTableRequest(
+      ruleSet,
+      draft.seats,
+      draft.requirements,
+      draft.invited
+    );
     onSubmit(request, invite);
   };
 
@@ -167,7 +204,9 @@ export function CreateRoomForm({
               <View testID={`create-${key}`}>
                 <View style={styles.seat}>
                   <View style={styles.chair}>
-                    {choice === 'ai' ? (
+                    {draft.invited?.[key] ? (
+                      <PlayerAvatar uri={draft.invited[key].avatar_url} size={40} />
+                    ) : choice === 'ai' ? (
                       <PlayerAvatar kind="bot" size={40} />
                     ) : (
                       <OpenChair size={40} invite={choice === 'invite'} />
@@ -180,15 +219,20 @@ export function CreateRoomForm({
                   </View>
                   <View style={styles.label}>
                     <PidroText role="label" style={styles.seatLabel}>
-                      {t(label)}
+                      {draft.invited?.[key]?.display_name ?? t(label)}
                     </PidroText>
+                    {draft.invited?.[key] ? (
+                      <PidroText role="metadata" tone="soft">
+                        {t('seat_friend.invited')}
+                      </PidroText>
+                    ) : null}
                   </View>
                   <View
                     accessibilityRole="radiogroup"
                     accessibilityLabel={t(spoken)}
                     style={styles.choices}>
                     {CHOICES.map((option) => {
-                      const checked = option.value === choice;
+                      const checked = option.value === (friendSeat === key ? 'invite' : choice);
                       return (
                         <PressableFX
                           key={option.value}
@@ -201,7 +245,9 @@ export function CreateRoomForm({
                           aria-checked={checked}
                           disabled={isLoading}
                           onPress={() =>
-                            setDraft((current) => chooseSeat(current, key, option.value))
+                            option.value === 'invite'
+                              ? setFriendSeat(key)
+                              : setDraft((current) => chooseSeat(current, key, option.value))
                           }
                           style={[styles.choice, checked && styles.selected]}>
                           <PidroText
@@ -258,6 +304,30 @@ export function CreateRoomForm({
           {tableFooter(draft.seats)}
         </PidroText>
       </View>
+      {friendSeat ? (
+        <FriendSeatSheet
+          title={t(SEATS.find((seat) => seat.key === friendSeat)!.label)}
+          fixtureFriends={fixtureFriends}
+          selectedId={draft.invited?.[friendSeat]?.user_id ?? initialFriendId}
+          onInvite={(friend) => {
+            setDraft((current) => chooseFriend(current, friendSeat, friend));
+            setFriendSeat(null);
+          }}
+          onShare={() => {
+            setDraft((current) => chooseSeat(current, friendSeat, 'invite'));
+            setFriendSeat(null);
+          }}
+          onClose={() => setFriendSeat(null)}
+          onAddFriends={() => {
+            setFriendSeat(null);
+            if (onAddFriends) onAddFriends();
+            else {
+              onClose();
+              router.push('/friends');
+            }
+          }}
+        />
+      ) : null}
     </ScreenShell>
   );
 }
