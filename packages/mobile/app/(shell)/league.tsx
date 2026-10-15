@@ -11,6 +11,7 @@ import { usePillClearance } from '@/components/shell/TabPill';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { monthName } from '@/features/profile';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
+import { useTranslation, formatNumber } from '@/i18n';
 
 // The ladder, bottom to top. Pidro, the card worth five, is the top league.
 const LEAGUES = [
@@ -21,6 +22,13 @@ const LEAGUES = [
 ] as const;
 
 export default function LeagueScreen() {
+  const { t } = useTranslation();
+  const leagueLabels = [
+    t('social.league_jack'),
+    t('social.league_queen'),
+    t('social.league_king'),
+    t('social.league_ace'),
+  ];
   const pillClearance = usePillClearance();
   const refreshIdentity = useProfileIdentity();
   const [xp, setXp] = useState<ProfileIdentity['xp']>(undefined);
@@ -46,12 +54,15 @@ export default function LeagueScreen() {
         },
       ]}>
       <Surface variant="window" style={styles.panel} padded>
-        <View style={styles.cards} accessibilityRole="list" accessibilityLabel="Leagues">
-          {LEAGUES.map((league) => (
+        <View
+          style={styles.cards}
+          accessibilityRole="list"
+          accessibilityLabel={t('social.leagues')}>
+          {LEAGUES.map((league, index) => (
             <View
               key={league.name}
               accessible
-              accessibilityLabel={`${league.name} league`}
+              accessibilityLabel={leagueLabels[index]}
               style={[styles.card, styles.paper]}>
               <PidroText style={[styles.rank, league.red && styles.red]}>{league.rank}</PidroText>
               <PidroText style={[styles.suit, league.red && styles.red]}>{league.suit}</PidroText>
@@ -59,23 +70,23 @@ export default function LeagueScreen() {
           ))}
           <View
             accessible
-            accessibilityLabel="Pidro league, the top"
+            accessibilityLabel={t('social.league_top')}
             style={[styles.card, styles.pidro, gradientBg(PidroBevel.goldRimGradient)]}>
             <Icon name="spade" size={18} color={PidroBevel.woodDeep} />
           </View>
         </View>
-        <PidroText style={styles.title}>The league is coming</PidroText>
+        <PidroText style={styles.title}>{t('social.league_coming')}</PidroText>
         <PidroText role="body" tone="soft" align="center" style={styles.copy}>
-          Every game counts toward where you start.
+          {t('social.league_counts')}
         </PidroText>
         {xp ? (
           <View style={styles.periods}>
             <View style={styles.figure}>
               <PidroText role="metadata" tone="cyan" align="center" style={styles.eyebrow}>
-                This week
+                {t('social.this_week')}
               </PidroText>
               <PidroText role="title" align="center" style={styles.number}>
-                {xp.this_week.toLocaleString()} XP
+                {formatNumber(xp.this_week)} XP
               </PidroText>
             </View>
             <View style={[styles.figure, styles.month]}>
@@ -83,7 +94,7 @@ export default function LeagueScreen() {
                 {monthName()}
               </PidroText>
               <PidroText role="title" align="center" style={styles.number}>
-                {xp.this_month.toLocaleString()} XP
+                {formatNumber(xp.this_month)} XP
               </PidroText>
             </View>
           </View>

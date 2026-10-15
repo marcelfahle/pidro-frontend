@@ -34,6 +34,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { Card } from '@/types/game';
 import { DealerChip } from '@/components/game/DealerChip';
+import { useTranslation } from '@/i18n';
 import { computeLayout, handLeft, handScale } from './layout';
 import { T } from './tokens';
 import type { CardTextures } from './cardTextures';
@@ -195,6 +196,7 @@ export default function GameCanvas({
 }
 
 function DealerSelectionMarker({ x, y, size }: { x: number; y: number; size: number }) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const entrance = useSharedValue(reduceMotion ? 1 : 0);
 
@@ -219,7 +221,7 @@ function DealerSelectionMarker({ x, y, size }: { x: number; y: number; size: num
   return (
     <Animated.View
       testID="dealer-selection-chip"
-      accessibilityLabel="Selecting the dealer"
+      accessibilityLabel={t('game.selecting_dealer')}
       pointerEvents="none"
       style={[
         styles.dealerMarker,

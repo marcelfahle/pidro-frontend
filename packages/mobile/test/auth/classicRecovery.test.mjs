@@ -70,16 +70,19 @@ describe('Classic help request', () => {
     });
     expect(await sendClassicHelp(help, deps(apiError(422, 'email')))).toEqual({
       status: 'rejected',
-      message: 'email detail',
+      message: 'Check your details and try again.',
+      messageKey: 'auth.check_details',
       field: 'email',
     });
     expect(await sendClassicHelp(help, deps(apiError(422, 'name')))).toEqual({
       status: 'rejected',
-      message: 'name detail',
+      message: 'Check your details and try again.',
+      messageKey: 'auth.check_details',
     });
     expect(await sendClassicHelp(help, deps(apiError(429)))).toEqual({
       status: 'rejected',
       message: 'Too many messages. Wait a minute and try again.',
+      messageKey: 'auth.messages_limited',
     });
     expect(opened).toEqual([]);
   });

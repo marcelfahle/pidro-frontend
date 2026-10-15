@@ -13,10 +13,11 @@ import {
   manualInviteRoute,
   parseManualInviteCode,
 } from '@/features/invites/manualCode';
-import { t } from '@/i18n';
+import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 
 export default function JoinCodeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const authenticated = useAuthStore((state) => state.status === 'authenticated');
   const { width, height } = useWindowDimensions();

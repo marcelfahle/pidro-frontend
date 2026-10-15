@@ -1,4 +1,4 @@
-import { POSITION_TO_INDEX, publicPlayerName } from '@pidro/shared';
+import { POSITION_TO_INDEX, publicPlayerName, t, formatNumber } from '@pidro/shared';
 import type { LobbyCategories, LobbyCategoryKey, Position, Room } from '@pidro/shared';
 
 const pairs: Position[][] = [
@@ -7,7 +7,10 @@ const pairs: Position[][] = [
 ];
 
 export function seatRequirementMessage(minGames: number, gamesPlayed: number): string {
-  return `${minGames} games played needed, you have ${gamesPlayed}`;
+  return t('social.requirement', {
+    minimum: formatNumber(minGames),
+    played: formatNumber(gamesPlayed),
+  });
 }
 
 export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: number) {
@@ -32,12 +35,12 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
       kind,
       name:
         kind === 'bot'
-          ? 'Bot'
+          ? t('social.bot')
           : occupied
-            ? publicPlayerName(player?.username, 'Player', player?.display_name)
+            ? publicPlayerName(player?.username, t('social.player'), player?.display_name)
             : kind === 'sub'
-              ? 'Sit in'
-              : 'Open',
+              ? t('social.sit_in')
+              : t('social.open'),
       avatarUrl: player?.avatar_url,
       minGames,
       requirementReason:
@@ -66,17 +69,26 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
     seats: ordered,
     status:
       category === 'my_rejoinable'
-        ? 'Your seat is waiting'
+        ? t('social.seat_waiting')
         : category === 'substitute_needed'
           ? room.game && vacatedBy
-            ? `${vacatedBy} left in hand ${room.game.hand}`
-            : 'Needs a substitute'
+            ? t('social.left_hand', { name: vacatedBy, hand: formatNumber(room.game.hand) })
+            : t('social.needs_sub')
           : category === 'spectatable'
             ? room.game
-              ? `Hand ${room.game.hand} · ${room.game.scores.north_south} to ${room.game.scores.east_west}`
-              : 'Playing'
-            : `${open} ${open === 1 ? 'seat' : 'seats'} open`,
-    button: category === 'my_rejoinable' ? 'Rejoin' : category === 'spectatable' ? 'Watch' : null,
+              ? t('social.hand_score', {
+                  hand: formatNumber(room.game.hand),
+                  ns: formatNumber(room.game.scores.north_south),
+                  ew: formatNumber(room.game.scores.east_west),
+                })
+              : t('social.playing')
+            : t('social.seats_open', { count: open, number: formatNumber(open) }),
+    button:
+      category === 'my_rejoinable'
+        ? t('social.rejoin')
+        : category === 'spectatable'
+          ? t('social.watch')
+          : null,
   };
 }
 
@@ -99,5 +111,8 @@ export function lobbyCounts(lobby: LobbyCategories): string {
   const open = [...rooms.values()].filter((room) =>
     tableRow(room, 'open_tables').seats.some((seat) => seat.canJoin)
   ).length;
-  return `${rooms.size} ${rooms.size === 1 ? 'table' : 'tables'} · ${open} with open seats`;
+  return t('social.lobby_count', {
+    tables: t('social.table_count', { count: rooms.size, number: formatNumber(rooms.size) }),
+    open: formatNumber(open),
+  });
 }

@@ -4,6 +4,8 @@
  * stops is interpolated, anything above the largest grows in proportion. Below
  * a part's smallest stop the part is dropped: the ring never is.
  */
+import { t, formatNumber } from '@pidro/shared';
+
 type Stop = readonly number[];
 
 const RING: Stop[] = [
@@ -124,11 +126,6 @@ export type AvatarPin = 'classic' | 'founding_tester';
 export type AvatarAway = 'reconnecting' | 'bot';
 export type AvatarKind = 'player' | 'bot' | 'open';
 
-const PIN_NAMES: Record<AvatarPin, string> = {
-  classic: 'Pidro Classic',
-  founding_tester: 'Founding Tester',
-};
-
 /** One sentence a screen reader can say for a seat, in the order a player scans it. */
 export function avatarLabel({
   name,
@@ -149,16 +146,22 @@ export function avatarLabel({
   away?: AvatarAway | null;
   kind?: AvatarKind;
 }): string {
-  const who = name || (kind === 'open' ? 'Open seat' : kind === 'bot' ? 'Bot' : 'Player');
+  const who =
+    name ||
+    t(kind === 'open' ? 'social.avatar_open' : kind === 'bot' ? 'social.bot' : 'social.player');
   const awayText =
-    away === 'reconnecting' ? 'reconnecting' : away === 'bot' ? 'a bot is playing' : null;
+    away === 'reconnecting'
+      ? t('social.avatar_reconnecting')
+      : away === 'bot'
+        ? t('social.avatar_bot')
+        : null;
   const statusText = status?.trim() ? status.trim().replace(/^./, (c) => c.toLowerCase()) : null;
   return [
     who,
-    dealer ? 'dealer' : null,
-    level != null ? `level ${level}` : null,
-    pin ? PIN_NAMES[pin] : null,
-    turn ? (turn.urgent ? 'their turn, almost out of time' : 'their turn') : null,
+    dealer ? t('social.avatar_dealer') : null,
+    level != null ? t('social.avatar_level', { number: formatNumber(level) }) : null,
+    pin ? (pin === 'classic' ? 'Pidro Classic' : t('profile.founding_tester')) : null,
+    turn ? t(turn.urgent ? 'social.avatar_urgent' : 'social.avatar_turn') : null,
     statusText ?? awayText,
   ]
     .filter(Boolean)

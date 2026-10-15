@@ -6,7 +6,6 @@
  * the server (Phoenix) stays authoritative; handlers send server-intent payloads.
  */
 import { useCallback, useMemo, useState } from 'react';
-import { Alert } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
 import type { Position } from '@/types/lobby';
 import type {
@@ -22,6 +21,8 @@ import type {
 import { useGameStore, useGameViewModel } from '@/stores/game';
 import { pushGameAction } from '@/channels/hooks/useGameChannel';
 import { playActionHaptic, playCardHaptic } from './useGameHaptics';
+import { useTableNotices } from '@/components/game/TableFeedback';
+import type { TableNotice } from './tableNotices';
 
 export type GameTableController = {
   viewModel: GameViewModel | null;
@@ -45,6 +46,7 @@ export type GameTableController = {
   isSecondDeal: boolean;
   canSelectHand: boolean;
   isPlayingCard: boolean;
+  actionNotice?: TableNotice | null;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
   handlePlayCard: (card: Card) => Promise<void> | void;
   handleDeclareTrump: (suit: Suit) => Promise<void> | void;
@@ -136,14 +138,13 @@ export function useGameTableController(): GameTableController {
     legalActions.some((action) => action.type === 'select_hand');
 
   const [isPlayingCard, setIsPlayingCard] = useState(false);
-
-  const showActionError = useCallback((action: string, err: unknown) => {
-    const message =
-      typeof err === 'object' && err !== null && 'reason' in err
-        ? String((err as { reason: string }).reason)
-        : `${action} failed`;
-    Alert.alert('Action Failed', message);
-  }, []);
+  const { notice: actionNotice, addNotice } = useTableNotices(viewModel?.roomCode ?? '');
+  const showActionError = useCallback(
+    (action: string, err: unknown) => {
+      addNotice({ error: err, key: 'error.action_failed', variant: 'error' });
+    },
+    [addNotice]
+  );
 
   const handleDeclareTrump = useCallback(
     async (suit: Suit) => {
@@ -215,6 +216,7 @@ export function useGameTableController(): GameTableController {
     isSecondDeal,
     canSelectHand,
     isPlayingCard,
+    actionNotice,
     getCardCountForPlayer,
     handlePlayCard,
     handleDeclareTrump,

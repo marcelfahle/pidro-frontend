@@ -43,6 +43,8 @@ import { computeLayout, tickerPlacement } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
+import { t, useTranslation } from '@/i18n';
+import { TableFeedback } from '@/components/game/TableFeedback';
 
 type Props = {
   room: Room;
@@ -97,9 +99,9 @@ function statusText(
 
   switch (phase) {
     case 'dealer_selection':
-      if (cut) return { text: `Draws ${cardLabel(cut)}` };
-      if (playedCard) return { text: `Draws ${cardLabel(playedCard)}` };
-      return now('Drawing…');
+      if (cut) return { text: t('game.draws', { card: cardLabel(cut) }) };
+      if (playedCard) return { text: t('game.draws', { card: cardLabel(playedCard) }) };
+      return now(t('game.drawing'));
     case 'bidding':
       return bidSeatLine({
         bid,
@@ -110,24 +112,24 @@ function statusText(
     case 'declaring':
     case 'declaring_trump':
     case 'trump_declaration':
-      if (player.isCurrentTurn) return { text: 'Choosing trump…', tone: 'now' };
-      return state?.trump ? { text: `Trump ${SUIT_SYMBOLS[state.trump]}` } : null;
+      if (player.isCurrentTurn) return { text: t('game.choosing_trump'), tone: 'now' };
+      return state?.trump ? { text: t('game.trump', { suit: SUIT_SYMBOLS[state.trump] }) } : null;
     case 'discarding':
     case 'second_deal':
-      return now('Picking cards…');
+      return now(t('game.picking'));
     case 'playing':
-      if (playedCard) return { text: `Plays ${cardLabel(playedCard)}` };
-      if (player.isCurrentTurn) return now('Playing…');
-      if (lastTrick?.winner === absolutePosition) return { text: 'Took the trick' };
+      if (playedCard) return { text: t('game.plays', { card: cardLabel(playedCard) }) };
+      if (player.isCurrentTurn) return now(t('game.playing'));
+      if (lastTrick?.winner === absolutePosition) return { text: t('game.took_trick') };
       return null;
     case 'scoring':
     case 'hand_complete':
       return null;
     case 'complete':
     case 'game_over':
-      return { text: 'Finished' };
+      return { text: t('game.finished') };
     default:
-      return now('Playing…');
+      return now(t('game.playing'));
   }
 }
 
@@ -234,6 +236,7 @@ export function GameCanvasTable({
   onSaveGuest,
   rulesFixtureSeen,
 }: Props) {
+  const { locale } = useTranslation();
   const controller = useGameTableController();
   const role = useGameStore((state) => state.role);
   const dealerRobPresentation = useGameStore((state) => state.presentation?.dealer_rob ?? null);
@@ -295,7 +298,9 @@ export function GameCanvasTable({
         lastHand: serverState?.last_hand ?? null,
         players: viewModel?.players ?? [],
       }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildHandLog translates through the stable global t
     [
+      locale,
       serverState?.hand_number,
       serverState?.round_number,
       serverState?.bid_order,
@@ -310,25 +315,29 @@ export function GameCanvasTable({
   // Classic's "Bet 6": from the first bid, the ticker rests on who holds the
   // bid; between hands, on how the last hand ended.
   const highBid = serverState?.highest_bid;
-  const bidder = highBid
-    ? viewModel?.players.find((player) => player.absolutePosition === highBid.position)
-    : undefined;
+  const bidLine =
+    highBid && typeof highBid.amount === 'number'
+      ? buildHandLog({
+          handNumber: 0,
+          bids: [highBid],
+          trump: null,
+          tricks: [],
+          currentTrick: [],
+          lastHand: null,
+          players: viewModel?.players ?? [],
+        })[0]?.entries[0]
+      : undefined;
   const lastResult = handLog[0]?.finished ? handLog[0].entries.at(-1) : undefined;
-  const resting: TickerRestingLine | null =
-    bidder && typeof highBid?.amount === 'number'
-      ? {
-          who: bidder.isYou ? 'You' : (bidder.username ?? 'Bidder'),
-          what: `bid ${highBid.amount}`,
-          ours: youPositionAbs ? bidder.isYou || bidder.isTeammate : null,
-        }
-      : lastResult
-        ? { who: lastResult.who, what: lastResult.what, ours: lastResult.ours }
-        : null;
+  const resting: TickerRestingLine | null = bidLine
+    ? { who: bidLine.who, what: bidLine.what, ours: bidLine.ours }
+    : lastResult
+      ? { who: lastResult.who, what: lastResult.what, ours: lastResult.ours }
+      : null;
 
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
       acc[player.relativePosition] = model.dealStage
-        ? { text: 'Dealing' }
+        ? { text: t('game.dealing') }
         : statusText(player, serverState);
       return acc;
     },
@@ -412,6 +421,7 @@ export function GameCanvasTable({
       )}
 
       {/* Connection banner, in the notice slot */}
+      {isChannelJoined && <TableFeedback notice={controller.actionNotice ?? null} />}
       {!isGameOver && (
         <View style={[styles.bannerWrap, reserves.noticeSlot]} pointerEvents="box-none">
           <ConnectionBanner isConnected={isChannelJoined} />

@@ -22,10 +22,12 @@ import { gameRoute } from '@/navigation/gameRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useLobbyStore } from '@/stores/lobby';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+import { useTranslation } from '@/i18n';
 
 type LaunchState = 'idle' | 'creatingGuest' | 'creatingRoom' | 'roomFailed' | 'joiningInvite';
 
 export default function WelcomeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
@@ -72,7 +74,7 @@ export default function WelcomeScreen() {
       router.replace(gameRoute(response.code, 'single-player'));
     } catch {
       setLaunchState('roomFailed');
-      setLaunchError('We could not start your solo table. Try again.');
+      setLaunchError('auth.solo_failed');
     }
   }, [router, upsertLobbyRoom]);
 
@@ -122,7 +124,7 @@ export default function WelcomeScreen() {
 
   const currentPreview =
     pendingInvite && invitePreview?.code === pendingInvite.code ? invitePreview : null;
-  const inviter = currentPreview?.host || 'A friend';
+  const inviter = currentPreview?.host || t('auth.friend');
   return (
     <ScreenShell
       testID="welcome-screen"
@@ -133,7 +135,7 @@ export default function WelcomeScreen() {
       ]}>
       <View style={[styles.header, compactLandscape && styles.headerLandscape]}>
         <BevelButton
-          accessibilityLabel="Settings"
+          accessibilityLabel={t('auth.settings')}
           material="glass"
           size="icon"
           onPress={() => router.push('/device-settings')}
@@ -165,11 +167,11 @@ export default function WelcomeScreen() {
               </View>
               <View style={styles.inviteCopy}>
                 <PidroText role="label" numberOfLines={1}>
-                  {inviter} saved you a seat
+                  {t('auth.saved_seat', { name: inviter })}
                 </PidroText>
               </View>
               <PidroText role="metadata" tone="cyan">
-                INVITE
+                {t('auth.invite_caps')}
               </PidroText>
             </Surface>
           ) : null}
@@ -177,7 +179,7 @@ export default function WelcomeScreen() {
           {offline ? (
             <Surface variant="subtle" style={styles.offline} accessibilityRole="alert">
               <PidroText role="metadata" tone="gold" align="center">
-                You&apos;re offline. Connect to play.
+                {t('auth.offline')}
               </PidroText>
             </Surface>
           ) : null}
@@ -185,7 +187,7 @@ export default function WelcomeScreen() {
           {authError || launchError ? (
             <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
               <PidroText role="metadata" tone="danger" align="center">
-                {launchError || authError}
+                {launchError ? t('auth.solo_failed') : authError}
               </PidroText>
             </Surface>
           ) : null}
@@ -200,9 +202,9 @@ export default function WelcomeScreen() {
                   color={PidroBevel.textGold}
                 />
               }
-              title="Quick game"
-              subtitle="You and three bots"
-              status="No sign-up"
+              title={t('auth.quick')}
+              subtitle={t('auth.bots')}
+              status={t('auth.no_signup')}
               size={tileSize}
               disabled={offline}
               loading={launchBusy}
@@ -218,9 +220,9 @@ export default function WelcomeScreen() {
                   color={PidroColors.iconOnGlass}
                 />
               }
-              title="Play online"
-              subtitle="Real players"
-              status="Needs a free account"
+              title={t('auth.online')}
+              subtitle={t('auth.real_players')}
+              status={t('auth.needs_account')}
               size={tileSize}
               disabled={offline || launchBusy}
               onPress={() => router.push('/(auth)/register')}
@@ -235,7 +237,7 @@ export default function WelcomeScreen() {
 
           <View style={[styles.accountLinks, (offline || launchBusy) && styles.disabled]}>
             <PidroText role="metadata" tone="cyan">
-              Have an account?
+              {t('auth.have_account')}
             </PidroText>
             <Pressable
               accessibilityRole="link"
@@ -243,7 +245,7 @@ export default function WelcomeScreen() {
               onPress={() => router.push('/(auth)/login')}
               style={styles.accountLink}>
               <PidroText role="metadata" tone="cyan" style={styles.signIn}>
-                Sign in
+                {t('auth.sign_in')}
               </PidroText>
             </Pressable>
           </View>

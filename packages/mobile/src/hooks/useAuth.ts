@@ -13,14 +13,12 @@ import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
 import { guestSaveFailure, runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
-import { apiErrorInfo } from '@/utils/apiErrors';
+import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
+import { useTranslation, type TranslationKey, type TranslationValues } from '@/i18n';
 
 export type { GuestSaveField, GuestSaveFailure, GuestSaveResult } from '@/features/auth/saveGuest';
 
-type ApiError = {
-  errors?: { code?: string; title?: string; detail: string }[];
-  message?: string;
-};
+type AuthFailure = { cause?: unknown; key: TranslationKey; values?: TranslationValues };
 
 export type SocialSignInOutcome =
   ProviderLoginResponse | Extract<SocialCredentialResult, { status: 'cancelled' | 'failure' }>;
@@ -37,21 +35,16 @@ function getSafeAxiosErrorDetails(error: AxiosError) {
   };
 }
 
-function extractErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof AxiosError) {
-    const data = error.response?.data as ApiError | undefined;
-    return data?.errors?.[0]?.detail || data?.message || fallback;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return fallback;
-}
-
 export function useAuth() {
+  const { t } = useTranslation();
   const { status, user, setSession, clearSession, hydrated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setError] = useState<AuthFailure | null>(null);
+  const error = failure
+    ? failure.cause === undefined
+      ? t(failure.key, failure.values)
+      : localizedError(failure.cause, failure.key)
+    : null;
   const [errorCode, setErrorCode] = useState<string | undefined>();
   const requestInFlight = useRef(false);
 
@@ -75,8 +68,7 @@ export function useAuth() {
         } else {
           console.warn('[Auth] Sign in failed with a non-API error');
         }
-        const message = extractErrorMessage(e, 'Could not sign in. Try again.');
-        setError(message);
+        setError({ cause: e, key: 'auth.login_failed' });
         return false;
       } finally {
         requestInFlight.current = false;
@@ -99,7 +91,10 @@ export function useAuth() {
         const credential = await requestNativeSocialCredential(provider);
         if (credential.status === 'cancelled') return credential;
         if (credential.status === 'failure') {
-          setError(credential.message);
+          setError({
+            key: credential.messageKey ?? 'auth.social_failed',
+            values: { provider: provider === 'apple' ? 'Apple' : 'Facebook' },
+          });
           return credential;
         }
 
@@ -128,9 +123,10 @@ export function useAuth() {
         const failure = {
           status: 'failure' as const,
           provider,
-          message: 'Sign in could not be completed. Try again.',
+          message: localizedError(e, 'auth.login_failed'),
+          messageKey: 'auth.login_failed' as const,
         };
-        setError(failure.message);
+        setError({ cause: e, key: 'auth.login_failed' });
         return failure;
       } finally {
         requestInFlight.current = false;
@@ -145,7 +141,10 @@ export function useAuth() {
   const createAccount = useCallback(
     async (displayName: string, email: string, password: string): Promise<GuestSaveResult> => {
       if (requestInFlight.current) {
-        return { ok: false, error: { message: 'Account creation is already in progress.' } };
+        return {
+          ok: false,
+          error: { message: t('auth.account_busy'), messageKey: 'auth.account_busy' },
+        };
       }
       requestInFlight.current = true;
       setIsLoading(true);
@@ -165,13 +164,16 @@ export function useAuth() {
         setIsLoading(false);
       }
     },
-    [setSession]
+    [setSession, t]
   );
 
   const saveGuest = useCallback(
     async (displayName: string, email: string, password: string): Promise<GuestSaveResult> => {
       if (requestInFlight.current) {
-        return { ok: false, error: { message: 'Account saving is already in progress.' } };
+        return {
+          ok: false,
+          error: { message: t('auth.account_busy'), messageKey: 'auth.account_busy' },
+        };
       }
       const original = useAuthStore.getState();
       requestInFlight.current = true;
@@ -193,14 +195,18 @@ export function useAuth() {
           setSessionPreservation: (preserve) =>
             useAuthStore.getState().setPreserveSessionOnUnauthorized(preserve),
         });
-        if (!result.ok) setError(result.error.message);
+        if (!result.ok)
+          setError({
+            cause: result.error.originalError,
+            key: result.error.messageKey ?? 'auth.save_failed',
+          });
         return result;
       } finally {
         requestInFlight.current = false;
         setIsLoading(false);
       }
     },
-    [setSession]
+    [setSession, t]
   );
 
   const continueAsGuest = useCallback(
@@ -231,7 +237,7 @@ export function useAuth() {
         } else {
           console.warn('[Auth] Guest creation failed with a non-API error');
         }
-        setError(extractErrorMessage(e, 'Your guest session could not be created. Try again.'));
+        setError({ cause: e, key: 'invite.error.guest' });
         return null;
       } finally {
         requestInFlight.current = false;
@@ -250,7 +256,7 @@ export function useAuth() {
       await authApi.requestPasswordReset(identifier);
       return true;
     } catch (e) {
-      setError(extractErrorMessage(e, 'Could not request a password reset. Try again.'));
+      setError({ cause: e, key: 'auth.reset_request_failed' });
       return false;
     } finally {
       requestInFlight.current = false;
@@ -269,7 +275,7 @@ export function useAuth() {
         setSession({ accessToken: response.token, user: response.user });
         return true;
       } catch (e) {
-        setError(extractErrorMessage(e, 'Could not reset your password. Try again.'));
+        setError({ cause: e, key: 'auth.reset_failed' });
         setErrorCode(apiErrorInfo(e).code);
         return false;
       } finally {

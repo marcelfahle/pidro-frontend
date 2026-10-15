@@ -492,6 +492,98 @@ const allCases = [
   },
 ];
 
+const localizationCases = ['en', 'sv'].flatMap((locale) => [
+  ...['system', 'en', 'sv'].map((language) => ({
+    name: `locale-${locale}-settings-${language}`,
+    path: `/ui-dev?state=settings&locale=${locale}&language=${language}&deviceLocale=${locale}-FI`,
+    testId: 'settings-screen',
+    locale,
+    language,
+  })),
+  ...[
+    ['waiting', 'waiting', 'waiting-table'],
+    ['bidding', 'bidding', 'bidding-window'],
+    ['trump', 'declaring', 'trump-window'],
+    ['hand-selection', 'second_deal&role=player&dealer=south', 'hand-selection-window'],
+    ['game-over', 'game_over', 'game-over-window'],
+    ['dealer', 'dealer_selection', 'seat-north'],
+    ['playing', 'playing', 'seat-north'],
+  ].map(([name, phase, testId]) => ({
+    name: `locale-${locale}-${name}`,
+    path: `/table-dev?phase=${phase}&locale=${locale}&language=${locale}`,
+    testId,
+    locale,
+    protectNorthSeat: ['bidding', 'trump', 'hand-selection'].includes(name),
+  })),
+]);
+allCases.push(...localizationCases);
+
+async function assertLocalization(page, testCase, viewport) {
+  if (!testCase.locale) return;
+  const clipped = await page.locator('[dir="auto"]').evaluateAll((nodes) =>
+    nodes
+      .filter((node) => node.getBoundingClientRect().width && node.getClientRects().length)
+      // Public player names deliberately ellipsize; localized sentences may not.
+      .filter((node) => !['Alexandria the Long-Named Player'].includes(node.textContent))
+      .filter(
+        (node) =>
+          getComputedStyle(node).overflow === 'hidden' &&
+          (node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1)
+      )
+      .map((node) => node.textContent)
+  );
+  assert.deepEqual(clipped, [], `${testCase.name}: clipped natural text in ${viewport.name}`);
+  if (testCase.locale === 'sv') {
+    const expected = testCase.language
+      ? 'Språk'
+      : testCase.name.endsWith('-trump')
+        ? 'Välj trumf'
+        : testCase.name.endsWith('-hand-selection')
+          ? 'Välj din hand'
+          : null;
+    if (expected) await page.getByText(expected, { exact: true }).waitFor();
+  }
+  if (testCase.language) {
+    const group = page.getByTestId('settings-language');
+    const labels = [
+      testCase.locale === 'sv' ? 'Enhetens språk' : 'System language',
+      'English',
+      'Svenska',
+    ];
+    const selected = ['system', 'en', 'sv'].indexOf(testCase.language);
+    for (const [index, label] of labels.entries()) {
+      assert.equal(
+        await group.getByRole('radio', { name: label, exact: true }).getAttribute('aria-checked'),
+        String(index === selected)
+      );
+    }
+    if (testCase.language === 'system') {
+      await group
+        .getByText(
+          `${testCase.locale === 'sv' ? 'Just nu' : 'Currently'}: ${testCase.locale === 'sv' ? 'Svenska' : 'English'}`,
+          { exact: true }
+        )
+        .waitFor();
+    }
+    const before = await page.evaluate(() => localStorage.getItem('settings-storage'));
+    await group.getByRole('radio', { name: 'Svenska', exact: true }).click();
+    await group.getByText('Språk', { exact: true }).waitFor();
+    await group.getByRole('radio', { name: 'English', exact: true }).click();
+    await group.getByText('Language', { exact: true }).waitFor();
+    await group.getByRole('radio', { name: 'English', exact: true }).press('ArrowRight');
+    await group.getByText('Språk', { exact: true }).waitFor();
+    assert.equal(
+      await group.getByRole('radio', { name: 'Svenska', exact: true }).getAttribute('aria-checked'),
+      'true'
+    );
+    assert.equal(await page.evaluate(() => localStorage.getItem('settings-storage')), before);
+    // Normal screens must ignore even a complete fixture override query.
+    await page.goto(`${baseUrl}/device-settings?locale=sv&language=sv&deviceLocale=sv-FI`);
+    await page.getByTestId('settings-language').getByText('Language', { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => localStorage.getItem('settings-storage')), before);
+  }
+}
+
 function selectCases() {
   if (requestedCases.size === 0) return allCases;
 
@@ -615,8 +707,8 @@ async function assertNorthClear(page, testCase, viewport, windowBox) {
   const header = waiting
     ? { toolbar: page.getByTestId('waiting-toolbar') }
     : {
-        'score plaque': page.getByRole('button', { name: /Recent scores\./ }),
-        menu: page.getByRole('button', { name: 'Table settings', exact: true }),
+        'score plaque': page.getByRole('button', { name: /Recent scores\.|Senaste poäng\./ }),
+        menu: page.getByRole('button', { name: /^(Table settings|Bordsinställningar)$/ }),
       };
   const covers = { ...header, ...(windowBox ? { window: windowBox } : {}) };
   for (const [coverName, cover] of Object.entries(covers)) {
@@ -1670,10 +1762,16 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
-        if (viewport.cases && !viewport.cases.includes(testCase.name)) return false;
+        if (
+          viewport.cases &&
+          !viewport.cases.includes(testCase.name) &&
+          !(testCase.locale && ['compact-portrait', 'tablet-portrait'].includes(viewport.name))
+        )
+          return false;
         if (testCase.skipViewports?.includes(viewport.name)) return false;
         return (
           !viewport.tableOnly ||
+          testCase.locale ||
           testCase.path.startsWith('/table-dev') ||
           testCase.ruleSet ||
           testCase.lobbyFixture ||
@@ -1943,6 +2041,11 @@ async function main() {
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
           await assertBidLines(page, testCase, caseViewport);
+          if (testCase.locale && testCase.path.includes('game_over')) {
+            await page
+              .getByTestId('victory-confetti')
+              .waitFor({ state: 'detached', timeout: 7000 });
+          }
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();
@@ -1990,6 +2093,7 @@ async function main() {
             path: resolve(screenshotDir, `${testCase.name}.png`),
             fullPage: false,
           });
+          await assertLocalization(page, testCase, caseViewport);
           if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
           await assertFriendsPresentation(page, testCase.name);
           await assertCreationPresentation(page, testCase);

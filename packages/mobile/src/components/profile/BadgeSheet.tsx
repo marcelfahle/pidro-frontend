@@ -19,6 +19,7 @@ import {
   PidroSpacing,
 } from '@/design/tokens';
 import { classicPinLine } from '@/features/profile';
+import { useTranslation } from '@/i18n';
 
 /**
  * The sheet behind the profile avatar: the ring the player has and the pin
@@ -41,6 +42,7 @@ export function BadgeSheet({
   pin: 'classic' | null;
   onChoosePin: (pin: PinChoice) => void;
 }) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   // On a phone held sideways the avatar yields; the ring row still shows the photo.
   const short = useWindowDimensions().height < PidroLayout.compactHeight;
@@ -54,7 +56,7 @@ export function BadgeSheet({
         <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
           <Pressable
             style={StyleSheet.absoluteFill}
-            accessibilityLabel="Close your badges"
+            accessibilityLabel={t('profile.close_badges')}
             onPress={onClose}
           />
           <View style={styles.sheet} testID="badge-sheet">
@@ -70,24 +72,24 @@ export function BadgeSheet({
                   level={level}
                   pin={pin}
                   style={styles.avatar}
-                  accessibilityLabel={pin ? 'Wearing the Pidro Classic pin' : 'Wearing no pin'}
+                  accessibilityLabel={t(pin ? 'profile.wearing_classic' : 'profile.wearing_none')}
                 />
               ) : null}
               <PidroText style={styles.title} accessibilityRole="header">
-                Your badges
+                {t('profile.badges')}
               </PidroText>
               <Surface variant="subtle" style={styles.ring}>
                 <PlayerAvatar size={40} uri={uri} />
                 <View style={styles.copy}>
-                  <PidroText role="label">Glass ring</PidroText>
+                  <PidroText role="label">{t('profile.glass_ring')}</PidroText>
                   <PidroText role="metadata" tone="soft">
-                    Supporters get the gold ring.
+                    {t('profile.supporter_ring')}
                   </PidroText>
                 </View>
               </Surface>
               <View accessibilityRole="radiogroup" style={styles.choices}>
                 <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
-                  Pin to wear
+                  {t('profile.pin_to_wear')}
                 </PidroText>
                 {classic ? (
                   <PinRow
@@ -103,8 +105,8 @@ export function BadgeSheet({
                   />
                 ) : null}
                 <PinRow
-                  title="Founding Tester"
-                  line="Not earned. It went to players who finished a game before launch."
+                  title={t('profile.founding_tester')}
+                  line={t('profile.tester_help')}
                   locked
                   coin={
                     <Coin material="glass" size={40} rim={2.5} style={styles.inline}>
@@ -113,15 +115,21 @@ export function BadgeSheet({
                   }
                 />
                 <PinRow
-                  title="No pin"
-                  line="Just your ring and level."
+                  title={t('profile.no_pin')}
+                  line={t('profile.no_pin_help')}
                   checked={pin === null}
                   onPress={() => onChoosePin('none')}
                   coin={<View style={styles.noPin} />}
                 />
               </View>
             </ScrollView>
-            <BevelButton label="Done" material="wood" size="md" fullWidth onPress={onClose} />
+            <BevelButton
+              label={t('profile.done')}
+              material="wood"
+              size="md"
+              fullWidth
+              onPress={onClose}
+            />
           </View>
         </SafeAreaView>
       </SafeAreaProvider>

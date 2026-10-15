@@ -12,10 +12,12 @@ import { canAccessProtectedRoutes } from '../src/navigation/initialRoute';
 import { useAuthStore } from '../src/stores/auth';
 import { useAgeGateStore } from '../src/stores/ageGate';
 import { PidroColors } from '../src/design/tokens';
+import { useLocaleBootstrap } from '../src/i18n';
 
 initSentry();
 
 export default function RootLayout() {
+  const localeReady = useLocaleBootstrap();
   const [fontsLoaded, fontError] = useFonts({
     Nunito: require('../assets/fonts/Nunito-VariableFont_wght.ttf'),
     BreeSerif: require('../assets/fonts/BreeSerif-Regular.ttf'),
@@ -40,7 +42,7 @@ export default function RootLayout() {
   }, []);
 
   if (fontError) throw fontError;
-  if (!fontsLoaded || !authHydrated) return null;
+  if (!fontsLoaded || !authHydrated || !localeReady) return null;
 
   return (
     <AnalyticsProvider>

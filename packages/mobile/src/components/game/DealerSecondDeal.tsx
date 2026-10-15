@@ -20,6 +20,7 @@ import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Card, DealerRobPresentation, GameViewModel, Suit } from '@/types/game';
 import { getCardImage } from '@/utils/cardImages';
 import { HandSelector } from './HandSelector';
+import { useTranslation } from '@/i18n';
 
 type Props = {
   viewModel: GameViewModel;
@@ -45,6 +46,7 @@ export function DealerSecondDeal({
   automaticPresentation,
   onSelectHand,
 }: Props) {
+  const { t } = useTranslation();
   const reducedMotion = useReducedMotion();
   const opacity = useSharedValue(reducedMotion ? 1 : 0);
   const offset = useSharedValue(reducedMotion ? 0 : -18);
@@ -112,12 +114,12 @@ export function DealerSecondDeal({
         </View>
         <View style={styles.copy}>
           <PidroText role="label" tone="gold">
-            {youAreDealer ? 'Gathering the pack' : 'Dealer takes the pack'}
+            {t(youAreDealer ? 'game.gathering' : 'game.dealer_pack')}
           </PidroText>
           <PidroText role="metadata" tone="soft">
             {youAreDealer
-              ? 'Waiting for your complete set of cards.'
-              : `${dealer?.username ?? 'The dealer'} is choosing six cards to keep.`}
+              ? t('game.waiting_pool')
+              : t('game.dealer_choosing', { name: dealer?.username ?? t('game.dealer') })}
           </PidroText>
         </View>
       </Surface>
@@ -136,6 +138,7 @@ function AutomaticCard({ card, index, step }: { card: Card; index: number; step:
 }
 
 function AutomaticDealerRob({ presentation }: { presentation: DealerRobPresentation }) {
+  const { t } = useTranslation();
   const { width } = useWindowDimensions();
   const pool = presentation.pool ?? [];
   const availableWidth = Math.min(width - 24, 520);
@@ -145,14 +148,14 @@ function AutomaticDealerRob({ presentation }: { presentation: DealerRobPresentat
     <View
       testID="automatic-dealer-rob"
       accessibilityRole="summary"
-      accessibilityLabel="Dealer's combined card pool"
+      accessibilityLabel={t('game.pool_accessibility')}
       style={styles.automaticStage}>
       <PidroText role="metadata" tone="gold" align="center">
-        Combined pool
+        {t('game.combined_pool')}
       </PidroText>
       <View
         style={[styles.automaticRow, { width: availableWidth }]}
-        accessibilityLabel="Dealer's combined card pool">
+        accessibilityLabel={t('game.pool_accessibility')}>
         {pool.map((card, index) => (
           <AutomaticCard
             key={`${card.suit}-${card.rank}-${index}`}

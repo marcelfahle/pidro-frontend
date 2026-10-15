@@ -13,7 +13,6 @@ import {
   Text,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
   StatusBar,
   StyleSheet,
 } from 'react-native';
@@ -34,7 +33,7 @@ import { AuthSheet } from '@/components/auth/AuthSheet';
 import { WaitingTable } from '@/components/game/WaitingTable';
 import { InviteModal } from '@/components/invites/InviteModal';
 import { Background } from '@/components/ui/Background';
-import { Button } from '@/components/ui/Button';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
@@ -43,7 +42,7 @@ import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
 import { shouldAutoReadySolo } from '@/features/game/soloReadiness';
-import { t } from '@/i18n';
+import { t, useTranslation } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 
@@ -68,6 +67,7 @@ type SkiaTableProps = {
  * loader keeps CanvasKit imports out of native bundles.
  */
 function SkiaGameTable(props: SkiaTableProps) {
+  useTranslation();
   const [Comp, setComp] = useState<ComponentType<SkiaTableProps> | null>(null);
   const [loadError, setLoadError] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -93,20 +93,20 @@ function SkiaGameTable(props: SkiaTableProps) {
         <View style={styles.tableLoadState}>
           <Surface variant="window" style={styles.tableLoadWindow} padded accessibilityRole="alert">
             <PidroText role="title" align="center">
-              The table could not open
+              {t('game.load_failed')}
             </PidroText>
             <PidroText role="body" tone="soft" align="center">
-              Your game is still on the server. Try loading the table again, or leave safely.
+              {t('game.load_description')}
             </PidroText>
             <View style={styles.tableLoadActions}>
-              <Button
-                label="Leave table"
-                variant="outline"
+              <BevelButton
+                label={t('game.leave')}
+                material="glass"
                 onPress={props.onLeave}
                 style={styles.tableLoadButton}
               />
-              <Button
-                label="Try again"
+              <BevelButton
+                label={t('game.try_again')}
                 onPress={() => {
                   setComp(null);
                   setLoadError(false);
@@ -126,7 +126,7 @@ function SkiaGameTable(props: SkiaTableProps) {
       <Background>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-white/60">Loading table…</Text>
+          <Text className="mt-4 text-white/60">{t('game.loading')}</Text>
         </View>
       </Background>
     );
@@ -162,6 +162,7 @@ const styles = StyleSheet.create({
  * Route: /game/{room_code}
  */
 export default function GameScreen() {
+  useTranslation();
   const {
     code,
     origin: originParam,
@@ -367,7 +368,7 @@ export default function GameScreen() {
     autoReadyRef.current = key;
     void handleReady().catch(() => {
       autoReadyRef.current = null;
-      handleSeatEvent({ message: 'Could not start the solo game. Try again.', variant: 'warning' });
+      handleSeatEvent({ key: 'game.solo_failed', variant: 'warning' });
     });
   }, [handleReady, handleSeatEvent, isChannelJoined, origin, readiness, youPositionAbs]);
 
@@ -543,14 +544,7 @@ export default function GameScreen() {
       .catch((error: unknown) => {
         // A stale epoch reply carries the current snapshot, already applied by
         // pushGameAction, so pressing again sends the right epoch.
-        const reason = (error as { reason?: string } | null)?.reason;
-        const key =
-          reason === 'table_not_full'
-            ? 'table.rematch.tableNotFull'
-            : reason === 'stale_readiness'
-              ? 'table.rematch.tableChanged'
-              : 'table.rematch.failed';
-        handleSeatEvent({ message: t(key), variant: 'warning' });
+        handleSeatEvent({ error, key: 'table.rematch.failed', variant: 'warning' });
       })
       .finally(() => {
         rematchPendingRef.current = false;
@@ -563,7 +557,7 @@ export default function GameScreen() {
     if (!tableReopened) return;
     // Notices still queued belong to the game that just ended.
     clearNotices();
-    handleSeatEvent({ message: t('table.reopened'), variant: 'warning' });
+    handleSeatEvent({ key: 'table.reopened', variant: 'warning' });
   }, [tableReopened, handleSeatEvent, clearNotices]);
 
   const handleLeaveGame = (destination = exitPath) => {
@@ -592,15 +586,13 @@ export default function GameScreen() {
         const generation = ++roomRequestGenerationRef.current;
         if (requestedCode) applyRoomSnapshot(requestedCode, generation, updated);
       } catch (caught) {
-        const detail = (caught as { response?: { data?: { errors?: { detail?: string }[] } } })
-          ?.response?.data?.errors?.[0]?.detail;
-        Alert.alert(t('table.actionErrorTitle'), detail ?? t('table.actionError'));
+        handleSeatEvent({ error: caught, key: 'table.actionError', variant: 'error' });
       } finally {
         controlsBusyRef.current = false;
         setControlsBusy(false);
       }
     },
-    [applyRoomSnapshot]
+    [applyRoomSnapshot, handleSeatEvent]
   );
 
   const handleToggleLock = useCallback(() => {
@@ -668,7 +660,7 @@ export default function GameScreen() {
       <Background>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-white/60">Joining room...</Text>
+          <Text className="mt-4 text-white/60">{t('game.joining')}</Text>
         </View>
       </Background>
     );
@@ -685,20 +677,20 @@ export default function GameScreen() {
               padded
               accessibilityRole="alert">
               <PidroText role="title" align="center">
-                The table could not be restored
+                {t('game.restore_failed')}
               </PidroText>
               <PidroText role="body" tone="soft" align="center">
-                Your game is still on the server. Check your connection, then try again.
+                {t('game.restore_description')}
               </PidroText>
               <View style={styles.tableLoadActions}>
-                <Button
-                  label={origin === 'single-player' ? 'Back home' : 'Back to lobby'}
-                  variant="outline"
+                <BevelButton
+                  label={t(origin === 'single-player' ? 'game.back_home' : 'game.lobby')}
+                  material="glass"
                   onPress={() => router.replace(exitPath)}
                   style={styles.tableLoadButton}
                 />
-                <Button
-                  label="Try again"
+                <BevelButton
+                  label={t('game.try_again')}
                   onPress={() => {
                     setRestoreFailureCode(null);
                     setRestoreAttempt((attempt) => attempt + 1);
@@ -716,7 +708,7 @@ export default function GameScreen() {
       <Background>
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-white/60">Restoring table...</Text>
+          <Text className="mt-4 text-white/60">{t('game.restoring')}</Text>
         </View>
       </Background>
     );
@@ -727,11 +719,11 @@ export default function GameScreen() {
       <Background>
         <SafeAreaView style={{ flex: 1 }}>
           <View className="flex-1 items-center justify-center p-4">
-            <Text className="text-xl font-bold text-white">Room not found</Text>
+            <Text className="text-xl font-bold text-white">{t('game.not_found')}</Text>
             <TouchableOpacity
               onPress={() => handleLeaveGame()}
               className="mt-4 rounded-lg bg-white/10 px-6 py-3">
-              <Text className="font-semibold text-white">Go Back</Text>
+              <Text className="font-semibold text-white">{t('game.back')}</Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -773,7 +765,7 @@ export default function GameScreen() {
           rematchPending={rematchPending}
           roomFinished={readiness ? readiness.status === 'finished' : true}
           onHome={() => handleLeaveGame('/home')}
-          playAgainLabel={origin === 'single-player' ? 'Play again' : undefined}
+          playAgainLabel={origin === 'single-player' ? t('game.play_again') : undefined}
           showGuestSave={showGuestSave && Boolean(currentUser?.guest)}
           onSaveGuest={() => setAccountSheetOpen(true)}
         />

@@ -1,6 +1,6 @@
-import type { CreateRoomRequest, Room, RuleSet } from '@pidro/shared';
+import type { CreateRoomRequest, Room, RuleSet, TranslationKey } from '@pidro/shared';
 
-export const ruleSets: Record<RuleSet, { labelKey: string }> = {
+export const ruleSets: Record<RuleSet, { labelKey: TranslationKey }> = {
   finnish: { labelKey: 'rules.finnish' },
   louisiana: { labelKey: 'rules.louisiana' },
 };

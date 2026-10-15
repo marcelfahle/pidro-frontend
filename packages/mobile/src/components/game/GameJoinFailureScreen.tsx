@@ -5,6 +5,7 @@ import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
+import { useTranslation } from '@/i18n';
 
 interface GameJoinFailureScreenProps {
   failure: TerminalGameJoinFailure | 'away';
@@ -20,21 +21,22 @@ export function GameJoinFailureScreen({
   onExit,
   onReturn,
 }: GameJoinFailureScreenProps) {
+  const { t } = useTranslation();
   const seatUnavailable = failure === 'seat_unavailable';
   const title =
     failure === 'away'
-      ? 'You were away'
+      ? t('game.away')
       : seatUnavailable
-        ? 'Your reconnect window expired'
-        : 'Table unavailable';
+        ? t('game.expired')
+        : t('game.unavailable');
   const message =
     failure === 'away'
-      ? 'You missed a few turns, so a bot is taking your seat. Come back soon to play it yourself.'
+      ? t('game.away_description')
       : seatUnavailable
-        ? 'Your seat is no longer available. The game has continued without you.'
+        ? t('game.expired_description')
         : failure === 'access_unavailable'
-          ? 'You no longer have access to this table.'
-          : 'This table no longer exists.';
+          ? t('game.access_description')
+          : t('game.gone_description');
 
   return (
     <Background>
@@ -52,9 +54,14 @@ export function GameJoinFailureScreen({
             {message}
           </PidroText>
           {onReturn ? (
-            <BevelButton label="I'm back" onPress={onReturn} style={styles.action} />
+            <BevelButton label={t('game.im_back')} onPress={onReturn} style={styles.action} />
           ) : null}
-          <BevelButton label={exitLabel} onPress={onExit} material="glass" style={styles.action} />
+          <BevelButton
+            label={t(exitLabel === 'Back home' ? 'game.back_home' : 'game.lobby')}
+            onPress={onExit}
+            material="glass"
+            style={styles.action}
+          />
         </Surface>
       </View>
     </Background>

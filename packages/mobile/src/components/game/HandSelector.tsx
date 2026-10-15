@@ -8,7 +8,8 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Card, GameViewModel, Suit } from '@/types/game';
 import { getCardImage } from '@/utils/cardImages';
-import { getPidroPoints, getRankLabel } from '@/utils/cards';
+import { getPidroPoints } from '@/utils/cards';
+import { useTranslation } from '@/i18n';
 
 interface HandSelectorProps {
   viewModel: GameViewModel;
@@ -20,6 +21,7 @@ interface HandSelectorProps {
 const TARGET_COUNT = 6;
 
 export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: HandSelectorProps) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { width, height } = useWindowDimensions();
@@ -32,10 +34,10 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
     return (
       <Surface variant="window" style={styles.waitingWindow}>
         <PidroText role="label" align="center">
-          Waiting for {currentTurnPlayer?.username ?? 'the dealer'}
+          {t('game.waiting_for', { name: currentTurnPlayer?.username ?? t('game.dealer') })}
         </PidroText>
         <PidroText role="metadata" tone="muted" align="center">
-          They are choosing the cards to keep.
+          {t('game.choosing_keep')}
         </PidroText>
       </Surface>
     );
@@ -66,17 +68,21 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
   return (
     <DecisionWindow
       testID="hand-selection-window"
-      title="Choose your hand"
-      description={`Select exactly ${TARGET_COUNT} cards to keep.`}
+      title={t('game.choose_hand')}
+      description={t('game.choose_hand_description', { count: TARGET_COUNT })}
       context={
         <PidroText role="metadata" tone={selected.size === TARGET_COUNT ? 'gold' : 'cyan'}>
-          {selected.size} of {TARGET_COUNT} selected · Swipe to review all {cards.length} cards
+          {t('game.selection_status', {
+            selected: selected.size,
+            target: TARGET_COUNT,
+            count: cards.length,
+          })}
         </PidroText>
       }
       compact={landscape}
       footer={
         <BevelButton
-          label="Keep selected cards"
+          label={t('game.keep_cards')}
           onPress={handleConfirm}
           loading={isSubmitting}
           disabled={selected.size !== TARGET_COUNT}
@@ -89,7 +95,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.cardRow}
-        accessibilityLabel="Cards available to keep">
+        accessibilityLabel={t('game.available_cards')}>
         {cards.map((card, index) => {
           const isSelected = selected.has(index);
           const disabled = !isSelected && selected.size >= TARGET_COUNT;
@@ -99,7 +105,17 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
             <PressableFX
               key={`${card.suit}-${card.rank}-${index}`}
               accessibilityRole="button"
-              accessibilityLabel={`${getRankLabel(card.rank)} of ${card.suit}${points !== null ? `, worth ${points} ${points === 1 ? 'point' : 'points'}` : ''}`}
+              accessibilityLabel={t(
+                points === null ? 'game.card_accessibility' : 'game.card_points_accessibility',
+                {
+                  rank:
+                    card.rank === 11 || card.rank === 12 || card.rank === 13 || card.rank === 14
+                      ? t(`game.rank.${card.rank}`)
+                      : String(card.rank),
+                  suit: t(`game.${card.suit}`),
+                  points: points === null ? '' : t('game.points', { count: points }),
+                }
+              )}
               accessibilityState={{ selected: isSelected, disabled: isSubmitting || disabled }}
               onPress={() => toggleCard(index)}
               disabled={isSubmitting || disabled}
@@ -114,7 +130,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
               {points !== null ? (
                 <View style={styles.pointBadge}>
                   <PidroText role="metadata" style={styles.pointText} maxFontSizeMultiplier={1}>
-                    {points} pt
+                    {t('game.points_short', { count: points })}
                   </PidroText>
                 </View>
               ) : null}

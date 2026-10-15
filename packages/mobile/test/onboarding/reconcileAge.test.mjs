@@ -57,6 +57,10 @@ describe('stored age reconciliation', () => {
         },
         getMe: async () => answeredUser,
       })
-    ).resolves.toEqual({ status: 'failed', message: 'Try again later.' });
+    ).resolves.toEqual({
+      status: 'failed',
+      message: 'We could not save your answer. Try again.',
+      messageKey: 'auth.age_save_failed',
+    });
   });
 });

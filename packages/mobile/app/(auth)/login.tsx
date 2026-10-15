@@ -17,7 +17,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { PidroSpacing } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 import { useFlowBack } from '@/hooks/useFlowBack';
-import { t } from '@/i18n';
+import { useTranslation, type TranslationKey } from '@/i18n';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
@@ -27,11 +27,14 @@ import type { AuthProvider } from '@/api/auth';
 type LoginField = 'identifier' | 'password';
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ email?: string; known?: string; fixture?: string }>();
   const fixture = __DEV__ ? params.fixture : undefined;
   const [identifier, setIdentifier] = useState(params.email ?? '');
   const [password, setPassword] = useState('');
-  const [validationErrors, setValidationErrors] = useState<Partial<Record<LoginField, string>>>({});
+  const [validationErrors, setValidationErrors] = useState<
+    Partial<Record<LoginField, TranslationKey>>
+  >({});
   const identifierRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const { signIn, signInWithProvider, isLoading, error, clearError } = useAuth();
@@ -75,9 +78,9 @@ export default function LoginScreen() {
   const handleLogin = useCallback(() => {
     if (isLoading) return;
 
-    const nextErrors: Partial<Record<LoginField, string>> = {};
-    if (!identifier.trim()) nextErrors.identifier = 'Enter your email or username.';
-    if (!password) nextErrors.password = 'Enter your password.';
+    const nextErrors: Partial<Record<LoginField, TranslationKey>> = {};
+    if (!identifier.trim()) nextErrors.identifier = 'auth.enter_identifier';
+    if (!password) nextErrors.password = 'auth.enter_password';
     setValidationErrors(nextErrors);
 
     if (nextErrors.identifier) {
@@ -104,10 +107,10 @@ export default function LoginScreen() {
   const createAccount = (
     <View style={[styles.newHere, landscape && styles.newHereLandscape]}>
       <PidroText role="body" tone="soft" style={metrics.body}>
-        New to Pidro?
+        {t('auth.new_here')}
       </PidroText>
       <TextLink
-        label="Create account"
+        label={t('auth.create')}
         size={metrics.link}
         style={styles.newHereLink}
         onPress={() => router.push('/(auth)/register')}
@@ -118,7 +121,7 @@ export default function LoginScreen() {
   return (
     <AuthFlowScreen
       testID="login-screen"
-      headerTitle="Sign in"
+      headerTitle={t('auth.sign_in')}
       onBack={goBack}
       aside={
         <View style={[styles.aside, landscape && styles.asideLandscape]}>
@@ -133,11 +136,7 @@ export default function LoginScreen() {
       }>
       <AuthFlowWindow testID="auth-window">
         {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
-        {knownAccount ? (
-          <AuthFlowNotice tone="info">
-            That email already has a Pidro account. Sign in to carry on.
-          </AuthFlowNotice>
-        ) : null}
+        {knownAccount ? <AuthFlowNotice tone="info">{t('auth.email_known')}</AuthFlowNotice> : null}
         <AuthProviderButtons
           showEmail={false}
           showEmailDivider
@@ -151,14 +150,14 @@ export default function LoginScreen() {
           <View style={landscape && styles.fieldLandscape}>
             <Input
               ref={identifierRef}
-              label="Email or username"
-              placeholder="you@example.com"
+              label={t('auth.identifier')}
+              placeholder={t('auth.email_placeholder')}
               value={identifier}
               onChangeText={(next) => {
                 setIdentifier(next);
                 clearValidationError('identifier');
               }}
-              error={validationErrors.identifier}
+              error={validationErrors.identifier ? t(validationErrors.identifier) : undefined}
               style={inputStyle}
               autoCapitalize="none"
               autoCorrect={false}
@@ -177,13 +176,13 @@ export default function LoginScreen() {
           <View style={landscape && styles.fieldLandscape}>
             <Input
               ref={passwordRef}
-              label="Password"
+              label={t('auth.password')}
               value={password}
               onChangeText={(next) => {
                 setPassword(next);
                 clearValidationError('password');
               }}
-              error={validationErrors.password}
+              error={validationErrors.password ? t(validationErrors.password) : undefined}
               style={inputStyle}
               autoCapitalize="none"
               autoComplete="current-password"
@@ -203,7 +202,7 @@ export default function LoginScreen() {
           </View>
         </View>
         <TextLink
-          label="Forgot password?"
+          label={t('auth.forgot')}
           size={layout === 'tablet' ? 15 : 14}
           style={styles.forgot}
           onPress={() =>
@@ -213,7 +212,7 @@ export default function LoginScreen() {
             })
           }
         />
-        <AuthFlowButton label="Sign in" loading={isLoading} onPress={handleLogin} />
+        <AuthFlowButton label={t('auth.sign_in')} loading={isLoading} onPress={handleLogin} />
       </AuthFlowWindow>
       {modal}
     </AuthFlowScreen>

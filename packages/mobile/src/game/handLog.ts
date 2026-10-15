@@ -14,7 +14,7 @@ import type {
   Suit,
   TeamKey,
 } from '@/types/game';
-import { isNorthSouthTeam } from '@pidro/shared';
+import { isNorthSouthTeam, t, type TranslationKey, type TranslationValues } from '@pidro/shared';
 import type { Position } from '@/types/lobby';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 
@@ -34,6 +34,12 @@ export type HandLogEntry = {
   hand: number;
   /** The trick a play, take or 2 belongs to, from 1. */
   trick: number | null;
+  presentation?: {
+    who: string | null;
+    whoKey?: TranslationKey;
+    key: TranslationKey;
+    values: TranslationValues;
+  };
 };
 
 export type HandLogGroup = {
@@ -80,11 +86,29 @@ function playsOf(trick: unknown): RawPlay[] {
 }
 
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
-const say = (who: string | null, what: string) => ({
-  who,
-  what,
-  text: who ? `${who} ${what}` : what,
-});
+const say = (
+  who: string | null,
+  key: TranslationKey,
+  values: TranslationValues = {},
+  whoKey?: TranslationKey
+) => {
+  const translatedWho = whoKey ? t(whoKey) : who;
+  const text = t(key, { ...values, who: translatedWho ?? '' });
+  // The ticker may truncate the name separately; sentences are always translated whole.
+  const prefix = translatedWho && text.startsWith(`${translatedWho} `) ? `${translatedWho} ` : '';
+  return {
+    who: prefix ? translatedWho : null,
+    what: prefix ? text.slice(prefix.length) : text,
+    text,
+    presentation: { who: whoKey ? null : who, whoKey, key, values },
+  };
+};
+
+/** Retained ticker entries can outlive the snapshot that originally built them. */
+export function presentHandLogEntry(entry: HandLogEntry): HandLogEntry {
+  const p = entry.presentation;
+  return p ? { ...entry, ...say(p.who, p.key, p.values, p.whoKey) } : entry;
+}
 
 export function buildHandLog(input: HandLogInput): HandLogGroup[] {
   const you = input.players.find((player) => player.isYou);
@@ -93,14 +117,30 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
   for (const player of input.players) {
     names.set(
       player.absolutePosition,
-      player.isYou ? 'You' : (player.username ?? player.absolutePosition)
+      player.isYou
+        ? t('game.you')
+        : (player.username ?? t(`table.position.${player.absolutePosition}`))
     );
   }
-  const name = (position: Position) => names.get(position) ?? position;
+  const name = (position: Position) => names.get(position) ?? t(`table.position.${position}`);
+  const isYou = (position: Position) => you?.absolutePosition === position;
+  const nameKey = (position: Position): TranslationKey | undefined =>
+    isYou(position)
+      ? 'game.you'
+      : input.players.find((p) => p.absolutePosition === position)?.username
+        ? undefined
+        : `table.position.${position}`;
   const ours = (team: TeamKey) => (yourTeam ? team === yourTeam : null);
   // "We" / "They" from your side; spectators see the table's sides.
-  const side = (team: TeamKey) =>
-    yourTeam ? (team === yourTeam ? 'We' : 'They') : team === 'north_south' ? 'N/S' : 'E/W';
+  const sideKey = (team: TeamKey): TranslationKey =>
+    yourTeam
+      ? team === yourTeam
+        ? 'game.we'
+        : 'game.they'
+      : team === 'north_south'
+        ? 'game.ns_short'
+        : 'game.ew_short';
+  const side = (team: TeamKey) => t(sideKey(team));
 
   const handEntries = (
     hand: number,
@@ -117,7 +157,12 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
       entries.push({
         id: `bid-${hand}-${bid.position}`,
         kind: 'bid',
-        ...say(name(bid.position), pass ? 'passed' : `bid ${bid.amount}`),
+        ...say(
+          name(bid.position),
+          pass ? 'game.log_pass' : 'game.log_bid',
+          { amount: bid.amount },
+          nameKey(bid.position)
+        ),
         ours: ours(teamOf(bid.position)),
         hand,
         trick: null,
@@ -127,7 +172,7 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
       entries.push({
         id: `trump-${hand}`,
         kind: 'trump',
-        ...say(null, `Trump ${SUIT_SYMBOLS[trump]}`),
+        ...say(null, 'game.trump', { suit: SUIT_SYMBOLS[trump] }),
         ours: null,
         hand,
         trick: null,
@@ -138,13 +183,14 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
       plays.forEach((play, index) => {
         const position = play?.player ?? play?.position;
         if (!isPosition(position) || !play.card) return;
-        const verb = names.get(position) === 'You' ? 'play' : 'plays';
         entries.push({
           id: `play-${hand}-${trick}-${index}`,
           kind: 'play',
           ...say(
             name(position),
-            `${verb} ${getRankLabel(play.card.rank)}${SUIT_SYMBOLS[play.card.suit] ?? ''}`
+            isYou(position) ? 'game.log_play_you' : 'game.log_play',
+            { card: `${getRankLabel(play.card.rank)}${SUIT_SYMBOLS[play.card.suit] ?? ''}` },
+            nameKey(position)
           ),
           ours: ours(teamOf(position)),
           hand,
@@ -166,7 +212,12 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
         entries.push({
           id: `trick-${hand}-${trick}`,
           kind: 'trick',
-          ...say(side(team), points > 0 ? `took it +${points}` : 'took it'),
+          ...say(
+            side(team),
+            points > 0 ? 'game.log_take_points' : 'game.log_take',
+            { points },
+            sideKey(team)
+          ),
           ours: ours(team),
           hand,
           trick,
@@ -174,11 +225,15 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
       }
       const two = meta.two_of_trump;
       if (two && isPosition(two.position) && typeof two.points === 'number') {
-        const holder = names.get(two.position) === 'You' ? 'Your' : `${name(two.position)}'s`;
         entries.push({
           id: `two-${hand}-${trick}`,
           kind: 'two',
-          ...say(holder, `2 +${two.points}`),
+          ...say(
+            name(two.position),
+            isYou(two.position) ? 'game.log_two_you' : 'game.log_two',
+            { points: two.points },
+            nameKey(two.position)
+          ),
           ours: ours(teamOf(two.position)),
           hand,
           trick,
@@ -191,11 +246,15 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
 
   const resultEntry = (last: ServerLastHand): HandLogEntry => {
     const team = last.bidding_team;
-    const outcome = last.made ? 'made it' : 'were set';
     return {
       id: `result-${last.hand_number}`,
       kind: 'result',
-      ...say(side(team), `${outcome} ${signed(last.delta?.[team] ?? 0)}`),
+      ...say(
+        side(team),
+        last.made ? 'game.log_made' : 'game.log_set',
+        { delta: signed(last.delta?.[team] ?? 0) },
+        sideKey(team)
+      ),
       ours: ours(team),
       hand: last.hand_number,
       trick: null,

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from '@/i18n';
 import { Feather } from '@expo/vector-icons';
 import { StyleSheet, View } from 'react-native';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
@@ -13,11 +14,12 @@ interface ScreenHeaderProps {
 }
 
 export function ScreenHeader({ title, subtitle, onBack, trailing }: ScreenHeaderProps) {
+  const { t } = useTranslation();
   return (
     <View style={styles.header}>
       {onBack ? (
         <Button
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('ui.back')}
           variant="ghost"
           size="icon"
           onPress={onBack}

@@ -10,6 +10,7 @@ import { useReducedMotion } from 'react-native-reanimated';
 import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
+import { useTranslation } from '@/i18n';
 
 export interface KeepProgressPromptProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export interface KeepProgressPromptProps {
 }
 
 export function KeepProgressPrompt({ isOpen, onClose, onSave }: KeepProgressPromptProps) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
 
   return (
@@ -29,13 +31,13 @@ export function KeepProgressPrompt({ isOpen, onClose, onSave }: KeepProgressProm
       <SafeAreaProvider>
         <SafeAreaView style={styles.backdrop} edges={['top', 'left', 'right', 'bottom']}>
           <View style={styles.card} testID="keep-progress-prompt">
-            <PidroText style={styles.title}>Keep your progress</PidroText>
+            <PidroText style={styles.title}>{t('auth.keep_progress')}</PidroText>
             <PidroText role="body" tone="soft" align="center" style={styles.description}>
-              Create a free account and your record follows you everywhere.
+              {t('auth.keep_description')}
             </PidroText>
 
             <BevelButton
-              label="Save account"
+              label={t('auth.save')}
               material="wood"
               size="md"
               fullWidth
@@ -44,11 +46,11 @@ export function KeepProgressPrompt({ isOpen, onClose, onSave }: KeepProgressProm
 
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Maybe later"
+              accessibilityLabel={t('auth.later')}
               onPress={onClose}
               style={styles.later}>
               <PidroText role="label" tone="muted">
-                Maybe later
+                {t('auth.later')}
               </PidroText>
             </Pressable>
           </View>

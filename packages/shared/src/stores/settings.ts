@@ -2,8 +2,13 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { PersistStorage } from '../platform/types';
 import type { RuleSet } from '../types/lobby';
+import type { LanguagePreference } from '../i18n';
 
 interface SettingsState {
+  language: LanguagePreference;
+  hydrated: boolean;
+  setLanguage: (language: LanguagePreference) => void;
+  setHydrated: (hydrated: boolean) => void;
   theme: 'light' | 'dark' | 'system';
   soundEnabled: boolean;
   hapticEnabled: boolean;
@@ -36,6 +41,10 @@ export function createSettingsStore({
   return create<SettingsState>()(
     persist(
       (set) => ({
+        language: 'system',
+        hydrated: false,
+        setLanguage: (language) => set({ language }),
+        setHydrated: (hydrated) => set({ hydrated }),
         theme: 'system',
         soundEnabled: true,
         hapticEnabled: true,
@@ -55,6 +64,24 @@ export function createSettingsStore({
       {
         name: storageKey,
         storage: createJSONStorage(() => storage),
+        partialize: ({ hydrated, ...state }) => state,
+        // Default merge migrates old version-0 stores without losing their preferences.
+        merge: (persisted, current) => {
+          const saved = persisted as Partial<SettingsState> | undefined;
+          const language = saved?.language;
+          return {
+            ...current,
+            ...saved,
+            hydrated: false,
+            language: language === 'en' || language === 'sv' ? language : 'system',
+          };
+        },
+        onRehydrateStorage: (initial) => (_state, error) => {
+          // A synchronous read/JSON failure can occur before Zustand finishes
+          // assigning initial state. Defer that fallback so it is not overwritten.
+          if (error) queueMicrotask(() => initial.setHydrated(true));
+          else initial.setHydrated(true);
+        },
       }
     )
   );

@@ -14,7 +14,7 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
-      "expo-localization",
+      ["expo-localization", { "supportedLocales": ["en", "sv"] }],
       "expo-status-bar",
       "expo-web-browser",
       [
@@ -43,6 +43,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "assetBundlePatterns": ["**/*"],
+    "locales": {
+      "en": "./locales/en.json",
+      "sv": "./locales/sv.json"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.oneapps.pidro",
