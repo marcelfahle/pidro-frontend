@@ -74,11 +74,13 @@ const TICKER_CHEVRON = 16;
  * The plaque's ticker, kept off North's fan. Portrait lines may reach half a
  * back into it, over the first back's edge only; landscape lines sit beside
  * the plaque, dropped below the fan where it hangs into the header row.
+ * Null where the table leaves the ticker out (`showsTicker`).
  */
 export function tickerPlacement(
   L: TableLayout,
   { tableTop, plaqueLeft, plaqueTop }: { tableTop: number; plaqueLeft: number; plaqueTop: number }
-): { lineMaxWidth: number; drop: number } {
+): { lineMaxWidth: number; drop: number } | null {
+  if (!showsTicker(L)) return null;
   const backW = northBackWidth(L.cardW);
   if (!L.profile.endsWith('portrait')) {
     const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
@@ -92,16 +94,22 @@ export function tickerPlacement(
 export const TIGHT_AVATAR = 44;
 /** Your tight seat sits left of the hand: the avatar and a gap. */
 export const TIGHT_SOUTH_SLOT = TIGHT_AVATAR + 8;
+/** Landscape phones shorter than this have no room for the ticker. */
+const TICKER_MIN_LANDSCAPE_HEIGHT = 390;
 /**
- * Room the plaque's ticker takes below the table's top: three lines under the
- * plaque. Tight side seats start below it, as the ticker shares West's column.
+ * Small phones leave the ticker out: the seats' status lines say the same,
+ * and the table needs the room (Marcel, 2026-10-15).
  */
-export const TICKER_RESERVE = 64;
+export function showsTicker(L: TableLayout): boolean {
+  if (L.tight) return false;
+  return !(L.profile === 'phone-landscape' && L.height < TICKER_MIN_LANDSCAPE_HEIGHT);
+}
 /** Below this circle radius the trick reads as a heap: give it the seats' room. */
 const MIN_COMFORT_R = 64;
 const PILE_SCALE = 0.82;
 /** Played cards shrink a little where the trick circle has to. */
 const COMPACT_PILE_SCALE = 0.72;
+const LANDSCAPE_PILE_SCALE = 0.8;
 
 export function playedCardTarget(
   L: TableLayout,
@@ -219,10 +227,25 @@ export function computeLayout(
   const tight = portrait && !tabletPortrait && fitR(roomy.band, COMPACT_PILE_SCALE) < MIN_COMFORT_R;
   const { handY: portraitHandY, northBottom, band } = portraitBand(tight);
   const compact = portrait && fitR(band, PILE_SCALE) < usualR;
-  const pileScale = portrait ? (compact ? COMPACT_PILE_SCALE : PILE_SCALE) : 0.8;
   const handY = portrait ? portraitHandY : tableBottom - cardH * 0.56;
   const trickCy = portrait ? northBottom + band / 2 : height * 0.49;
-  const trickR = compact ? Math.max(32, Math.min(usualR, fitR(band, pileScale))) : usualR;
+  // Landscape: your played card lands above the hand. Short phones shrink the
+  // circle and its cards until it does.
+  const landscapeR = (scale: number) =>
+    handY - (cardH * handScale(profile)) / 2 - 8 - (cardH * scale) / 2 - trickCy;
+  const shortLandscape = !portrait && landscapeR(LANDSCAPE_PILE_SCALE) < usualR;
+  const pileScale = portrait
+    ? compact
+      ? COMPACT_PILE_SCALE
+      : PILE_SCALE
+    : shortLandscape
+      ? COMPACT_PILE_SCALE
+      : LANDSCAPE_PILE_SCALE;
+  const trickR = compact
+    ? Math.max(32, Math.min(usualR, fitR(band, pileScale)))
+    : shortLandscape
+      ? Math.max(32, Math.min(usualR, landscapeR(pileScale)))
+      : usualR;
 
   const northY = tableTop + cardH * (portrait ? 0.48 : 0.22) + 10;
   const sideCy = portrait ? trickCy : trickCy + LANDSCAPE_SIDE_DROP;

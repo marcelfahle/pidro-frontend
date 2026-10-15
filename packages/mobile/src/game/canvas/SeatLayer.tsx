@@ -35,7 +35,6 @@ import {
   northBackWidth,
   northFanTop,
   northFanWidth,
-  TICKER_RESERVE,
   TIGHT_AVATAR,
   TIGHT_SOUTH_SLOT,
   type Profile,
@@ -223,9 +222,7 @@ export function SeatLayer({
   // Tight West shares its column with the plaque's ticker, and side names run
   // toward North's: both side seats start below the ticker and North's row.
   const sideSeatTop = Math.max(
-    tight
-      ? Math.max(tableTop + TICKER_RESERVE, northSeatTop + size + PidroSpacing.xs)
-      : tableTop + PidroSpacing.xs,
+    tight ? northSeatTop + size + PidroSpacing.xs : tableTop + PidroSpacing.xs,
     Math.min(
       Math.max(northSeatTop + PidroSpacing.md, sideStackTop - PidroSpacing.sm - stackedSeat),
       lowestStackTop - PidroSpacing.sm - stackedSeat

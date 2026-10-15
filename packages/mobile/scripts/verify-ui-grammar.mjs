@@ -377,18 +377,21 @@ const allCases = [
   { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
   { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },
   // PID-221: the ticker at its fullest, long names included, stays clear of the
-  // plaque and the North seat; the hand log opens from it.
+  // plaque and the North seat; the hand log opens from it. Small phones leave
+  // the ticker out (PID-229).
   {
     name: 'table-ticker',
     path: '/table-dev?phase=playing&ticker=full&names=long',
     testId: 'ticker-line-bid-4-south',
     protectNorthSeat: true,
+    skipViewports: ['compact-landscape'],
   },
   {
     name: 'table-hand-log',
     path: '/table-dev?phase=playing',
     open: "Recent table actions. Opens this hand's log.",
     testId: 'hand-log-entry-trump-4',
+    skipViewports: ['compact-landscape'],
   },
   {
     name: 'table-bidding',
@@ -1506,6 +1509,7 @@ async function main() {
     cases
       .filter((testCase) => {
         if (viewport.cases && !viewport.cases.includes(testCase.name)) return false;
+        if (testCase.skipViewports?.includes(viewport.name)) return false;
         return (
           !viewport.tableOnly ||
           testCase.path.startsWith('/table-dev') ||
