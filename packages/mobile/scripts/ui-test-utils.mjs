@@ -16,7 +16,7 @@ export const UI_VIEWPORTS = [
     name: 'compact-portrait',
     width: 360,
     height: 640,
-    cases: ['welcome', 'welcome-guest', 'update-notice'],
+    cases: ['welcome', 'welcome-guest', 'update-notice', 'table-bid-round', 'table-bid-high'],
   },
   { name: 'landscape', width: 844, height: 390 },
   {

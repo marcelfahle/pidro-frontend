@@ -16,10 +16,36 @@ import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
-import type { Card, Invite, RuleSet, SeatStatus } from '@pidro/shared';
+import type { Card, Invite, RuleSet, SeatStatus, ServerBid, ServerGameState } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
+
+// `bids=`: a hand's bids landing one by one against three bots.
+const BID_ROUNDS: Record<string, { dealer: Position; bids: ServerBid[] }> = {
+  // South deals: West passes, North bids 7, East goes to 9, then it is you.
+  round: {
+    dealer: 'south',
+    bids: [
+      { position: 'west', amount: 'pass' },
+      { position: 'north', amount: 7 },
+      { position: 'east', amount: 9 },
+    ],
+  },
+  // West deals: North bids 7, East passes, you go to 9, and West is still to bid.
+  high: {
+    dealer: 'west',
+    bids: [
+      { position: 'north', amount: 7 },
+      { position: 'east', amount: 'pass' },
+      { position: 'south', amount: 9 },
+    ],
+  },
+};
+const BID_STEP_MS = 450;
+const CLOCKWISE: Position[] = ['north', 'east', 'south', 'west'];
+const nextSeat = (position: Position) => CLOCKWISE[(CLOCKWISE.indexOf(position) + 1) % 4];
+const highBid = (bids: ServerBid[]) => bids.filter((bid) => bid.amount !== 'pass').at(-1) ?? null;
 
 const DEAL_HAND: Card[] = [
   { rank: 8, suit: 'clubs' },
@@ -83,6 +109,29 @@ const WAITING_ROOM: Room = {
       position: 'north',
     },
     { seat_index: 4, status: 'free', player: null, position: 'east' },
+  ],
+};
+
+/** `bids=`: a solo table, you and three bots, as a quick game seats it. */
+const BOT_ROOM: Room = {
+  ...WAITING_ROOM,
+  status: 'playing',
+  player_count: 4,
+  positions: { north: 'b-north', east: 'b-east', south: 'p-south', west: 'b-west' },
+  seats: [
+    { ...WAITING_ROOM.seats![0], player: { id: 'p-south', username: 'Mia', level: 44 } },
+    ...(
+      [
+        ['west', 'Wynn'],
+        ['north', 'Nora'],
+        ['east', 'Eli'],
+      ] as const
+    ).map(([position, username], index) => ({
+      seat_index: index + 2,
+      status: 'occupied' as const,
+      player: { id: `b-${position}`, username, is_bot: true },
+      position,
+    })),
   ],
 };
 
@@ -204,6 +253,7 @@ function TableDevHarness() {
     clear?: string;
     guest?: string;
     connection?: string;
+    bids?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -255,6 +305,7 @@ function TableDevHarness() {
             ruleSet={ruleSet}
             rulesFixtureSeen={rulesFixtureSeen}
             connected={params.connection !== 'lost'}
+            bidRound={BID_ROUNDS[params.bids ?? ''] ?? null}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -454,6 +505,7 @@ function RolePreview({
   ruleSet = 'finnish',
   rulesFixtureSeen,
   connected = true,
+  bidRound = null,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -465,6 +517,7 @@ function RolePreview({
   ruleSet?: RuleSet;
   rulesFixtureSeen?: boolean;
   connected?: boolean;
+  bidRound?: (typeof BID_ROUNDS)[string] | null;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -482,9 +535,11 @@ function RolePreview({
               : 'playing';
     const dealerPosition = ['north', 'east', 'south', 'west'].includes(dealer ?? '')
       ? (dealer as Position)
-      : previewPhase === 'second_deal'
-        ? 'south'
-        : 'north';
+      : bidRound
+        ? bidRound.dealer
+        : previewPhase === 'second_deal'
+          ? 'south'
+          : 'north';
     const automaticExisting: Card[] = [
       { rank: 14, suit: 'spades' },
       { rank: 13, suit: 'spades' },
@@ -507,7 +562,7 @@ function RolePreview({
       automaticRobbed[4],
     ];
     store.reset();
-    store.initFromRoom({ room: WAITING_ROOM, youPlayerId: 'p-south' });
+    store.initFromRoom({ room: bidRound ? BOT_ROOM : WAITING_ROOM, youPlayerId: 'p-south' });
     store.setRole(role);
     store.setYouPosition('south');
     store.setChannelStatus(connected);
@@ -515,7 +570,12 @@ function RolePreview({
       variant: ruleSet,
       config: { min_bid: ruleSet === 'louisiana' ? 7 : 6 },
       phase: deal === 'true' ? 'dealing' : previewPhase,
-      current_player: previewPhase === 'second_deal' ? dealerPosition : 'south',
+      current_player:
+        previewPhase === 'second_deal'
+          ? dealerPosition
+          : bidRound
+            ? bidRound.bids[0].position
+            : 'south',
       trump: previewPhase === 'playing' || previewPhase === 'second_deal' ? 'spades' : null,
       dealer: dealerPosition,
       scores: { north_south: previewPhase === 'game_over' ? 62 : 36, east_west: 29 },
@@ -578,7 +638,11 @@ function RolePreview({
       previewPhase === 'bidding'
         ? [
             ...([6, 7, 8, 9, 10, 11, 12, 13, 14] as const)
-              .filter((amount) => amount >= (ruleSet === 'louisiana' ? 7 : 6))
+              .filter(
+                (amount) =>
+                  amount >= (ruleSet === 'louisiana' ? 7 : 6) &&
+                  amount > Number(highBid(bidRound?.bids ?? [])?.amount ?? 0)
+              )
               .map((amount) => ({ type: 'bid', amount }) as const),
             ...(canPass ? ([{ type: 'pass' }] as const) : []),
           ]
@@ -619,7 +683,7 @@ function RolePreview({
       if (presentationTimer) clearTimeout(presentationTimer);
       store.reset();
     };
-  }, [role, phase, canPass, deal, dealer, autoClear, ruleSet, connected]);
+  }, [role, phase, canPass, deal, dealer, autoClear, ruleSet, connected, bidRound]);
 
   useEffect(() => {
     if (!Table || deal !== 'true') return;
@@ -642,10 +706,38 @@ function RolePreview({
     return () => clearTimeout(timer);
     // Re-arm whenever the initialization effect above resets the fixture.
   }, [Table, deal, dealer, role, phase, canPass]);
+
+  // `bids=`: the seats bid in turn, as the server tells it.
+  useEffect(() => {
+    if (!Table || !bidRound) return;
+    const store = useGameStore.getState();
+    const initial = store.serverState;
+    if (!initial) return;
+    const timers = bidRound.bids.map((bid, index) =>
+      setTimeout(
+        () => {
+          const bids = bidRound.bids.slice(0, index + 1);
+          const high = highBid(bids);
+          store.setServerState({
+            ...initial,
+            current_player: nextSeat(bid.position),
+            bids,
+            ...(high ? { highest_bid: high } : {}),
+          } as unknown as ServerGameState);
+        },
+        BID_STEP_MS * (index + 1)
+      )
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [Table, bidRound, role, phase, canPass, dealer]);
   return (
     <View className="flex-1">
       {Table ? (
-        <Table room={WAITING_ROOM} rulesFixtureSeen={rulesFixtureSeen} onLeave={() => {}} />
+        <Table
+          room={bidRound ? BOT_ROOM : WAITING_ROOM}
+          rulesFixtureSeen={rulesFixtureSeen}
+          onLeave={() => {}}
+        />
       ) : (
         <Loading />
       )}
