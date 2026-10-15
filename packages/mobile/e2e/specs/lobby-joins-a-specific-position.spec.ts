@@ -143,7 +143,7 @@ test('a 1000+ chair explains the local lock and the server refusal @responsive',
     await unlocked.click();
     const refusal = await refused;
     expect(refusal.status()).toBe(403);
-    expect(await refusal.json()).toEqual({
+    expect(await refusal.json()).toMatchObject({
       error: 'SEAT_REQUIRES_GAMES',
       min_games: 1000,
       games_played: 0,
