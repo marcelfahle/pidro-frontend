@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { AxiosError } from 'axios';
 import { localizedError, publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { profileApi } from '@/api/profile';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
@@ -113,14 +112,10 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
                 </PidroText>
                 {actionError ? (
                   <PidroText role="body" tone="danger" accessibilityRole="alert">
-                    {confirm === 'block' &&
-                    actionError instanceof AxiosError &&
-                    actionError.response?.data?.error === 'USER_NOT_FOUND'
-                      ? t('blocks.unavailable')
-                      : localizedError(
-                          actionError,
-                          confirm === 'block' ? 'blocks.block_failed' : 'friends.remove_failed'
-                        )}
+                    {localizedError(
+                      actionError,
+                      confirm === 'block' ? 'blocks.block_failed' : 'friends.remove_failed'
+                    )}
                   </PidroText>
                 ) : null}
                 <BevelButton

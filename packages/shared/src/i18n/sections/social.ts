@@ -62,7 +62,6 @@ export const en = {
   "blocks.confirm":
     "Block %{name}? You will not see each other in Friends or search, and they cannot sit at your tables.",
   "blocks.block_failed": "Could not block this player. Please try again.",
-  "blocks.unavailable": "This player cannot be blocked.",
   "blocks.unblock": "Unblock",
   "blocks.unblock_player": "Unblock %{name}",
   "blocks.unblock_help": "Unblocking does not add them back as a friend.",
@@ -332,7 +331,6 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "blocks.confirm":
     "Blockera %{name}? Ni kommer inte att se varandra i Vänner eller sökningar, och spelaren kan inte sätta sig vid dina bord.",
   "blocks.block_failed": "Kunde inte blockera spelaren. Försök igen.",
-  "blocks.unavailable": "Den här spelaren kan inte blockeras.",
   "blocks.unblock": "Avblockera",
   "blocks.unblock_player": "Avblockera %{name}",
   "blocks.unblock_help":
