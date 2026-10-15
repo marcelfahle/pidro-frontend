@@ -88,11 +88,12 @@ export function guestSaveFailure(error: unknown): GuestSaveFailure {
     if (field === 'email') emailTaken = taken || code === 'field_taken' || legacyTaken;
     if (reserved) classicNameReserved = true;
 
-    if (item.error_code && ['username', 'display_name', 'email', 'password'].includes(name ?? '')) {
-      fields[field] = localizedError(item, 'error.field_invalid');
-    } else if (reserved || nameTaken || (field === 'displayName' && legacyTaken)) {
+    if (
+      field === 'displayName' &&
+      (reserved || nameTaken || code === 'field_taken' || legacyTaken)
+    ) {
       fields[field] = t('auth.name_taken');
-    } else if (taken || (field === 'email' && legacyTaken)) {
+    } else if (field === 'email' && emailTaken) {
       fields[field] = t('auth.email_taken');
     } else {
       fields[field] = localizedError(
