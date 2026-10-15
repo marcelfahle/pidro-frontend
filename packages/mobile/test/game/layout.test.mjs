@@ -2,10 +2,14 @@ import { describe, expect, it } from 'bun:test';
 import {
   computeLayout,
   handLeft,
+  handScale,
   northBackWidth,
   northFanTop,
   northFanWidth,
   playedCardTarget,
+  showsTicker,
+  TIGHT_AVATAR,
+  TIGHT_SOUTH_SLOT,
   tickerPlacement,
   utilityDockReserve,
 } from '../../src/game/canvas/layout.ts';
@@ -86,11 +90,32 @@ describe('portrait trick fits between North and your hand', () => {
         8 +
         Math.min(58, Math.max(31, L.cardW * 0.66)) * (110 / 78) +
         12 +
-        (L.tight ? 64 : 98);
+        (L.tight ? TIGHT_AVATAR : 98);
       expect(northCardTop).toBeGreaterThanOrEqual(northSeatBottom);
       expect(southCardBottom).toBeLessThanOrEqual(L.hand.cy - L.cardH / 2);
     });
   }
+});
+
+describe('tight phones', () => {
+  const dock = (height) => utilityDockReserve(height);
+  for (const [width, height, insets, tight] of [
+    [360, 640, { top: 24, bottom: 0, left: 0, right: 0 }, true],
+    [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }, true],
+    [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }, false],
+    [402, 874, { top: 62, bottom: 34, left: 0, right: 0 }, false],
+  ]) {
+    it(`${tight ? 'go' : 'stay out of'} tight on ${width}×${height}`, () => {
+      expect(computeLayout(width, height, insets, 60, dock(height)).tight).toBe(tight);
+    });
+  }
+
+  it('leave your avatar a slot at the left of a full hand', () => {
+    const L = computeLayout(360, 640, { top: 24, bottom: 0, left: 0, right: 0 }, 60, dock(640));
+    const avatarLeft = L.hand.cx - L.hand.maxWidth / 2 - TIGHT_SOUTH_SLOT;
+    expect(avatarLeft).toBeGreaterThanOrEqual(8);
+    expect(avatarLeft + TIGHT_AVATAR).toBeLessThanOrEqual(handLeft(L, 9));
+  });
 });
 
 describe('the plaque ticker keeps off North’s fan', () => {
@@ -98,7 +123,6 @@ describe('the plaque ticker keeps off North’s fan', () => {
   const plaque = { plaqueLeft: 12, plaqueTop: 8 };
 
   for (const [width, height] of [
-    [360, 640],
     [390, 844],
     [430, 932],
   ]) {
@@ -115,10 +139,54 @@ describe('the plaque ticker keeps off North’s fan', () => {
   }
 
   it('drops below the fan beside the plaque in landscape', () => {
-    const L = computeLayout(640, 360, noInsets, 64, 0);
+    const L = computeLayout(844, 390, noInsets, 64, 0);
     const { lineMaxWidth, drop } = tickerPlacement(L, { tableTop: 64, ...plaque });
     const fanBottom = northFanTop(L, 64) + (northBackWidth(L.cardW) * 110) / 78;
     expect(plaque.plaqueTop + drop).toBeGreaterThanOrEqual(fanBottom);
     expect(lineMaxWidth).toBe(168);
   });
+});
+
+describe('small phones leave the ticker out', () => {
+  for (const [width, height, insets, shown] of [
+    [360, 640, { top: 24, bottom: 0, left: 0, right: 0 }, false],
+    [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }, false],
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 0 }, false],
+    [667, 375, { top: 0, bottom: 0, left: 0, right: 0 }, false],
+    [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }, true],
+    [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }, true],
+  ]) {
+    it(`${shown ? 'shows' : 'hides'} it on ${width}×${height}`, () => {
+      const portrait = height > width;
+      const L = computeLayout(
+        width,
+        height,
+        insets,
+        portrait ? 60 : 0,
+        portrait ? utilityDockReserve(height) : 0
+      );
+      expect(showsTicker(L)).toBe(shown);
+      expect(tickerPlacement(L, { tableTop: 60, plaqueLeft: 12, plaqueTop: 8 }) !== null).toBe(
+        shown
+      );
+    });
+  }
+});
+
+describe('landscape: your played card lands above your hand', () => {
+  for (const [width, height, side, bottom] of [
+    [640, 360, 0, 0],
+    [667, 375, 0, 0],
+    [844, 390, 47, 21],
+    [874, 402, 62, 21],
+    [956, 440, 62, 21],
+  ]) {
+    it(`on ${width}×${height}`, () => {
+      const L = computeLayout(width, height, { top: 0, bottom, left: side, right: side });
+      const south = playedCardTarget(L, 'south', 0, 1);
+      const pileBottom = south.y + (L.cardH * south.scale) / 2;
+      const handTop = L.hand.cy - (L.cardH * handScale(L.profile)) / 2;
+      expect(pileBottom).toBeLessThanOrEqual(handTop - 8 + 0.5);
+    });
+  }
 });

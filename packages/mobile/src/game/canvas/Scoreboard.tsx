@@ -64,7 +64,7 @@ export function Scoreboard({
   log = [],
   resting = null,
   yourTurn = false,
-  ticker = null,
+  ticker,
   stateArrived = true,
 }: {
   scores: Scores;
@@ -78,7 +78,7 @@ export function Scoreboard({
   resting?: TickerRestingLine | null;
   /** The log steps aside when it becomes your turn. */
   yourTurn?: boolean;
-  /** Where the ticker keeps off North's fan (layout's tickerPlacement). */
+  /** Where the ticker keeps off North's fan (layout's tickerPlacement); null leaves it out. */
   ticker?: { lineMaxWidth: number; drop: number } | null;
   /** False until the table has its first server state; the ticker waits for it. */
   stateArrived?: boolean;
@@ -175,16 +175,18 @@ export function Scoreboard({
         </View>
       </PressableFX>
       {/* A new table starts its ticker afresh. */}
-      <View style={{ marginTop: ticker?.drop ?? 0 }} pointerEvents="box-none">
-        <ActionTicker
-          key={roomCode ?? 'table'}
-          entries={entries}
-          resting={resting}
-          onOpenLog={() => setLogOpen(true)}
-          stateArrived={stateArrived}
-          lineMaxWidth={ticker?.lineMaxWidth}
-        />
-      </View>
+      {ticker !== null ? (
+        <View style={{ marginTop: ticker?.drop ?? 0 }} pointerEvents="box-none">
+          <ActionTicker
+            key={roomCode ?? 'table'}
+            entries={entries}
+            resting={resting}
+            onOpenLog={() => setLogOpen(true)}
+            stateArrived={stateArrived}
+            lineMaxWidth={ticker?.lineMaxWidth}
+          />
+        </View>
+      ) : null}
       {/* Closed, the log builds nothing. */}
       <HandLogWindow open={logOpen} onClose={() => setLogOpen(false)} groups={logOpen ? log : []} />
 
