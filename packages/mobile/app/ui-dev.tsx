@@ -377,7 +377,7 @@ function LobbySeatGallery() {
   const [joined, setJoined] = useState('Choose a seat');
   return (
     <ScreenShell scroll contentStyle={styles.shell}>
-      <PidroText role="label">Seat requirement samples — not live restrictions</PidroText>
+      <PidroText role="label">Seat requirement samples</PidroText>
       <PidroText testID="lobby-gallery-joined">{joined}</PidroText>
       {[undefined, 100, 1000].map((minimum, index) => (
         <RoomCard
@@ -393,9 +393,9 @@ function LobbySeatGallery() {
                 status: 'occupied',
                 player: { id: 'sample', username: 'AlexandriaLongName' },
               },
+              { seat_index: 3, position: 'west', status: 'free', player: null, min_games: minimum },
             ],
           }}
-          minimumGames={minimum ? { west: minimum } : undefined}
           onJoin={(code, position) => setJoined(`${code}: ${position}`)}
         />
       ))}

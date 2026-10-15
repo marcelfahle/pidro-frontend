@@ -1,6 +1,14 @@
-const lobbyCases = ['list', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].map(
-  (fixture) => `lobby-${fixture}`
-);
+const lobbyCases = [
+  'list',
+  'badges',
+  'locked',
+  'empty',
+  'rejoin',
+  'open',
+  'substitute',
+  'watch',
+  'search-empty',
+].map((fixture) => `lobby-${fixture}`);
 
 export const UI_VIEWPORTS = [
   { name: 'portrait', width: 390, height: 844 },

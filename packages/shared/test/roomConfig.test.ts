@@ -8,6 +8,22 @@ import {
 
 const positions = ['north', 'east', 'south', 'west'] as const;
 
+test('both seat transports preserve requirements, departure name and game progress', () => {
+  const game = { hand: 4, scores: { north_south: 34, east_west: 21 } };
+  for (const seats of [
+    { north: { min_games: 1000, vacated_by: 'Jussi' }, south: {} },
+    [{ position: 'north', min_games: 1000, vacated_by: 'Jussi' }, { position: 'south' }],
+  ]) {
+    const room = normalizeRoom({ code: 'GAME', seats, game });
+    expect(room.seats?.[0].min_games).toBe(1000);
+    expect(room.seats?.[0].vacated_by).toBe('Jussi');
+    expect(room.seats?.[1].min_games).toBe(0);
+    expect(room.game).toEqual(game);
+    expect(normalizeRoom(room)).toEqual(room);
+    expect(normalizeRoom({ code: 'WAIT', seats })).not.toHaveProperty('game');
+  }
+});
+
 test('a REST-shaped room takes its name from the config', () => {
   const room = normalizeRoom({
     code: 'E4W2',

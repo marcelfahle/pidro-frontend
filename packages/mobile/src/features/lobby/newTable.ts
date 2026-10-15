@@ -47,16 +47,25 @@ export function tableFooter(seats: Record<SeatKey, SeatChoice>): string {
 
 export function newTableRequest(
   ruleSet: RuleSet,
-  seats: Record<SeatKey, SeatChoice>
+  seats: Record<SeatKey, SeatChoice>,
+  requirements: TableDraft['requirements'] = {}
 ): { request: CreateRoomRequest; invite: boolean } {
-  const serverSeat = (choice: SeatChoice) => (choice === 'ai' ? 'ai' : 'open');
+  const serverSeat = (key: SeatKey) => {
+    const choice = seats[key];
+    const min_games = requirements[key] ?? 0;
+    return choice === 'ai'
+      ? 'ai'
+      : choice === 'open' && min_games > 0
+        ? { type: 'open' as const, min_games }
+        : 'open';
+  };
   return {
     request: {
       rule_set: ruleSet,
       seats: {
-        seat_2: serverSeat(seats.seat_2),
-        seat_3: serverSeat(seats.seat_3),
-        seat_4: serverSeat(seats.seat_4),
+        seat_2: serverSeat('seat_2'),
+        seat_3: serverSeat('seat_3'),
+        seat_4: serverSeat('seat_4'),
       },
     },
     invite: Object.values(seats).includes('invite'),

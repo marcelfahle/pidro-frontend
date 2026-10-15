@@ -6,7 +6,11 @@ const pairs: Position[][] = [
   ['east', 'west'],
 ];
 
-export function tableRow(room: Room, category: LobbyCategoryKey) {
+export function seatRequirementMessage(minGames: number, gamesPlayed: number): string {
+  return `${minGames} games played needed, you have ${gamesPlayed}`;
+}
+
+export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: number) {
   const seats = pairs.flat().map((position) => {
     const seat = room.seats?.find((seat) =>
       seat.position ? seat.position === position : seat.seat_index === POSITION_TO_INDEX[position]
@@ -21,6 +25,7 @@ export function tableRow(room: Room, category: LobbyCategoryKey) {
       : category === 'substitute_needed'
         ? 'sub'
         : 'open';
+    const minGames = kind === 'open' ? (seat?.min_games ?? 0) : 0;
     return {
       position,
       id,
@@ -34,6 +39,15 @@ export function tableRow(room: Room, category: LobbyCategoryKey) {
               ? 'Sit in'
               : 'Open',
       avatarUrl: player?.avatar_url,
+      minGames,
+      requirementReason:
+        kind === 'open' &&
+        category === 'open_tables' &&
+        room.status !== 'playing' &&
+        gamesPlayed !== undefined &&
+        gamesPlayed < minGames
+          ? seatRequirementMessage(minGames, gamesPlayed)
+          : undefined,
       canJoin:
         !occupied &&
         !room.locked &&
@@ -45,15 +59,22 @@ export function tableRow(room: Room, category: LobbyCategoryKey) {
   const ordered =
     host === 'east' || host === 'west' ? [...seats.slice(2), ...seats.slice(0, 2)] : seats;
   const open = seats.filter((seat) => seat.canJoin).length;
+  const vacatedBy = room.seats?.find(
+    (seat) => seat.status === 'free' && seat.vacated_by
+  )?.vacated_by;
   return {
     seats: ordered,
     status:
       category === 'my_rejoinable'
         ? 'Your seat is waiting'
         : category === 'substitute_needed'
-          ? 'Needs a substitute'
+          ? room.game && vacatedBy
+            ? `${vacatedBy} left in hand ${room.game.hand}`
+            : 'Needs a substitute'
           : category === 'spectatable'
-            ? 'Playing'
+            ? room.game
+              ? `Hand ${room.game.hand} · ${room.game.scores.north_south} to ${room.game.scores.east_west}`
+              : 'Playing'
             : `${open} ${open === 1 ? 'seat' : 'seats'} open`,
     button: category === 'my_rejoinable' ? 'Rejoin' : category === 'spectatable' ? 'Watch' : null,
   };

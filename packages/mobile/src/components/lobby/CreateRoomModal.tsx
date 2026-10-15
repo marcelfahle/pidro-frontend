@@ -92,7 +92,7 @@ export function CreateRoomForm({
   );
   const submit = () => {
     if (isLoading) return;
-    const { request, invite } = newTableRequest(ruleSet, draft.seats);
+    const { request, invite } = newTableRequest(ruleSet, draft.seats, draft.requirements);
     onSubmit(request, invite);
   };
 

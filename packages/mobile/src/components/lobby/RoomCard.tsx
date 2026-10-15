@@ -19,7 +19,8 @@ export const RoomCard = memo(function RoomCard({
   onAction,
   error,
   pending,
-  minimumGames,
+  gamesPlayed,
+  onLocked,
 }: {
   room: Room;
   category?: LobbyCategoryKey;
@@ -27,9 +28,10 @@ export const RoomCard = memo(function RoomCard({
   onAction?: (code: string, category: LobbyCategoryKey) => void;
   error?: string;
   pending?: boolean;
-  minimumGames?: Partial<Record<Position, number>>;
+  gamesPlayed?: number;
+  onLocked?: (code: string, reason: string) => void;
 }) {
-  const row = tableRow(room, category);
+  const row = tableRow(room, category, gamesPlayed);
   const mine = category === 'my_rejoinable';
   return (
     <Surface
@@ -78,7 +80,9 @@ export const RoomCard = memo(function RoomCard({
             <>
               <View>
                 {seat.kind === 'open' || seat.kind === 'sub' ? (
-                  <OpenChair size={44} substitute={seat.kind === 'sub'} />
+                  <View style={seat.requirementReason ? styles.lockedChair : undefined}>
+                    <OpenChair size={44} substitute={seat.kind === 'sub'} />
+                  </View>
                 ) : (
                   <PlayerAvatar
                     size={44}
@@ -86,8 +90,8 @@ export const RoomCard = memo(function RoomCard({
                     kind={seat.kind === 'bot' ? 'bot' : 'player'}
                   />
                 )}
-                {minimumGames?.[seat.position] ? (
-                  <SeatRequirementBadge games={minimumGames[seat.position]!} />
+                {seat.minGames > 0 ? (
+                  <SeatRequirementBadge games={seat.minGames} locked={!!seat.requirementReason} />
                 ) : null}
               </View>
               <PidroText
@@ -112,9 +116,17 @@ export const RoomCard = memo(function RoomCard({
               {seat.canJoin ? (
                 <PressableFX
                   accessibilityRole="button"
-                  accessibilityLabel={`${seat.kind === 'sub' ? 'Sit in' : 'Join'} ${seat.position} seat`}
+                  accessibilityLabel={
+                    seat.requirementReason
+                      ? `${seat.position} seat locked, ${seat.requirementReason}`
+                      : `${seat.kind === 'sub' ? 'Sit in' : 'Join'} ${seat.position} seat${seat.minGames > 0 ? `, ${seat.minGames} games played needed` : ''}`
+                  }
                   disabled={pending}
-                  onPress={() => onJoin(room.code, seat.position)}
+                  onPress={() =>
+                    seat.requirementReason
+                      ? onLocked?.(room.code, seat.requirementReason)
+                      : onJoin(room.code, seat.position)
+                  }
                   style={styles.seat}>
                   {content}
                 </PressableFX>
@@ -154,6 +166,7 @@ const styles = StyleSheet.create({
   amber: { color: PidroColors.rulesLouisianaText },
   playing: { color: PidroColors.textSoft },
   open: { color: PidroColors.cyanText },
+  lockedChair: { opacity: 0.45 },
   button: { minHeight: 44, borderRadius: PidroRadii.lg },
   buttonFace: { paddingHorizontal: 12, minHeight: 40, justifyContent: 'center' },
   buttonText: { fontSize: 13 },

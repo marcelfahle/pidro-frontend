@@ -2,10 +2,16 @@ import type { SeatPin } from './game';
 
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished';
 export type RuleSet = 'finnish' | 'louisiana';
-export type SeatType = 'open' | 'ai';
+export type SeatType = 'open' | 'ai' | { type: 'open'; min_games: 0 | 100 | 1000 };
 export type BotDifficulty = 'random' | 'basic' | 'smart';
 export type Position = 'north' | 'east' | 'south' | 'west';
 export type PositionPreference = Position | 'north_south' | 'east_west';
+
+export interface SeatRequiresGamesError {
+  error: 'SEAT_REQUIRES_GAMES';
+  min_games: number;
+  games_played: number;
+}
 
 export interface ReadinessSnapshot {
   room_id: string;
@@ -57,6 +63,8 @@ export interface Seat {
   player: Player | null;
   position?: Position;
   player_id?: string | null;
+  min_games?: number;
+  vacated_by?: string;
 }
 
 export interface Room {
@@ -68,6 +76,10 @@ export interface Room {
   host_id?: string | null;
   locked?: boolean;
   status: RoomStatus;
+  game?: {
+    hand: number;
+    scores: { north_south: number; east_west: number };
+  };
   player_count?: number;
   players_count?: number;
   max_players?: number;

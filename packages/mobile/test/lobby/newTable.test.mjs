@@ -25,12 +25,29 @@ describe('new table request', () => {
     });
   });
 
-  it('keeps game requirements local rather than adding them to the request', () => {
-    const next = chooseSeat(draft(), 'seat_3', 1000);
-    expect(next.requirements.seat_3).toBe(1000);
-    expect(newTableRequest('finnish', next.seats)).toEqual(
-      newTableRequest('finnish', defaultSeats)
-    );
+  it('sends requirements only for open seats, preserving Anyone as the old string', () => {
+    expect(
+      newTableRequest(
+        'finnish',
+        { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
+        { seat_2: 100, seat_3: 1000, seat_4: 0 }
+      ).request.seats
+    ).toEqual({
+      seat_2: { type: 'open', min_games: 100 },
+      seat_3: { type: 'open', min_games: 1000 },
+      seat_4: 'open',
+    });
+    expect(
+      newTableRequest(
+        'louisiana',
+        { seat_2: 'ai', seat_3: 'invite', seat_4: 'open' },
+        { seat_2: 100, seat_3: 1000 }
+      ).request.seats
+    ).toEqual({
+      seat_2: 'ai',
+      seat_3: 'open',
+      seat_4: 'open',
+    });
   });
 });
 
