@@ -9,10 +9,10 @@ import {
 } from '../src/features/rules/ruleSets.ts';
 import english from '../src/i18n/en.json';
 
-test('rules have one label and flag mapping', () => {
-  expect(Object.values(ruleSets).map(({ labelKey, flag }) => [english[labelKey], flag])).toEqual([
-    ['Finnish', '🇫🇮'],
-    ['Louisiana', '🇺🇸'],
+test('rules have one label each', () => {
+  expect(Object.values(ruleSets).map(({ labelKey }) => english[labelKey])).toEqual([
+    'Finnish',
+    'Louisiana',
   ]);
 });
 

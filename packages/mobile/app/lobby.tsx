@@ -458,8 +458,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
             onJoinCode={() => router.push('/join-code')}
             onQuickGame={quickGame.start}
             quickGameLoading={quickGame.loading}
-            filter={filter}
-            onShowAll={() => changeFilter('all')}
           />
         ) : hasNoResults ? (
           <LobbyEmptyState
@@ -621,15 +619,11 @@ function EmptyLobby({
   onJoinCode,
   onQuickGame,
   quickGameLoading,
-  filter,
-  onShowAll,
 }: {
   onStart: () => void;
   onJoinCode: () => void;
   onQuickGame: () => void;
   quickGameLoading: boolean;
-  filter: RuleSet | 'all';
-  onShowAll: () => void;
 }) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -682,14 +676,6 @@ function EmptyLobby({
             Start one and it shows up here for everyone. Open seats wait for players, and any seat
             can be a bot.
           </PidroText>
-          {filter !== 'all' ? (
-            <>
-              <PidroText role="metadata" tone="soft" align="center">
-                {t('rules.empty', { rules: ruleSetLabel(filter) })}
-              </PidroText>
-              <TextLink label={t('rules.showAll')} onPress={onShowAll} />
-            </>
-          ) : null}
         </View>
         {landscape || tablet ? null : <View style={styles.emptySpacer} />}
         <View style={styles.emptyActions}>
