@@ -291,9 +291,9 @@ export function SeatLayer({
         const avatar = onProfile?.[rel] ? (
           <PressableFX
             accessibilityRole="button"
-            accessibilityLabel={t('friends.view_profile', {
+            accessibilityLabel={`${t('friends.view_profile', {
               name: data.username ?? t('social.player'),
-            })}
+            })}, ${avatarLabel({ ...seat, ...(tight && { level: null, pin: null }) })}`}
             onPress={onProfile[rel]}
             style={{ minHeight: PidroLayout.touchTarget, minWidth: PidroLayout.touchTarget }}>
             {identity}

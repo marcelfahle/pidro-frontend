@@ -80,7 +80,7 @@ const allCases = [
     path: `/table-dev?phase=${phase}&role=player`,
     testId: 'player-profile-modal',
     authenticated: true,
-    open: phase === 'waiting' ? /^mfios1,.*View profile$/ : "View mfios1's profile",
+    open: phase === 'waiting' ? /^mfios1,.*View profile$/ : /^View mfios1's profile/,
     playerProfile: true,
   })),
   {
@@ -1701,6 +1701,10 @@ async function assertBidLines(page, testCase, viewport) {
       [`seat-${seat}`, spoken],
       { timeout: 10_000 }
     );
+    const profileLabel = await avatar.evaluate((node) =>
+      node.closest('[role="button"]')?.getAttribute('aria-label')
+    );
+    if (profileLabel) assert.ok(profileLabel.endsWith(`, ${spoken}`));
     const shown = [];
     for (const text of await avatar.getByText(/^(Bid|High|Passed|Bud|Högst|Passat)/).all()) {
       if (await text.isVisible()) shown.push(text);
@@ -1772,7 +1776,7 @@ async function assertBidGridLayout(page, viewport, locale) {
     );
   }
 
-  const passBox = await getStableBox(page.getByRole('button', { name: 'Pass' }), page);
+  const passBox = await getStableBox(page.getByRole('button', { name: 'Pass', exact: true }), page);
   const gridBottom = Math.max(...boxes.map((box) => box.y + box.height));
   if (!passBox || passBox.y < gridBottom + 4) {
     throw new Error(
