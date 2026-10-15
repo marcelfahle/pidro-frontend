@@ -181,7 +181,7 @@ test('picked friends become holds only on Open; invitations arrive live, recover
         async (route) => {
           expect(route.request().postDataJSON()).toEqual({ position: 'south' });
           await route.fulfill({
-            status: 409,
+            status: 422,
             json: { error, error_code: error, error_params: {} },
           });
         },
