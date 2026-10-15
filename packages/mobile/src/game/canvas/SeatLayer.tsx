@@ -188,22 +188,24 @@ export function SeatLayer({
     (parts.level ? parts.level.height + parts.level.bottom + 3 : 4) +
     parts.name.lineHeight +
     parts.status.lineHeight;
-  // Portrait keeps the opponents a triangle: east and west start a step below
-  // North. On a short phone that step wins, and the stacks move down under
-  // the seats instead, as far as the hand allows.
+  // Portrait keeps the opponents a triangle where it can: east and west start
+  // a step below North, and their stacks move down under them, as far as the
+  // hand allows. Where even that is not enough (the smallest phones), the
+  // seats rise beside North instead: a seat never sits on its own cards.
+  const handTop = L.hand.cy - L.cardH / 2;
+  const lowestStackTop = Math.max(sideStackTop, handTop - PidroSpacing.sm - sideStackMaxHeight);
   const sideSeatTop = Math.max(
     tableTop + PidroSpacing.xs,
-    northSeatTop + PidroSpacing.md,
-    sideStackTop - PidroSpacing.sm - stackedSeat
+    Math.min(
+      Math.max(northSeatTop + PidroSpacing.md, sideStackTop - PidroSpacing.sm - stackedSeat),
+      lowestStackTop - PidroSpacing.sm - stackedSeat
+    )
   );
-  const handTop = L.hand.cy - L.cardH / 2;
   const sideStackCy = portrait
     ? Math.max(
         L.sides.cy,
-        Math.min(
-          sideSeatTop + stackedSeat + PidroSpacing.sm + sideStackMaxHeight / 2,
-          handTop - PidroSpacing.sm - sideStackMaxHeight / 2
-        )
+        Math.min(sideSeatTop + stackedSeat + PidroSpacing.sm, lowestStackTop) +
+          sideStackMaxHeight / 2
       )
     : L.sides.cy;
   const sideSeatPos = portrait
