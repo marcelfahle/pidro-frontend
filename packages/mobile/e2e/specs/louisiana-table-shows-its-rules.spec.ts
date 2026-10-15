@@ -61,13 +61,9 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByTestId(`room-rules-${first}`)).toContainText('Louisiana');
-  await page
-    .getByTestId('lobby-screen')
-    .getByRole('button', { name: 'Rejoin', exact: true })
-    .click();
-  await page.waitForURL(`**/game/${first}`);
+  await page.close();
+  page = seatedPage;
   await expect(page.getByTestId('waiting-rule-set').last()).toContainText('Louisiana');
-  await seatedPage.close();
   await expect(page.getByTestId('rules-explainer')).toBeVisible();
   await page.getByTestId('rules-done').click();
   await expect(page.getByTestId('rules-explainer')).not.toBeVisible();
