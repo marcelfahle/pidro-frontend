@@ -92,7 +92,7 @@ const allCases = [
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'league', path: '/league', testId: 'league-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
-  ...['list', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].map((fixture) => ({
+  ...['list', 'badges', 'locked', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].map((fixture) => ({
     name: `lobby-${fixture}`,
     path: `/lobby?fixture=${fixture}`,
     testId: fixture === 'empty' ? 'lobby-empty' : 'lobby-screen',
@@ -620,7 +620,7 @@ async function assertLobbyPresentation(page, testCase) {
     await row('MY').getByText('Your seat is waiting', { exact: true }).waitFor();
     assert.equal(await row('MY').getByRole('button', { name: 'Rejoin', exact: true }).count(), 1);
   }
-  if (['list', 'search-empty', 'open'].includes(fixture)) {
+  if (['list', 'search-empty', 'open', 'badges', 'locked'].includes(fixture)) {
     await row('OPEN1').getByText('Claas', { exact: true }).waitFor();
     assert.equal(await row('OPEN1').getByText('Open', { exact: true }).count(), 3);
     await row('OPEN1').getByText('3 seats open', { exact: true }).waitFor();
@@ -628,9 +628,17 @@ async function assertLobbyPresentation(page, testCase) {
     assert.equal(await row('OPEN2').getByText('Bot', { exact: true }).count(), 1);
     assert.equal(await row('OPEN2').getByText('Open', { exact: true }).count(), 2);
     await row('OPEN2').getByText('2 seats open', { exact: true }).waitFor();
+    assert.equal(await row('OPEN1').getByTestId('seat-requirement').count(), 3);
+    assert.equal(await row('OPEN2').getByTestId('seat-requirement').count(), 0);
+    assert.equal(await row('OPEN3').getByTestId('seat-requirement').innerText(), '1000+');
+  }
+  if (fixture === 'locked') {
+    await row('OPEN1').getByRole('button', { name: 'south seat locked, 100 games played needed, you have 40', exact: true }).click();
+    await row('OPEN1').getByRole('alert').waitFor();
+    assert.equal(await row('OPEN1').getByRole('alert').innerText(), '100 games played needed, you have 40');
   }
   if (['list', 'search-empty', 'substitute'].includes(fixture)) {
-    for (const name of ['Anna', 'Pekka', 'Liisa', 'Needs a substitute'])
+    for (const name of ['Anna', 'Pekka', 'Liisa', 'Jussi left in hand 3'])
       await row('SUB').getByText(name, { exact: true }).waitFor();
     assert.equal(
       await row('SUB')
@@ -640,7 +648,8 @@ async function assertLobbyPresentation(page, testCase) {
     );
   }
   if (['list', 'search-empty', 'watch'].includes(fixture)) {
-    await row('WATCH1').getByText('Playing', { exact: true }).waitFor();
+    await row('WATCH1').getByText('Hand 4 · 34 to 21', { exact: true }).waitFor();
+    await row('WATCH2').getByText('Playing', { exact: true }).waitFor();
     assert.equal(
       await row('WATCH1').getByRole('button', { name: 'Watch', exact: true }).count(),
       1
@@ -1644,11 +1653,12 @@ async function main() {
           if (pageErrors.length) {
             throw new Error(`${testCase.name} page errors: ${pageErrors.join(' | ')}`);
           }
+          if (testCase.lobbyFixture === 'locked') await assertLobbyPresentation(page, testCase);
           await page.screenshot({
             path: resolve(screenshotDir, `${testCase.name}.png`),
             fullPage: false,
           });
-          await assertLobbyPresentation(page, testCase);
+          if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
           await assertCreationPresentation(page, testCase);
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);

@@ -41,12 +41,20 @@ function room(code: string, names: (string | null)[], louisiana = false, playing
 
 export function lobbyFixture(
   value?: string
-): { lobby: LobbyCategories; query: string } | undefined {
+): { lobby: LobbyCategories; query: string; gamesPlayed: number } | undefined {
   if (
     !__DEV__ ||
-    !['list', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].includes(
-      value ?? ''
-    )
+    ![
+      'list',
+      'badges',
+      'locked',
+      'empty',
+      'rejoin',
+      'open',
+      'substitute',
+      'watch',
+      'search-empty',
+    ].includes(value ?? '')
   )
     return;
   const lobby: LobbyCategories = {
@@ -66,9 +74,24 @@ export function lobbyFixture(
       room('WATCH3', ['Juha', 'Lasse', 'Matti', 'Antti'], false, true),
     ],
   };
+  for (const [index, minimum] of [
+    [0, 100],
+    [2, 1000],
+    [3, 1000],
+    [4, 100],
+  ]) {
+    for (const seat of lobby.open_tables[index].seats ?? []) {
+      if (seat.status === 'free') seat.min_games = minimum;
+    }
+  }
+  lobby.substitute_needed[0].game = { hand: 3, scores: { north_south: 12, east_west: 9 } };
+  lobby.substitute_needed[0].seats!.find((seat) => seat.status === 'free')!.vacated_by = 'Jussi';
+  lobby.spectatable[0].game = { hand: 4, scores: { north_south: 34, east_west: 21 } };
   const categories: Record<string, keyof LobbyCategories> = {
     rejoin: 'my_rejoinable',
     open: 'open_tables',
+    badges: 'open_tables',
+    locked: 'open_tables',
     substitute: 'substitute_needed',
     watch: 'spectatable',
   };
@@ -81,5 +104,6 @@ export function lobbyFixture(
           ? { ...emptyLobbyCategories(), [category]: lobby[category] }
           : lobby,
     query: value === 'search-empty' ? 'Nobody named this' : '',
+    gamesPlayed: value === 'locked' ? 40 : 1500,
   };
 }

@@ -113,8 +113,8 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
 
-`/ui-dev?state=lobby-seats` shows lobby seat presentation samples, not live seat
-restrictions: the server does not yet supply or enforce minimum games.
+`/ui-dev?state=lobby-seats` shows lobby seat requirement samples using the same
+seat payload as the live lobby.
 `node scripts/verify-lobby.mjs` checks the real lobby with mocked API responses at
 four phone sizes, including direct seat joins, search, create, error states, the
 empty Tables screen (start a table, join with a code, the quick game Home also starts)
@@ -206,8 +206,13 @@ not displayed. `rejoin`, `open`, `substitute`, and `watch` isolate each row kind
 player query and offers Clear search. Search is labelled **Find a player** and
 matches human player names, not table names, codes or bots.
 
+`badges` shows open tables with 100+ and 1000+ chairs for a 1500-game player.
+`locked` shows the same tables for a 40-game player; tap a dimmed chair for the
+five-second inline reason. `watch` includes “Hand 4 · 34 to 21” and older-payload
+“Playing” rows; `substitute` shows “Jussi left in hand 3” using the current hand.
+
 Grammar cases: `lobby-list`, `lobby-empty`, `lobby-rejoin`, `lobby-open`,
-`lobby-substitute`, `lobby-watch`, `lobby-search-empty`. They cover the phone
+`lobby-badges`, `lobby-locked`, `lobby-substitute`, `lobby-watch`, `lobby-search-empty`. They cover the phone
 viewports plus lobby-specific 834×1194 and 1194×834 tablet sizes. The existing
 `home-tablet-portrait` and `tablet-landscape` CI shards apply those sizes only to
 lobby cases; other screens keep their existing dimensions.

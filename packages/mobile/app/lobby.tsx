@@ -8,10 +8,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
 import { lobbyFixture } from '@/features/lobby/fixtures';
-import { filterPlayers, lobbyCounts } from '@/features/lobby/tableRow';
+import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
 import { pickProfile } from '@/game/canvas/layout';
 import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
@@ -32,6 +32,7 @@ import { Surface } from '@/components/ui/Surface';
 import { TextLink } from '@/components/ui/TextLink';
 import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { useQuickGame } from '@/hooks/useQuickGame';
+import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
@@ -101,6 +102,41 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const pendingAccountActionRef = useRef<(() => Promise<void>) | null>(null);
   const realtimeRevisionRef = useRef(0);
   const quickGame = useQuickGame();
+  const refreshIdentity = useProfileIdentity();
+  const [record, setRecord] = useState<{ userId: string; games?: number }>();
+  const gamesPlayed = fixture
+    ? fixture.gamesPlayed
+    : record?.userId === user?.id
+      ? record?.games
+      : undefined;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (fixture || !user?.id) return;
+      let active = true;
+      void refreshIdentity()
+        .then((identity) => {
+          if (active && identity)
+            setRecord({ userId: identity.user_id, games: identity.record?.games });
+        })
+        .catch(() => {
+          if (active) setRecord(undefined);
+        });
+      return () => {
+        active = false;
+      };
+    }, [fixture, refreshIdentity, user?.id])
+  );
+
+  useEffect(() => {
+    if (!Object.values(rowErrors).some(Boolean)) return;
+    const timer = setTimeout(() => setRowErrors({}), 5000);
+    return () => clearTimeout(timer);
+  }, [rowErrors]);
+
+  const showSeatReason = useCallback((code: string, reason: string) => {
+    setRowErrors((errors) => ({ ...errors, [code]: reason }));
+  }, []);
 
   const requestAccount = useCallback((retry: () => Promise<void>) => {
     pendingAccountActionRef.current = retry;
@@ -193,7 +229,15 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         upsertLobbyRoom(response.room, 'my_rejoinable');
         router.push(`/game/${code}`);
       } catch (joinError: unknown) {
-        const { code: errorCode, detail } = apiErrorInfo(joinError);
+        const { code: errorCode, detail, requirement } = apiErrorInfo(joinError);
+        if (requirement) {
+          showSeatReason(
+            code,
+            seatRequirementMessage(requirement.min_games, requirement.games_played)
+          );
+          await loadLobby();
+          return;
+        }
         if (errorCode === 'ACCOUNT_REQUIRED') {
           if (mayRequestAccount) {
             requestAccount(() => joinRoom(code, position, false));
@@ -220,7 +264,16 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         setJoining(null);
       }
     },
-    [fixture, joining, upsertLobbyRoom, router, requestAccount, activeRoom?.code, loadLobby]
+    [
+      fixture,
+      joining,
+      upsertLobbyRoom,
+      router,
+      requestAccount,
+      activeRoom?.code,
+      loadLobby,
+      showSeatReason,
+    ]
   );
 
   const handleWatchRoom = useCallback(
@@ -492,6 +545,8 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
                           room={room}
                           category={category}
                           onJoin={handleJoinRoom}
+                          gamesPlayed={gamesPlayed}
+                          onLocked={showSeatReason}
                           pending={joining === room.code}
                           error={rowErrors[room.code]}
                           onAction={handleRowAction}

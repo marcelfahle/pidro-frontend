@@ -37,6 +37,8 @@ function normalizeSeat(raw: any, fallbackIndex: number): Seat {
     status,
     player: player ?? null,
     player_id: raw?.player_id ?? player?.id ?? null,
+    min_games: raw?.min_games ?? 0,
+    vacated_by: raw?.vacated_by,
   };
 }
 
@@ -97,6 +99,8 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
             }
           : null,
       player_id: playerId,
+      min_games: value?.min_games,
+      vacated_by: value?.vacated_by,
     };
   });
 }
