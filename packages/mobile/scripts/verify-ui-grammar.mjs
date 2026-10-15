@@ -1497,12 +1497,12 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
     }
 
     for (const label of [
-      '8 of clubs, worth 0 points',
-      'Ace of spades, worth 1 point',
-      '3 of hearts, worth 0 points',
-      'Jack of diamonds, worth 0 points',
-      '10 of hearts, worth 0 points',
-      '2 of spades, worth 1 point',
+      '8 of Clubs',
+      'Ace of Spades, worth 1 point',
+      '3 of Hearts',
+      'Jack of Diamonds',
+      '10 of Hearts',
+      '2 of Spades, worth 1 point',
     ]) {
       const card = page.getByRole('button', { name: label, exact: true });
       await card.scrollIntoViewIfNeeded();
@@ -1570,7 +1570,8 @@ async function assertAbovePlayerHand(page, name, box, viewport) {
   const handTop = handBox.y;
   const minimumClearance = viewport.height >= viewport.width ? 28 : 8;
 
-  if (box.y + box.height > handTop - minimumClearance) {
+  // Layout/card transforms can land on opposite sides of a half-pixel boundary.
+  if (box.y + box.height > handTop - minimumClearance + 0.5) {
     throw new Error(
       `${name} is too close to the player hand in ${viewport.name}: window=${JSON.stringify(box)} protectedHandTop=${handTop} minimumClearance=${minimumClearance}`
     );
