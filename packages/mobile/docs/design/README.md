@@ -1,6 +1,6 @@
 # Design boards
 
-The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14. The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
+The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202). The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
 
 - `boards/<Name>.png`: what it should look like. Phone boards are at 2×, wide boards at 1×.
 - `source/<Name>.html`: the same board as plain HTML and CSS. Open it in a browser, or read it for exact sizes, offsets and colours. The shared classes are in `source/pidro-ds-v2.css`.
@@ -24,7 +24,11 @@ Initials stand in for photos on the boards. In the app the avatar is the player'
 | `Badge-Sheet` | The sheet behind the avatar: ring, and which pin to wear | Profile |
 | `Ladders` | Week, month, all time | League tab, later leagues |
 | `League`, `League-Intro`, `League-Result` | The weekly league: tab, first visit, Monday's result | Later; not before launch |
-| `Lobby-Empty`, `Create-Table`, `Create-Seat` | Tables with nobody playing, and a new table | Tables screens |
+| `Lobby-Empty` | Tables with nobody playing: four empty chairs, Start a table | Tables (PID-203) |
+| `Lobby-List` | Tables, phone portrait: rows of chairs grouped in four categories, tap an open chair to sit | Tables (PID-203) |
+| `Lobby-Landscape`, `Lobby-iPad-Portrait`, `Lobby-iPad-Landscape` | The same row in two columns (phone landscape, iPad portrait) and three (iPad landscape) | Tables (PID-203) |
+| `Create-Table` | Start a table: rules, then the seats with Open / Bot / Friend; Open flips in place to Anyone / 100+ / 1000+ | Start a table (PID-204, PID-206) |
+| `Create-Seat` | The friend sheet behind Friend on a seat | Start a table (PID-208) |
 
 On the boards the gold ring means a paying supporter and the gem means lifetime. Neither exists on the server yet, so until it does every avatar uses the glass ring.
 
