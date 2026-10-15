@@ -1,0 +1,409 @@
+﻿TID_On~On
+TID_Off~Off
+TID_Yes~Yes
+TID_No~No
+TID_NoThanks~No thanks
+TID_Ok~OK
+TID_Select~Select
+TID_Add~Add
+TID_Block~Block
+TID_UnBlock~Unblock
+TID_Remove~Remove
+TID_Cancel~Cancel
+TID_Submit~Submit
+TID_UserName~Username
+TID_ConfirmPassword~Confirm Password
+TID_EnterPassword~Enter Password
+TID_Password~Password
+TID_SetPassword~Set Password
+TID_EmailAddress~Email address
+TID_SignIn~Sign In
+TID_English~English
+TID_Swedish~Swedish
+TID_Or~or
+TID_Info~INFO
+TID_Stats~Stats
+TID_YourStats~Leaderboard
+TID_Winners~Winners
+TID_Runners~Losers
+TID_Score~Score
+TID_Facebook~Facebook
+TID_ConnectFacebook~Connect with Facebook
+TID_ConnectApple~Sign in with Apple
+TID_Custom~Custom
+TID_AddFriends~Add Friends
+TID_Host~Host
+TID_Joined~Joined
+TID_YouJoined~Joined
+TID_Public~Public
+TID_Private~Private
+TID_PrivateRoomName~Password-Protected
+TID_PublicRoomName~Password-Protected
+TID_Invite~Invite
+TID_OpenPublic~Open Public
+TID_AddMembers~Add Players
+TID_AddTeamMember~Add Team Member
+TID_AddMember~Add Player
+TID_Waiting~Waiting...
+TID_Registering~Registering
+TID_SinglePlayer~Single Player
+TID_Multiplayer~Multiplayer
+TID_QuickJoin~Quick Join
+TID_ComingSoon~Coming Soon
+TID_Loading~Loading
+TID_Sound~Sound
+TID_Language~Language
+TID_Help~Help
+TID_Cards~Cards
+TID_AboutUs~About Us
+TID_PointsEarned~Points Earned
+TID_Points~Points
+TID_Ranking~Ranking
+TID_HighestCard~Highest card
+TID_HighCard~High card
+TID_NormalCard~Normal Card
+TID_PidroCard~Pidro Card
+TID_Forgot~Forgot Credentials?
+TID_Resend~Resend
+TID_OTP~One-time password
+TID_Verify~Verify
+TID_Join~Join
+TID_Crop~Crop
+TID_VS~vs
+TID_Quitter~Quitter
+TID_FairPlay~Fair Play
+TID_TypeMessage~Type Message
+TID_Hi~Hi!
+TID_NiceHand~Nice Hand!
+TID_WellPlayed~Well Played!
+TID_GoodTry~Good Try!
+TID_Zzz~ZzzZzz...
+TID_PlayAgain~Play Again?
+TID_ComeOn~Come On!!
+TID_Unlucky~Unlucky...
+TID_Tack~Thanks!
+TID_MyMistake~My Mistake..
+TID_NewAccount~Create New Account
+TID_Transfer~Transfer old Account
+TID_CheckUserName~Please check your Username
+TID_CheckPassword~Please check your Password
+TID_GetCredentials~Get Credentials
+TID_DataReceived~Data Received
+TID_FetchingData~Fetching Data
+TID_InvalidEmail~Invalid E-mail entered
+TID_CheckMail~Please check your mail and enter OTP
+TID_WrongOTP~Wrong OTP entered
+TID_UsernameEmpty~Username can't be empty
+TID_PasswordEmpty~Password can't be empty
+TID_FetchFriendList~Fetching friend list
+TID_Unsuccessful~Unsuccessful
+TID_FetchingStats~Fetching your stats...
+TID_LoggingOut~Logging Out...
+TID_DeleteUser~Deleting user data...
+TID_DeleteUserButton~Delete User
+TID_SuccessfullyLoggedOut~Successfully Logged Out.
+TID_SuccessfullyDeleteUser~Successfully delete user.
+TID_CreatingSlot~Creating Slot...
+TID_CreatingRoom~Creating Table...
+TID_JoiningRoom~Joining Table...
+TID_Search~Search...
+TID_MatchesNotAvailable~No data available.
+TID_PlayedGames~Played Games
+TID_Wins~Wins
+TID_Loses~Losses
+TID_WinPerentage~Win Percentage
+TID_NoOfGames~No. of games Played
+TID_WinningPercentage~Winning Percentage
+TID_TapToStart~Tap To Start The Game
+TID_SingleplayerStats~Single Player
+TID_MultiplayerStats~Online Multiplayer
+TID_DifferentSuit~Different Suit But Same Color
+TID_PickFavourite~Pick Your Favourite
+TID_InvitationsLeft~Invitations Left
+TID_Bio~BIO
+TID_CreditsCaps~CREDITS
+TID_NewAccountCaps~CREATE NEW ACCOUNT
+TID_TransferCaps~TRANSFER OLD ACCOUNT
+TID_Email~VERIFY YOUR E-MAIL
+TID_ForgotCaps~FORGOT CREDENTIALS
+TID_AboutUsCaps~ABOUT US
+TID_SettingsCaps~SETTINGS
+TID_HelpCaps~HELP
+TID_ChooseThemeCaps~CHOOSE A THEME
+TID_QuitterCaps~QUITTER
+TID_FairPlayCaps~FAIR PLAY
+TID_ChooseAnAvatar~CHOOSE AN AVATAR
+TID_ChooseAvatar~CHOOSE AVATAR
+TID_ChooseGalary~CHOOSE FROM GALLERY
+TID_ChooseYourPic~ CHOOSE YOUR PIC
+TID_CropImage~CROP IMAGE
+TID_GameOver~GAME OVER
+TID_Profile~PROFILE
+TID_WaitingCaps~WAITING
+TID_CreateOrJoin~CREATE OR JOIN TABLE
+TID_AddMemberCaps~ADD MEMBERS
+TID_InviteFriendsCaps~INVITE FRIENDS
+TID_CancelCaps~CANCEL
+TID_SubmitCaps~SUBMIT
+TID_MyProfile~MY PROFILE
+TID_NetWorkErrorProfileUpdateFailed~Network Error: Profile Update Failed. Please check your internet.
+TID_ServerErrorProfileUpdateFailed~Network Error: Profile Update Failed. Please check your internet.
+TID_ServerErrorSendFinalScore~Network Error: Score Update Failed. Please check your internet.
+TID_NetWorkErrorSendFinalScore~Network Error: Score Update Failed. Please check your internet.
+TID_AlredyTransferred~This account has already been transferred.
+TID_TrySigningIn~Try Signing In.
+TID_ServerError~Unable to connect.
+TID_PleaseTryAgain~Please try again.
+TID_FetchPreviousGameData~Fetching Previous Game Data...
+TID_AlredyLogin~This ID is already Logged In on a different device.
+TID_AdminDisable~This ID has been disabled by the Admin.
+TID_FailedToConnect~Unable to connect. Please check your internet connection and try again.
+TID_LoginCanceled~Login cancelled.
+TID_LoginFailed~Login failed.
+TID_AlredyActive~This ID is active on another device.
+TID_NetworkError~Network Error!
+TID_FriendAdded~Friend added successfully.
+TID_FriendRemoved~Friend removed successfully.
+TID_ServerErrorSendRoundScore~Network Error: Score Update Failed. Please check your internet.
+TID_RegisteredSuccessfully~Successfully registered.
+TID_UsernameExists~Username already exists.
+TID_EmailIdUsed~Email ID is already simultaneously in use on another device.
+TID_SendingMail~Sending your credentials to your mail.
+TID_MailSentSuccess~Your Password has been successfully sent to your Email address.
+TID_WaitingOtherPlayers~Waiting for other players.
+TID_AlreadySignedIn~Already Signed in.
+TID_LogOutAndTry~Log out and try again.
+TID_RegisteringOnServer~Registering you on server.
+TID_FbIdAlreadyRegisteredAndOnline~This FbId is already registered and
+TID_IsOnline~is online on other device.
+TID_EmailAlreadyReistered~This Email is already registered.
+TID_FbIdAlreadyRegistered~This FbId is already registered.
+TID_UserNameAlredyTaken~This Username is already taken.
+TID_ChooseA~Choose a unique Username.
+TID_CheckYourPassword~Please check your Password
+TID_GettingRoomList~Getting List Of Tables...
+TID_FbIdMerged~FbId merged Successfully.
+TID_FbIdAlredySetForOtherUser~This FbId has already been set for other user.
+TID_LastGamePlayed~Last Game Played
+TID_TopListPerDay~Top Players (Day)
+TID_TopListPerWeek~Top Players (Week)
+TID_TopListPerMonth~Top Players (Month)
+TID_Ace~Ace
+TID_Unstoppable~Unstoppable
+TID_Winner~The Winner
+TID_Player~Player
+TID_X3Winstreak~X3 Winstreak
+TID_X5Winstreak~X5 Winstreak
+TID_X10Winstreak~X10 Winstreak
+TID_TheLoser~The Loser
+TID_FullHouse~Full House
+TID_HomeRun~Homerun
+TID_Forcer~Forcer
+TID_NoRoomAvailable~No rooms available, create one.
+TID_SeatAvailable~/4 Seat(s) Available
+TID_User~User
+TID_OngoingRoomJoinReplacement~This is an ongoing game. Would you like to join as a replacement?
+TID_FbIdSetForCurrentUser~FbId already set for current user.
+TID_YouAreAlreadyConnectedWithFbId~You are already connected with another Facebook ID.
+TID_FailedToLoadFriendList~Failed to Load Custom Friends List.
+TID_FailedToSearchUserList~Failed to search user list.
+TID_EmailEmpty~Email can't be empty
+TID_OTPEmpty~OTP can't be empty
+TID_EmailExists~Email already exists
+TID_WantToLogout~Do you want to Log out?
+TID_WantToDeleteUserDataLogout~Do you want to delete user?
+TID_InviteLeft~1 Invitation Left
+TID_Invited~Invited
+TID_YouHaveNewInvite~You have a new game invite from
+TID_NoResult~No Results Found.
+TID_Achievements~ACHIEVEMENTS
+TID_YourStatsCaps~YOUR STATS
+TID_SearchingForTable~Searching for table
+TID_PasswordsDontMatch~Passwords doesn't match
+TID_TapWhenReady~TAP WHEN READY
+TID_TapToStartGame~TAP TO START THE GAME
+TID_Pass~PASS
+TID_ChooseASuit~CHOOSE A SUIT
+TID_Disconnectd~Disconnected
+TID_AboutUsText~Pidro is made by www.oneapps.co as a project for pidro fans worldwide.
+TID_Okay~Okay
+TID_Skip~Skip
+TID_Next~Next
+TID_LetsPlay~Let's Play!
+TID_LetsLearn~Let's Learn How to Play Pidro!
+TID_ItsCardGame~Pidro is a 2 vs 2 team playing card game.
+TID_PlaytSittingAcross~You always play with the player sitting across.
+TID_TheSelectedSuit~If the Selected Suit is of SPADES these are the Point Cards.
+TID_OnePoint~1 Point
+TID_FivePoint~5 Points
+TID_TotalPointsInRound~The Total Points of each round is always 14.
+TID_CardRankings~CARD RANKINGS
+TID_HigherCardCanBe~A higher card can be used to take lower cards and points except for the 2 which always is safe point for the team who owns it.
+TID_TheCorretPidro~The "correct" pidro, in this case 5 of Spades has higher ranking than the "wrong" pidro (5 of Clubs).
+TID_DealerChip~This is the Dealer Chip.
+TID_DealingStarts~Dealing starts from the left of Dealer.
+TID_EachPlayersIsDealt~Each Player is dealt a total of nine (9) cards.
+TID_ValidBitMustBe~A valid bid must be between six (6) and fourteen (14). By bidding you estimate how many minimum points you and your teammate at least will take in the round. If you don't want to make a bid, one can always pass. A bid must be higher than the current highest bid. The player who gives the highest bid may then choose suit to play in and starts the round.
+TID_FinalDealing~FINAL DEALING
+TID_WhenTheSuitToPlay~When the suit to play is chosen, unnecessary cards are thrown. Cards kept in hand are those of the suit that was chosen plus the other "PIDRO" and the exception is the dealer who always keeps his cards. Shortly thereafter the dealer deals the remaining cards in deck so that the players get 6 cards each in total. The dealer takes the remaining cards if there's any. If any player gets more than six cards of selected suit, the extra non-point cards will be automatically removed.
+TID_TheHighestbidder~The highest bidder opens the round by putting a card of the current suit at the table (A), thereafter the other players clockwise put one card each (4,J,5). The team that has the highest card in the stick gets all points in the stick in question. In this scenario Antti has high card (A) and takes home A=1p, J=1p and 5=5p. Total 7 points to Antti and Tommy and Antti will continue next stick as he has High card (A).
+TID_WhenAllCardsArePut~When all the cards are put on the table the points are calculated. If the bidding team got as much points as the bid or more, both teams' points are added to their respective existing points. If the bidding team gets fewer points than the bid, the bid is substracted from the bidding team's existing points. The other team's points are added to their existing points.
+TID_WinnerOfTheGameisThe~Winner of the game is the team that first reaches 62 points or more. If both teams reach 62 points or more at the same time then the team having the highest bid in the final round wins.
+TID_SpecialScenario~Special Scenarios
+TID_IfNoOneBids~- If no one bids the dealer is forced to make a bid.
+TID_IfSomeoneBids~- If someone bids 14, the dealer is allowed to bet 14 as well and overtake the bid, but will risk losing 28 points if he fails to collect all the points i.e 14.
+TID_TutorialFairPlay~FAIR PLAY:
+TID_YouAreNeitherAllowed~You are neither allowed to discuss cards nor to give any hints about your cards in such a way that it may affect the game.
+TID_TutorialGoodLuck~Good Luck!
+TID_ValueOfCards~Value of the Cards
+TID_LowCard~Low Card
+TID_Draws~Draws
+TID_Ready~Ready
+TID_Bidding~Bidding
+TID_Passed~Passed
+TID_Bet~Bet
+TID_Plays~Plays
+TID_JoinedLog~Joined
+TID_WaitingForPlayers~Waiting for other
+TID_Players~players
+TID_IfYouLeave~Leaving a game counts as a loss.
+TID_LeaveGame~Do you want to leave the Game?
+TID_LeaveTable~Do you want to leave the table?
+TID_NotEnoughPlayers~Not enough players to start the game.
+TID_UserNameCaps~USER NAME
+TID_TellUsAbout~Tell us about yourself like where are you from, your age etc.
+TID_ReplayGame~Keep playing on this table?
+TID_InviteFriends~Invite Friends
+TID_Ago~ago
+TID_Year~year
+TID_Month~month
+TID_Week~week
+TID_Day~day
+TID_Hour~h
+TID_Minute~m
+TID_Second~s
+TID_Years~years
+TID_Months~months
+TID_Weeks~weeks
+TID_Days~days
+TID_Hours~h
+TID_Minutes~m
+TID_Seconds~s
+TID_WantToExit~Are you sure you want to exit?
+TID_GameSponsoredBy~GAME SPONSORED BY
+TID_ViewMore~VIEW MORE
+TID_NoLimit~No limit
+TID_GamesPlayed~Games Played
+TID_NotPlayedEnoughGames~You have not played enough games for this particular table.
+TID_LogOut~Logout
+TID_Exit~Exit
+TID_Rank~Rank
+TID_WinP~Win %
+TID_Continue~Continue
+TID_OngoingGames~Ongoing Games
+TID_PlayersOnline~Players Online
+TID_SlotAlreadyTaken~Seat already taken
+TID_ForceUpdate~Good news! A new version of the game is available.
+TID_FetchingGameData~Fetching Game Data
+TID_AutoKickMsg~You have been kicked out due to being idle or network problem.
+TID_AutoTerminateMsg~Table has been terminated due to being idle.
+TID_BadUserName~Invalid username! Try Again
+TID_CreateTable~Create Table
+TID_CreatePrivateRoom~Create Private Room
+TID_LeftWainitgTableName~Open Public
+TID_You~You
+TID_ReportAbuse~Report abuse
+TID_Verbal~Verbal abuse / Bad language
+TID_Cheating~Cheating
+TID_Disturbing~Disturbing profile pic/ Name
+TID_LeavingGame~Leaving game
+TID_Report~Report
+TID_GoldCardsCaps~Card Collection
+TID_GoldCardsTimerName~Active
+TID_GoldCardsButtonVideo~Play Activation Video
+TID_GoldCardsDesc~You need to activate Gold Card Collection to be able to receive Gold Cards
+TID_GoldCardTheme~Gold Card Theme
+TID_ClassicTheme~Classic Theme (All Gold Cards Disabled)
+TID_GoldCardNotify~There is a Gold Card in the deck. Who is the lucky one?
+TID_AI_Easy~Careful
+TID_AI_Medium~Medium
+TID_AI_Hard~Aggressive
+TID_AI_Dif~Choose Difficulty
+TID_AvarageBid~Average Bid
+TID_DailyRank~Daily Top Players (min 10 games played)
+TID_WeeklyRank~Weekly Top Players (min 35 games played)
+TID_Monthly~Monthly Top Players (min 100 games played)
+TID_InviteFriend~Invite Friend
+TID_100Games~100 Games
+TID_1000Games~1000 Games
+TID_RemoveAds~Remove Ads_Get More Features
+TID_ReceiveCard~I've received a gold card!
+TID_ThanksForPidro~Thanks for making_Pidro Great Again!
+TID_NoAdsAvailable~No ad is available right now._Please try again in a moment.
+TID_ActivateGoldCardsNotify~Your Gold Card Collection is not Active! Want to activate now?
+TID_PremiumAccess~Premium Access
+TID_CreateLeague~Create Pidro League Table
+TID_CreatePractice~Create Practice Table
+TID_BecomePro~Premium Member
+TID_RemoveAds1~Remove Ads
+TID_JoinPidroLeague~Join The Pidro League
+TID_GetRanked~Get Ranked on Leaderboards
+TID_MoreStat~More Statistics and Analytics
+TID_PlayWithOther~Play With Other Premium Players
+TID_AccessWeb~Access to Webbrowser Game
+TID_SupportDev~Support Future Development
+TID_JoinNow~Join Now
+TID_Price~8,99 €/ 1 year Subscription
+TID_Question~What type of table would you_like to create?
+TID_Practice~Practice
+TID_PidroLeague~Pidro League
+TID_LeagueInfo~Pidro League games show up in daily/weekly/monthly Pidro League rankings._For premium users only. Personal stats are being recorded for all types of games.
+TID_PleaseVerify~Please Verify your Email
+TID_WEBGLWarning~To use Web version you should to be premium user
+TID_Friends~Friends
+TID_WEBGLGC~You can only collect Goldcards from iOS and Android devices
+TID_PurchaseProc~Processing Purchase
+TID_PurchaseCanceled~Purchase was canceled
+TID_GamePoints~Game XP
+TID_WinBonus~Win Bonus
+TID_ExtraBonus~Extra Bonus
+TID_TotalPoints~Total XP
+TID_Congratulations~Congratulations!
+TID_ReachLevel~You've reached level
+TID_ContinuePlaying~Continue Playing
+TID_Top30~Top 30 Players based on XP
+TID_XP~XP
+TID_FinishedGamesPercent~Finished Games %
+TID_NoRematchInPractice~Re-match is only available for Pidro League games
+TID_NoRematchInPracticePremiumScreen~Re-match and Free Text Chat
+TID_PaindMonthly~Paid Monthly
+TID_PaindQuarterly~Paid Quarterly
+TID_PaindAnually~Paid Anually
+TID_NewPrice~New Prices from 1.12.2018
+TID_WoudYouLike~Would you like that?
+TID_WouldYouLikeOffer~ We would like to offer you a special deal to continue your Premium Membership for only
+TID_WouldYouLikeOfferTitle~Your annual subscription has expired!
+TID_ThankYou~Thank you so much!
+TID_Save45~Save 45%
+TID_RateUsTitle~Enjoying Pidro?
+TID_RateUsOkButton~Rate 
+TID_RateUsLaterButton~Later
+TID_RateUsMessage~Please take a moment to rate it on the Play Store.
+TID_HeaderPreiuPopup~Premium Membership
+TID_HeaderPreiuAccept~Accept 
+TID_HeaderPreiuTitlePopup~No commitment required. Cancel anytime.
+TID_Confirmation_Subscription_ios~Payment for your subscription will be automatically charged to your \n iTunes account upon confirmation. Subscriptions renew automatically\n 24-hours prior to the start of the next billing period.\n Billing occurs monthly, quarterly or annual depending on your choice of subscription.\n Subscriptions continue to renew automatically until cancelled.\n\nPlease read our <link="https://pidro.online/privacy/"><color=#FAE50F><b>Privacy Policy</b></color></link> &  <link="https://pidro.online/terms-of-use/"><color=#FAE50F><b>Terms of Use</b></color></link> &  <link="https://pidro.online/in-app-purchases/ios/en/"><color=#FAE50F><b>Auto-renewal</b></color></link> info.
+TID_Confirmation_Subscription_Android~Payment for your subscription will be automatically charged to your \n Google play account upon confirmation. Subscriptions renew automatically\n 24-hours prior to the start of the next billing period.\n Billing occurs monthly, quarterly or annual depending on your choice of subscription.\n Subscriptions continue to renew automatically until cancelled.\n\nPlease read our <link="https://pidro.online/privacy/"><color=#FAE50F><b>Privacy Policy</b></color></link> &  <link="https://pidro.online/terms-of-use/"><color=#FAE50F><b>Terms of Use</b></color></link> &  <link="https://pidro.online/in-app-purchases/android/en/"><color=#FAE50F><b>Auto-renewal</b></color></link> info.
+TID_Subscription_Disclaimer~Subscriptions can be canceled anytime. For details and more information, please refer to our Privacy Policy.
+TID_User_subscription~YOUR SUBSCRIPTION
+TID_Manage_subscription_Title~Manage Subscription
+TID_Subscription_Disclaimer_NEW~This is an auto-renewable subscription. Payment will be charged to your account upon confirmation. The subscription will renew automatically unless canceled at least 24 hours before the end of the current period. Your account will also be charged for renewal within 24 hours prior to the end of the period. You may turn off auto-renewal in your account settings at any time.
+TID_PrivacyButton~Privacy Policy
+TID_RestoreButton~Restore Purchases
+TID_TermConditions~Terms & conditions
+TID_SubscribeMiddle_text~Subscribe now
+TID_Save_text~Save
+TID_BlackFriday_Sale~Black Friday Sale! 48% OFF
+TID_RestoreSuccess~Your Premium membership has been restored. Welcome back!
+TID_RestoreError~No active Premium membership found. If you believe this is incorrect, please contact support@pidro.online
+TID_PlayWithoutAccount~Play vs Computer_<size=24><color=#FFFFFFB3>No account needed</color></size>
