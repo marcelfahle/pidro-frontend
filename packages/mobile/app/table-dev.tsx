@@ -99,6 +99,15 @@ const OUT_PLAYERS = {
     south: { hand: OUT_HAND },
   },
 } as const;
+// `trick=bots`: hand 4 against bots, hearts trump. Wynn, Nora and Eli have
+// played to the first trick and it is your turn.
+const heart = (rank: number): Card => ({ rank, suit: 'hearts' });
+const BOT_TRICK = [
+  { player: 'west', card: heart(9) },
+  { player: 'north', card: heart(13) },
+  { player: 'east', card: heart(4) },
+];
+const BOT_TRICK_HAND: Card[] = [heart(14), heart(10), heart(5), heart(2)];
 const CLOCKWISE: Position[] = ['north', 'east', 'south', 'west'];
 const nextSeat = (position: Position) => CLOCKWISE[(CLOCKWISE.indexOf(position) + 1) % 4];
 const highBid = (bids: ServerBid[]) => bids.filter((bid) => bid.amount !== 'pass').at(-1) ?? null;
@@ -316,6 +325,7 @@ function TableDevHarness() {
     connection?: string;
     bids?: string;
     out?: string;
+    trick?: string;
     count?: string;
   }>();
   const fixture = params.fixture;
@@ -370,6 +380,7 @@ function TableDevHarness() {
             connected={params.connection !== 'lost'}
             bidRound={BID_ROUNDS[params.bids ?? ''] ?? null}
             outPlayers={OUT_PLAYERS[params.out as keyof typeof OUT_PLAYERS] ?? null}
+            botTrick={params.trick === 'bots'}
             countHelp={params.count === 'on'}
           />
         </FixtureInsets>
@@ -578,6 +589,7 @@ function RolePreview({
   bidRound = null,
   outPlayers = null,
   countHelp = false,
+  botTrick = false,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -592,6 +604,7 @@ function RolePreview({
   bidRound?: (typeof BID_ROUNDS)[string] | null;
   outPlayers?: (typeof OUT_PLAYERS)[keyof typeof OUT_PLAYERS] | null;
   countHelp?: boolean;
+  botTrick?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -635,7 +648,7 @@ function RolePreview({
       automaticRobbed[3],
       automaticRobbed[4],
     ];
-    const botTable = bidRound || outPlayers;
+    const botTable = bidRound || outPlayers || botTrick;
     useSettingsStore.setState({ countHelp });
     store.reset();
     store.initFromRoom({ room: botTable ? BOT_ROOM : WAITING_ROOM, youPlayerId: 'p-south' });
@@ -701,6 +714,18 @@ function RolePreview({
         tricks: OUT_TRICKS,
         current_trick: [],
       }),
+      ...(botTrick && {
+        dealer: 'north',
+        trump: 'hearts',
+        players: {
+          north: { hand: 5 },
+          east: { hand: 5 },
+          west: { hand: 5 },
+          south: { hand: BOT_TRICK_HAND },
+        },
+        highest_bid: { position: 'east', amount: 6 },
+        current_trick: BOT_TRICK,
+      }),
     } as unknown as ServerGameState);
     if (phase === 'auto_rob') {
       store.setPresentation({
@@ -748,8 +773,11 @@ function RolePreview({
                   { type: 'play_card', card: { rank: 13, suit: 'hearts' } },
                   { type: 'play_card', card: { rank: 5, suit: 'clubs' } },
                 ]
-              : outPlayers
-                ? OUT_HAND.map((card) => ({ type: 'play_card' as const, card }))
+              : outPlayers || botTrick
+                ? (botTrick ? BOT_TRICK_HAND : OUT_HAND).map((card) => ({
+                    type: 'play_card' as const,
+                    card,
+                  }))
                 : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
     );
     if (previewPhase === 'playing') {
@@ -786,6 +814,7 @@ function RolePreview({
     bidRound,
     outPlayers,
     countHelp,
+    botTrick,
   ]);
 
   useEffect(() => {
@@ -837,7 +866,7 @@ function RolePreview({
     <View className="flex-1">
       {Table ? (
         <Table
-          room={bidRound || outPlayers ? BOT_ROOM : WAITING_ROOM}
+          room={bidRound || outPlayers || botTrick ? BOT_ROOM : WAITING_ROOM}
           rulesFixtureSeen={rulesFixtureSeen}
           onLeave={() => {}}
         />

@@ -150,7 +150,6 @@ export const en = {
   "game.result_accessibility":
     "%{headline}. Bid %{bid}, won %{captured}. %{usLabel} %{us}, %{themLabel} %{them}. Tap to close.",
   "game.reconnecting": "Reconnecting…",
-  "game.bot_playing": "Bot is playing",
   "game.solo_failed": "Could not start the solo game. Try again.",
   "game.dealing": "Dealing",
   "game.ready": "Ready",
@@ -381,7 +380,6 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "game.result_accessibility":
     "%{headline}. Bud %{bid}, tog %{captured}. %{usLabel} %{us}, %{themLabel} %{them}. Tryck för att stänga.",
   "game.reconnecting": "Återansluter…",
-  "game.bot_playing": "En bot spelar",
   "game.solo_failed": "Det gick inte att starta solospelet. Försök igen.",
   "game.dealing": "Delar ut",
   "game.ready": "Redo",
