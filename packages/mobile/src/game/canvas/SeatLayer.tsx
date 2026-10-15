@@ -29,7 +29,9 @@ import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvat
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts } from '@/features/avatar';
+import { getCardImage } from '@/utils/cardImages';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
+import type { Card } from '@/types/game';
 import {
   AVATAR_SIZE,
   computeLayout,
@@ -55,6 +57,9 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const BACK: ImageSourcePropType =
   Platform.OS === 'web' ? { uri: '/cards/cardback.png' } : require('~/assets/images/cardback.png');
 
+/** Out of trumps: the seat sits back, its line says so. */
+const outLine = (): SeatLine => ({ text: t('game.out'), short: t('game.out'), tone: 'quiet' });
+
 /**
  * The line under a seat's name. `now` is the player on turn, `high` holds the
  * high bid. A new `pulse` lights the seat up once (it just bid). `short` is
@@ -75,6 +80,7 @@ function lineFor(data: TableSeat, override?: SeatLine | null): SeatLine | null {
     case 'bot_substitute':
       // A line that must show even without a name (the bidding) outranks
       // who is playing the seat: the badge already says bot.
+      if (data.out) return outLine();
       return override?.short ? override : { text: t('game.bot_playing') };
     case 'vacant':
       return null;
@@ -83,6 +89,7 @@ function lineFor(data: TableSeat, override?: SeatLine | null): SeatLine | null {
     const c = data.lastPlayedCard.card;
     return { text: t('game.plays', { card: `${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}` }) };
   }
+  if (data.out) return outLine();
   return override ?? null;
 }
 
@@ -273,9 +280,10 @@ export function SeatLayer({
             size={size}
             label={besideName ? (rel === 'east' ? 'left' : 'right') : 'below'}
             dealerSide={dealerSide(rel)}
-            style={
-              tight && rel === 'south' ? { width: size + PidroSpacing.xs * 2 } : seatWidth(rel)
-            }
+            style={[
+              tight && rel === 'south' ? { width: size + PidroSpacing.xs * 2 } : seatWidth(rel),
+              data.out && styles.out,
+            ]}
             {...seat}
             {...(tight && { level: null, pin: null })}
             {...(tight &&
@@ -359,6 +367,8 @@ export function SeatLayer({
                   alignItems: 'center',
                 }}>
                 <BacksFan
+                  testID={data.revealedCards.length > 0 ? 'seat-north-revealed' : undefined}
+                  faces={data.revealedCards.map((card) => card.card)}
                   count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
                   cardW={L.cardW}
                   dealing={dealing}
@@ -395,7 +405,13 @@ export function SeatLayer({
         // landscape the Dynamic Island sits on one of these sides.
         const edgeOffset = Math.min(L.cardW * 0.28, 18);
         const sideEdge = rel === 'east' ? insets.right : insets.left;
-        const backsInset = sideEdge > 0 ? sideEdge : -edgeOffset;
+        // Cards laid face up stay whole on screen, to be read.
+        const backsInset =
+          data.revealedCards.length > 0
+            ? sideEdge + PidroSpacing.xs
+            : sideEdge > 0
+              ? sideEdge
+              : -edgeOffset;
         const seatPos =
           rel === 'east'
             ? { ...sideSeatPos, right: insets.right + sideInset }
@@ -420,6 +436,8 @@ export function SeatLayer({
                 backsEdge,
               ]}>
               <BacksStackV
+                testID={data.revealedCards.length > 0 ? `seat-${rel}-revealed` : undefined}
+                faces={data.revealedCards.map((card) => card.card)}
                 count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
                 cardW={L.cardW}
                 dealing={dealing}
@@ -441,18 +459,23 @@ export function SeatLayer({
 
 function BacksFan({
   count,
+  faces = [],
   cardW,
   dealing,
   originY,
   concealed = false,
+  testID,
 }: {
   count: number;
+  /** Cards laid face up (out of trumps) instead of the backs. */
+  faces?: Card[];
+  testID?: string;
   cardW: number;
   dealing: boolean;
   originY: number;
   concealed?: boolean;
 }) {
-  const n = clamp(count, 0, 9);
+  const n = clamp(faces.length || count, 0, 9);
   if (n === 0) return null;
   const w = northBackWidth(cardW);
   const h = w * (110 / 78);
@@ -460,11 +483,12 @@ function BacksFan({
   const total = w + (n - 1) * overlap;
   return (
     <View
-      testID={concealed ? 'dealer-card-count-concealed' : undefined}
+      testID={concealed ? 'dealer-card-count-concealed' : testID}
       style={{ width: total, height: h }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
+          source={faces[i] ? getCardImage(faces[i]) : BACK}
           index={i}
           dealing={dealing}
           x={i * overlap}
@@ -481,13 +505,18 @@ function BacksFan({
 
 function BacksStackV({
   count,
+  faces = [],
   cardW,
   dealing,
   originX,
   originDy = 0,
   concealed = false,
+  testID,
 }: {
   count: number;
+  /** Cards laid face up (out of trumps) instead of the backs. */
+  faces?: Card[];
+  testID?: string;
   cardW: number;
   dealing: boolean;
   originX: number;
@@ -495,20 +524,23 @@ function BacksStackV({
   originDy?: number;
   concealed?: boolean;
 }) {
-  const n = clamp(count, 0, 9);
+  const n = clamp(faces.length || count, 0, 9);
   if (n === 0) return null;
   const cw = clamp(cardW * 0.62, 30, 56); // portrait back
   const ch = cw * (110 / 78);
-  const visW = ch; // after 90° rotation
-  const visH = cw;
-  const overlap = cw * 0.48 * Math.min(1, 5 / Math.max(1, n - 1));
+  // Backs lie sideways; cards laid face up stand upright, each showing its corner.
+  const up = faces.length > 0;
+  const visW = up ? cw : ch; // backs: after 90° rotation
+  const visH = up ? ch : cw;
+  const overlap = (up ? ch * 0.36 : cw * 0.48) * Math.min(1, 5 / Math.max(1, n - 1));
   return (
     <View
-      testID={concealed ? 'dealer-card-count-concealed' : undefined}
+      testID={concealed ? 'dealer-card-count-concealed' : testID}
       style={{ width: visW, height: visH + (n - 1) * overlap }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
+          source={faces[i] ? getCardImage(faces[i]) : BACK}
           index={i}
           dealing={dealing}
           x={0}
@@ -517,7 +549,7 @@ function BacksStackV({
           originY={((n - 1) * overlap) / 2 + originDy}
           w={cw}
           h={ch}
-          sideways
+          sideways={!up}
         />
       ))}
     </View>
@@ -525,6 +557,7 @@ function BacksStackV({
 }
 
 function FlyingBack({
+  source,
   index,
   dealing,
   x,
@@ -535,6 +568,7 @@ function FlyingBack({
   h,
   sideways = false,
 }: {
+  source: ImageSourcePropType;
   index: number;
   dealing: boolean;
   x: number;
@@ -576,7 +610,7 @@ function FlyingBack({
         motion,
       ]}>
       <Image
-        source={BACK}
+        source={source}
         style={[
           styles.back,
           { width: w, height: h },
@@ -588,6 +622,7 @@ function FlyingBack({
 }
 
 const styles = StyleSheet.create({
+  out: { opacity: 0.6 },
   back: {
     borderRadius: 3,
     borderWidth: 1,

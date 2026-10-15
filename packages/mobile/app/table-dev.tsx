@@ -23,6 +23,7 @@ import type { TableNotice } from '@/game/tableNotices';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 import { useLocale } from '@/i18n';
+import { useSettingsStore } from '@/stores/settings';
 
 // `bids=`: a hand's bids landing one by one against three bots.
 const BID_ROUNDS: Record<string, { dealer: Position; bids: ServerBid[] }> = {
@@ -46,6 +47,58 @@ const BID_ROUNDS: Record<string, { dealer: Position; bids: ServerBid[] }> = {
   },
 };
 const BID_STEP_MS = 450;
+
+// `out=`: hand 4 against bots, two tricks in. Eli (East) bid 6 and took the
+// first trick for 2; you took the second, where Nora's 2 of trump fell. Wynn
+// (West) is out of trumps and lays two cards face up. `lone`: everyone else
+// has gone cold and the rest is yours.
+const spade = (rank: number): Card => ({ rank, suit: 'spades' });
+const OUT_TRICKS = [
+  {
+    cards: [
+      { player: 'east', card: spade(14) },
+      { player: 'south', card: spade(3) },
+      { player: 'west', card: spade(11) },
+      { player: 'north', card: spade(4) },
+    ],
+    winner: 'east',
+    points: 2,
+    two_of_trump: null,
+  },
+  {
+    cards: [
+      { player: 'east', card: spade(7) },
+      { player: 'south', card: spade(13) },
+      { player: 'west', card: spade(9) },
+      { player: 'north', card: spade(2) },
+    ],
+    winner: 'south',
+    points: 0,
+    two_of_trump: { position: 'north', points: 1 },
+  },
+];
+const OUT_HAND: Card[] = [spade(12), spade(10), spade(8), spade(5)];
+const cold = (revealed: Card[]) => ({ hand: 0, eliminated: true, revealed_cards: revealed });
+const OUT_PLAYERS = {
+  one: {
+    north: { hand: 4 },
+    east: { hand: 4 },
+    west: cold([
+      { rank: 12, suit: 'hearts' },
+      { rank: 9, suit: 'clubs' },
+    ]),
+    south: { hand: OUT_HAND },
+  },
+  lone: {
+    north: cold([]),
+    east: cold([{ rank: 6, suit: 'diamonds' }]),
+    west: cold([
+      { rank: 12, suit: 'hearts' },
+      { rank: 9, suit: 'clubs' },
+    ]),
+    south: { hand: OUT_HAND },
+  },
+} as const;
 const CLOCKWISE: Position[] = ['north', 'east', 'south', 'west'];
 const nextSeat = (position: Position) => CLOCKWISE[(CLOCKWISE.indexOf(position) + 1) % 4];
 const highBid = (bids: ServerBid[]) => bids.filter((bid) => bid.amount !== 'pass').at(-1) ?? null;
@@ -262,6 +315,8 @@ function TableDevHarness() {
     guest?: string;
     connection?: string;
     bids?: string;
+    out?: string;
+    count?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -314,6 +369,8 @@ function TableDevHarness() {
             rulesFixtureSeen={rulesFixtureSeen}
             connected={params.connection !== 'lost'}
             bidRound={BID_ROUNDS[params.bids ?? ''] ?? null}
+            outPlayers={OUT_PLAYERS[params.out as keyof typeof OUT_PLAYERS] ?? null}
+            countHelp={params.count === 'on'}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -519,6 +576,8 @@ function RolePreview({
   rulesFixtureSeen,
   connected = true,
   bidRound = null,
+  outPlayers = null,
+  countHelp = false,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -531,6 +590,8 @@ function RolePreview({
   rulesFixtureSeen?: boolean;
   connected?: boolean;
   bidRound?: (typeof BID_ROUNDS)[string] | null;
+  outPlayers?: (typeof OUT_PLAYERS)[keyof typeof OUT_PLAYERS] | null;
+  countHelp?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -574,8 +635,10 @@ function RolePreview({
       automaticRobbed[3],
       automaticRobbed[4],
     ];
+    const botTable = bidRound || outPlayers;
+    useSettingsStore.setState({ countHelp });
     store.reset();
-    store.initFromRoom({ room: bidRound ? BOT_ROOM : WAITING_ROOM, youPlayerId: 'p-south' });
+    store.initFromRoom({ room: botTable ? BOT_ROOM : WAITING_ROOM, youPlayerId: 'p-south' });
     store.setRole(role);
     store.setYouPosition('south');
     store.setChannelStatus(connected);
@@ -625,7 +688,20 @@ function RolePreview({
       },
       current_trick:
         previewPhase === 'playing' ? [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }] : [],
-    });
+      ...(outPlayers && {
+        dealer: 'north',
+        players: outPlayers,
+        bid_order: [
+          { position: 'east', amount: 6 },
+          { position: 'south', amount: 'pass' },
+          { position: 'west', amount: 'pass' },
+          { position: 'north', amount: 'pass' },
+        ],
+        highest_bid: { position: 'east', amount: 6 },
+        tricks: OUT_TRICKS,
+        current_trick: [],
+      }),
+    } as unknown as ServerGameState);
     if (phase === 'auto_rob') {
       store.setPresentation({
         dealer_rob: {
@@ -672,7 +748,9 @@ function RolePreview({
                   { type: 'play_card', card: { rank: 13, suit: 'hearts' } },
                   { type: 'play_card', card: { rank: 5, suit: 'clubs' } },
                 ]
-              : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
+              : outPlayers
+                ? OUT_HAND.map((card) => ({ type: 'play_card' as const, card }))
+                : [{ type: 'play_card', card: { rank: 14, suit: 'spades' } }]
     );
     if (previewPhase === 'playing') {
       store.setTurnTimer({
@@ -696,7 +774,19 @@ function RolePreview({
       if (presentationTimer) clearTimeout(presentationTimer);
       store.reset();
     };
-  }, [role, phase, canPass, deal, dealer, autoClear, ruleSet, connected, bidRound]);
+  }, [
+    role,
+    phase,
+    canPass,
+    deal,
+    dealer,
+    autoClear,
+    ruleSet,
+    connected,
+    bidRound,
+    outPlayers,
+    countHelp,
+  ]);
 
   useEffect(() => {
     if (!Table || deal !== 'true') return;
@@ -747,7 +837,7 @@ function RolePreview({
     <View className="flex-1">
       {Table ? (
         <Table
-          room={bidRound ? BOT_ROOM : WAITING_ROOM}
+          room={bidRound || outPlayers ? BOT_ROOM : WAITING_ROOM}
           rulesFixtureSeen={rulesFixtureSeen}
           onLeave={() => {}}
         />

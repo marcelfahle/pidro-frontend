@@ -34,14 +34,17 @@ import { useDealPresentation } from './useDealPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
-import { Scoreboard } from './Scoreboard';
+import { SCORE_PLAQUE_HEIGHT, Scoreboard } from './Scoreboard';
 import type { TickerRestingLine } from './ActionTicker';
 import { buildHandLog } from '@/game/handLog';
 import { bidSeatLine } from '@/features/game/bidding';
+import { bidTaken, loneTrumpHolder } from '@/features/game/tableHelp';
+import { useSettingsStore } from '@/stores/settings';
+import { LastTrick, type LastTrickView } from './LastTrick';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals } from './TableSignals';
-import { computeLayout, tickerPlacement } from './layout';
+import { computeLayout, showsTicker, tickerPlacement } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
@@ -121,6 +124,10 @@ function statusText(
       return now(t('game.picking'));
     case 'playing':
       if (playedCard) return { text: t('game.plays', { card: cardLabel(playedCard) }) };
+      // The others are out of trumps: what is left is this player's.
+      if (loneTrumpHolder(state?.players) === absolutePosition) {
+        return { text: t('game.takes_rest'), short: t('game.all_yours'), tone: 'now' };
+      }
       if (player.isCurrentTurn) return now(t('game.playing'));
       if (lastTrick?.winner === absolutePosition) return { text: t('game.took_trick') };
       return null;
@@ -274,6 +281,8 @@ export function GameCanvasTable({
   );
   const { width, height } = useWindowDimensions();
   const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
+  const countHelp = useSettingsStore((state) => state.countHelp);
+  const pace = useSettingsStore((state) => state.pace);
 
   const {
     trumpSuit,
@@ -338,11 +347,46 @@ export function GameCanvasTable({
         })[0]?.entries[0]
       : undefined;
   const lastResult = handLog[0]?.finished ? handLog[0].entries.at(-1) : undefined;
+  // Count help grows the bid line a meter once the tricks start: "bid 6 · 2 of 6".
+  const taken =
+    countHelp && controller.phase === 'playing' && highBid
+      ? bidTaken(controller.completedTricks, highBid.position)
+      : null;
   const resting: TickerRestingLine | null = bidLine
-    ? { who: bidLine.who, what: bidLine.what, ours: bidLine.ours }
+    ? {
+        who: bidLine.who,
+        what:
+          taken == null
+            ? bidLine.what
+            : `${bidLine.what} · ${t('game.count_of', { taken, bid: highBid?.amount ?? 0 })}`,
+        ours: bidLine.ours,
+      }
     : lastResult
       ? { who: lastResult.who, what: lastResult.what, ours: lastResult.ours }
       : null;
+
+  const lastTrick = model.lastTrick;
+  const lastTrickView: LastTrickView | null =
+    countHelp && controller.phase === 'playing' && lastTrick
+      ? {
+          number: lastTrick.number,
+          plays: lastTrick.plays.map(({ holder, card }) => {
+            const seat = model.seats[holder];
+            return {
+              name: seat?.isYou
+                ? t('game.you')
+                : (seat?.username ?? t(`table.position.${seat?.absolutePosition ?? 'north'}`)),
+              card,
+              took: holder === lastTrick.winner,
+            };
+          }),
+          lines: (handLog.at(-1)?.entries ?? []).filter(
+            (entry) =>
+              entry.trick === lastTrick.number && (entry.kind === 'trick' || entry.kind === 'two')
+          ),
+        }
+      : null;
+  const fullTicker = showsTicker(layout);
 
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
@@ -377,7 +421,12 @@ export function GameCanvasTable({
         players={viewModel?.players ?? []}
         onProfile={setProfilePlayerId}
       />
-      <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
+      <TableSignals
+        model={model}
+        topReserve={topReserve}
+        bottomReserve={bottomReserve}
+        pace={pace}
+      />
 
       <TableChromeBars reserves={reserves} />
       <View
@@ -420,11 +469,19 @@ export function GameCanvasTable({
           log={handLog}
           resting={resting}
           stateArrived={serverState != null}
-          ticker={tickerPlacement(layout, {
-            tableTop: insets.top + topReserve,
-            plaqueLeft: insets.left + PidroSpacing.sm,
-            plaqueTop: headerTop(insets.top),
-          })}
+          ticker={tickerPlacement(
+            layout,
+            {
+              tableTop: insets.top + topReserve,
+              plaqueLeft: insets.left + PidroSpacing.sm,
+              plaqueTop: headerTop(insets.top),
+              plaqueBottom: headerTop(insets.top) + SCORE_PLAQUE_HEIGHT + PidroSpacing.xxs,
+            },
+            countHelp
+          )}
+          tickerPace={pace}
+          restingOnly={!fullTicker}
+          help={lastTrickView ? <LastTrick trick={lastTrickView} yourTurn={isYourTurn} /> : null}
           yourTurn={
             isYourTurn && (controller.phase === 'bidding' || controller.phase === 'playing')
           }

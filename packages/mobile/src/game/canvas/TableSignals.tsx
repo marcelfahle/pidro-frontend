@@ -26,6 +26,8 @@ import { isStillCapture } from '@/utils/stillCapture';
 import { computeLayout, playedCardTarget, type TableLayout } from './layout';
 import type { TableModel, TrickResult } from './tableModel';
 import { useTranslation } from '@/i18n';
+import { paced } from '@/features/game/tableHelp';
+import type { TablePace } from '@pidro/shared';
 
 /** A trick worth this much holds a five: the big moment. */
 const PIDRO_POINTS = 5;
@@ -42,9 +44,10 @@ type Props = {
   model: TableModel;
   topReserve?: number;
   bottomReserve?: number;
+  pace?: TablePace;
 };
 
-export function TableSignals({ model, topReserve = 0, bottomReserve = 0 }: Props) {
+export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 'normal' }: Props) {
   const { width, height } = useWindowDimensions();
   const { top, bottom, left, right } = useSafeAreaInsets();
   const L = useMemo(
@@ -53,8 +56,8 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0 }: Props
   );
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <TrickPop trick={model.lastTrick} L={L} />
-      <HandResult hand={model.lastHand} yourTeam={model.yourTeam} L={L} />
+      <TrickPop trick={model.lastTrick} L={L} popMs={paced(POP_MS, pace)} />
+      <HandResult hand={model.lastHand} yourTeam={model.yourTeam} L={L} pace={pace} />
     </View>
   );
 }
@@ -64,7 +67,15 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0 }: Props
  * of trump's point rises where it was played, since it stays with that team.
  * Plays only for a trick taken while watching, never for one already done.
  */
-function TrickPop({ trick, L }: { trick: TrickResult | null; L: TableLayout }) {
+function TrickPop({
+  trick,
+  L,
+  popMs,
+}: {
+  trick: TrickResult | null;
+  L: TableLayout;
+  popMs: number;
+}) {
   // A trick taken while watching pops; one already done when the table opened does not.
   const number = trick?.number ?? null;
   const [seen, setSeen] = useState(number);
@@ -96,7 +107,14 @@ function TrickPop({ trick, L }: { trick: TrickResult | null; L: TableLayout }) {
   return (
     <>
       {pop.points > 0 ? (
-        <Pop key={`win-${pop.number}`} x={at.x} y={at.y} big={big} label={`+${pop.points}`} />
+        <Pop
+          key={`win-${pop.number}`}
+          x={at.x}
+          y={at.y}
+          big={big}
+          label={`+${pop.points}`}
+          ms={popMs}
+        />
       ) : null}
       {twoAt && pop.twoOfTrump ? (
         <Pop
@@ -105,19 +123,32 @@ function TrickPop({ trick, L }: { trick: TrickResult | null; L: TableLayout }) {
           y={twoAt.y + (!big && pop.twoOfTrump.holder === pop.winner ? -26 : 0)}
           big={false}
           label={`+${pop.twoOfTrump.points}`}
+          ms={popMs}
         />
       ) : null}
     </>
   );
 }
 
-function Pop({ x, y, big, label }: { x: number; y: number; big: boolean; label: string }) {
+function Pop({
+  x,
+  y,
+  big,
+  label,
+  ms,
+}: {
+  x: number;
+  y: number;
+  big: boolean;
+  label: string;
+  ms: number;
+}) {
   const reduceMotion = useReducedMotion();
   const t = useSharedValue(0);
   useEffect(() => {
     // UI grammar captures the pop at its peak instead of mid-flight.
-    t.value = isStillCapture() ? 0.35 : withTiming(1, { duration: POP_MS, easing: Easing.linear });
-  }, [t]);
+    t.value = isStillCapture() ? 0.35 : withTiming(1, { duration: ms, easing: Easing.linear });
+  }, [t, ms]);
   const motion = useAnimatedStyle(() => {
     const appear = Math.min(1, t.value / 0.12);
     const fade = t.value < 0.7 ? 1 : Math.max(0, 1 - (t.value - 0.7) / 0.3);
@@ -154,17 +185,19 @@ function Pop({ x, y, big, label }: { x: number; y: number; big: boolean; label: 
  * The hand's result, before the next deal: "We made our bid" or "They missed
  * their bid", the bid and the points the bidders won, and what each side's
  * score moved by. Stays until tapped, or for its reading time and at least
- * HAND_RESULT_MS. A made bid glows gold; a missed one shakes once in muted
+ * HAND_RESULT_MS, twice that at a slow pace. A made bid glows gold; a missed one shakes once in muted
  * red, with no fanfare.
  */
 function HandResult({
   hand,
   yourTeam,
   L,
+  pace,
 }: {
   hand: ServerLastHand | null;
   yourTeam: TeamKey | null;
   L: TableLayout;
+  pace: TablePace;
 }) {
   const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
@@ -204,9 +237,12 @@ function HandResult({
   const themLabel = t(yourTeam ? 'game.them' : 'game.ew');
   const usDelta = hand ? signed(hand.delta[us]) : '';
   const themDelta = hand ? signed(hand.delta[them]) : '';
-  const holdMs = Math.max(
-    HAND_RESULT_MS,
-    readingTimeMs(`${headline} ${bidLine} ${usLabel} ${usDelta} ${themLabel} ${themDelta}`)
+  const holdMs = paced(
+    Math.max(
+      HAND_RESULT_MS,
+      readingTimeMs(`${headline} ${bidLine} ${usLabel} ${usDelta} ${themLabel} ${themDelta}`)
+    ),
+    pace
   );
 
   useEffect(() => {

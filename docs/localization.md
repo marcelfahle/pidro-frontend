@@ -43,6 +43,7 @@ Catalog sections place English and Swedish side by side for review.
 | `social`: profile statistics | `TID_PlayedGames`, `TID_Wins`, `TID_Loses`, `TID_WinningPercentage` | Spelade spel, vinster, förluster; locale number formatting |
 | `game`: bids/suits/turns | `TID_Bet`, `TID_Pass`, `TID_Passed`, `TID_ChooseASuit`, `TID_DealerChip` | Bud, passa/passade, färg, givare; complete interpolated sentences |
 | `game`: PID-214 high-bid status | Current server-owned bid presentation; Unity supplies Bud terminology | Bud 9 · högst / Högst 9; pulse identity remains hand + wire bid, never translated text |
+| `game`/`shell`: PID-220 out of trumps, count help, last trick, pace | No matching Unity flow; Unity supplies stick/bud terminology | Ute, Tar resten, Förra sticket, "%{taken} av %{bid}", Hjälp mig hålla räkningen, Lugnare tempo; Swedish review requested |
 | `core`: original invite/rules keys | `TID_Invite`, `TID_Loading`, `TID_Cancel`, `TID_Host` | Existing English preserved; modern invite and rules sentences newly translated |
 | `errors` | Backend manifest meanings, Unity bud/färg/givare vocabulary | 119 explicit codes, safe typed params; no raw exception text |
 | New account/guest/Classic recovery, updates, accessibility | No matching current Unity flow | Newly translated from current app meaning |

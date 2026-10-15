@@ -113,6 +113,8 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 | `hand`       | `made` · `set`                                                                            | table (mock model): the last hand's result card appears 1.6 s after the table opens                                                                                       |
 | `ticker`     | `full`                                                                                    | table (mock model): the table opens with West's pass, and the other three bids land 0.3 s later, so the plaque's action ticker shows three lines; tap it for the hand log |
 | `bids`       | `round` · `high` (with `phase=bidding&role=player`)                                       | you and three bots; the bids land one by one. `round`: West passes, North bids 7, East goes to 9, then it is your turn. `high`: you hold the high bid at 9 and West is still to bid |
+| `out`        | `one` · `lone` (with `phase=playing&role=player`)                                         | you and three bots, two tricks into hand 4 after Eli bid 6. `one`: Wynn is out of trumps (dimmed, "Out", two cards face up). `lone`: the other three are out, and your seat says the rest is yours |
+| `count`      | `on`                                                                                      | turns on "Help me keep count": the plaque's bid line reads "Eli bid 6 · 2 of 6" (small phones too) and "Last trick" sits under it |
 | `playerName` | any string                                                                                | name in the first seat decision                                                                                                                                           |
 | `viewer`     | `east`                                                                                    | you are east instead of south                                                                                                                                             |
 | `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you                                                                                 |
@@ -153,6 +155,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 /table-dev?phase=waiting&names=long               # long-name wrapping
 /table-dev?phase=bidding&role=player&pass=disabled   # real store, no pass
 /table-dev?phase=bidding&role=player&bids=round   # who bid what, against bots (PID-214)
+/table-dev?phase=playing&role=player&out=one&count=on # out of trumps, the count meter, Last trick (PID-220)
 /table-dev?phase=bidding&role=player&deal=true&dealer=north # clockwise packets, unsorted hand → sort → bid
 /table-dev?phase=bidding&role=player&deal=cold      # reconnect: already-dealt hand, no replay
 /table-dev?phase=second_deal&role=player&dealer=south # dealer sees the authoritative pool and keeps six

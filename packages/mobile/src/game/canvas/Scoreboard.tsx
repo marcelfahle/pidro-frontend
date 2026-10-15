@@ -2,9 +2,11 @@
  * Mounted navy-and-brass score plaque. Tap for locally observed score changes.
  * Under it in portrait, beside it in landscape where the West seat sits below,
  * the action ticker: the latest table actions, resting on who holds the bid as
- * Classic's "Bet 6" did. Tap the ticker for the hand's log.
+ * Classic's "Bet 6" did. Tap the ticker for the hand's log. With count help
+ * (PID-220), the "Last trick" pill sits under it, and small phones that leave
+ * the ticker out keep its resting line.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
@@ -12,7 +14,8 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Position } from '@/types/lobby';
-import { handLogEntries, type HandLogGroup } from '@/game/handLog';
+import type { TablePace } from '@pidro/shared';
+import { handLogEntries, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
 import { HandLogWindow } from './HandLogWindow';
 import { TableUtilityWindow } from './TableUtilityWindow';
@@ -31,6 +34,8 @@ const RIM = 1.5;
 const LABEL_LINE = 13;
 const VALUE_LINE = 29;
 export const SCORE_PLAQUE_HEIGHT = 2 * RIM + 2 * PidroSpacing.xxs + LABEL_LINE + VALUE_LINE;
+
+const NO_ENTRIES: HandLogEntry[] = [];
 
 function teams(scores: Scores, you: Position | null) {
   const ns = scores?.north_south ?? 0;
@@ -66,6 +71,9 @@ export function Scoreboard({
   yourTurn = false,
   ticker,
   stateArrived = true,
+  tickerPace = 'normal',
+  restingOnly = false,
+  help = null,
 }: {
   scores: Scores;
   youPosition: Position | null;
@@ -82,6 +90,12 @@ export function Scoreboard({
   ticker?: { lineMaxWidth: number; drop: number } | null;
   /** False until the table has its first server state; the ticker waits for it. */
   stateArrived?: boolean;
+  /** The table's pace: slow holds each ticker line longer. */
+  tickerPace?: TablePace;
+  /** Only the resting line, where the table has no room for the passing ones. */
+  restingOnly?: boolean;
+  /** Under the ticker: the count help's "Last trick". */
+  help?: ReactNode;
 }) {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
@@ -180,12 +194,14 @@ export function Scoreboard({
         <View style={{ marginTop: ticker?.drop ?? 0 }} pointerEvents="box-none">
           <ActionTicker
             key={roomCode ?? 'table'}
-            entries={entries}
+            entries={restingOnly ? NO_ENTRIES : entries}
             resting={resting}
             onOpenLog={() => setLogOpen(true)}
             stateArrived={stateArrived}
             lineMaxWidth={ticker?.lineMaxWidth}
+            pace={tickerPace}
           />
+          {help}
         </View>
       ) : null}
       {/* Closed, the log builds nothing. */}

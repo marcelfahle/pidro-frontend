@@ -17,6 +17,10 @@ interface SettingsState {
   preferredRuleSet: RuleSet;
   lobbyRuleSetFilter: RuleSet | 'all' | null;
   hasSeenLouisianaRules: boolean;
+  /** Beginner aids at the table: the bidders' count and the last trick (PID-220). */
+  countHelp: boolean;
+  /** How long tricks and results stay on screen. */
+  pace: TablePace;
 
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
   toggleSound: () => void;
@@ -25,9 +29,12 @@ interface SettingsState {
   setPreferredRuleSet: (preferredRuleSet: RuleSet) => void;
   setLobbyRuleSetFilter: (lobbyRuleSetFilter: RuleSet | 'all') => void;
   markLouisianaRulesSeen: () => void;
+  toggleCountHelp: () => void;
+  setPace: (pace: TablePace) => void;
 }
 
 export type PinChoice = 'classic' | 'none';
+export type TablePace = 'normal' | 'slow';
 
 interface CreateSettingsStoreOptions {
   storage: PersistStorage;
@@ -52,6 +59,8 @@ export function createSettingsStore({
         preferredRuleSet: 'finnish',
         lobbyRuleSetFilter: null,
         hasSeenLouisianaRules: false,
+        countHelp: false,
+        pace: 'normal',
 
         setTheme: (theme) => set({ theme }),
         toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
@@ -60,6 +69,8 @@ export function createSettingsStore({
         setPreferredRuleSet: (preferredRuleSet) => set({ preferredRuleSet }),
         setLobbyRuleSetFilter: (lobbyRuleSetFilter) => set({ lobbyRuleSetFilter }),
         markLouisianaRulesSeen: () => set({ hasSeenLouisianaRules: true }),
+        toggleCountHelp: () => set((state) => ({ countHelp: !state.countHelp })),
+        setPace: (pace) => set({ pace }),
       }),
       {
         name: storageKey,
