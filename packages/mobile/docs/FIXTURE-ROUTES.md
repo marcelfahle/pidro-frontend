@@ -45,7 +45,8 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 | `role`       | `player` · `spectator`                                                                    | non-waiting phases: renders via the **real store/controller**, not the mock model         |
 | `lifecycle`  | `normal` · `reconnecting` · `bot_substitute` · `permanent_bot` · `vacant`                 | seat lifecycle badge state                                                                |
 | `feedback`   | `owner` (3 queued seat decisions) · `notice` · `timed` (dedupe + success at 0.8/1.0/1.2s) | TableFeedback / TableSeatDecision                                                         |
-| `notice`     | `true`                                                                                    | same as `feedback=notice`                                                                 |
+| `notice`     | `true`                                                                                    | same as `feedback=notice`; on a waiting phase, a join notice below the toolbar            |
+| `connection` | `lost`                                                                                    | with `role=`: the channel is down, so the table shows its Reconnecting… banner            |
 | `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                               |
 | `names`      | `long`                                                                                    | west seat → "Alexandria the Long-Named Player" (wrapping)                                 |
 | `playerName` | any string                                                                                | name in the first seat decision                                                           |
@@ -62,6 +63,14 @@ the partner's long name. The default is a win with no XP. Rematch records a loca
 fixture vote; Home navigates home. Run `node scripts/verify-game-over.mjs` for
 phone/tablet, simulated insets, outcome, voting, and reduced-motion checks.
 These browser checks do not certify native safe-area measurement.
+
+The table's header is one row: the score plaque left, the menu right
+(`TABLE_HEADER` in `TableChrome.tsx`). Portrait reserves it above the north seat;
+landscape seats North inside it. Notices and the Reconnecting… banner share one
+slot (`useTableReserves().noticeSlot`): the dock under the hand in portrait, the
+felt below the header in landscape, below the toolbar in the waiting room. The
+grammar fails when the header, a notice or a protected window covers the north
+seat or its cards.
 
 Top-bar checks: `scores=history` seeds two observed score changes (including a negative total)
 in the mock table. `safeArea=island-left` / `island-right` simulate landscape side cutouts.
@@ -250,7 +259,8 @@ renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift w
 `UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby` `lobby-empty` `login` `register` `register-password`
 `register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
 `ui-components` `create-table` `create-seat` `table-waiting` `table-ready` `table-ready-host`
-`table-host-controls` `table-invite` `table-playing` `table-dealer-selection`
+`table-host-controls` `table-invite` `table-waiting-notice` `table-playing` `table-notice`
+`table-reconnecting-banner` `table-dealer-selection`
 `table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`
 `table-game-over`
 

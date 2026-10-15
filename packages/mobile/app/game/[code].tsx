@@ -810,8 +810,8 @@ export default function GameScreen() {
         onMovePlayer={handleMovePlayer}
         onKickPlayer={handleKickPlayer}
         onSeatBot={handleSeatBot}
+        notice={notice}
       />
-      <TableFeedback notice={notice} />
       {canManage ? (
         <InviteModal
           key={room.code}

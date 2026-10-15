@@ -14,7 +14,7 @@ import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
-import { TableChromeBars, useTableReserves } from './TableChrome';
+import { HEADER_INSET, TableChromeBars, useTableReserves } from './TableChrome';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
 import { useHandPresentationReady } from './useHandPresentationReady';
@@ -272,7 +272,7 @@ export default function GameCanvasDev({
             youPosition="south"
             handNumber={4}
             roomCode="DEV01"
-            top={insets.top}
+            top={insets.top + HEADER_INSET}
             left={insets.left}
           />
           <TableSettings onLeave={() => {}} />

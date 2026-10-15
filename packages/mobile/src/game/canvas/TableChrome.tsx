@@ -1,15 +1,19 @@
 /**
- * Shared table chrome: floating top controls plus reserve math used by
- * both the live table and the dev harness.
- * Landscape renders no chrome — the felt owns the whole screen and the
- * score/settings float instead (see DESIGN.md).
+ * Shared table chrome: the header contract plus reserve math used by both the
+ * live table and the dev harness.
+ * The header is one row inset from the safe top: the score plaque on the left,
+ * the menu on the right. Portrait reserves it above the north seat; landscape
+ * seats North inside the row, between the two (see the Table boards).
  */
-import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { PidroColors } from '@/design/tokens';
+import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { SCORE_PLAQUE_HEIGHT } from './Scoreboard';
 
-// Keep top-control clearance even though felt now shows between the controls.
-export const HUD_RESERVE = 56;
+/** Gap between the safe top and the header row. */
+export const HEADER_INSET = PidroSpacing.xs;
+/** The header row's height from the safe top: the taller of the plaque and the menu. */
+export const TABLE_HEADER = HEADER_INSET + Math.max(SCORE_PLAQUE_HEIGHT, PidroLayout.touchTarget);
 // One shared portrait slot below the hand. It can host chat, an adaptive ad,
 // or compact table details, but those modes should never stack vertically.
 export const UTILITY_DOCK_RESERVE = 72;
@@ -18,6 +22,8 @@ export interface TableReserves {
   landscape: boolean;
   topReserve: number;
   bottomReserve: number;
+  /** Where notices and the connection banner float: never over the header or a seat. */
+  noticeSlot: ViewStyle;
 }
 
 export interface TableDockHeights {
@@ -26,15 +32,21 @@ export interface TableDockHeights {
 }
 
 export function useTableReserves({
-  top = HUD_RESERVE,
+  top = TABLE_HEADER,
   bottom = UTILITY_DOCK_RESERVE,
 }: TableDockHeights = {}): TableReserves {
   const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const landscape = width > height;
   return {
     landscape,
     topReserve: landscape ? 0 : top,
     bottomReserve: landscape ? 0 : bottom,
+    // Portrait: the dock under the hand. Landscape: the felt below the header
+    // row, between the side seats, where North no longer sits.
+    noticeSlot: landscape
+      ? { top: insets.top + TABLE_HEADER + PidroSpacing.xs }
+      : { bottom: insets.bottom, height: bottom, justifyContent: 'center' },
   };
 }
 

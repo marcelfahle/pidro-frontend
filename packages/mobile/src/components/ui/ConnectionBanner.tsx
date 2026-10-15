@@ -10,7 +10,7 @@ export function ConnectionBanner({ isConnected }: ConnectionBannerProps) {
   if (isConnected) return null;
 
   return (
-    <View style={styles.banner} accessibilityRole="alert">
+    <View testID="connection-banner" style={styles.banner} accessibilityRole="alert">
       <View style={styles.dot} />
       <PidroText role="metadata" tone="default">
         Reconnecting…

@@ -32,7 +32,7 @@ import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
-import { TableChromeBars, useTableReserves } from './TableChrome';
+import { HEADER_INSET, TABLE_HEADER, TableChromeBars, useTableReserves } from './TableChrome';
 import { computeLayout } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
@@ -338,14 +338,14 @@ export function GameCanvasTable({
           youPosition={youPositionAbs}
           handNumber={serverState?.hand_number ?? serverState?.round_number ?? null}
           roomCode={viewModel?.roomCode ?? room.code}
-          top={insets.top}
+          top={insets.top + HEADER_INSET}
           left={insets.left}
         />
       )}
 
-      {/* Connection banner (top-centre) */}
+      {/* Connection banner, in the notice slot */}
       {!isGameOver && (
-        <View style={[styles.bannerWrap, { top: insets.top + 10 }]} pointerEvents="box-none">
+        <View style={[styles.bannerWrap, reserves.noticeSlot]} pointerEvents="box-none">
           <ConnectionBanner isConnected={isChannelJoined} />
         </View>
       )}
@@ -370,7 +370,7 @@ export function GameCanvasTable({
             isPrivateDealerRob
               ? { bottom: insets.bottom + bottomReserve + 116 }
               : {
-                  paddingTop: insets.top + 64,
+                  paddingTop: insets.top + TABLE_HEADER + PidroSpacing.xs,
                   paddingBottom: insets.bottom + 16,
                 },
           ]}

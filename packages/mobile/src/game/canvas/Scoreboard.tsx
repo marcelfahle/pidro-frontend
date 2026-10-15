@@ -19,6 +19,12 @@ type ScoreHistoryEntry = {
   totals: ConcreteScores;
 };
 
+// The plaque's fonts are capped, so its height is fixed: rim, padding, label, figure.
+const RIM = 1.5;
+const LABEL_LINE = 13;
+const VALUE_LINE = 29;
+export const SCORE_PLAQUE_HEIGHT = 2 * RIM + 2 * PidroSpacing.xxs + LABEL_LINE + VALUE_LINE;
+
 function teams(scores: Scores, you: Position | null) {
   const ns = scores?.north_south ?? 0;
   const ew = scores?.east_west ?? 0;
@@ -103,9 +109,7 @@ export function Scoreboard({
   }, [scores, handNumber]);
 
   return (
-    <View
-      style={[styles.wrap, { top: top + PidroSpacing.xs, left: left + PidroSpacing.sm }]}
-      pointerEvents="box-none">
+    <View style={[styles.wrap, { top, left: left + PidroSpacing.sm }]} pointerEvents="box-none">
       <PressableFX
         accessibilityRole="button"
         accessibilityLabel={`${usLabel} ${us}, ${themLabel} ${them}. Recent scores.`}
@@ -192,7 +196,7 @@ export function Scoreboard({
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', zIndex: 44 },
   plaque: {
-    padding: 1.5,
+    padding: RIM,
     borderRadius: PidroRadii.lg,
     boxShadow: PidroBevel.glassDropShadow,
   },
@@ -203,20 +207,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: PidroSpacing.sm,
     paddingVertical: PidroSpacing.xxs,
     backgroundColor: PidroBevel.panelDeep,
-    borderRadius: PidroRadii.lg - 1.5,
+    borderRadius: PidroRadii.lg - RIM,
     boxShadow: PidroBevel.glassFaceInset,
   },
   col: { alignItems: 'center', minWidth: 52 },
   label: {
     fontSize: 10,
-    lineHeight: 13,
+    lineHeight: LABEL_LINE,
   },
   value: {
     color: PidroColors.text,
     fontFamily: PidroFonts.display,
     fontWeight: '400',
     fontSize: 22,
-    lineHeight: 29,
+    lineHeight: VALUE_LINE,
   },
   divider: {
     width: 1,
