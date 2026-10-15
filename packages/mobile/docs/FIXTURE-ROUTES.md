@@ -141,6 +141,23 @@ inputs, not a device database or production padding. Native opens the real modal
 without overrides. The unit test `create-modal-safe-area.test.mjs` separately guards
 provider placement inside that native modal; neither test replaces device testing.
 
+## Shell update notice — "A new version is ready"
+
+`/home?fixture=update-notice` forces the shell's update notice on. It works on any
+shell tab (`/settings?fixture=update-notice` too), because the notice lives in the
+shell layout, not in a screen; the gallery cannot show it in place. Restart only shows its busy state here; nothing reloads. Dismiss hides it.
+Add `safeArea=island` (or any `/table-dev` preset) to fake insets for the whole shell.
+testID `update-notice`.
+
+The UI-grammar case `update-notice` opens `/home?fixture=update-notice&safeArea=island`
+in every viewport and checks that the notice sits inside the faked insets, covers no
+other control (the tab pill, Home's header), has 44pt Restart and Dismiss targets, and
+that Restart goes busy and cannot be tapped twice.
+
+In a release build the notice shows by itself once Expo has downloaded an update, and
+never on the game screen. The real path (check on foreground, download, reload) needs a
+release build on a device; Expo Go and web have OTA updates disabled.
+
 ## `/auth-flow-dev` — guest-first auth
 
 No params. Includes gates that open `AuthSheet` (`multiplayer`, `friends`, invite link)

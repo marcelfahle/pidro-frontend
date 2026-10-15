@@ -91,6 +91,12 @@ const allCases = [
     open: 'Your badges',
   },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
+  {
+    name: 'update-notice',
+    path: '/home?fixture=update-notice&safeArea=island',
+    testId: 'update-notice',
+    authenticated: true,
+  },
   { name: 'league', path: '/league', testId: 'league-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
   ...[
@@ -547,6 +553,43 @@ async function assertNorthClear(page, testCase, viewport, windowBox) {
       }
     }
   }
+}
+
+// The update notice takes the top of the shell (faked island insets: 59 top, 34 bottom).
+// It must sit inside them, cover no other control (tab pill, Home's header), and Restart
+// must go busy on the first tap and stay that way.
+async function assertUpdateNotice(page, name, viewport) {
+  if (name !== 'update-notice') return;
+  const notice = page.getByTestId('update-notice');
+  const box = await getStableBox(notice, page);
+  assert.ok(box.y >= 59 - 1, `update notice under the top inset in ${viewport.name}`);
+  assert.ok(box.y + box.height <= viewport.height - 34, `update notice above the bottom inset`);
+  const restart = page.getByRole('button', { name: 'Restart', exact: true });
+  const dismiss = page.getByRole('button', { name: 'Dismiss', exact: true });
+  for (const [label, control] of [
+    ['Restart', restart],
+    ['Dismiss', dismiss],
+  ]) {
+    const target = await getStableBox(control, page);
+    assert.ok(target.width >= 44 && target.height >= 44, `${label} is a 44pt target`);
+  }
+  for (const control of await page.getByRole('button').all()) {
+    if (!(await control.isVisible())) continue;
+    const inside = await control.evaluate(
+      (element) => !!element.closest('[data-testid="update-notice"]')
+    );
+    if (inside) continue;
+    const other = await control.boundingBox();
+    if (other && boxesOverlap(box, other)) {
+      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent());
+      throw new Error(`update notice covers "${label}" in ${viewport.name}`);
+    }
+  }
+  await restart.click();
+  await restart.locator('[role="progressbar"]').waitFor();
+  assert.ok(await restart.isDisabled(), 'a busy Restart cannot be tapped again');
+  await dismiss.click();
+  await notice.waitFor({ state: 'detached' });
 }
 
 async function assertFocused(locator, message) {
@@ -1630,6 +1673,7 @@ async function main() {
             'home',
             'home-guest',
             'home-table-unknown',
+            'update-notice',
             'profile',
             'profile-guest',
             'profile-badges',
@@ -1777,6 +1821,7 @@ async function main() {
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
+          await assertUpdateNotice(page, testCase.name, caseViewport);
           await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
