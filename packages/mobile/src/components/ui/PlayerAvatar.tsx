@@ -340,9 +340,10 @@ function useActedPulse(pulse: string | null) {
   const seen = useRef(pulse);
 
   useEffect(() => {
-    if (pulse === seen.current) return;
+    // A line in between (reconnecting, dealing) is not a new action.
+    if (!pulse || pulse === seen.current) return;
     seen.current = pulse;
-    if (!pulse || calm) return;
+    if (calm) return;
     t.set(
       withSequence(
         withTiming(1, { duration: ACTED_IN_MS, easing: Easing.out(Easing.quad) }),
