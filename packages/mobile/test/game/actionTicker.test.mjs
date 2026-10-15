@@ -13,10 +13,19 @@ const shown = (state, now) => visibleLines(state, now).map((line) => line.id);
 
 describe('action ticker schedule', () => {
   it('does not replay what was already there when state first arrives', () => {
-    let state = stepTicker(initialTickerState(), [], 0);
+    // The table mounts before server state; nothing is history until it arrives.
+    let state = stepTicker(initialTickerState(), [], 0, false);
     state = stepTicker(state, ids(12), 100);
     expect(shown(state, 100)).toEqual([]);
     expect(isTickerIdle(state, 100)).toBe(true);
+  });
+
+  it('shows the first action of a fresh game', () => {
+    // State arrives before anyone has bid: the log is empty, and the first bid is news.
+    let state = stepTicker(initialTickerState(), [], 0, false);
+    state = stepTicker(state, [], 50);
+    state = stepTicker(state, ['bid-1-west'], 900);
+    expect(shown(state, 900)).toEqual(['bid-1-west']);
   });
 
   it('shows a new line for SHOW_MS, fades it, and only then goes idle', () => {

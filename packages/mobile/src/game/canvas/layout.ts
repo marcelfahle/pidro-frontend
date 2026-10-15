@@ -61,7 +61,7 @@ export const northFanWidth = (cardW: number, count: number) =>
  * landscape tucks them partly above the table, under the floating scores.
  */
 export const northFanTop = (L: TableLayout, tableTop: number) =>
-  L.width > L.height ? tableTop - L.cardH * 0.36 : tableTop + 8;
+  L.profile.endsWith('portrait') ? tableTop + 8 : tableTop - L.cardH * 0.36;
 
 const TICKER_LINE_MAX = 168;
 const TICKER_LINE_MIN = 72;
@@ -77,7 +77,7 @@ export function tickerPlacement(
   { tableTop, plaqueLeft, plaqueTop }: { tableTop: number; plaqueLeft: number; plaqueTop: number }
 ): { lineMaxWidth: number; drop: number } {
   const backW = northBackWidth(L.cardW);
-  if (L.width > L.height) {
+  if (!L.profile.endsWith('portrait')) {
     const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
     return { lineMaxWidth: TICKER_LINE_MAX, drop: Math.max(0, fanBottom + 4 - plaqueTop) };
   }

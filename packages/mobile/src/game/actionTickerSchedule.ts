@@ -13,7 +13,7 @@ const MAX_LINES = 3;
 const MAX_QUEUE = 6;
 
 export type TickerState = {
-  /** False until the first non-empty snapshot sets what counts as already seen. */
+  /** False until server state arrives; that first snapshot is what counts as already seen. */
   ready: boolean;
   seen: ReadonlySet<string>;
   queue: string[];
@@ -26,15 +26,26 @@ export function initialTickerState(): TickerState {
 
 const expired = (line: { shownAt: number }, now: number) => now >= line.shownAt + SHOW_MS + FADE_MS;
 
-export function stepTicker(state: TickerState, ids: readonly string[], now: number): TickerState {
+/**
+ * `stateArrived` is false only while the table waits for its first server
+ * state. The first step once it arrives takes what is there as history, even
+ * an empty log, so a fresh game's first bid still shows.
+ */
+export function stepTicker(
+  state: TickerState,
+  ids: readonly string[],
+  now: number,
+  stateArrived = true
+): TickerState {
   if (!state.ready) {
-    // The table mounts before state arrives; the first real snapshot is history.
-    return ids.length === 0 ? state : { ready: true, seen: new Set(ids), queue: [], lines: [] };
+    return stateArrived ? { ready: true, seen: new Set(ids), queue: [], lines: [] } : state;
   }
   const fresh = ids.filter((id) => !state.seen.has(id));
+  const lines = state.lines.filter((line) => !expired(line, now));
+  // Nothing new and nothing done: the same state, so nothing re-renders.
+  if (fresh.length === 0 && lines.length === state.lines.length) return state;
   const seen = fresh.length > 0 ? new Set([...state.seen, ...fresh]) : state.seen;
   const queue = [...state.queue, ...fresh];
-  const lines = state.lines.filter((line) => !expired(line, now));
   while (lines.length < MAX_LINES && queue.length > 0) {
     lines.push({ id: queue.shift() as string, shownAt: now });
   }

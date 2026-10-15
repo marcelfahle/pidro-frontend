@@ -31,7 +31,9 @@ type Props = {
   entries: HandLogEntry[];
   resting: TickerRestingLine | null;
   onOpenLog: () => void;
-  /** Where the lines must stop short of North's fan (layout's tickerLineMaxWidth). */
+  /** False until the table has its first server state. */
+  stateArrived: boolean;
+  /** Where the lines must stop short of North's fan (layout's tickerPlacement). */
   lineMaxWidth?: number;
 };
 
@@ -59,7 +61,13 @@ type Schedule = {
   known: ReadonlyMap<string, HandLogEntry>;
 };
 
-export function ActionTicker({ entries, resting, onOpenLog, lineMaxWidth = 168 }: Props) {
+export function ActionTicker({
+  entries,
+  resting,
+  onOpenLog,
+  stateArrived,
+  lineMaxWidth = 168,
+}: Props) {
   const [schedule, setSchedule] = useState<Schedule>(() => ({
     state: initialTickerState(),
     now: Date.now(),
@@ -70,12 +78,18 @@ export function ActionTicker({ entries, resting, onOpenLog, lineMaxWidth = 168 }
     // eslint-disable-next-line react-hooks/set-state-in-effect -- paces new entries against wall-clock time
     setSchedule((prev) => {
       const now = Date.now();
+      const state = stepTicker(
+        prev.state,
+        entries.map((entry) => entry.id),
+        now,
+        stateArrived
+      );
+      if (state === prev.state) return prev;
       const known = new Map(prev.known);
       for (const entry of entries) known.set(entry.id, entry);
-      const ids = entries.map((entry) => entry.id);
-      return { state: stepTicker(prev.state, ids, now), now, known };
+      return { state, now, known };
     });
-  }, [entries]);
+  }, [entries, stateArrived]);
 
   useEffect(() => {
     // UI grammar holds the lines it caught instead of letting them fade.
@@ -85,7 +99,8 @@ export function ActionTicker({ entries, resting, onOpenLog, lineMaxWidth = 168 }
     const timer = setTimeout(() => {
       setSchedule((prev) => {
         const now = Date.now();
-        return { ...prev, state: stepTicker(prev.state, [], now), now };
+        const state = stepTicker(prev.state, [], now);
+        return state === prev.state ? { ...prev, now } : { ...prev, state, now };
       });
     }, wait + 16);
     return () => clearTimeout(timer);

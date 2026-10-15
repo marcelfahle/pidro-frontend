@@ -395,6 +395,7 @@ export function GameCanvasTable({
           left={insets.left}
           log={handLog}
           resting={resting}
+          stateArrived={serverState != null}
           ticker={tickerPlacement(layout, {
             tableTop: insets.top + topReserve,
             plaqueLeft: insets.left + PidroSpacing.sm,

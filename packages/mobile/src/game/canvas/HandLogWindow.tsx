@@ -12,26 +12,18 @@ import { TableUtilityWindow } from './TableUtilityWindow';
 
 type Section = { key: string; title: string | null; entries: HandLogEntry[] };
 
-/** Bids and trump open a hand; each trick follows under its own heading. */
+/** Where an entry goes: bids and trump open a hand, each trick gets its own heading. */
+function sectionFor(entry: HandLogEntry): { key: string; title: string | null } {
+  if (entry.kind === 'result') return { key: 'result', title: null };
+  if (entry.trick != null) return { key: `trick-${entry.trick}`, title: `Trick ${entry.trick}` };
+  if (entry.kind === 'trump') return { key: 'trump', title: null };
+  return { key: 'bids', title: 'Bids' };
+}
+
 function sections(group: HandLogGroup): Section[] {
   const out: Section[] = [];
   for (const entry of group.entries) {
-    const key =
-      entry.kind === 'result'
-        ? 'result'
-        : entry.trick != null
-          ? `trick-${entry.trick}`
-          : entry.kind === 'trump'
-            ? 'trump'
-            : 'bids';
-    const title =
-      key === 'result'
-        ? null
-        : key === 'bids'
-          ? 'Bids'
-          : key === 'trump'
-            ? null
-            : `Trick ${entry.trick}`;
+    const { key, title } = sectionFor(entry);
     const last = out[out.length - 1];
     if (last?.key === key) last.entries.push(entry);
     else out.push({ key, title, entries: [entry] });

@@ -337,18 +337,19 @@ export const useGameStore = create<GameState>((set, get) => ({
       // The record loses the order bids were made in; the hand log needs it.
       let bidOrder: ServerBid[] | undefined;
       if (Array.isArray(bidsRaw)) {
-        bidOrder = bidsRaw
-          .map((entry) => ({
-            position: (entry?.position ?? entry?.pos ?? entry?.[0]) as Position,
-            amount: (entry?.amount ?? entry?.bid ?? entry?.[1] ?? entry?.value) as number | 'pass',
-          }))
-          .filter((entry) => entry.position && entry.amount != null);
-        bids = bidsRaw.reduce(
-          (acc, entry) => {
-            const pos: Position | undefined = entry?.position ?? entry?.pos ?? entry?.[0];
-            const amount: number | 'pass' | undefined =
-              entry?.amount ?? entry?.bid ?? entry?.[1] ?? entry?.value;
-            if (pos) acc[pos] = amount ?? acc[pos] ?? 'pass';
+        const entries = bidsRaw.map((entry) => ({
+          position: (entry?.position ?? entry?.pos ?? entry?.[0]) as Position | undefined,
+          amount: (entry?.amount ?? entry?.bid ?? entry?.[1] ?? entry?.value) as
+            | number
+            | 'pass'
+            | undefined,
+        }));
+        bidOrder = entries.filter(
+          (entry): entry is ServerBid => !!entry.position && entry.amount != null,
+        );
+        bids = entries.reduce(
+          (acc, { position, amount }) => {
+            if (position) acc[position] = amount ?? acc[position] ?? 'pass';
             return acc;
           },
           {} as Record<Position, number | 'pass'>,

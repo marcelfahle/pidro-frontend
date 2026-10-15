@@ -14,6 +14,7 @@ import type {
   Suit,
   TeamKey,
 } from '@/types/game';
+import { isNorthSouthTeam } from '@pidro/shared';
 import type { Position } from '@/types/lobby';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 
@@ -66,7 +67,7 @@ const POSITIONS = new Set<string>(['north', 'east', 'south', 'west']);
 const isPosition = (value: unknown): value is Position =>
   typeof value === 'string' && POSITIONS.has(value);
 const teamOf = (position: Position): TeamKey =>
-  position === 'north' || position === 'south' ? 'north_south' : 'east_west';
+  isNorthSouthTeam(position) ? 'north_south' : 'east_west';
 
 function playsOf(trick: unknown): RawPlay[] {
   const plays = Array.isArray(trick)

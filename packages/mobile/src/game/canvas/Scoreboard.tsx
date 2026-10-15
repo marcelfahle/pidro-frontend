@@ -12,8 +12,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Position } from '@/types/lobby';
-import type { HandLogGroup } from '@/game/handLog';
-import { handLogEntries } from '@/game/handLog';
+import { handLogEntries, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
 import { HandLogWindow } from './HandLogWindow';
 import { TableUtilityWindow } from './TableUtilityWindow';
@@ -66,6 +65,7 @@ export function Scoreboard({
   resting = null,
   yourTurn = false,
   ticker = null,
+  stateArrived = true,
 }: {
   scores: Scores;
   youPosition: Position | null;
@@ -80,6 +80,8 @@ export function Scoreboard({
   yourTurn?: boolean;
   /** Where the ticker keeps off North's fan (layout's tickerPlacement). */
   ticker?: { lineMaxWidth: number; drop: number } | null;
+  /** False until the table has its first server state; the ticker waits for it. */
+  stateArrived?: boolean;
 }) {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
@@ -179,10 +181,12 @@ export function Scoreboard({
           entries={entries}
           resting={resting}
           onOpenLog={() => setLogOpen(true)}
+          stateArrived={stateArrived}
           lineMaxWidth={ticker?.lineMaxWidth}
         />
       </View>
-      <HandLogWindow open={logOpen} onClose={() => setLogOpen(false)} groups={log} />
+      {/* Closed, the log builds nothing. */}
+      <HandLogWindow open={logOpen} onClose={() => setLogOpen(false)} groups={logOpen ? log : []} />
 
       <TableUtilityWindow title="Recent scores" open={isOpen} onClose={() => setIsOpen(false)}>
         <PidroText role="metadata" tone="muted">
