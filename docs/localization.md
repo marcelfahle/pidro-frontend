@@ -42,6 +42,7 @@ Catalog sections place English and Swedish side by side for review.
 | `friends` in `social`: PID-224 list/search/add-back/remove | Current merged Friends flow; Unity supplies Vänner terminology | New complete sentences and accessible actions; presence/relation enums and player identities stay unchanged |
 | `social`: profile statistics | `TID_PlayedGames`, `TID_Wins`, `TID_Loses`, `TID_WinningPercentage` | Spelade spel, vinster, förluster; locale number formatting |
 | `game`: bids/suits/turns | `TID_Bet`, `TID_Pass`, `TID_Passed`, `TID_ChooseASuit`, `TID_DealerChip` | Bud, passa/passade, färg, givare; complete interpolated sentences |
+| `game`: PID-214 high-bid status | Current server-owned bid presentation; Unity supplies Bud terminology | Bud 9 · högst / Högst 9; pulse identity remains hand + wire bid, never translated text |
 | `core`: original invite/rules keys | `TID_Invite`, `TID_Loading`, `TID_Cancel`, `TID_Host` | Existing English preserved; modern invite and rules sentences newly translated |
 | `errors` | Backend manifest meanings, Unity bud/färg/givare vocabulary | 119 explicit codes, safe typed params; no raw exception text |
 | New account/guest/Classic recovery, updates, accessibility | No matching current Unity flow | Newly translated from current app meaning |
@@ -97,6 +98,18 @@ inside its Surface, and all language targets remain 48pt. The actual declaring
 game state with nine cards clears the hand by 11pt in landscape (68pt targets).
 This approval does not certify Android, permission dialogs, screen readers,
 OS-locale foreground behavior or large native font scaling.
+
+Parent additionally approved the PID-224 integration on iPhone 17 Pro/iOS 26.5:
+Swedish added-you/list, Nora's profile, removal confirmation/cancel and landscape
+search. A real (nonfixture) Swedish preference survived termination/relaunch,
+then switched back to English. Literal names were preserved.
+
+Baseline review from Frontend CI run `38802016091` accepted ten Settings captures,
+portrait trump and landscape Louisiana results, plus 145 new EN/SV fixture
+captures. The five wrapped-toolbar drifts were rejected; the compact visible
+Leave/Lämna label restores the earlier layout while the accessible name stays
+Leave table/Lämna bordet. Main's existing waiting/table baselines are preserved.
+New waiting-label and PID-214 Swedish bid captures require the subsequent CI run.
 
 ## Validation commands
 

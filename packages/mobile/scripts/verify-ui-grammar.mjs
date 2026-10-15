@@ -519,6 +519,19 @@ const localizationCases = ['en', 'sv'].flatMap((locale) => [
 allCases.push(...localizationCases);
 allCases.push(
   ...allCases
+    .filter((testCase) => testCase.bidLines)
+    .map((testCase) => ({
+      ...testCase,
+      name: `locale-sv-${testCase.name}`,
+      path: `${testCase.path}&locale=sv`,
+      locale: 'sv',
+      bidLines: testCase.name.endsWith('-high')
+        ? { north: 'Bud 7', east: 'Passat', south: 'Bud 9 · högst' }
+        : { west: 'Passat', north: 'Bud 7', east: 'Bud 9 · högst' },
+    }))
+);
+allCases.push(
+  ...allCases
     .filter((testCase) => testCase.name.startsWith('friends-'))
     .map((testCase) => {
       const path = new URL(testCase.path, baseUrl);
@@ -663,7 +676,7 @@ async function assertTargetGeometry(page, testCase, viewport) {
     }
     if (testCase.protectPlayerHand) {
       await assertAbovePlayerHand(page, testCase.name, box, viewport);
-      await assertBidGridLayout(page, viewport);
+      await assertBidGridLayout(page, viewport, testCase.locale);
     }
 
     if (testCase.name === 'table-playing') {
@@ -1584,7 +1597,7 @@ async function assertBidLines(page, testCase, viewport) {
       { timeout: 10_000 }
     );
     const shown = [];
-    for (const text of await avatar.getByText(/^(Bid|High|Passed)/).all()) {
+    for (const text of await avatar.getByText(/^(Bid|High|Passed|Bud|Högst|Passat)/).all()) {
       if (await text.isVisible()) shown.push(text);
     }
     if (shown.length !== 1) {
@@ -1594,7 +1607,9 @@ async function assertBidLines(page, testCase, viewport) {
     assertInsideViewport(`${testCase.name} ${seat} bid line`, box, viewport);
     const words = await shown[0].textContent();
     if (words === line) continue;
-    const short = line.replace(/^Bid (\d+) · high$/, 'High $1');
+    const short = line
+      .replace(/^Bid (\d+) · high$/, 'High $1')
+      .replace(/^Bud (\d+) · högst$/, 'Högst $1');
     if (seat !== 'south' || words !== short) {
       throw new Error(`${testCase.name}: seat ${seat} shows "${words}" for "${line}"`);
     }
@@ -1621,8 +1636,9 @@ async function assertAbovePlayerHand(page, name, box, viewport) {
   }
 }
 
-async function assertBidGridLayout(page, viewport) {
-  const bidButtons = await page.getByRole('button', { name: /^Bid \d+$/ }).all();
+async function assertBidGridLayout(page, viewport, locale) {
+  const bid = locale === 'sv' ? 'Bud' : 'Bid';
+  const bidButtons = await page.getByRole('button', { name: new RegExp(`^${bid} \\d+$`) }).all();
   if (bidButtons.length !== 9) {
     throw new Error(
       `bidding grid has ${bidButtons.length} values instead of 9 in ${viewport.name}`
@@ -1660,7 +1676,7 @@ async function assertBidGridLayout(page, viewport) {
   }
 
   if (viewport.height >= viewport.width) {
-    const centerButton = await getStableBox(page.getByRole('button', { name: 'Bid 10' }), page);
+    const centerButton = await getStableBox(page.getByRole('button', { name: `${bid} 10` }), page);
     const trickCenter = await getStableBox(page.getByTestId('table-trick-center').first(), page);
     if (!centerButton || !trickCenter) {
       throw new Error(`bidding center has no geometry in ${viewport.name}`);

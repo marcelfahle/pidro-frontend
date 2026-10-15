@@ -45,6 +45,10 @@ is still ephemeral.
 Examples: `/ui-dev?state=settings&locale=sv&language=en&deviceLocale=sv-FI`,
 `/table-dev?phase=declaring&locale=sv`, `/auth-flow-dev?locale=sv`.
 
+PID-214 bid presentation uses `/table-dev?phase=bidding&role=player&bids=round|high&locale=sv`.
+`table-bid-*` and `locale-sv-table-bid-*` check every seat's visible/spoken bid,
+the high-bid tone and compact south status without changing bid event identities.
+
 Friends locale previews use `/ui-dev?state=friends&fixture=added-you&locale=sv`
 or `/ui-dev?state=friends-add&fixture=results&locale=sv`. They reuse the actual
 screens and existing fixture data; `/friends` and `/friends-add` ignore locale
