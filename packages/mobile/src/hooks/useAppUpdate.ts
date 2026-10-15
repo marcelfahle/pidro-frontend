@@ -43,15 +43,22 @@ export function useAppUpdate({ inGame, forced = false }: { inGame: boolean; forc
 
   const busy = isChecking || isDownloading;
   const lastCheckedAt = lastCheckForUpdateTimeSinceRestart?.getTime();
+  // Expo publishes its state after the fact; this counts a check from the moment it starts.
+  const lastStartedAt = useRef<number | null>(null);
 
   useEffect(() => {
     if (!updatesEnabled) return;
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
-      if (!shouldCheckOnForeground({ enabled: true, busy, now: Date.now(), lastCheckedAt })) return;
+      const now = Date.now();
+      const last = Math.max(lastCheckedAt ?? 0, lastStartedAt.current ?? 0) || null;
+      if (!shouldCheckOnForeground({ enabled: true, busy, now, lastCheckedAt: last })) return;
+      lastStartedAt.current = now;
       // Quiet: a failed check waits for the next foreground; the notice is the only UI.
       Updates.checkForUpdateAsync()
-        .then((result) => (result.isAvailable ? Updates.fetchUpdateAsync() : null))
+        .then((result) =>
+          result.isAvailable || result.isRollBackToEmbedded ? Updates.fetchUpdateAsync() : null
+        )
         .catch(() => {});
     });
     return () => subscription.remove();
