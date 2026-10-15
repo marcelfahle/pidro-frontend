@@ -79,14 +79,16 @@ export function TableSeatDecision({
               </Pressable>
             </View>
             <Text className="mt-3 text-lg font-bold text-amber-100">
-              {t('game.player_left', { name: decision.playerName })}
+              {decision.playerNameRaw
+                ? t('game.player_left', { name: decision.playerNameRaw })
+                : t('game.unnamed_player_left')}
             </Text>
             <Text className="mt-1 text-sm text-amber-200 capitalize">
               {t('game.position_seat', { position: t(`table.position.${decision.position}`) })}
             </Text>
             {decisions.error && (
               <Text accessibilityLiveRegion="polite" className="mt-4 text-sm text-red-200">
-                {localizedError(decisions.error)}
+                {localizedError(decisions.errorCause, 'game.seat_update_failed')}
               </Text>
             )}
             <View className="mt-6 gap-3">

@@ -171,8 +171,8 @@ async function rematchThroughUi(page, roomCode, seen) {
   const status = page.getByTestId('rematch-status');
   await status.waitFor({ timeout: 15_000 });
   const statusText = (await status.textContent())?.trim();
-  if (statusText !== '1 of 2 want to play again') {
-    throw new Error(`rematch vote read "${statusText}", expected "1 of 2 want to play again"`);
+  if (statusText !== '1 av 2 vill spela igen') {
+    throw new Error(`rematch vote read "${statusText}", expected "1 av 2 vill spela igen"`);
   }
   if (await playAgain.isEnabled()) {
     throw new Error('Play again stayed enabled after the guest asked for a rematch');
@@ -207,7 +207,7 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
   await shot('seat-open');
 
   await seatBot.click();
-  const ready = page.getByRole('button', { name: "I'm ready" });
+  const ready = page.getByRole('button', { name: 'Jag är redo' });
   await ready.waitFor({ timeout: 15_000 });
   await shot('seat-filled');
   await ready.click();
@@ -218,9 +218,9 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
   // Still a seated player in the new game: the scoreboard reads Us/Them for a
   // player and N/S – E/W for anybody else. Headless Chromium drops the socket
   // now and then, so allow a rejoin before judging.
-  await page.getByText('THEM', { exact: true }).first().waitFor({ timeout: 30_000 });
+  await page.getByText('DE', { exact: true }).first().waitFor({ timeout: 30_000 });
   await page
-    .getByRole('button', { name: 'US 0, THEM 0. Recent scores.', exact: true })
+    .getByRole('button', { name: 'VI 0, DE 0. Senaste poäng.', exact: true })
     .waitFor({ timeout: 15_000 });
   await page.waitForTimeout(3_000);
   if (
@@ -235,7 +235,10 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
 }
 
 async function verifyUiLogin(browser, username) {
-  const context = await browser.newContext({ viewport: { width: 844, height: 390 } });
+  const context = await browser.newContext({
+    viewport: { width: 844, height: 390 },
+    locale: 'en-US',
+  });
   const page = await context.newPage();
 
   try {
@@ -311,6 +314,8 @@ async function stageTwoMultiplayerVideo() {
   });
   const context = await browser.newContext({
     viewport: { width: 844, height: 390 },
+    // English host and Swedish guest share the same protocol/game. No fixture override.
+    locale: 'sv-FI',
     deviceScaleFactor: 1,
     recordVideo: { dir: artifactDir, size: { width: 844, height: 390 } },
   });
@@ -397,15 +402,15 @@ async function stageTwoMultiplayerVideo() {
       waitUntil: 'domcontentloaded',
     });
 
-    const ageChoice = page.getByRole('radio', { name: '18 or older' });
+    const ageChoice = page.getByRole('radio', { name: '18 eller äldre' });
     await ageChoice.waitFor({ timeout: 30_000 });
     await ageChoice.click();
-    await page.getByRole('button', { name: 'Continue' }).click();
+    await page.getByRole('button', { name: 'Fortsätt' }).click();
     log('first-launch age gate completed with an eligible answer');
 
     await page.getByTestId('welcome-quick-game').click();
     await page.getByTestId('invite-rule-set').waitFor({ timeout: 30_000 });
-    await page.getByRole('button', { name: 'Join table', exact: true }).click();
+    await page.getByRole('button', { name: 'Gå med vid bordet', exact: true }).click();
     await page.waitForURL(new RegExp(`/game/${roomCode}$`), { timeout: 30_000 });
     log('nameless guest created and invite redeemed through the UI');
 
@@ -422,7 +427,7 @@ async function stageTwoMultiplayerVideo() {
       awayReturns += 1;
       log(`guest away after missed turns (${awayReturns}): pressing I'm back`);
       await page
-        .getByRole('button', { name: "I'm back" })
+        .getByRole('button', { name: 'Jag är tillbaka' })
         .click({ timeout: 5_000 })
         .catch(() => {});
       returning = false;
@@ -433,6 +438,7 @@ async function stageTwoMultiplayerVideo() {
 
     await confirmInitialTable([page], '[data-testid="game-table"]', {
       waitForStart: false,
+      readyLabel: 'Jag är redo',
       onWaiting: () => captureMilestones(page, seen),
     });
     // Guest confirms first; the registered host confirms on its joined autoplay channel.

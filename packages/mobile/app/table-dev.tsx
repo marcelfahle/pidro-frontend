@@ -424,6 +424,9 @@ function TableDevHarness() {
                         key: String(dismissed),
                         id: String(dismissed),
                         position: positions[dismissed],
+                        playerNameRaw:
+                          (dismissed === 0 ? (params.playerName ?? names[0]) : names[dismissed]) ||
+                          null,
                         playerName:
                           dismissed === 0 ? (params.playerName ?? names[0]) : names[dismissed],
                       }
@@ -431,6 +434,7 @@ function TableDevHarness() {
                 pendingCount: 3 - dismissed,
                 busy,
                 error,
+                errorCause: error,
                 keepBot: async () => {
                   setDismissed((count) => count + 1);
                   setError(null);

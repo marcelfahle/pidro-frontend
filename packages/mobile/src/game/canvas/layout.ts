@@ -66,6 +66,13 @@ export const northFanWidth = (cardW: number, count: number) =>
 export const northFanTop = (L: TableLayout, tableTop: number) =>
   L.profile.endsWith('portrait') ? tableTop + 8 : tableTop - L.cardH * 0.36;
 
+/** Portrait seat clearance, including its level chip, name and status line. */
+export const northSeatBottom = (L: TableLayout, tableTop: number) =>
+  northFanTop(L, tableTop) +
+  northBackWidth(L.cardW) * CARD_RATIO +
+  12 +
+  (L.tight ? TIGHT_AVATAR : NORTH_SEAT_STACK[L.profile.startsWith('tablet') ? 'tablet' : 'phone']);
+
 const TICKER_LINE_MAX = 168;
 const TICKER_LINE_MIN = 72;
 /** The chevron and the gap before it. */

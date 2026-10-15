@@ -504,11 +504,16 @@ async function assertLocalization(page, testCase, viewport) {
       'Svenska',
     ];
     const selected = ['system', 'en', 'sv'].indexOf(testCase.language);
+    const groupBox = await group.boundingBox();
     for (const [index, label] of labels.entries()) {
-      assert.equal(
-        await group.getByRole('radio', { name: label, exact: true }).getAttribute('aria-checked'),
-        String(index === selected)
+      const radio = group.getByRole('radio', { name: label, exact: true });
+      const box = await radio.boundingBox();
+      assert.ok(box.height >= 48, `${label}: 48pt target`);
+      assert.ok(
+        box.x >= groupBox.x && box.x + box.width <= groupBox.x + groupBox.width,
+        `${label}: radio must stay within the language Surface`
       );
+      assert.equal(await radio.getAttribute('aria-checked'), String(index === selected));
     }
     if (testCase.language === 'system') {
       await group
@@ -584,6 +589,17 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
     await assertNorthClear(page, testCase, viewport, testCase.protectNorthSeat ? box : null);
 
+    if (testCase.testId === 'trump-window') {
+      await assertAbovePlayerHand(page, testCase.name, box, viewport);
+      for (const choice of await target.getByRole('button').all()) {
+        const choiceBox = await choice.boundingBox();
+        assert.ok(choiceBox.height >= 48, 'Trump choice keeps a 48pt touch target');
+        assert.ok(
+          choiceBox.y >= box.y && choiceBox.y + choiceBox.height <= box.y + box.height,
+          'All trump choices must fit within the window without clipping'
+        );
+      }
+    }
     if (testCase.protectPlayerHand) {
       await assertAbovePlayerHand(page, testCase.name, box, viewport);
       await assertBidGridLayout(page, viewport);
@@ -801,7 +817,7 @@ async function assertLobbyPresentation(page, testCase) {
     await row('OPEN2').getByText('2 seats open', { exact: true }).waitFor();
     assert.equal(await row('OPEN1').getByTestId('seat-requirement').count(), 3);
     assert.equal(await row('OPEN2').getByTestId('seat-requirement').count(), 0);
-    assert.equal(await row('OPEN3').getByTestId('seat-requirement').innerText(), '1000+');
+    assert.equal(await row('OPEN3').getByTestId('seat-requirement').innerText(), '1,000+');
   }
   if (fixture === 'locked') {
     await row('OPEN1')
@@ -875,7 +891,7 @@ async function assertCreationPresentation(page, testCase) {
         'Friend',
         'Anyone',
         '100+',
-        '1000+',
+        '1,000+',
       ]);
       await seat.getByText('games played', { exact: true }).waitFor();
     }
@@ -1143,7 +1159,11 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
     await route.fulfill({
       status: 429,
       contentType: 'application/json',
-      body: JSON.stringify({ errors: [{ detail: 'Too many attempts. Try again soon.' }] }),
+      body: JSON.stringify({
+        error_code: 'rate_limited',
+        error_params: { retry_after: 30 },
+        errors: [{ detail: 'Too many attempts. Try again soon.' }],
+      }),
     });
   });
   const roomBodies = [];
@@ -1162,7 +1182,11 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
     exact: true,
   });
   await submit.click();
-  await page.getByText('Too many attempts. Try again soon.', { exact: true }).waitFor();
+  await page.getByText('Too many requests. Try again in 30 seconds.', { exact: true }).waitFor();
+  assert.equal(
+    await page.getByText('Too many attempts. Try again soon.', { exact: true }).count(),
+    0
+  );
   assert.equal('display_name' in requestBodies[0], false);
   assert.match(requestBodies[0].creation_token, /^[0-9a-f-]{36}$/i);
   assert.equal('invite_code' in requestBodies[0], false);
@@ -1258,7 +1282,8 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   await page.waitForTimeout(400);
   assert.equal(deletes, 1, 'a double tap on Delete account sent more than one request');
   refuse();
-  await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
+  await page.getByText('Could not delete your account. Try again.', { exact: true }).waitFor();
+  assert.equal(await page.getByText('Deleting accounts is paused.', { exact: true }).count(), 0);
   assert.ok(new URL(page.url()).pathname.endsWith('/settings'), 'a failed deletion left Settings');
   const action = page.getByRole('button', { name: 'Delete account', exact: true });
   assert.equal(await action.count(), 1, 'the confirmation stayed open after a failed deletion');
@@ -1271,7 +1296,8 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   assert.equal(await page.getByText(/photo or bio/).count(), 0, 'deleting waits on a photo or bio');
   await page.getByRole('button', { name: 'OK', exact: true }).click();
   refuse();
-  await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
+  await page.getByText('Could not delete your account. Try again.', { exact: true }).waitFor();
+  assert.equal(await page.getByText('Deleting accounts is paused.', { exact: true }).count(), 0);
 }
 
 async function assertAuthSheetKeepsTyping(page, name) {
@@ -1357,11 +1383,11 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
     }
 
     for (const label of [
-      '8 of clubs',
-      'A of spades, worth 1 point',
-      '3 of hearts',
-      'J of diamonds',
-      '10 of hearts',
+      '8 of clubs, worth 0 points',
+      'Ace of spades, worth 1 point',
+      '3 of hearts, worth 0 points',
+      'Jack of diamonds, worth 0 points',
+      '10 of hearts, worth 0 points',
       '2 of spades, worth 1 point',
     ]) {
       const card = page.getByRole('button', { name: label, exact: true });
@@ -1845,7 +1871,9 @@ async function main() {
         page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
         try {
-          const response = await page.goto(`${baseUrl}${testCase.path}`, {
+          const url = new URL(`${baseUrl}${testCase.path}`);
+          if (viewport.safeArea) url.searchParams.set('safeArea', viewport.safeArea);
+          const response = await page.goto(url.href, {
             waitUntil: 'domcontentloaded',
             timeout: 30_000,
           });

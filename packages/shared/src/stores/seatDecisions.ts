@@ -23,6 +23,8 @@ export function pendingSeatDecisions(state: ReturnType<typeof useGameStore.getSt
         key,
         position,
         id: seat.decision.id,
+        // Keep the legacy web label while preserving missing identity for localized clients.
+        playerNameRaw: seat.decision.player_name || null,
         playerName: seat.decision.player_name || 'A player',
       },
     ];
@@ -47,6 +49,7 @@ export function useSeatDecisions(
     key: string;
     busy: boolean;
     error: string | null;
+    errorCause: unknown;
   } | null>(null);
   const inFlight = useRef<string | null>(null);
 
@@ -62,16 +65,23 @@ export function useSeatDecisions(
     )
       return;
     inFlight.current = decision.key;
-    setRequest({ key: decision.key, busy: true, error: null });
+    setRequest({
+      key: decision.key,
+      busy: true,
+      error: null,
+      errorCause: null,
+    });
     try {
       await push(event, {
         position: decision.position,
         decision_id: decision.id,
       });
-    } catch {
+    } catch (errorCause) {
       const message = 'Could not confirm the seat update. Please try again.';
       setRequest((current) =>
-        current?.key === decision.key ? { key: decision.key, busy: true, error: message } : current,
+        current?.key === decision.key
+          ? { key: decision.key, busy: true, error: message, errorCause }
+          : current,
       );
     } finally {
       // Best-effort reconciliation. Retrying is safe because the server validates decision_id.
@@ -87,6 +97,7 @@ export function useSeatDecisions(
     pendingCount: queue.length,
     busy: request?.busy ?? false,
     error: visible && request?.key === visible.key ? request.error : null,
+    errorCause: visible && request?.key === visible.key ? request.errorCause : null,
     keepBot: () => resolveDecision('keep_bot'),
     openSeat: () => resolveDecision('open_seat'),
   };

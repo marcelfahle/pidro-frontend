@@ -8,6 +8,7 @@ import { ruleSetFixture } from '@/features/rules/fixtures';
 import { createTableFixture } from '@/features/lobby/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
+import { FixtureInsets } from '@/components/dev/FixtureInsets';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { RatingPlaque } from '@/components/home/RatingPlaque';
@@ -412,7 +413,12 @@ function UiDevHarness() {
   const params = useLocalSearchParams<{ state?: string; safeArea?: string; fixture?: string }>();
   const state = typeof params.state === 'string' ? params.state : 'components';
 
-  if (state === 'settings') return <SettingsScreen key={params.fixture} onBack={noop} />;
+  if (state === 'settings')
+    return (
+      <FixtureInsets preset={params.safeArea}>
+        <SettingsScreen key={params.fixture} onBack={noop} />
+      </FixtureInsets>
+    );
   if (state === 'progression') return <ProgressionGallery />;
   if (state === 'avatars') return <AvatarGallery />;
   if (state === 'lobby-seats') return <LobbySeatGallery />;

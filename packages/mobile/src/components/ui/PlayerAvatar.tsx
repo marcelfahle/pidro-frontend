@@ -20,7 +20,13 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroFonts } from '@/design/tokens';
 import { isStillCapture } from '@/utils/stillCapture';
 import { useTranslation } from '@/i18n';
-import { avatarParts, type AvatarAway, type AvatarKind, type AvatarPin } from '@/features/avatar';
+import {
+  avatarLabel,
+  avatarParts,
+  type AvatarAway,
+  type AvatarKind,
+  type AvatarPin,
+} from '@/features/avatar';
 
 /**
  * A player, drawn the same way everywhere: the photo in a ring, with up to
@@ -96,17 +102,7 @@ export function PlayerAvatar({
   const spoken =
     accessibilityLabel ??
     (name || kind !== 'player'
-      ? [
-          name || t(kind === 'open' ? 'ui.openSeat' : kind === 'bot' ? 'ui.bot' : 'ui.player'),
-          dealer ? t('ui.dealer') : null,
-          level != null ? t('ui.level', { level }) : null,
-          pin ? (pin === 'classic' ? 'Pidro Classic' : t('ui.foundingTester')) : null,
-          turn ? t(turn.urgent ? 'ui.urgentTurn' : 'ui.theirTurn') : null,
-          status?.trim() ||
-            (away ? t(away === 'reconnecting' ? 'ui.reconnecting' : 'ui.botPlaying') : null),
-        ]
-          .filter(Boolean)
-          .join(', ')
+      ? avatarLabel({ name, status, level, pin, dealer, turn, away, kind })
       : undefined);
 
   const hasLabel = !!(name || status);

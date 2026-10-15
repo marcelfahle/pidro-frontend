@@ -1,9 +1,9 @@
 # Backend error snapshot and frontend adapter
 
 `backend-localization-errors.json` is an unmodified backend v1 manifest fetched
-via `gh api repos/marcelfahle/pidro-backend/contents/docs/contracts/localization-errors.json?ref=feat/localized-error-contract`
-on 2026-10-15. Source commit (latest change to this path):
-`95109262735cf97dba27665ad7669eb17f137d35`.
+via `gh api repos/marcelfahle/pidro-backend/contents/docs/contracts/localization-errors.json?ref=6900a3270254c1d034f3a3c13d76a85efcc33c4e`
+on 2026-10-15, after backend PR #94 merged to main. It is byte-identical to the
+previous feature-branch snapshot at `95109262735cf97dba27665ad7669eb17f137d35`.
 SHA-256 of the decoded JSON:
 `70be059d98ab860cdadad36d848bc3f3a592e062109ada971b7d15b68704321b`.
 
