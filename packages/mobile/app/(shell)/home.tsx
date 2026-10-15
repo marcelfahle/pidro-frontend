@@ -132,14 +132,22 @@ export default function HomeScreen() {
         </View>
       </PressableFX>
       {guest ? (
-        <BevelButton
-          accessibilityLabel="Settings"
-          material="glass"
-          size="icon"
-          onPress={() => router.push('/settings')}
-          style={tablet && styles.settingsTablet}>
-          <Icon name="settings" size={tablet ? 22 : 20} />
-        </BevelButton>
+        <View style={styles.identityMeta}>
+          <BevelButton
+            label="Friends"
+            material="glass"
+            size="sm"
+            onPress={() => router.push('/friends')}
+          />
+          <BevelButton
+            accessibilityLabel="Settings"
+            material="glass"
+            size="icon"
+            onPress={() => router.push('/settings')}
+            style={tablet && styles.settingsTablet}>
+            <Icon name="settings" size={tablet ? 22 : 20} />
+          </BevelButton>
+        </View>
       ) : null}
     </View>
   );

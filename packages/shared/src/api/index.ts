@@ -26,6 +26,13 @@ export {
 } from './auth';
 export { type ApiClient, createApiClient, type SessionClearer, type TokenGetter } from './client';
 export {
+  createFriendsApi,
+  type FriendsApi,
+  type FriendLists,
+  type FriendPlayer,
+  type FriendResult,
+} from './friends';
+export {
   type ClassicApi,
   type ClassicAlreadyClaimed,
   type ClassicClaimAccount,

@@ -65,7 +65,10 @@ function memberSince(value: string): string {
 
 export default function ClaimClassicScreen() {
   const router = useRouter();
-  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
+  const { fixture: fixtureParam, from } = useLocalSearchParams<{
+    fixture?: string;
+    from?: string;
+  }>();
   const fixture = (__DEV__ ? fixtureParam : undefined) as Fixture | undefined;
   const { width, height } = useWindowDimensions();
   const compactLandscape = width > height && height < PidroLayout.compactHeight;
@@ -283,6 +286,8 @@ export default function ClaimClassicScreen() {
       );
       if (destination !== '/home') {
         router.replace(destination as Href);
+      } else if (from === 'friends' && !claimed.guest) {
+        router.replace('/friends');
       } else {
         router.replace({
           pathname: '/profile',
@@ -298,6 +303,7 @@ export default function ClaimClassicScreen() {
     displayName,
     email,
     fixture,
+    from,
     guestCredentials,
     method,
     needsCredentials,

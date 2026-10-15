@@ -239,6 +239,18 @@ viewports plus lobby-specific 834×1194 and 1194×834 tablet sizes. The existing
 `home-tablet-portrait` and `tablet-landscape` CI shards apply those sizes only to
 lobby cases; other screens keep their existing dimensions.
 
+## `/friends?fixture=<state>` and `/friends-add?fixture=<state>`
+
+Use an authenticated fixture. Friends has `empty`, `list` (all three presences),
+`added-you`, `loading`, and `error`. Tap a row in `list` for the real profile sheet
+with a fixture identity; Remove friend opens its confirmation without a backend
+write. Add a friend has `recent` and `results` (all four server relation labels).
+The guest route opens the account sheet and continues on Friends after saving.
+
+Grammar cases: `friends-empty`, `friends-list`, `friends-added-you`,
+`friends-loading`, `friends-error`, `friends-profile`, `friends-remove`,
+`friends-recent`, `friends-results`, and `friends-guest`.
+
 ## Rule-set fixtures
 
 Development-only, no backend needed (except the real manual-code path, mocked by

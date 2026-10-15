@@ -56,6 +56,32 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  ...['empty', 'list', 'added-you', 'loading', 'error'].map((fixture) => ({
+    name: `friends-${fixture}`,
+    path: `/friends?fixture=${fixture}`,
+    testId: 'friends-screen',
+    authenticated: true,
+  })),
+  ...['profile', 'remove'].map((state) => ({
+    name: `friends-${state}`,
+    path: '/friends?fixture=list',
+    testId: 'player-profile-modal',
+    authenticated: true,
+    open: "View Nora's profile",
+  })),
+  ...['recent', 'results'].map((fixture) => ({
+    name: `friends-${fixture}`,
+    path: `/friends-add?fixture=${fixture}`,
+    testId: 'friends-add-screen',
+    authenticated: true,
+  })),
+  {
+    name: 'friends-guest',
+    path: '/friends',
+    testId: 'auth-sheet',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
   {
     name: 'home-guest',
     path: '/home',
@@ -675,6 +701,44 @@ async function assertRulePresentation(page, testCase) {
       ),
       false
     );
+  }
+}
+
+async function assertFriendsPresentation(page, name) {
+  if (!name.startsWith('friends-')) return;
+  const expected =
+    {
+      'friends-empty': ['Nobody here yet. Add the people you play with.'],
+      'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'At a table', 'Offline'],
+      'friends-added-you': ['Added you', 'Kalle', 'Add back'],
+      'friends-loading': ['Loading…'],
+      'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
+      'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
+      'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
+      'friends-profile': ['Player profile', 'Nora', 'Remove friend'],
+      'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
+      'friends-guest': ['Save your player', 'Save account'],
+    }[name] ?? [];
+  for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
+  if (name === 'friends-added-you') {
+    assert.ok(
+      (await page.getByText('Added you', { exact: true }).boundingBox()).y <
+        (await page.getByRole('button', { name: "View Nora's profile" }).boundingBox()).y
+    );
+  }
+  if (name === 'friends-remove') {
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByRole('button', { name: "View Nora's profile" }).waitFor();
+  }
+  if (name === 'friends-guest') {
+    for (const label of ['Public name', 'Email', 'Password']) {
+      const box = await page.getByRole('textbox', { name: label, exact: true }).boundingBox();
+      assert.ok(
+        box && box.x >= 0 && box.x + box.width <= page.viewportSize().width,
+        `${label} clipped`
+      );
+    }
   }
 }
 
@@ -1777,6 +1841,12 @@ async function main() {
           }
           if (testCase.open) {
             await page.getByRole('button', { name: testCase.open, exact: true }).click();
+            if (testCase.name === 'friends-remove')
+              await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
+            await waitForScreenshotReady(page);
+          }
+          if (testCase.name === 'friends-guest') {
+            await page.getByTestId('auth-sheet').waitFor();
             await waitForScreenshotReady(page);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
@@ -1829,6 +1899,7 @@ async function main() {
             fullPage: false,
           });
           if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
+          await assertFriendsPresentation(page, testCase.name);
           await assertCreationPresentation(page, testCase);
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);

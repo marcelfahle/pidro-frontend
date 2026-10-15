@@ -4,6 +4,8 @@ import { batchedUpdates as unstable_batchedUpdates } from '@/utils/batchedUpdate
 import { phoenixSocket } from '../socket';
 import { initRealtime } from '@/bootstrap/realtime';
 import { useLobbyStore } from '@/stores/lobby';
+import { refreshFriends } from '@/stores/friends';
+import { authStore } from '@/stores/auth';
 import {
   flattenLobbyCategories,
   hasLobbyCategories,
@@ -43,9 +45,14 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
       const channel = phoenixSocket.channel('lobby');
       let presences = {};
 
+      channel.on('friends_changed', () => {
+        if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
+      });
+
       channel
         .join()
         .receive('ok', (response: any) => {
+          if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
           onRealtimeUpdateRef.current?.();
           // Batch updates to avoid navigation context issues
           unstable_batchedUpdates(() => {

@@ -342,6 +342,7 @@ function ProfileContent() {
             ) : null
           }
         />
+        <TextLink label="Friends" onPress={() => router.push('/friends')} />
         {refreshError && (
           <PidroText role="metadata" tone="danger" accessibilityRole="alert">
             Could not refresh your profile. Reopen it to try again.

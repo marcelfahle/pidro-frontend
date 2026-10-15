@@ -16,8 +16,9 @@ test('a guest Home shows a two-word name, no menu, and a game count that rises a
   const home = new HomeScreen(page);
   const identity = page.getByRole('button', { name: 'Open your profile' });
   await expect(identity).toContainText(/^\s*\S+ \S+\s*Guest · 0 games/);
-  for (const tab of ['League', 'Stats', 'Friends'])
+  for (const tab of ['League', 'Stats'])
     await expect(page.getByRole('button', { name: tab, exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Friends', exact: true })).toBeVisible();
 
   await page.getByTestId('home-quick-game').click();
   await page.waitForURL(/\/game\/[A-Z0-9]+/);
