@@ -274,6 +274,7 @@ export function SeatLayer({
           <View key={rel} style={StyleSheet.absoluteFill}>
             <View style={[{ position: 'absolute' }, seatPos]}>{avatar}</View>
             <View
+              testID={`seat-${rel}-cards`}
               style={[
                 {
                   position: 'absolute',

@@ -321,6 +321,12 @@ const allCases = [
     testId: 'connection-banner',
     protectNorthSeat: true,
   },
+  ...['island-left', 'island-right'].map((safeArea) => ({
+    name: `table-playing-${safeArea}`,
+    path: `/table-dev?phase=playing&safeArea=${safeArea}`,
+    testId: 'seat-north',
+    sideInsets: safeArea === 'island-left' ? { left: 59, right: 0 } : { left: 0, right: 59 },
+  })),
   {
     name: 'table-seats-reconnecting',
     path: '/table-dev?phase=playing&lifecycle=reconnecting',
@@ -449,6 +455,10 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
     if (testCase.name === 'table-playing') {
       await assertSeatPlacement(page, viewport);
+    }
+
+    if (testCase.sideInsets) {
+      await assertSideStacksInsideCutouts(page, testCase, viewport);
     }
   } else if (testCase.text) {
     await page.getByText(testCase.text, { exact: true }).first().waitFor({ timeout: 15_000 });
@@ -1197,6 +1207,27 @@ async function assertBidGridLayout(page, viewport) {
     if (centerOffset > 2) {
       throw new Error(
         `Bid 10 is not centered on the trick marker in ${viewport.name}: offset=${centerOffset}`
+      );
+    }
+  }
+}
+
+// A side stack may bleed off a bare screen edge, never into a cutout.
+async function assertSideStacksInsideCutouts(page, testCase, viewport) {
+  const { left, right } = testCase.sideInsets;
+  for (const [position, inset] of [
+    ['west', left],
+    ['east', right],
+  ]) {
+    if (!inset) continue;
+    const stack = page.getByTestId(`seat-${position}-cards`).locator(':scope > div').first();
+    await stack.waitFor({ state: 'visible', timeout: 20_000 });
+    const box = await getStableBox(stack, page);
+    const outside =
+      position === 'west' ? inset - box.x : box.x + box.width - (viewport.width - inset);
+    if (outside > 0.5) {
+      throw new Error(
+        `${testCase.name}: the ${position} card stack reaches ${outside.toFixed(1)}pt into the cutout in ${viewport.name}: ${JSON.stringify(box)}`
       );
     }
   }
