@@ -1,7 +1,7 @@
 /**
  * RN seat furniture over the Skia canvas: each player is a `PlayerAvatar` with
  * their name and what they are doing (below it in portrait, beside it in
- * landscape), the dealer chip and turn light on the avatar, and opponent
+ * landscape), the dealer chip beside the name, the turn light on the avatar, and opponent
  * card-backs in the right orientation (North = upright fan, East/West =
  * landscape stacks along the edge). Positioned at the pure computeLayout()
  * seat coords so it lines up with the canvas cards/fly origins.
@@ -29,7 +29,7 @@ import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvat
 import { PidroSpacing } from '@/design/tokens';
 import { avatarParts } from '@/features/avatar';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
-import { computeLayout, type Profile, type RelativePosition } from './layout';
+import { computeLayout, handLeft, type Profile, type RelativePosition } from './layout';
 import type { TableSeat } from './tableModel';
 import { DEAL_PACKET_CARD_STAGGER_MS, DEAL_PACKET_TRAVEL_MS } from './animationTiming';
 
@@ -87,7 +87,9 @@ function avatarFor(
     level: data.level,
     pin: data.pin,
     dealer,
-    turn: onTurn ? { progress: turn?.progress ?? 1, urgent: turn?.urgent ?? false } : null,
+    turn: onTurn
+      ? { progress: turn?.progress ?? 1, urgent: turn?.urgent ?? false, attention: data.isYou }
+      : null,
     away,
     kind,
     name: kind === 'open' ? null : data.username,
@@ -131,13 +133,43 @@ export function SeatLayer({
   const portrait = L.profile.endsWith('portrait');
   const size = AVATAR_SIZE[L.profile];
   const tablet = L.profile.startsWith('tablet');
+  const parts = avatarParts(size);
   // Portrait names sit in a fixed column so a long one truncates instead of
-  // pushing the seat off its axis; landscape caps the label's reach and leaves
-  // the turn light room, as the boards do.
+  // pushing the seat off its axis. North and south have the table's width to
+  // themselves; east and west get what North's column leaves them. Landscape
+  // caps the label's reach and leaves the turn light room, as the boards do,
+  // plus room for the dealer chip after the name.
   const gap = tablet ? 14 : 10;
-  const seatWidth = portrait
-    ? { width: tablet ? 128 : 96 }
-    : { maxWidth: size + gap + (tablet ? 140 : 78), gap };
+  const centerColumn = tablet ? 200 : 156;
+  const sideColumn = Math.min(
+    tablet ? 150 : 112,
+    (width - insets.left - insets.right - centerColumn) / 2 - PidroSpacing.xs
+  );
+  // The scoreboard divider is ~70pt from the safe-area edge. Reusing that
+  // vertical axis gives the landscape table a deliberate left rail.
+  const landscapeSouthLeft = insets.left + 70;
+  // Landscape South's name runs toward the hand, so it gets what the hand leaves.
+  const southReach = clamp(
+    handLeft(L, seats.south?.cardCount ?? 9) - (landscapeSouthLeft + size + gap) - PidroSpacing.sm,
+    56,
+    tablet ? 160 : 104
+  );
+  // The dealer chip faces the table: right of West's name, left of everyone
+  // else's. In landscape it takes the name's far end, except South's, which
+  // sits behind the avatar, away from the hand.
+  const dealerSide = (rel: RelativePosition): 'left' | 'right' =>
+    rel === 'west' || (!portrait && rel === 'north') ? 'right' : 'left';
+  const seatWidth = (rel: RelativePosition) =>
+    portrait
+      ? { width: rel === 'north' || rel === 'south' ? centerColumn : sideColumn }
+      : {
+          maxWidth:
+            size +
+            gap +
+            (rel === 'south' ? southReach : tablet ? 160 : 104) +
+            (dealerRel === rel && rel !== 'south' && parts.dealer ? parts.dealer.size + gap : 0),
+          gap,
+        };
   const tableTop = insets.top + topReserve;
   // Floating portrait scores no longer mask the fan behind a header band.
   const northBackTop = portrait ? tableTop + PidroSpacing.xs : tableTop - L.cardH * 0.36;
@@ -146,22 +178,36 @@ export function SeatLayer({
     : tableTop + 8;
   const sideBackW = clamp(L.cardW * 0.62, 30, 56);
   const sideStackMaxHeight = sideBackW * (1 + 5 * 0.48);
-  // East and west sit above their side stacks. In portrait they also stay
-  // below North, so the three opponents read as a triangle.
+  // East and west sit above their side stacks, name and status included, so a
+  // full stack never runs under them. Seats anchor to where the stacks would
+  // sit on the trick's center line; landscape drops the stacks below that
+  // (L.sides), opening a gap under the seat.
   const sideStackTop = L.trick.cy - sideStackMaxHeight / 2;
-  const parts = avatarParts(size);
   const stackedSeat =
     size +
     (parts.level ? parts.level.height + parts.level.bottom + 3 : 4) +
     parts.name.lineHeight +
     parts.status.lineHeight;
+  // Portrait keeps the opponents a triangle: east and west start a step below
+  // North. On a short phone that step wins, and the stacks move down under
+  // the seats instead, as far as the hand allows.
+  const sideSeatTop = Math.max(
+    tableTop + PidroSpacing.xs,
+    northSeatTop + PidroSpacing.md,
+    sideStackTop - PidroSpacing.sm - stackedSeat
+  );
+  const handTop = L.hand.cy - L.cardH / 2;
+  const sideStackCy = portrait
+    ? Math.max(
+        L.sides.cy,
+        Math.min(
+          sideSeatTop + stackedSeat + PidroSpacing.sm + sideStackMaxHeight / 2,
+          handTop - PidroSpacing.sm - sideStackMaxHeight / 2
+        )
+      )
+    : L.sides.cy;
   const sideSeatPos = portrait
-    ? {
-        top: Math.max(
-          northSeatTop + stackedSeat + PidroSpacing.sm,
-          sideStackTop - PidroSpacing.sm - stackedSeat
-        ),
-      }
+    ? { top: sideSeatTop }
     : { bottom: height - sideStackTop + PidroSpacing.sm };
   const sideInset = portrait ? 0 : 12;
 
@@ -175,7 +221,8 @@ export function SeatLayer({
             testID={`seat-${rel}`}
             size={size}
             label={portrait ? 'below' : rel === 'east' ? 'left' : 'right'}
-            style={seatWidth}
+            dealerSide={dealerSide(rel)}
+            style={seatWidth(rel)}
             {...avatarFor(
               data,
               dealerRel === rel,
@@ -187,9 +234,6 @@ export function SeatLayer({
 
         if (rel === 'south') {
           const southBottom = insets.bottom + bottomReserve + 8;
-          // The scoreboard divider is ~70pt from the safe-area edge. Reusing
-          // that vertical axis gives the landscape table a deliberate left rail.
-          const landscapeSouthLeft = insets.left + 70;
           return (
             <View
               key={rel}
@@ -279,7 +323,7 @@ export function SeatLayer({
                 {
                   position: 'absolute',
                   top: 0,
-                  height: L.trick.cy * 2,
+                  height: sideStackCy * 2,
                   justifyContent: 'center' as const,
                   alignItems: 'center' as const,
                 },
@@ -294,6 +338,7 @@ export function SeatLayer({
                     ? L.felt.cx - backsInset
                     : L.felt.cx - (width - backsInset - sideBackW * (110 / 78))
                 }
+                originDy={L.felt.cy - sideStackCy}
                 concealed={data.cardCountConcealed}
               />
             </View>
@@ -349,12 +394,15 @@ function BacksStackV({
   cardW,
   dealing,
   originX,
+  originDy = 0,
   concealed = false,
 }: {
   count: number;
   cardW: number;
   dealing: boolean;
   originX: number;
+  /** How far the felt's center sits below (+) or above (−) the stack's own. */
+  originDy?: number;
   concealed?: boolean;
 }) {
   const n = clamp(count, 0, 9);
@@ -376,7 +424,7 @@ function BacksStackV({
           x={0}
           y={i * overlap}
           originX={originX - visW / 2}
-          originY={((n - 1) * overlap) / 2}
+          originY={((n - 1) * overlap) / 2 + originDy}
           w={cw}
           h={ch}
           sideways

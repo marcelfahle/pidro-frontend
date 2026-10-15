@@ -32,7 +32,7 @@ import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
-import { HEADER_INSET, TABLE_HEADER, TableChromeBars, useTableReserves } from './TableChrome';
+import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { computeLayout } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
@@ -311,7 +311,8 @@ export function GameCanvasTable({
           ...(controller.phase === 'playing'
             ? { top: layout.trick.cy + layout.cardW * 0.4, left: 0, right: 0 }
             : {
-                top: insets.top + PidroSpacing.sm,
+                // Centered on the menu button beside it.
+                top: headerTop(insets.top) + PidroSpacing.xxs,
                 right: insets.right + PidroLayout.touchTarget + PidroSpacing.lg,
               }),
           alignItems: 'center',
@@ -338,7 +339,7 @@ export function GameCanvasTable({
           youPosition={youPositionAbs}
           handNumber={serverState?.hand_number ?? serverState?.round_number ?? null}
           roomCode={viewModel?.roomCode ?? room.code}
-          top={insets.top + HEADER_INSET}
+          top={headerTop(insets.top)}
           left={insets.left}
         />
       )}

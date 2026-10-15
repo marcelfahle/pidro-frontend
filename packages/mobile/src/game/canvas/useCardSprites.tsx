@@ -34,7 +34,13 @@ import {
   type SharedValue,
 } from 'react-native-reanimated';
 import type { Card } from '@/types/game';
-import { playedCardTarget, type RelativePosition, type TableLayout } from './layout';
+import {
+  handScale as handScaleFor,
+  handStep,
+  playedCardTarget,
+  type RelativePosition,
+  type TableLayout,
+} from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
 import {
@@ -53,7 +59,7 @@ const MAX = 36;
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 function handSlotFn(L: TableLayout, n: number) {
-  const step = n > 1 ? Math.min(L.cardW * 0.72, (L.hand.maxWidth - L.cardW) / (n - 1)) : 0;
+  const step = handStep(L, n);
   return (i: number) => {
     const off = i - (n - 1) / 2;
     // Straight row — no arc dip, no fan rotation (user preference).
@@ -131,7 +137,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   const winnerReveal = useSharedValue(0);
   const cardW = L.cardW;
   const cardH = L.cardH;
-  const handScale = L.profile.endsWith('landscape') ? 0.9 : 1;
+  const handScale = handScaleFor(L.profile);
 
   useEffect(() => {
     if (!enabled || !model) return;

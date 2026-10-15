@@ -10,8 +10,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { SCORE_PLAQUE_HEIGHT } from './Scoreboard';
 
-/** Gap between the safe top and the header row. */
+/** Gap between the safe top and the header row, and the reserve's breathing room. */
 export const HEADER_INSET = PidroSpacing.xs;
+
+/**
+ * Where the header row starts. The game hides the status bar, so a top inset
+ * is only the notch or Dynamic Island band, which already leaves air below the
+ * cutout: the row sits right on it, a step clear of North's cards. With no top
+ * inset (landscape phones, iPad, web) it keeps HEADER_INSET from the edge.
+ */
+export function headerTop(insetTop: number): number {
+  return insetTop > 0 ? insetTop : HEADER_INSET;
+}
 /** The header row's height from the safe top: the taller of the plaque and the menu. */
 export const TABLE_HEADER = HEADER_INSET + Math.max(SCORE_PLAQUE_HEIGHT, PidroLayout.touchTarget);
 // One shared portrait slot below the hand. It can host chat, an adaptive ad,
