@@ -27,7 +27,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
 import { PidroSpacing } from '@/design/tokens';
-import { avatarParts } from '@/features/avatar';
+import { avatarLabel, avatarParts } from '@/features/avatar';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import {
   computeLayout,
@@ -35,6 +35,9 @@ import {
   northBackWidth,
   northFanTop,
   northFanWidth,
+  TICKER_RESERVE,
+  TIGHT_AVATAR,
+  TIGHT_SOUTH_SLOT,
   type Profile,
   type RelativePosition,
 } from './layout';
@@ -139,7 +142,10 @@ export function SeatLayer({
     [width, height, top, bottom, left, right, topReserve, bottomReserve]
   );
   const portrait = L.profile.endsWith('portrait');
-  const size = AVATAR_SIZE[L.profile];
+  // Tight phones: every name beside a smaller avatar, no level chips or pins,
+  // and your avatar alone at the left of your hand (the ticker says your plays).
+  const tight = portrait && L.tight;
+  const size = tight ? TIGHT_AVATAR : AVATAR_SIZE[L.profile];
   const tablet = L.profile.startsWith('tablet');
   const parts = avatarParts(size);
   // Portrait names sit in a fixed column so a long one truncates instead of
@@ -165,16 +171,20 @@ export function SeatLayer({
   // The dealer chip faces the table: right of West's name, left of everyone
   // else's. In landscape it takes the name's far end, except South's, which
   // sits behind the avatar, away from the hand.
-  // On the shortest phones (`L.tight`) North's and your names sit beside the
-  // avatar, as in landscape, to give the trick their height.
-  const besideName = (rel: RelativePosition) =>
-    !portrait || (L.tight && (rel === 'north' || rel === 'south'));
+  const besideName = !portrait || tight;
   const dealerSide = (rel: RelativePosition): 'left' | 'right' =>
-    rel === 'west' || (besideName(rel) && rel === 'north') ? 'right' : 'left';
+    rel === 'west' || (besideName && rel === 'north') ? 'right' : 'left';
+  // Tight North's avatar stays on the table's axis, its name running right.
+  const tightNorthLeft = width / 2 - size / 2;
   const seatWidth = (rel: RelativePosition) =>
-    portrait && L.tight && (rel === 'north' || rel === 'south')
-      ? // The row spans what the side columns leave, chip and name included.
-        { maxWidth: width - 2 * (sideColumn + PidroSpacing.xs), gap }
+    tight
+      ? {
+          maxWidth:
+            rel === 'north'
+              ? width - insets.right - PidroSpacing.sm - tightNorthLeft
+              : sideColumn + PidroSpacing.lg,
+          gap: PidroSpacing.xs,
+        }
       : portrait
         ? { width: rel === 'north' || rel === 'south' ? centerColumn : sideColumn }
         : {
@@ -198,19 +208,24 @@ export function SeatLayer({
   // sit on the trick's center line; landscape drops the stacks below that
   // (L.sides), opening a gap under the seat.
   const sideStackTop = L.trick.cy - sideStackMaxHeight / 2;
-  const stackedSeat =
-    size +
-    (parts.level ? parts.level.height + parts.level.bottom + 3 : 4) +
-    parts.name.lineHeight +
-    parts.status.lineHeight;
+  const stackedSeat = tight
+    ? size
+    : size +
+      (parts.level ? parts.level.height + parts.level.bottom + 3 : 4) +
+      parts.name.lineHeight +
+      parts.status.lineHeight;
   // Portrait keeps the opponents a triangle where it can: east and west start
   // a step below North, and their stacks move down under them, as far as the
   // hand allows. Where even that is not enough (the smallest phones), the
   // seats rise beside North instead: a seat never sits on its own cards.
   const handTop = L.hand.cy - L.cardH / 2;
   const lowestStackTop = Math.max(sideStackTop, handTop - PidroSpacing.sm - sideStackMaxHeight);
+  // Tight West shares its column with the plaque's ticker, and side names run
+  // toward North's: both side seats start below the ticker and North's row.
   const sideSeatTop = Math.max(
-    tableTop + PidroSpacing.xs,
+    tight
+      ? Math.max(tableTop + TICKER_RESERVE, northSeatTop + size + PidroSpacing.xs)
+      : tableTop + PidroSpacing.xs,
     Math.min(
       Math.max(northSeatTop + PidroSpacing.md, sideStackTop - PidroSpacing.sm - stackedSeat),
       lowestStackTop - PidroSpacing.sm - stackedSeat
@@ -226,29 +241,55 @@ export function SeatLayer({
   const sideSeatPos = portrait
     ? { top: sideSeatTop }
     : { bottom: height - sideStackTop + PidroSpacing.sm };
-  const sideInset = portrait ? 0 : 12;
+  const sideInset = tight ? PidroSpacing.xs : portrait ? 0 : 12;
 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
+        const seat = avatarFor(
+          data,
+          dealerRel === rel,
+          lineFor(data, statusByRel?.[rel]),
+          turnByRel?.[rel]
+        );
         const avatar = (
           <PlayerAvatar
             testID={`seat-${rel}`}
             size={size}
-            label={besideName(rel) ? (rel === 'east' ? 'left' : 'right') : 'below'}
+            label={besideName ? (rel === 'east' ? 'left' : 'right') : 'below'}
             dealerSide={dealerSide(rel)}
             style={seatWidth(rel)}
-            {...avatarFor(
-              data,
-              dealerRel === rel,
-              lineFor(data, statusByRel?.[rel]),
-              turnByRel?.[rel]
-            )}
+            {...seat}
+            {...(tight && { level: null, pin: null })}
           />
         );
 
+        if (rel === 'south' && tight) {
+          // Your avatar alone at the left of your hand; the label still speaks.
+          return (
+            <View
+              key={rel}
+              style={{
+                position: 'absolute',
+                left: L.hand.cx - L.hand.maxWidth / 2 - TIGHT_SOUTH_SLOT,
+                top: L.hand.cy - size / 2,
+              }}>
+              <PlayerAvatar
+                testID="seat-south"
+                size={size}
+                dealerSide="left"
+                {...seat}
+                level={null}
+                pin={null}
+                name={null}
+                status={null}
+                accessibilityLabel={avatarLabel({ ...seat, level: null, pin: null })}
+              />
+            </View>
+          );
+        }
         if (rel === 'south') {
           const southBottom = insets.bottom + bottomReserve + 8;
           return (
@@ -297,19 +338,21 @@ export function SeatLayer({
               </View>
               <View
                 style={
-                  portrait
-                    ? {
-                        position: 'absolute',
-                        top: northSeatTop,
-                        left: 0,
-                        right: 0,
-                        alignItems: 'center',
-                      }
-                    : {
-                        position: 'absolute',
-                        top: northSeatTop,
-                        left: width / 2 + northFan / 2 + PidroSpacing.md,
-                      }
+                  tight
+                    ? { position: 'absolute', top: northSeatTop, left: tightNorthLeft }
+                    : portrait
+                      ? {
+                          position: 'absolute',
+                          top: northSeatTop,
+                          left: 0,
+                          right: 0,
+                          alignItems: 'center',
+                        }
+                      : {
+                          position: 'absolute',
+                          top: northSeatTop,
+                          left: width / 2 + northFan / 2 + PidroSpacing.md,
+                        }
                 }>
                 {avatar}
               </View>

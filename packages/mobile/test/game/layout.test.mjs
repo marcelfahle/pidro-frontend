@@ -6,6 +6,8 @@ import {
   northFanTop,
   northFanWidth,
   playedCardTarget,
+  TIGHT_AVATAR,
+  TIGHT_SOUTH_SLOT,
   tickerPlacement,
   utilityDockReserve,
 } from '../../src/game/canvas/layout.ts';
@@ -86,11 +88,32 @@ describe('portrait trick fits between North and your hand', () => {
         8 +
         Math.min(58, Math.max(31, L.cardW * 0.66)) * (110 / 78) +
         12 +
-        (L.tight ? 64 : 98);
+        (L.tight ? TIGHT_AVATAR : 98);
       expect(northCardTop).toBeGreaterThanOrEqual(northSeatBottom);
       expect(southCardBottom).toBeLessThanOrEqual(L.hand.cy - L.cardH / 2);
     });
   }
+});
+
+describe('tight phones', () => {
+  const dock = (height) => utilityDockReserve(height);
+  for (const [width, height, insets, tight] of [
+    [360, 640, { top: 24, bottom: 0, left: 0, right: 0 }, true],
+    [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }, true],
+    [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }, false],
+    [402, 874, { top: 62, bottom: 34, left: 0, right: 0 }, false],
+  ]) {
+    it(`${tight ? 'go' : 'stay out of'} tight on ${width}×${height}`, () => {
+      expect(computeLayout(width, height, insets, 60, dock(height)).tight).toBe(tight);
+    });
+  }
+
+  it('leave your avatar a slot at the left of a full hand', () => {
+    const L = computeLayout(360, 640, { top: 24, bottom: 0, left: 0, right: 0 }, 60, dock(640));
+    const avatarLeft = L.hand.cx - L.hand.maxWidth / 2 - TIGHT_SOUTH_SLOT;
+    expect(avatarLeft).toBeGreaterThanOrEqual(8);
+    expect(avatarLeft + TIGHT_AVATAR).toBeLessThanOrEqual(handLeft(L, 9));
+  });
 });
 
 describe('the plaque ticker keeps off North’s fan', () => {

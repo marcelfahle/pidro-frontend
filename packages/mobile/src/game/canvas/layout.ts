@@ -29,7 +29,10 @@ export type TableLayout = {
   cardW: number;
   cardH: number;
   felt: { cx: number; cy: number };
-  /** Shortest phones: North's and your names sit beside the avatar. */
+  /**
+   * Short phones: smaller avatars without level chips, every name beside its
+   * avatar, and your avatar at the left of your hand instead of under it.
+   */
   tight: boolean;
   /** `pileScale`: how large played cards are drawn around the circle. */
   trick: { cx: number; cy: number; r: number; pileScale: number };
@@ -85,10 +88,17 @@ export function tickerPlacement(
   const room = fanLeft + backW / 2 - plaqueLeft - TICKER_CHEVRON;
   return { lineMaxWidth: clamp(room, TICKER_LINE_MIN, TICKER_LINE_MAX), drop: 0 };
 }
-/** A seat whose name sits beside the avatar: the avatar plus its level chip. */
-export const TIGHT_SEAT_STACK = 64;
-/** Below this circle radius the trick reads as a heap: give it the labels' room. */
-const MIN_COMFORT_R = 44;
+/** A tight seat: the avatar alone, its name beside it, no level chip. */
+export const TIGHT_AVATAR = 44;
+/** Your tight seat sits left of the hand: the avatar and a gap. */
+export const TIGHT_SOUTH_SLOT = TIGHT_AVATAR + 8;
+/**
+ * Room the plaque's ticker takes below the table's top: three lines under the
+ * plaque. Tight side seats start below it, as the ticker shares West's column.
+ */
+export const TICKER_RESERVE = 64;
+/** Below this circle radius the trick reads as a heap: give it the seats' room. */
+const MIN_COMFORT_R = 64;
 const PILE_SCALE = 0.82;
 /** Played cards shrink a little where the trick circle has to. */
 const COMPACT_PILE_SCALE = 0.72;
@@ -186,22 +196,22 @@ export function computeLayout(
   // hand, so the played cards keep clear of both on every phone height. Where
   // the band is short (small phones) the circle and its cards shrink; where
   // it is not, the circle keeps its usual size. On the shortest phones even
-  // that is not enough: North's and your names move beside the avatar
-  // (`tight`), as in landscape, and the band grows by both stacks' labels.
+  // that is not enough (`tight`): North's name moves beside a smaller avatar,
+  // and yours moves to the left of your hand, which drops to the bottom edge.
   // Landscape keeps the legacy full-felt composition with floating chrome.
   const tabletPortrait = profile === 'tablet-portrait';
   const usualR = clamp(shortest * (portrait ? 0.19 : 0.18), 82, 190);
   const portraitBand = (tightSeats: boolean) => {
-    // Your seat below the hand: avatar, level chip, name and status, or just
-    // the avatar row when the name sits beside it.
-    const southSeat = tightSeats ? TIGHT_SEAT_STACK + 20 : tabletPortrait ? 140 : 120;
+    // Your seat below the hand: avatar, level chip, name and status, or only
+    // a gap above the dock when your avatar sits beside the hand.
+    const southSeat = tightSeats ? 12 : tabletPortrait ? 140 : 120;
     const handY = tableBottom - southSeat - cardH * 0.5;
     const northBottom =
       tableTop +
       8 +
       clamp(cardW * 0.66, 31, 58) * CARD_RATIO +
       12 +
-      (tightSeats ? TIGHT_SEAT_STACK : NORTH_SEAT_STACK[tabletPortrait ? 'tablet' : 'phone']);
+      (tightSeats ? TIGHT_AVATAR : NORTH_SEAT_STACK[tabletPortrait ? 'tablet' : 'phone']);
     return { handY, northBottom, band: Math.max(0, handY - cardH / 2 - northBottom) };
   };
   const fitR = (band: number, scale: number) => band / 2 - (cardH * scale) / 2 - 8;
@@ -247,6 +257,11 @@ export function computeLayout(
     tight,
     sides: { cy: sideCy },
     seats,
-    hand: { cx, cy: handY, maxWidth: width - insets.left - insets.right - 32 },
+    // A tight hand makes room on its left for your avatar.
+    hand: {
+      cx: tight ? cx + TIGHT_SOUTH_SLOT / 2 : cx,
+      cy: handY,
+      maxWidth: width - insets.left - insets.right - 32 - (tight ? TIGHT_SOUTH_SLOT : 0),
+    },
   };
 }
