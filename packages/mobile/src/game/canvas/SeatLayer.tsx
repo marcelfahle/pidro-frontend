@@ -29,8 +29,8 @@ import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvat
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts } from '@/features/avatar';
+import { seatLine, type SeatLine } from '@/features/game/seatLine';
 import { getCardImage } from '@/utils/cardImages';
-import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import type { Card } from '@/types/game';
 import {
   AVATAR_SIZE,
@@ -57,41 +57,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const BACK: ImageSourcePropType =
   Platform.OS === 'web' ? { uri: '/cards/cardback.png' } : require('~/assets/images/cardback.png');
 
-/** Out of trumps: the seat sits back, its line says so. */
-const outLine = (): SeatLine => ({ text: t('game.out'), short: t('game.out'), tone: 'quiet' });
-
-/**
- * The line under a seat's name. `now` is the player on turn, `high` holds the
- * high bid. A new `pulse` lights the seat up once (it just bid). `short` is
- * what your nameless tight seat says; without it, that seat stays quiet.
- */
-export type SeatLine = {
-  text: string;
-  short?: string;
-  tone?: 'now' | 'quiet' | 'high' | 'danger';
-  pulse?: string;
-};
 export type SeatTurn = { progress: number; urgent: boolean };
-
-function lineFor(data: TableSeat, override?: SeatLine | null): SeatLine | null {
-  switch (data.seatStatus) {
-    case 'reconnecting':
-      return { text: t('game.reconnecting'), tone: 'danger' };
-    case 'bot_substitute':
-      // A line that must show even without a name (the bidding) outranks
-      // who is playing the seat: the badge already says bot.
-      if (data.out) return outLine();
-      return override?.short ? override : { text: t('game.bot_playing') };
-    case 'vacant':
-      return null;
-  }
-  if (data.lastPlayedCard) {
-    const c = data.lastPlayedCard.card;
-    return { text: t('game.plays', { card: `${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}` }) };
-  }
-  if (data.out) return outLine();
-  return override ?? null;
-}
 
 function avatarFor(
   data: TableSeat,
@@ -272,7 +238,7 @@ export function SeatLayer({
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
-        const line = lineFor(data, statusByRel?.[rel]);
+        const line = seatLine(data, statusByRel?.[rel]);
         const seat = avatarFor(data, dealerRel === rel, line, turnByRel?.[rel]);
         const identity = (
           <PlayerAvatar

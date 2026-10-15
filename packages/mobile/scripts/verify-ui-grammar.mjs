@@ -493,6 +493,14 @@ const allCases = [
     testId: 'seat-south',
     countHelp: { out: ['north', 'east', 'west'], revealed: ['east', 'west'], lone: 'south' },
   },
+  // PID-214: a bot seat says what it played, like anyone, also on the small
+  // phones where the seats wear nameplates.
+  {
+    name: 'table-bot-plays',
+    path: '/table-dev?phase=playing&role=player&trick=bots',
+    testId: 'seat-east',
+    playLines: { west: 'Plays 9♥', north: 'Plays K♥', east: 'Plays 4♥' },
+  },
   {
     name: 'table-trump',
     path: '/table-dev?phase=declaring',
@@ -1767,6 +1775,27 @@ async function assertBidLines(page, testCase, viewport) {
   }
 }
 
+// A seat that played says so aloud and on screen, inside the viewport.
+async function assertPlayLines(page, testCase, viewport) {
+  if (!testCase.playLines) return;
+  for (const [seat, line] of Object.entries(testCase.playLines)) {
+    const avatar = page.getByTestId(`seat-${seat}`);
+    const label = await avatar.getAttribute('aria-label');
+    if (!label?.endsWith(`, ${line.replace(/^./, (c) => c.toLowerCase())}`)) {
+      throw new Error(`${testCase.name}: seat ${seat} says "${label}" for "${line}"`);
+    }
+    const text = avatar.getByText(line, { exact: true });
+    if ((await text.count()) !== 1 || !(await text.isVisible())) {
+      throw new Error(`${testCase.name}: seat ${seat} does not show "${line}" in ${viewport.name}`);
+    }
+    assertInsideViewport(
+      `${testCase.name} ${seat} play line`,
+      await getStableBox(text, page),
+      viewport
+    );
+  }
+}
+
 // Count help (PID-220): the bid line reads in full and, with "Last trick",
 // keeps off every seat and North's cards. An out seat says so aloud and lays
 // its cards face up where they can be read.
@@ -2363,6 +2392,7 @@ async function main() {
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
           await assertBidLines(page, testCase, caseViewport);
+          await assertPlayLines(page, testCase, caseViewport);
           if (testCase.locale && testCase.path.includes('game_over')) {
             await page
               .getByTestId('victory-confetti')

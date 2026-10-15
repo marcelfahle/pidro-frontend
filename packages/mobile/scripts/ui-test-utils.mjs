@@ -49,7 +49,13 @@ export const UI_VIEWPORTS = [
     name: 'small-landscape',
     width: 640,
     height: 360,
-    cases: ['table-bidding', 'table-playing', 'table-completed-trick', 'table-count-help'],
+    cases: [
+      'table-bidding',
+      'table-playing',
+      'table-completed-trick',
+      'table-count-help',
+      'table-bot-plays',
+    ],
   },
   {
     name: 'compact-landscape',
