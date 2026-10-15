@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { computeLayout, handLeft, playedCardTarget } from '../../src/game/canvas/layout.ts';
+import {
+  computeLayout,
+  handLeft,
+  playedCardTarget,
+  utilityDockReserve,
+} from '../../src/game/canvas/layout.ts';
 
 describe('played-card piles', () => {
   for (const [width, height] of [
@@ -54,4 +59,32 @@ describe('side stacks and the hand', () => {
     expect(handLeft(layout, 9)).toBeLessThan(handLeft(layout, 6));
     expect(handLeft(layout, 1)).toBeCloseTo(layout.hand.cx - (layout.cardW * 0.9 * 1.03) / 2);
   });
+});
+
+describe('portrait trick fits between North and your hand', () => {
+  for (const [width, height, insets] of [
+    [360, 640, { top: 24, bottom: 0, left: 0, right: 0 }],
+    [360, 640, { top: 24, bottom: 48, left: 0, right: 0 }],
+    [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }],
+    [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }],
+    [402, 874, { top: 62, bottom: 34, left: 0, right: 0 }],
+    [440, 956, { top: 62, bottom: 34, left: 0, right: 0 }],
+  ]) {
+    it(`clears North's seat and the hand on ${width}×${height}`, () => {
+      const L = computeLayout(width, height, insets, 60, utilityDockReserve(height));
+      const half = (L.cardH * L.trick.pileScale) / 2;
+      const northCardTop = L.trick.cy - L.trick.r - half;
+      const southCardBottom = L.trick.cy + L.trick.r + half;
+      // North's fan and seat, as SeatLayer stacks them under the header.
+      const northSeatBottom =
+        insets.top +
+        60 +
+        8 +
+        Math.min(58, Math.max(31, L.cardW * 0.66)) * (110 / 78) +
+        12 +
+        (L.tight ? 64 : 98);
+      expect(northCardTop).toBeGreaterThanOrEqual(northSeatBottom);
+      expect(southCardBottom).toBeLessThanOrEqual(L.hand.cy - L.cardH / 2);
+    });
+  }
 });

@@ -49,6 +49,15 @@ function playTrickHaptic() {
   );
 }
 
+/** A trick holding a five: the heaviest tap the table makes. */
+export function playBigTrickHaptic() {
+  runHaptic(() =>
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Long_Press)
+      : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+  );
+}
+
 /** "Your turn": a two-beat tap, unlike any card or trick, so it reads without looking. */
 function playTurnHaptic() {
   runHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));

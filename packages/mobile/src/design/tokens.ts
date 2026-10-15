@@ -52,6 +52,9 @@ export const PidroColors = {
   // The shine behind the player on turn, drawn as a soft glow around the ring.
   turnLightShine: 'rgba(139, 234, 255, 0.6)',
   turnUrgentShine: 'rgba(255, 184, 107, 0.65)',
+  // Trick signals: the "on the table" chip and the shadow under a "+N" pop.
+  trickChipBg: 'rgba(10, 35, 64, 0.72)',
+  popShadow: 'rgba(0, 0, 0, 0.6)',
   // The table seen from above on Tables and New table: an open chair, a chosen seat.
   chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
   chairSubBorder: 'rgba(255, 184, 107, 0.85)',

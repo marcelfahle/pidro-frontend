@@ -12,6 +12,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
+import { TableSignals } from './TableSignals';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
@@ -25,6 +26,7 @@ import type {
   LegalAction,
   RelativePlayerView,
   RelativePosition,
+  ServerLastHand,
   Suit,
   SeatStatus,
 } from '@/types/game';
@@ -97,6 +99,55 @@ const OPP_PLAYS: { player: Position; card: Card }[] = [
   { player: 'east', card: { suit: 'hearts', rank: 4 } },
 ];
 
+// `signals=pidro`: North drops the 5 of trump on your ace, so the trick is a "Pidro!".
+const OPP_PLAYS_PIDRO: { player: Position; card: Card }[] = [
+  { player: 'west', card: { suit: 'diamonds', rank: 5 } },
+  { player: 'north', card: { suit: 'spades', rank: 5 } },
+  { player: 'east', card: { suit: 'hearts', rank: 4 } },
+];
+
+/**
+ * The fake server's trick signals (PID-218 shape). Fixture-only: the real
+ * table gets winner and points from the server and never computes them.
+ */
+const fixturePoints = (card: Card) =>
+  card.suit !== 'spades' ? 0 : card.rank === 5 ? 5 : [14, 11, 10].includes(card.rank) ? 1 : 0;
+function fixtureSignals(plays: Play[]) {
+  const trumps = plays.filter((play) => play.card.suit === 'spades');
+  const best = trumps.reduce<Play | null>(
+    (top, play) => (!top || play.card.rank > top.card.rank ? play : top),
+    null
+  );
+  const lead = best ?? plays[0] ?? null;
+  return {
+    winning: lead ? { position: lead.player, card: lead.card } : null,
+    points: plays.reduce((sum, play) => sum + fixturePoints(play.card), 0),
+  };
+}
+
+const FIXTURE_HANDS = {
+  made: {
+    hand_number: 4,
+    bidding_team: 'north_south',
+    bidder: 'south',
+    bid: 8,
+    captured: { north_south: 9, east_west: 5 },
+    made: true,
+    delta: { north_south: 9, east_west: 5 },
+    scores: { north_south: 45, east_west: 34 },
+  },
+  set: {
+    hand_number: 4,
+    bidding_team: 'north_south',
+    bidder: 'south',
+    bid: 10,
+    captured: { north_south: 7, east_west: 7 },
+    made: false,
+    delta: { north_south: -10, east_west: 7 },
+    scores: { north_south: 26, east_west: 36 },
+  },
+} satisfies Record<string, ServerLastHand>;
+
 const DEALER_CUTS: Record<Position, Card> = {
   north: { suit: 'clubs', rank: 9 },
   east: { suit: 'spades', rank: 14 },
@@ -154,7 +205,9 @@ export default function GameCanvasDev({
   const { topReserve, bottomReserve } = reserves;
   const [hand, setHand] = useState<Card[]>([]);
   const [trick, setTrick] = useState<Play[]>([]);
-  const [tricks, setTricks] = useState<Play[][]>([]);
+  const [tricks, setTricks] = useState<
+    { cards: Play[]; winner: Position | undefined; points: number }[]
+  >([]);
   const [trump, setTrump] = useState<Suit | null>(null);
   const [turn, setTurn] = useState<RelativePosition>('south');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -164,7 +217,24 @@ export default function GameCanvasDev({
     dealer: dealerFixture,
     names,
     timer,
-  } = useLocalSearchParams<{ scores?: string; dealer?: string; names?: string; timer?: string }>();
+    signals,
+    hand: handFixture,
+  } = useLocalSearchParams<{
+    scores?: string;
+    dealer?: string;
+    names?: string;
+    timer?: string;
+    signals?: string;
+    hand?: string;
+  }>();
+  const [lastHand, setLastHand] = useState<ServerLastHand | null>(null);
+  useEffect(() => {
+    const fixture =
+      handFixture === 'made' || handFixture === 'set' ? FIXTURE_HANDS[handFixture] : null;
+    if (!fixture) return;
+    const shown = setTimeout(() => setLastHand(fixture), 1600);
+    return () => clearTimeout(shown);
+  }, [handFixture]);
   const dealer = SEATS.find((rel) => rel === dealerFixture) ?? ('south' satisfies RelativePosition);
   const turnTimer = useFixtureTurnTimer(timer === 'running', turn);
   const [scores, setScores] = useState(
@@ -208,7 +278,10 @@ export default function GameCanvasDev({
     (card: Card) => {
       if (playing.current) return;
       playing.current = true;
-      const trickCards = [{ player: 'south' as Position, card }, ...OPP_PLAYS];
+      const trickCards = [
+        { player: 'south' as Position, card },
+        ...(signals === 'pidro' ? OPP_PLAYS_PIDRO : OPP_PLAYS),
+      ];
       setHand((h) => h.filter((c) => !sameCard(c, card)));
       setTurn('east');
       setTrick([trickCards[0]]);
@@ -218,12 +291,13 @@ export default function GameCanvasDev({
       after(1650, () => setTrick(trickCards));
       // Trick completes → cards stay on table as round history.
       after(2450, () => {
-        setTricks((t) => [...t, trickCards]);
+        const { winning, points } = fixtureSignals(trickCards);
+        setTricks((t) => [...t, { cards: trickCards, winner: winning?.position, points }]);
         setTrick([]);
         setTurn('north');
       });
     },
-    [after]
+    [after, signals]
   );
 
   const players = useMemo(
@@ -262,12 +336,14 @@ export default function GameCanvasDev({
         dealerSelectionCuts: phase === 'dealer_selection' ? DEALER_CUTS : null,
         currentTrick: trick,
         tricks,
+        trickDetails: trick.length ? fixtureSignals(trick) : null,
+        lastHand,
         legalActions,
         currentTurnRelative: turn,
         canPlay,
         getCardCountForPlayer: (abs) => (abs ? (COUNTS[abs] ?? null) : null),
       }),
-    [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay, dealer]
+    [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay, dealer, lastHand]
   );
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
 
@@ -289,6 +365,7 @@ export default function GameCanvasDev({
         topReserve={topReserve}
         bottomReserve={bottomReserve}
       />
+      <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
       <SeatLayer
         turnByRel={turnTimer}
         seats={model.seats}
@@ -316,6 +393,8 @@ export default function GameCanvasDev({
             roomCode="DEV01"
             top={headerTop(insets.top)}
             left={insets.left}
+            // East's "Bid 6" from the fixture's bidding, held through the play.
+            bid={phase === 'playing' ? { name: 'Eli', amount: 6, ours: false } : null}
           />
           <TableSettings onLeave={() => {}} />
         </>

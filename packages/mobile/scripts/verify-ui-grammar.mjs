@@ -361,6 +361,14 @@ const allCases = [
     testId: 'seat-north',
     verifyPlayedCardPersistence: true,
   },
+  // PID-219: a trick holding a five pops "Pidro!"; a hand ends with its result.
+  {
+    name: 'table-trick-pidro',
+    path: '/table-dev?phase=playing&signals=pidro&autoplay=true',
+    testId: 'trick-pop-pidro',
+  },
+  { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
+  { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },
   {
     name: 'table-bidding',
     path: '/table-dev?phase=bidding',

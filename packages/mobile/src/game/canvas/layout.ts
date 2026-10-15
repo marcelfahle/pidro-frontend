@@ -29,7 +29,10 @@ export type TableLayout = {
   cardW: number;
   cardH: number;
   felt: { cx: number; cy: number };
-  trick: { cx: number; cy: number; r: number };
+  /** Shortest phones: North's and your names sit beside the avatar. */
+  tight: boolean;
+  /** `pileScale`: how large played cards are drawn around the circle. */
+  trick: { cx: number; cy: number; r: number; pileScale: number };
   /** Vertical center of the east and west card-back stacks. */
   sides: { cy: number };
   seats: Record<RelativePosition, Seat>;
@@ -43,6 +46,18 @@ const CARD_RATIO = 110 / 78; // from the legacy card art (spike)
  * seats sit on top of them, under the header row, and need air between.
  */
 const LANDSCAPE_SIDE_DROP = 16;
+/**
+ * Portrait North, top to bottom, as SeatLayer draws it: a gap, the fan of
+ * backs, a gap, then the seat (avatar, level chip, name and status).
+ */
+const NORTH_SEAT_STACK = { phone: 98, tablet: 115 } as const;
+/** A seat whose name sits beside the avatar: the avatar plus its level chip. */
+export const TIGHT_SEAT_STACK = 64;
+/** Below this circle radius the trick reads as a heap: give it the labels' room. */
+const MIN_COMFORT_R = 44;
+const PILE_SCALE = 0.82;
+/** Played cards shrink a little where the trick circle has to. */
+const COMPACT_PILE_SCALE = 0.72;
 
 export function playedCardTarget(
   L: TableLayout,
@@ -51,7 +66,7 @@ export function playedCardTarget(
   count: number
 ) {
   const portrait = L.profile.endsWith('portrait');
-  const pileScale = portrait ? 0.82 : 0.8;
+  const pileScale = L.trick.pileScale;
   const spacing = Math.min(L.cardW * 0.38, portrait ? 24 : 32);
   const off = index - (count - 1) / 2;
   // Side cards face their owner: the card's top edge points at the table
@@ -93,6 +108,18 @@ export function handLeft(L: TableLayout, n: number): number {
   return L.hand.cx - half * handStep(L, n) - (L.cardW * handScale(L.profile) * 1.03) / 2;
 }
 
+/**
+ * The portrait slot below the hand (chat, an adaptive ad or table details).
+ * Short phones get a slimmer one, still room for a 50pt banner, so the trick
+ * keeps clear of North and the hand.
+ */
+export const UTILITY_DOCK_RESERVE = 72;
+const COMPACT_DOCK_RESERVE = 52;
+const COMPACT_HEIGHT = 700;
+export function utilityDockReserve(height: number): number {
+  return height < COMPACT_HEIGHT ? COMPACT_DOCK_RESERVE : UTILITY_DOCK_RESERVE;
+}
+
 export function pickProfile(w: number, h: number): Profile {
   const tablet = Math.min(w, h) >= 600; // shortest-side breakpoint; browser window counts as tablet
   const landscape = w > h;
@@ -120,18 +147,39 @@ export function computeLayout(
   const cy = height / 2;
   const tableTop = insets.top + topReserve;
   const tableBottom = height - insets.bottom - bottomReserve;
-  const tableHeight = Math.max(0, tableBottom - tableTop);
 
-  // Portrait geometry belongs to the viewport between the two docks. Landscape
-  // keeps the legacy full-felt composition with floating chrome.
-  const trickCy = portrait ? tableTop + tableHeight * 0.43 : height * 0.49;
-  const trickR = clamp(shortest * (portrait ? 0.19 : 0.18), 82, 190);
+  // Portrait centers the trick in the band between North's seat and your
+  // hand, so the played cards keep clear of both on every phone height. Where
+  // the band is short (small phones) the circle and its cards shrink; where
+  // it is not, the circle keeps its usual size. On the shortest phones even
+  // that is not enough: North's and your names move beside the avatar
+  // (`tight`), as in landscape, and the band grows by both stacks' labels.
+  // Landscape keeps the legacy full-felt composition with floating chrome.
+  const tabletPortrait = profile === 'tablet-portrait';
+  const usualR = clamp(shortest * (portrait ? 0.19 : 0.18), 82, 190);
+  const portraitBand = (tightSeats: boolean) => {
+    // Your seat below the hand: avatar, level chip, name and status, or just
+    // the avatar row when the name sits beside it.
+    const southSeat = tightSeats ? TIGHT_SEAT_STACK + 20 : tabletPortrait ? 140 : 120;
+    const handY = tableBottom - southSeat - cardH * 0.5;
+    const northBottom =
+      tableTop +
+      8 +
+      clamp(cardW * 0.66, 31, 58) * CARD_RATIO +
+      12 +
+      (tightSeats ? TIGHT_SEAT_STACK : NORTH_SEAT_STACK[tabletPortrait ? 'tablet' : 'phone']);
+    return { handY, northBottom, band: Math.max(0, handY - cardH / 2 - northBottom) };
+  };
+  const fitR = (band: number, scale: number) => band / 2 - (cardH * scale) / 2 - 8;
+  const roomy = portraitBand(false);
+  const tight = portrait && !tabletPortrait && fitR(roomy.band, COMPACT_PILE_SCALE) < MIN_COMFORT_R;
+  const { handY: portraitHandY, northBottom, band } = portraitBand(tight);
+  const compact = portrait && fitR(band, PILE_SCALE) < usualR;
+  const pileScale = portrait ? (compact ? COMPACT_PILE_SCALE : PILE_SCALE) : 0.8;
+  const handY = portrait ? portraitHandY : tableBottom - cardH * 0.56;
+  const trickCy = portrait ? northBottom + band / 2 : height * 0.49;
+  const trickR = compact ? Math.max(32, Math.min(usualR, fitR(band, pileScale))) : usualR;
 
-  // Portrait lifts the fan above the centered south seat: avatar, level chip,
-  // name and status, which do not grow with the cards. Landscape keeps the
-  // cards near the bottom edge because the south seat sits beside them.
-  const southSeat = profile === 'tablet-portrait' ? 140 : 120;
-  const handY = portrait ? tableBottom - southSeat - cardH * 0.5 : tableBottom - cardH * 0.56;
   const northY = tableTop + cardH * (portrait ? 0.48 : 0.22) + 10;
   const sideCy = portrait ? trickCy : trickCy + LANDSCAPE_SIDE_DROP;
   // Played cards leave from here; portrait keeps its historical screen-center origin.
@@ -161,7 +209,8 @@ export function computeLayout(
     cardW,
     cardH,
     felt: { cx, cy: trickCy },
-    trick: { cx, cy: trickCy, r: trickR },
+    trick: { cx, cy: trickCy, r: trickR, pileScale },
+    tight,
     sides: { cy: sideCy },
     seats,
     hand: { cx, cy: handY, maxWidth: width - insets.left - insets.right - 32 },
