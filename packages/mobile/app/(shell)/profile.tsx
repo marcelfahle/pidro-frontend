@@ -13,7 +13,8 @@ import {
   publicPlayerName,
 } from '@pidro/shared';
 import { profileApi, type ProfileIdentity } from '@/api/profile';
-import { apiErrorInfo } from '@/utils/apiErrors';
+import { localizedError, localizedFieldErrors } from '@/utils/apiErrors';
+import { useTranslation, formatNumber, type TranslationKey } from '@/i18n';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BadgeSheet } from '@/components/profile/BadgeSheet';
 import { gradientBg } from '@/components/ui/Bevel';
@@ -37,7 +38,7 @@ import {
   PidroRadii,
   PidroSpacing,
 } from '@/design/tokens';
-import { levelProgress, monthName, winRate, wornPin } from '@/features/profile';
+import { levelProgress, monthName, winRate, wornPin, veteranTitle } from '@/features/profile';
 import { authStore, useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
@@ -51,6 +52,13 @@ export default function ProfileScreen() {
 }
 
 function ProfileContent() {
+  const { t } = useTranslation();
+  const bioValidation = (value: string) =>
+    !bioError(value)
+      ? null
+      : t(bioLength(value) > BIO_MAX_LENGTH ? 'profile.bio_long' : 'profile.bio_invalid', {
+          number: formatNumber(BIO_MAX_LENGTH),
+        });
   const { width, height, fontScale } = useWindowDimensions();
   // Window width also handles iPad split view. Larger text gets the roomier stack.
   const twoColumns = width >= PidroLayout.landscapeMinWidth * Math.max(1, fontScale);
@@ -66,8 +74,16 @@ function ProfileContent() {
   const [draftUri, setDraftUri] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [status, setStatus] = useState<string | null>(null);
+  const [error, setError] = useState<{
+    cause?: unknown;
+    fallback: TranslationKey;
+    field?: string;
+  } | null>(null);
+  const [status, setStatus] = useState<TranslationKey | null>(null);
+  const errorText = error
+    ? ((error.field ? localizedFieldErrors(error.cause)[error.field] : undefined) ??
+      localizedError(error.cause, error.fallback))
+    : undefined;
   const [editor, setEditor] = useState<'photo' | 'bio' | null>(null);
   const [feedbackFor, setFeedbackFor] = useState<'photo' | 'bio' | null>(null);
   const [refreshError, setRefreshError] = useState(false);
@@ -83,10 +99,10 @@ function ProfileContent() {
   // The cards wait for the profile's answer so nothing below them moves when it lands.
   const [answered, setAnswered] = useState(false);
   const [confirmation, setConfirmation] = useState<{
-    title: string;
-    description: string;
-    label: string;
-    cancelLabel?: string;
+    title: TranslationKey;
+    description: TranslationKey;
+    label: TranslationKey;
+    cancelLabel?: TranslationKey;
     proceed: () => void;
   } | null>(null);
   const dirty =
@@ -102,10 +118,10 @@ function ProfileContent() {
 
   const confirmDiscard = (proceed: () => void) => {
     setConfirmation({
-      title: 'Discard changes?',
-      description: 'Your saved profile will stay the same.',
-      label: 'Discard changes',
-      cancelLabel: 'Keep editing',
+      title: 'profile.discard_title',
+      description: 'profile.discard_help',
+      label: 'profile.discard',
+      cancelLabel: 'profile.keep_editing',
       proceed: () => {
         closeEditor();
         proceed();
@@ -116,9 +132,9 @@ function ProfileContent() {
   usePreventRemove(!!dirty || busy, ({ data }) => {
     if (busy) {
       setConfirmation({
-        title: 'Please wait',
-        description: 'Your photo or bio is still being processed.',
-        label: 'OK',
+        title: 'profile.wait',
+        description: 'profile.processing_help',
+        label: 'profile.ok',
         proceed: () => {},
       });
     } else {
@@ -183,7 +199,7 @@ function ProfileContent() {
             : asset.uri;
         const blob: Blob = await fetch(uploadUri).then((response) => response.blob());
         if (blob.size > AVATAR_MAX_BYTES) {
-          setError('That photo is still larger than 5 MB. Choose a smaller image.');
+          setError({ fallback: 'profile.photo_large' });
           return;
         }
         setDraft(blob);
@@ -201,9 +217,7 @@ function ProfileContent() {
       }
     } catch (error) {
       console.warn('[Profile] image picker failed', error);
-      setError(
-        'Could not open that photo. Check photo access in Settings or choose another image.'
-      );
+      setError({ cause: error, fallback: 'profile.photo_open_error' });
     } finally {
       setBusy(false);
     }
@@ -223,15 +237,10 @@ function ProfileContent() {
         setDraft(null);
         setDraftUri(null);
         setEditor(null);
-        setStatus('Profile photo saved.');
+        setStatus('profile.photo_saved');
       }
     } catch (error) {
-      const detail =
-        (error as { response?: { data?: { errors?: { avatar?: string[] } } } }).response?.data
-          ?.errors?.avatar?.[0] ?? apiErrorInfo(error).detail;
-      setError(
-        detail ? `Upload failed: ${detail}` : 'Upload failed. Your photo is ready to retry.'
-      );
+      setError({ cause: error, fallback: 'profile.upload_error', field: 'avatar' });
     } finally {
       setBusy(false);
       setProgress(null);
@@ -250,9 +259,9 @@ function ProfileContent() {
       setDraft(null);
       setDraftUri(null);
       setEditor(null);
-      setStatus('Profile photo removed.');
-    } catch {
-      setError('Could not remove your photo. Try again.');
+      setStatus('profile.photo_removed');
+    } catch (cause) {
+      setError({ cause, fallback: 'profile.remove_error' });
     } finally {
       setBusy(false);
     }
@@ -274,7 +283,6 @@ function ProfileContent() {
   const saveBio = async () => {
     const validationError = bioError(bioDraft);
     if (validationError) {
-      setError(validationError);
       return;
     }
     const session = authStore.getState();
@@ -290,25 +298,24 @@ function ProfileContent() {
       authStore.setState({ user: { ...current.user, bio: result.bio } });
       setBioDraft(normalizeBio(bioDraft));
       setEditor(null);
-      setStatus('About me saved.');
+      setStatus('profile.bio_saved');
       Keyboard.dismiss();
     } catch (saveError) {
-      setError(
-        apiErrorInfo(saveError).detail || 'Could not save your bio. Your draft is ready to retry.'
-      );
+      setError({ cause: saveError, fallback: 'profile.bio_error', field: 'bio' });
     } finally {
       setBusy(false);
     }
   };
 
-  const name = publicPlayerName(user?.username, 'Player', user?.display_name);
+  const name = publicPlayerName(user?.username, t('social.player'), user?.display_name);
   const veteran = identity?.veteran;
+  const title = veteranTitle(veteran?.title);
   const avatarSize = shortWindow ? 104 : 124;
   const level = levelProgress(veteran);
 
   const saveProgress = user?.guest ? (
     <BevelButton
-      label="Save your progress"
+      label={t('profile.save_progress')}
       material="glass"
       size="sm"
       fullWidth
@@ -327,12 +334,12 @@ function ProfileContent() {
       }}>
       <View className={shortWindow ? 'gap-3' : 'gap-6'}>
         <ScreenHeader
-          title="Your profile"
+          title={t('profile.title')}
           onBack={() => router.back()}
           trailing={
             editor !== 'photo' ? (
               <BevelButton
-                label="Edit photo"
+                label={t('profile.edit_photo')}
                 material="glass"
                 size="sm"
                 disabled={busy}
@@ -344,7 +351,7 @@ function ProfileContent() {
         />
         {refreshError && (
           <PidroText role="metadata" tone="danger" accessibilityRole="alert">
-            Could not refresh your profile. Reopen it to try again.
+            {t('profile.refresh_error')}
           </PidroText>
         )}
         <View className={twoColumns ? 'flex-row items-start gap-4' : 'gap-4'}>
@@ -354,7 +361,7 @@ function ProfileContent() {
             <View style={styles.identity}>
               <PressableFX
                 accessibilityRole="button"
-                accessibilityLabel="Your badges"
+                accessibilityLabel={t('profile.badges')}
                 onPress={() => setBadgesOpen(true)}
                 style={styles.avatarButton}>
                 <PlayerAvatar
@@ -369,7 +376,8 @@ function ProfileContent() {
               </PidroText>
               {veteran ? (
                 <PidroText role="label" align="center">
-                  {veteran.title ? `${veteran.title} · ` : ''}Level {veteran.level}
+                  {title ? `${title} · ` : ''}
+                  {t('profile.level', { number: formatNumber(veteran.level) })}
                 </PidroText>
               ) : null}
               {classic ? (
@@ -382,7 +390,10 @@ function ProfileContent() {
                     <Icon name="spade" size={13} color={PidroBevel.textGold} />
                   </Coin>
                   <PidroText role="label">
-                    Pidro Classic{classic.level != null ? ` · Level ${classic.level}` : ''}
+                    Pidro Classic
+                    {classic.level != null
+                      ? ` · ${t('profile.level', { number: formatNumber(classic.level) })}`
+                      : ''}
                   </PidroText>
                   <Icon name="chevron-right" size={16} color={PidroBevel.rim} />
                 </PressableFX>
@@ -394,28 +405,28 @@ function ProfileContent() {
               <View className="gap-3">
                 {feedbackFor === 'photo' && error ? (
                   <PidroText role="metadata" tone="danger" accessibilityRole="alert">
-                    {error}
+                    {errorText}
                   </PidroText>
                 ) : null}
                 {feedbackFor === 'photo' && status ? (
                   <PidroText role="metadata" tone="cyan" accessibilityLiveRegion="polite">
-                    {status}
+                    {t(status)}
                   </PidroText>
                 ) : null}
                 {progress != null ? (
                   <PidroText role="metadata" tone="cyan" align="center">
-                    {progress < 100 ? `Uploading… ${progress}%` : 'Processing photo…'}
+                    {progress < 100
+                      ? t('profile.uploading', { number: formatNumber(progress) })
+                      : t('profile.processing')}
                   </PidroText>
                 ) : null}
                 {editor === 'photo' ? (
                   <>
                     <PidroText role="metadata" tone="muted">
-                      {draft
-                        ? 'Looking good? Save this photo to your profile.'
-                        : 'Choose a photo so friends can recognize you.'}
+                      {draft ? t('profile.photo_ready') : t('profile.photo_help')}
                     </PidroText>
                     <Button
-                      label={draft ? 'Choose another photo' : 'Choose photo'}
+                      label={t(draft ? 'profile.choose_another' : 'profile.choose_photo')}
                       variant="outline"
                       disabled={busy}
                       onPress={chooseAvatar}
@@ -425,7 +436,7 @@ function ProfileContent() {
                         <>
                           <View className="flex-1">
                             <Button
-                              label="Cancel"
+                              label={t('common.cancel')}
                               variant="outline"
                               disabled={busy}
                               onPress={closeEditor}
@@ -433,7 +444,7 @@ function ProfileContent() {
                           </View>
                           <View className="flex-1">
                             <Button
-                              label="Save photo"
+                              label={t('profile.save_photo')}
                               loading={busy}
                               disabled={busy}
                               onPress={saveAvatar}
@@ -443,7 +454,7 @@ function ProfileContent() {
                       ) : (
                         <>
                           <Button
-                            label="Done"
+                            label={t('profile.done')}
                             variant="ghost"
                             disabled={busy}
                             onPress={closeEditor}
@@ -451,15 +462,15 @@ function ProfileContent() {
                           />
                           {user?.avatar_url ? (
                             <Button
-                              label="Remove photo"
+                              label={t('profile.remove_photo')}
                               variant="ghost"
                               disabled={busy}
                               onPress={() =>
                                 setConfirmation({
-                                  title: 'Remove photo?',
-                                  description: 'You’ll use the default avatar instead.',
-                                  label: 'Remove photo',
-                                  cancelLabel: 'Cancel',
+                                  title: 'profile.remove_title',
+                                  description: 'profile.remove_help',
+                                  label: 'profile.remove_photo',
+                                  cancelLabel: 'common.cancel',
                                   proceed: () => {
                                     void removeAvatar();
                                   },
@@ -487,10 +498,10 @@ function ProfileContent() {
                     <View style={styles.xpTop}>
                       <View style={styles.figure}>
                         <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
-                          All time
+                          {t('profile.all_time')}
                         </PidroText>
                         <PidroText role="title" style={styles.number}>
-                          {veteran.xp.toLocaleString()} XP
+                          {formatNumber(veteran.xp)} XP
                         </PidroText>
                       </View>
                       {level.caption ? (
@@ -502,7 +513,7 @@ function ProfileContent() {
                     <View
                       accessible
                       accessibilityRole="progressbar"
-                      accessibilityLabel={level.caption ?? 'Level progress'}
+                      accessibilityLabel={level.caption ?? t('profile.level_progress')}
                       accessibilityValue={{
                         min: 0,
                         max: 100,
@@ -523,13 +534,13 @@ function ProfileContent() {
                         <View style={styles.periods}>
                           <View style={styles.figure}>
                             <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
-                              This week
+                              {t('social.this_week')}
                             </PidroText>
                             <PidroText role="title" style={styles.number}>
-                              {identity.xp.this_week.toLocaleString()} XP
+                              {formatNumber(identity.xp.this_week)} XP
                             </PidroText>
                             <TextLink
-                              label="Leagues are coming"
+                              label={t('profile.leagues_coming')}
                               size={14}
                               onPress={() => router.replace('/league')}
                               style={styles.leagueLink}
@@ -540,7 +551,7 @@ function ProfileContent() {
                               {monthName()}
                             </PidroText>
                             <PidroText role="title" style={styles.number}>
-                              {identity.xp.this_month.toLocaleString()} XP
+                              {formatNumber(identity.xp.this_month)} XP
                             </PidroText>
                           </View>
                         </View>
@@ -552,18 +563,18 @@ function ProfileContent() {
                   <Surface variant="subtle" style={styles.record} testID="profile-record">
                     {[
                       {
-                        label: 'Games played',
-                        caption: 'games',
-                        value: identity.record.games.toLocaleString(),
+                        label: t('profile.games_played'),
+                        caption: t('profile.games'),
+                        value: formatNumber(identity.record.games),
                       },
                       {
-                        label: 'Wins',
-                        caption: 'wins',
-                        value: identity.record.wins.toLocaleString(),
+                        label: t('profile.wins'),
+                        caption: t('profile.wins_caption'),
+                        value: formatNumber(identity.record.wins),
                       },
                       {
-                        label: 'Win rate',
-                        caption: 'win rate',
+                        label: t('profile.win_rate'),
+                        caption: t('profile.win_rate_caption'),
                         value: winRate(identity.record.win_rate),
                       },
                     ].map((stat, index) => (
@@ -584,11 +595,11 @@ function ProfileContent() {
                 ) : null}
                 <Surface variant="subtle" className="gap-3" padded>
                   <View className="flex-row items-center justify-between gap-3">
-                    <PidroText role="label">About me</PidroText>
+                    <PidroText role="label">{t('profile.about')}</PidroText>
                     {editor !== 'bio' ? (
                       <Button
-                        label={user?.bio ? 'Edit' : 'Add'}
-                        accessibilityLabel={user?.bio ? 'Edit bio' : 'Add bio'}
+                        label={t(user?.bio ? 'profile.edit' : 'profile.add')}
+                        accessibilityLabel={t(user?.bio ? 'profile.edit_bio' : 'profile.add_bio')}
                         variant="ghost"
                         size="sm"
                         disabled={busy}
@@ -599,7 +610,7 @@ function ProfileContent() {
                   {editor === 'bio' ? (
                     <>
                       <Input
-                        accessibilityLabel="About me"
+                        accessibilityLabel={t('profile.about')}
                         autoFocus
                         multiline
                         numberOfLines={shortWindow ? 3 : 5}
@@ -609,26 +620,28 @@ function ProfileContent() {
                           setBioDraft(text);
                           setError(null);
                         }}
-                        error={bioError(bioDraft) ?? error ?? undefined}
+                        error={bioValidation(bioDraft) ?? errorText}
                         className={shortWindow ? 'min-h-20 py-3' : 'min-h-28 py-3'}
                         textAlignVertical="top"
-                        placeholder="A little about you, on or off the table…"
+                        placeholder={t('profile.bio_placeholder')}
                       />
                       <View className="flex-row flex-wrap justify-between gap-3">
                         <PidroText role="metadata" tone="muted">
-                          Visible to other players
+                          {t('profile.visible')}
                         </PidroText>
                         <PidroText
                           role="metadata"
                           tone={bioLength(bioDraft) > BIO_MAX_LENGTH ? 'danger' : 'muted'}
                           align="right">
-                          {BIO_MAX_LENGTH - bioLength(bioDraft)} remaining
+                          {t('profile.remaining', {
+                            number: formatNumber(BIO_MAX_LENGTH - bioLength(bioDraft)),
+                          })}
                         </PidroText>
                       </View>
                       <View className="flex-row gap-2">
                         <View className="flex-1">
                           <Button
-                            label="Cancel"
+                            label={t('common.cancel')}
                             variant="outline"
                             disabled={busy}
                             onPress={closeEditor}
@@ -636,7 +649,7 @@ function ProfileContent() {
                         </View>
                         <View className="flex-1">
                           <Button
-                            label="Save bio"
+                            label={t('profile.save_bio')}
                             loading={busy}
                             disabled={!dirty || !!bioError(bioDraft)}
                             onPress={saveBio}
@@ -649,29 +662,28 @@ function ProfileContent() {
                       role="body"
                       className="break-words"
                       tone={user?.bio ? 'default' : 'muted'}>
-                      {user?.bio ||
-                        'Share a little about yourself. A favorite Pidro memory is a good start.'}
+                      {user?.bio || t('profile.bio_help')}
                     </PidroText>
                   )}
                   {feedbackFor === 'bio' && status && (
                     <PidroText role="metadata" tone="cyan" accessibilityLiveRegion="polite">
-                      {status}
+                      {t(status)}
                     </PidroText>
                   )}
                 </Surface>
                 {!twoColumns && saveProgress}
                 <PressableFX
                   accessibilityRole="button"
-                  accessibilityLabel="Account and sign-in"
+                  accessibilityLabel={t('profile.account')}
                   accessibilityHint={user?.email ?? undefined}
                   onPress={() => router.replace('/settings')}
                   style={styles.accountRow}>
                   <Icon name="mail" size={20} />
                   <View style={styles.accountCopy}>
-                    <PidroText role="label">Account and sign-in</PidroText>
+                    <PidroText role="label">{t('profile.account')}</PidroText>
                     <PidroText role="metadata" tone="soft" numberOfLines={1}>
                       {user?.email ??
-                        (user?.guest ? 'Guest, not saved yet' : 'Sign out, delete account')}
+                        t(user?.guest ? 'profile.guest_unsaved' : 'profile.sign_out_delete')}
                     </PidroText>
                   </View>
                   <Icon name="chevron-right" size={18} />
@@ -681,12 +693,11 @@ function ProfileContent() {
                     <View style={styles.claimHeading}>
                       <PidroText role="label">Pidro Classic</PidroText>
                       <PidroText role="body" tone="soft">
-                        Played the original game? Bring your Classic name and career into this
-                        profile.
+                        {t('profile.classic_help')}
                       </PidroText>
                     </View>
                     <BevelButton
-                      label="Claim Pidro Classic"
+                      label={t('profile.claim')}
                       material="glass"
                       size="sm"
                       fullWidth
@@ -701,20 +712,20 @@ function ProfileContent() {
       </View>
       <Modal
         isOpen={!!confirmation}
-        title={confirmation?.title}
-        description={confirmation?.description}
+        title={confirmation ? t(confirmation.title) : undefined}
+        description={confirmation ? t(confirmation.description) : undefined}
         onClose={() => setConfirmation(null)}>
         {confirmation && (
           <View className="gap-2">
             {confirmation.cancelLabel && (
               <Button
-                label={confirmation.cancelLabel}
+                label={t(confirmation.cancelLabel)}
                 variant="outline"
                 onPress={() => setConfirmation(null)}
               />
             )}
             <Button
-              label={confirmation.label}
+              label={t(confirmation.label)}
               variant={confirmation.cancelLabel ? 'destructive' : 'outline'}
               onPress={() => {
                 const proceed = confirmation.proceed;

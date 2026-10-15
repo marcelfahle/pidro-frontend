@@ -21,8 +21,9 @@ import {
   visibleLines,
   type TickerState,
 } from '@/game/actionTickerSchedule';
-import type { HandLogEntry } from '@/game/handLog';
+import { presentHandLogEntry, type HandLogEntry } from '@/game/handLog';
 import { isStillCapture } from '@/utils/stillCapture';
+import { useTranslation } from '@/i18n';
 
 /** A line that holds when nothing new is showing. */
 export type TickerRestingLine = { who: string | null; what: string; ours: boolean | null };
@@ -68,6 +69,7 @@ export function ActionTicker({
   stateArrived,
   lineMaxWidth = 168,
 }: Props) {
+  const { t } = useTranslation();
   const [schedule, setSchedule] = useState<Schedule>(() => ({
     state: initialTickerState(),
     now: Date.now(),
@@ -84,10 +86,9 @@ export function ActionTicker({
         now,
         stateArrived
       );
-      if (state === prev.state) return prev;
       const known = new Map(prev.known);
       for (const entry of entries) known.set(entry.id, entry);
-      return { state, now, known };
+      return { state, now: state === prev.state ? prev.now : now, known };
     });
   }, [entries, stateArrived]);
 
@@ -104,11 +105,11 @@ export function ActionTicker({
       });
     }, wait + 16);
     return () => clearTimeout(timer);
-  }, [schedule]);
+  }, [schedule.state, schedule.now]);
 
   const lines = visibleLines(schedule.state, schedule.now).flatMap((line) => {
     const entry = schedule.known.get(line.id);
-    return entry ? [{ entry, fading: line.fading }] : [];
+    return entry ? [{ entry: presentHandLogEntry(entry), fading: line.fading }] : [];
   });
 
   const screenReader = useScreenReader();
@@ -129,7 +130,7 @@ export function ActionTicker({
     <PressableFX
       testID="action-ticker"
       accessibilityRole="button"
-      accessibilityLabel="Recent table actions. Opens this hand's log."
+      accessibilityLabel={t('game.ticker_accessibility')}
       onPress={onOpenLog}
       style={styles.stack}>
       <View style={styles.lines}>

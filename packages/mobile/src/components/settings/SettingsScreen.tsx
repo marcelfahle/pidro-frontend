@@ -1,10 +1,11 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import type { RuleSet } from '@pidro/shared';
 import { RuleSetSelector } from '@/components/rules/RuleSet';
 import { ruleSetFixture } from '@/features/rules/fixtures';
-import { t } from '@/i18n';
+import { useTranslation } from '@/i18n';
+import { LanguageSelector } from './LanguageSelector';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -25,6 +26,8 @@ export function SettingsScreen({
   bottomClearance?: number;
   rightClearance?: number;
 }) {
+  const { t } = useTranslation();
+  const { width, height } = useWindowDimensions();
   const soundEnabled = useSettingsStore((state) => state.soundEnabled);
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
   const toggleSound = useSettingsStore((state) => state.toggleSound);
@@ -39,38 +42,39 @@ export function SettingsScreen({
   return (
     <ScreenShell
       scroll
-      compact
+      compact={width <= height}
       testID="settings-screen"
       contentStyle={{
         ...styles.shell,
         paddingBottom: bottomClearance + PidroSpacing.md,
         paddingRight: rightClearance + PidroSpacing.md,
       }}>
-      <ScreenHeader
-        title="Settings"
-        subtitle="Adjust how the game feels on this device."
-        onBack={onBack}
-      />
+      <ScreenHeader title={t('settings.title')} subtitle={t('settings.subtitle')} onBack={onBack} />
       <Surface variant="window" style={styles.panel} padded>
-        <Surface variant="subtle" style={styles.rulesRow} testID="settings-preferred-rules">
-          <PidroText role="label">{t('rules.preferred')}</PidroText>
-          <RuleSetSelector
-            value={initialFixture ? (fixtureChoice ?? initialFixture) : preferredRuleSet}
-            onChange={initialFixture ? setFixtureChoice : setPreferredRuleSet}
+        <View style={styles.languageColumn}>
+          <LanguageSelector />
+        </View>
+        <View style={styles.preferencesColumn}>
+          <Surface variant="subtle" style={styles.rulesRow} testID="settings-preferred-rules">
+            <PidroText role="label">{t('rules.preferred')}</PidroText>
+            <RuleSetSelector
+              value={initialFixture ? (fixtureChoice ?? initialFixture) : preferredRuleSet}
+              onChange={initialFixture ? setFixtureChoice : setPreferredRuleSet}
+            />
+          </Surface>
+          <SettingRow
+            title={t('settings.sound')}
+            subtitle={t('settings.soundHint')}
+            value={soundEnabled}
+            onValueChange={toggleSound}
           />
-        </Surface>
-        <SettingRow
-          title="Sound"
-          subtitle="Play game sound effects."
-          value={soundEnabled}
-          onValueChange={toggleSound}
-        />
-        <SettingRow
-          title="Haptics"
-          subtitle="Use touch feedback for game actions."
-          value={hapticEnabled}
-          onValueChange={toggleHaptic}
-        />
+          <SettingRow
+            title={t('settings.haptics')}
+            subtitle={t('settings.hapticsHint')}
+            value={hapticEnabled}
+            onValueChange={toggleHaptic}
+          />
+        </View>
       </Surface>
       {signedIn ? <AccountSection /> : null}
       <AppUpdateSection />
@@ -104,7 +108,9 @@ function SettingRow({
 
 const styles = StyleSheet.create({
   shell: { gap: PidroSpacing.md },
-  panel: { gap: PidroSpacing.sm },
+  panel: { gap: PidroSpacing.sm, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start' },
+  languageColumn: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
+  preferencesColumn: { flexGrow: 1, flexBasis: 280, minWidth: 0, gap: PidroSpacing.sm },
   rulesRow: { gap: PidroSpacing.xs, padding: PidroSpacing.sm },
   row: {
     minHeight: 72,

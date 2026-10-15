@@ -1,4 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useTranslation } from '@/i18n';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   ReduceMotion,
@@ -32,6 +33,7 @@ export function PidroSwitch({
   accessibilityLabel,
   disabled = false,
 }: PidroSwitchProps) {
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const position = useSharedValue(value ? travel : 0);
   useEffect(() => {
@@ -73,7 +75,7 @@ export function PidroSwitch({
         </View>
       </View>
       <PidroText role="metadata" tone={value ? 'cyan' : 'soft'} accessible={false}>
-        {value ? 'On' : 'Off'}
+        {t(value ? 'ui.on' : 'ui.off')}
       </PidroText>
     </Pressable>
   );

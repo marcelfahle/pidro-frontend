@@ -8,6 +8,7 @@ import { useEffect, useState, type ComponentType } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
+import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
@@ -20,6 +21,7 @@ import type { Card, Invite, RuleSet, SeatStatus } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
+import { useLocale } from '@/i18n';
 
 const DEAL_HAND: Card[] = [
   { rank: 8, suit: 'clubs' },
@@ -122,7 +124,8 @@ function TimedTableFeedback() {
       setTimeout(
         () =>
           addNotice({
-            message: 'Nora (north) disconnected. Bot is filling in.',
+            key: 'game.notice_disconnected_seat',
+            seat: { name: 'Nora', position: 'north' },
             variant: 'warning',
           }),
         800
@@ -130,12 +133,16 @@ function TimedTableFeedback() {
       setTimeout(
         () =>
           addNotice({
-            message: 'Nora (north) disconnected. Bot is filling in.',
+            key: 'game.notice_disconnected_seat',
+            seat: { name: 'Nora', position: 'north' },
             variant: 'warning',
           }),
         1_000
       ),
-      setTimeout(() => addNotice({ message: 'Nora reconnected.', variant: 'success' }), 1_200),
+      setTimeout(
+        () => addNotice({ key: 'game.notice_back', params: { name: 'Nora' }, variant: 'success' }),
+        1_200
+      ),
     ];
     return () => timers.forEach(clearTimeout);
   }, [addNotice]);
@@ -177,10 +184,15 @@ function SkiaDevTable({
 
 export default function TableDevRoute() {
   if (!__DEV__) return <Redirect href="/home" />;
-  return <TableDevHarness />;
+  return (
+    <LocaleFixture>
+      <TableDevHarness />
+    </LocaleFixture>
+  );
 }
 
 function TableDevHarness() {
+  const locale = useLocale();
   const params = useLocalSearchParams<{
     fixture?: string;
     phase?: string;
@@ -357,7 +369,15 @@ function TableDevHarness() {
               }}
               notice={
                 params.notice === 'true'
-                  ? { message: 'Nora joined the table.', variant: 'success' }
+                  ? {
+                      ...(locale === 'sv'
+                        ? {
+                            key: 'game.notice_joined_seat' as const,
+                            seat: { name: 'Nora', position: 'north' as const },
+                          }
+                        : { message: 'Nora joined the table.' }),
+                      variant: 'success',
+                    }
                   : null
               }
             />
@@ -431,7 +451,11 @@ function TableDevHarness() {
             <TableFeedback
               notice={
                 params.feedback === 'notice' || params.notice === 'true'
-                  ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
+                  ? {
+                      key: 'game.notice_disconnected_seat',
+                      seat: { name: 'Nora', position: 'north' },
+                      variant: 'warning',
+                    }
                   : null
               }
             />
@@ -655,7 +679,11 @@ function RolePreview({
         <TableFeedback
           notice={
             feedback === 'notice'
-              ? { message: 'Nora (north) disconnected. Bot is filling in.', variant: 'warning' }
+              ? {
+                  key: 'game.notice_disconnected_seat',
+                  seat: { name: 'Nora', position: 'north' },
+                  variant: 'warning',
+                }
               : null
           }
         />

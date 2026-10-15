@@ -17,12 +17,9 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroRadii } from '@/design/tokens';
 import type { SeatRequirement } from '@/features/lobby/newTable';
+import { useTranslation, formatNumber } from '@/i18n';
 
-const OPTIONS: { value: SeatRequirement; label: string }[] = [
-  { value: 0, label: 'Anyone' },
-  { value: 100, label: '100+' },
-  { value: 1000, label: '1000+' },
-];
+const OPTIONS: SeatRequirement[] = [0, 100, 1000];
 
 /** The folded line: a 4 pt gap above a 44 pt track of full touch targets. */
 const LINE_HEIGHT = 48;
@@ -69,17 +66,22 @@ export function SeatRequirementPicker({
   /** Lines the track up under the seat's choices. */
   indent: number;
 }) {
+  const { t } = useTranslation();
+  const options = OPTIONS.map((value) => ({
+    value,
+    label: value === 0 ? t('social.anyone') : `${formatNumber(value)}+`,
+  }));
   return (
     <View style={styles.line}>
       <View style={{ width: indent }} />
       <PidroText role="metadata" tone="soft" style={styles.caption} numberOfLines={2}>
-        games played
+        {t('social.games_played')}
       </PidroText>
       <View
         accessibilityRole="radiogroup"
-        accessibilityLabel={`${seatLabel}, games played`}
+        accessibilityLabel={t('social.seat_games', { seat: seatLabel })}
         style={styles.track}>
-        {OPTIONS.map((option) => {
+        {options.map((option) => {
           const checked = option.value === value;
           return (
             <PressableFX

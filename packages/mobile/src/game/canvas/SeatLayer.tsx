@@ -46,6 +46,7 @@ import {
 import { TABLE_HEADER } from './TableChrome';
 import type { TableSeat } from './tableModel';
 import { DEAL_PACKET_CARD_STAGGER_MS, DEAL_PACKET_TRAVEL_MS } from './animationTiming';
+import { t, useTranslation } from '@/i18n';
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -60,15 +61,15 @@ export type SeatTurn = { progress: number; urgent: boolean };
 function lineFor(data: TableSeat, override?: SeatLine | null): SeatLine | null {
   switch (data.seatStatus) {
     case 'reconnecting':
-      return { text: 'Reconnecting…', tone: 'danger' };
+      return { text: t('game.reconnecting'), tone: 'danger' };
     case 'bot_substitute':
-      return { text: 'Bot is playing' };
+      return { text: t('game.bot_playing') };
     case 'vacant':
       return null;
   }
   if (data.lastPlayedCard) {
     const c = data.lastPlayedCard.card;
-    return { text: `Plays ${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}` };
+    return { text: t('game.plays', { card: `${getRankLabel(c.rank)}${SUIT_SYMBOLS[c.suit]}` }) };
   }
   return override ?? null;
 }
@@ -129,6 +130,7 @@ export function SeatLayer({
   statusByRel,
   turnByRel,
 }: Props) {
+  useTranslation();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { top, bottom, left, right } = insets;

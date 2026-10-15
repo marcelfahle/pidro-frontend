@@ -6,25 +6,27 @@ import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
+import { useTranslation } from '@/i18n';
 
 export default function NotFoundScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const goHome = useCallback(() => router.replace('/home'), [router]);
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Page not found' }} />
+      <Stack.Screen options={{ title: t('notFound.title') }} />
       <ScreenShell compact contentStyle={styles.shell}>
         <Surface variant="window" style={styles.panel} padded>
           <View style={styles.copy}>
             <PidroText role="title" align="center">
-              This screen does not exist
+              {t('notFound.heading')}
             </PidroText>
             <PidroText role="body" tone="soft" align="center">
-              Return home and choose another table.
+              {t('notFound.body')}
             </PidroText>
           </View>
-          <Button label="Go home" onPress={goHome} />
+          <Button label={t('notFound.home')} onPress={goHome} />
         </Surface>
       </ScreenShell>
     </>

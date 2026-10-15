@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { POSITION_TO_INDEX } from '@pidro/shared';
+import { POSITION_TO_INDEX, setLocale } from '@pidro/shared';
 import { tableRow, filterPlayers, lobbyCounts } from '../../src/features/lobby/tableRow';
 
 const positions = ['north', 'south', 'east', 'west'];
@@ -16,6 +16,34 @@ const room = (extra = {}) => ({
   status: 'waiting',
   seats: [player('north', 'Claas'), player('east', 'Robot', { is_bot: true })],
   ...extra,
+});
+
+it('switches row copy and requirements live while preserving names and join authority', () => {
+  const input = room({
+    seats: [player('north', 'Open'), { position: 'south', status: 'free', min_games: 1000 }],
+    available_positions: ['south'],
+    game: { hand: 4, scores: { north_south: -5, east_west: 21 } },
+  });
+  try {
+    setLocale('sv');
+    const row = tableRow(input, 'open_tables', 40);
+    expect(row.seats[0].name).toBe('Open');
+    expect(row.seats[1]).toMatchObject({
+      name: 'Ledig',
+      position: 'south',
+      canJoin: true,
+      requirementReason: 'Det krävs 1 000 spelade spel, du har 40',
+    });
+    expect(row.status).toBe('1 ledig plats');
+    expect(tableRow(input, 'spectatable').status).toBe('Giv 4 · −5 mot 21');
+    expect(tableRow(input, 'my_rejoinable').button).toBe('Återvänd');
+    expect(filterPlayers([input], 'Open')).toEqual([input]);
+    setLocale('en');
+    expect(tableRow(input, 'open_tables', 40).status).toBe('1 seat open');
+    expect(tableRow(input, 'spectatable').status).toBe('Hand 4 · -5 to 21');
+  } finally {
+    setLocale('en');
+  }
 });
 
 describe('lobby table rows', () => {

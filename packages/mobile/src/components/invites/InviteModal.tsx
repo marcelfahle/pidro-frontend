@@ -13,7 +13,9 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { invitePlatform } from '@/features/invites/platform';
-import { t } from '@/i18n';
+import { inviteShareMessage } from '@/features/invites/hostControls';
+import { useTranslation, type TranslationKey } from '@/i18n';
+import { localizedError } from '@/utils/apiErrors';
 
 interface Props {
   isOpen: boolean;
@@ -23,6 +25,7 @@ interface Props {
 }
 
 export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const { height } = useWindowDimensions();
   const compact = height < 500;
@@ -33,10 +36,10 @@ export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
   const [label, setLabel] = useState('');
   const [busy, setBusy] = useState(false);
   const busyRef = useRef(false);
-  const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [error, setError] = useState<{ cause: unknown; fallback: TranslationKey } | null>(null);
+  const [notice, setNotice] = useState<TranslationKey | null>(null);
 
-  const run = async (action: () => Promise<void>, fallback: string) => {
+  const run = async (action: () => Promise<void>, fallback: TranslationKey) => {
     if (busyRef.current) return;
     busyRef.current = true;
     setBusy(true);
@@ -45,9 +48,7 @@ export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
     try {
       await action();
     } catch (caught) {
-      const detail = (caught as { response?: { data?: { errors?: { detail?: string }[] } } })
-        ?.response?.data?.errors?.[0]?.detail;
-      setError(detail ?? fallback);
+      setError({ cause: caught, fallback });
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -63,13 +64,13 @@ export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
       });
       setInvite(created);
       setConfiguring(false);
-    }, t('invite.host.createError'));
+    }, 'invite.host.createError');
 
   const regenerate = () => {
     if (!invite) return;
     return run(async () => {
       setInvite(await invitesApi.regenerate(invite.code));
-    }, t('invite.host.regenerateError'));
+    }, 'invite.host.regenerateError');
   };
 
   const revoke = () => {
@@ -78,23 +79,25 @@ export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
       await invitesApi.revoke(invite.code);
       setInvite(null);
       setConfiguring(true);
-      setNotice(t('invite.host.revoked'));
-    }, t('invite.host.revokeError'));
+      setNotice('invite.host.revoked');
+    }, 'invite.host.revokeError');
   };
 
   const share = () => {
     if (!invite) return;
     return run(async () => {
-      await Share.share({ message: invite.share_text });
-    }, t('invite.host.shareError'));
+      await Share.share({
+        message: inviteShareMessage(invite),
+      });
+    }, 'invite.host.shareError');
   };
 
   const copy = () => {
     if (!invite) return;
     return run(async () => {
       await Clipboard.setStringAsync(invite.url);
-      setNotice(t('invite.host.copied'));
-    }, t('invite.host.copyError'));
+      setNotice('invite.host.copied');
+    }, 'invite.host.copyError');
   };
 
   if (!isOpen) return null;
@@ -220,12 +223,12 @@ export function InviteModal({ isOpen, roomCode, onClose, fixture }: Props) {
 
           {notice ? (
             <PidroText role="metadata" tone="cyan" accessibilityLiveRegion="polite">
-              {notice}
+              {t(notice)}
             </PidroText>
           ) : null}
           {error ? (
             <PidroText role="metadata" tone="danger" accessibilityRole="alert">
-              {error}
+              {localizedError(error.cause, error.fallback)}
             </PidroText>
           ) : null}
         </DecisionWindow>

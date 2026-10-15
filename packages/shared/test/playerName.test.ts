@@ -26,9 +26,49 @@ test('public fallback never exposes display names or account IDs', () => {
   });
   expect(room.seats?.[0].player).toMatchObject({
     id: 'stable-id',
-    username: 'Player',
+    username: '',
     display_name: 'Anna',
   });
+});
+
+test('missing names stay absent through room, readiness and lifecycle hydration', () => {
+  const room = normalizeRoom({
+    code: 'NAMES',
+    seats: {
+      north: { user_id: 'human' },
+      east: { user_id: 'named', username: 'Player' },
+      south: { occupant_type: 'bot' },
+      west: { user_id: 'bot_named', username: 'Bot' },
+    },
+  });
+  expect(room.seats?.map((seat) => seat.player?.username)).toEqual(['', 'Player', '', 'Bot']);
+  const flat = normalizeRoom({ seats: [{ player_id: 'human' }, { player_id: 'bot_x', player_is_bot: true }] });
+  expect(flat.seats?.map((seat) => seat.player?.username)).toEqual(['', '']);
+  const store = useGameStore.getState();
+  store.initFromRoom({ room, youPlayerId: 'viewer' });
+  store.refreshPlayerIdentities(room);
+  const names = () => positions.map((pos) => useGameStore.getState().playerMeta[pos].username || null);
+  expect(names()).toEqual([null, 'Player', null, 'Bot']);
+  const readiness: ReadinessSnapshot = {
+    room_id: 'names', ready_epoch: 1, snapshot_revision: 1, status: 'waiting',
+    positions: room.positions!, ready_players: [],
+    seats: Object.fromEntries(positions.map((pos, i) => [pos, {
+      user_id: room.positions![pos], username: i === 1 ? 'Player' : i === 3 ? 'Bot' : null,
+      occupant_type: i >= 2 ? 'bot' : 'human', status: 'connected',
+    }])) as ReadinessSnapshot['seats'],
+  };
+  store.setReadiness(readiness);
+  expect(names()).toEqual([null, 'Player', null, 'Bot']);
+  expect(roomWithReadiness(room, readiness).seats?.map((seat) => seat.player?.username)).toEqual(['', 'Player', '', 'Bot']);
+  store.applySeatLifecycle({
+    room_id: 'names', room_code: 'NAMES', revision: 1, owner_id: null, room_status: 'playing',
+    seats: Object.fromEntries(positions.map((pos, i) => [pos, {
+      player_id: room.positions![pos], username: readiness.seats[pos].username,
+      status: i >= 2 ? 'permanent_bot' : 'normal', decision: null,
+    }])) as SeatLifecycleSnapshot['seats'],
+  });
+  expect(names()).toEqual([null, 'Player', null, 'Bot']);
+  expect(useGameStore.getState().lifecycle?.revision).toBe(1);
 });
 
 test('generated guest handles use the chosen public name without changing regular usernames', () => {

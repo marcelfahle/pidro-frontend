@@ -7,6 +7,7 @@ import type { SocialSignInOutcome } from '@/hooks/useAuth';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+import { useTranslation } from '@/i18n';
 
 /**
  * Apple or Facebook, from any screen that offers them. The same three
@@ -16,6 +17,7 @@ import { usePendingInviteStore } from '@/stores/pendingInvite';
 export function useProviderSignIn(
   signInWithProvider: (provider: AuthProvider) => Promise<SocialSignInOutcome>
 ) {
+  const { t } = useTranslation();
   const router = useRouter();
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const [notice, setNotice] = useState<string | null>(null);
@@ -39,14 +41,11 @@ export function useProviderSignIn(
           handleClassicFound(claim, provider);
           router.replace('/(auth)/claim-classic');
         },
-        onUnknownIdentity: () =>
-          setNotice(
-            `We couldn’t sign in with that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`
-          ),
+        onUnknownIdentity: () => setNotice(provider === 'apple' ? 'Apple' : 'Facebook'),
       });
     },
     [pendingInvite, router, signInWithProvider]
   );
 
-  return { start, notice };
+  return { start, notice: notice ? t('auth.social_unknown', { provider: notice }) : null };
 }

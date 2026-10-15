@@ -7,7 +7,8 @@
  */
 import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
+import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { AuthSheet, type AuthSheetReason } from '@/components/auth/AuthSheet';
 import { KeepProgressPrompt } from '@/components/auth/KeepProgressPrompt';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -17,6 +18,15 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
 
 export default function AuthFlowDevScreen() {
+  if (!__DEV__) return <Redirect href="/home" />;
+  return (
+    <LocaleFixture>
+      <AuthFlowDevHarness />
+    </LocaleFixture>
+  );
+}
+
+function AuthFlowDevHarness() {
   const router = useRouter();
   const [sheetReason, setSheetReason] = useState<AuthSheetReason | null>(null);
   const [promptOpen, setPromptOpen] = useState(false);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { setLocale } from '@pidro/shared';
 import { avatarLabel, avatarParts } from '../../src/features/avatar';
 
 describe('avatar parts by size', () => {
@@ -86,6 +87,23 @@ describe('avatar parts by size', () => {
 });
 
 describe('avatar label', () => {
+  it('switches accessible sentences live, preserving the player’s name and geometry', () => {
+    const parts = avatarParts(64);
+    try {
+      setLocale('sv');
+      expect(avatarLabel({ name: 'Rookie', dealer: true, level: 18, turn: { urgent: true } })).toBe(
+        'Rookie, givare, nivå 18, spelarens tur, tiden håller på att ta slut'
+      );
+      expect(avatarLabel({ kind: 'open' })).toBe('Ledig plats');
+      expect(avatarLabel({ name: 'Jussi', away: 'bot' })).toBe('Jussi, en bot spelar');
+      expect(avatarParts(64)).toEqual(parts);
+      setLocale('en');
+      expect(avatarLabel({ kind: 'open' })).toBe('Open seat');
+    } finally {
+      setLocale('en');
+    }
+  });
+
   it('says the seat in one sentence', () => {
     expect(
       avatarLabel({

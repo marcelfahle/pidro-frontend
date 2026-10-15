@@ -3,6 +3,7 @@ import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroFonts, PidroRadii } from '@/design/tokens';
+import { useTranslation, formatNumber } from '@/i18n';
 
 /**
  * A number the player earned, mounted like a small brass plaque: gold rim,
@@ -15,10 +16,13 @@ export interface RatingPlaqueProps {
 }
 
 export function RatingPlaque({ rating, accessibilityLabel }: RatingPlaqueProps) {
+  const { t } = useTranslation();
   return (
     <View
       accessible
-      accessibilityLabel={accessibilityLabel ?? `Rating ${rating}`}
+      accessibilityLabel={
+        accessibilityLabel ?? t('social.rating', { number: formatNumber(rating) })
+      }
       style={[styles.rim, gradientBg(PidroBevel.goldRimGradient)]}>
       <View
         style={[
@@ -28,7 +32,7 @@ export function RatingPlaque({ rating, accessibilityLabel }: RatingPlaqueProps) 
           ),
         ]}>
         <Icon name="star" size={14} color={PidroBevel.textGold} />
-        <PidroText style={styles.value}>{rating}</PidroText>
+        <PidroText style={styles.value}>{formatNumber(rating)}</PidroText>
       </View>
     </View>
   );

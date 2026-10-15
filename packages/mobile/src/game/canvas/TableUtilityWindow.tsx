@@ -14,6 +14,7 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
+import { useTranslation } from '@/i18n';
 
 /** Table utilities share one bounded, dismissible window in either orientation. */
 export function TableUtilityWindow({
@@ -30,6 +31,7 @@ export function TableUtilityWindow({
   followEnd?: boolean;
   children: ReactNode;
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const pinned = useRef(true);
@@ -81,7 +83,7 @@ export function TableUtilityWindow({
             <BevelButton
               material="glass"
               size="icon"
-              accessibilityLabel={`Close ${title.toLowerCase()}`}
+              accessibilityLabel={t('game.close', { title })}
               onPress={onClose}>
               <Icon name="close" size={20} />
             </BevelButton>

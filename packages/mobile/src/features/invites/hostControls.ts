@@ -1,7 +1,13 @@
 import type { Player, Position, Room } from '@/types/lobby';
-import { publicPlayerName } from '@pidro/shared';
+import { publicPlayerName, t, type Invite } from '@pidro/shared';
+import { formatManualInviteCode } from './manualCode';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
+
+/** Share in the sender's current language, never the server's English template. */
+export function inviteShareMessage(invite: Pick<Invite, 'url' | 'code'>): string {
+  return t('social.share', { url: invite.url, code: formatManualInviteCode(invite.code) });
+}
 
 export function canManageRoom(
   room: Room,

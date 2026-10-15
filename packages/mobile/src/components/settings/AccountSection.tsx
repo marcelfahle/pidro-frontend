@@ -13,35 +13,37 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { useAuthStore } from '@/stores/auth';
-import { apiErrorInfo } from '@/utils/apiErrors';
+import { useTranslation, type TranslationKey } from '@/i18n';
+import { localizedError } from '@pidro/shared';
 
 /** The signed-in player's email, Sign out and Delete account. */
 export function AccountSection() {
+  const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const clearSession = useAuthStore((state) => state.clearSession);
   const router = useRouter();
   const refreshIdentity = useProfileIdentity();
   const [busy, setBusy] = useState(false);
   const deleteInFlight = useRef(false);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<unknown>(null);
   const [pendingSignOut, setPendingSignOut] = useState(false);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const [classic, setClassic] = useState<ClassicProfile | null>(null);
   const [confirmation, setConfirmation] = useState<{
-    title: string;
-    description: string;
-    label: string;
-    cancelLabel?: string;
-    secondaryLabel?: string;
+    title: TranslationKey;
+    description: TranslationKey;
+    label: TranslationKey;
+    cancelLabel?: TranslationKey;
+    secondaryLabel?: TranslationKey;
     secondary?: () => void;
     proceed: () => void;
   } | null>(null);
 
   usePreventRemove(busy, () => {
     setConfirmation({
-      title: 'Please wait',
-      description: 'Your account is being deleted.',
-      label: 'OK',
+      title: 'account.wait',
+      description: 'account.deleting',
+      label: 'account.ok',
       proceed: () => {},
     });
   });
@@ -65,22 +67,21 @@ export function AccountSection() {
   const handleSignOut = () => {
     if (user?.guest) {
       setConfirmation({
-        title: 'Save this guest before signing out?',
-        description:
-          'Signing out removes access to this unsaved player on this device. Inactive guest accounts are eligible for deletion after 30 days.',
-        label: 'Sign out anyway',
-        cancelLabel: 'Cancel',
-        secondaryLabel: 'Save account',
+        title: 'account.saveGuestTitle',
+        description: 'account.saveGuestBody',
+        label: 'account.signOutAnyway',
+        cancelLabel: 'common.cancel',
+        secondaryLabel: 'account.save',
         secondary: () => setAccountSheetOpen(true),
         proceed: () => setPendingSignOut(true),
       });
       return;
     }
     setConfirmation({
-      title: 'Sign out?',
-      description: 'You can sign back in anytime.',
-      label: 'Sign out',
-      cancelLabel: 'Cancel',
+      title: 'account.signOutTitle',
+      description: 'account.signOutBody',
+      label: 'account.signOut',
+      cancelLabel: 'common.cancel',
       proceed: () => setPendingSignOut(true),
     });
   };
@@ -88,12 +89,10 @@ export function AccountSection() {
   const handleDeleteAccount = () => {
     setDeleteError(null);
     setConfirmation({
-      title: 'Delete your account?',
-      description:
-        'This removes your player, your games and your progress.' +
-        (classic ? ' Your Classic account stays in Classic and can be claimed again later.' : ''),
-      label: 'Delete account',
-      cancelLabel: 'Cancel',
+      title: 'account.deleteTitle',
+      description: classic ? 'account.deleteClassicBody' : 'account.deleteBody',
+      label: 'account.delete',
+      cancelLabel: 'common.cancel',
       proceed: async () => {
         if (deleteInFlight.current) return;
         deleteInFlight.current = true;
@@ -102,9 +101,7 @@ export function AccountSection() {
           await deleteAccount();
           setPendingSignOut(true);
         } catch (deleteFailure) {
-          setDeleteError(
-            apiErrorInfo(deleteFailure).detail || 'Could not delete your account. Try again.'
-          );
+          setDeleteError(deleteFailure);
         } finally {
           deleteInFlight.current = false;
           setBusy(false);
@@ -117,13 +114,13 @@ export function AccountSection() {
     <>
       <Surface variant="window" style={styles.panel} padded testID="settings-account">
         <View style={styles.heading}>
-          <PidroText role="label">Account</PidroText>
+          <PidroText role="label">{t('account.title')}</PidroText>
           <PidroText role="metadata" tone="muted">
-            {user?.email ?? (user?.guest ? 'Guest, not saved yet' : 'Signed in')}
+            {user?.email ?? t(user?.guest ? 'account.guest' : 'account.signedIn')}
           </PidroText>
         </View>
         <BevelButton
-          label="Sign out"
+          label={t('account.signOut')}
           material="glass"
           size="sm"
           fullWidth
@@ -131,7 +128,7 @@ export function AccountSection() {
           onPress={handleSignOut}
         />
         <BevelButton
-          label="Delete account"
+          label={t('account.delete')}
           material="glass"
           tone="danger"
           size="sm"
@@ -141,27 +138,27 @@ export function AccountSection() {
         />
         {deleteError ? (
           <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
-            {deleteError}
+            {localizedError(deleteError, 'account.deleteError')}
           </PidroText>
         ) : null}
       </Surface>
       <Modal
         isOpen={!!confirmation}
-        title={confirmation?.title}
-        description={confirmation?.description}
+        title={confirmation ? t(confirmation.title) : undefined}
+        description={confirmation ? t(confirmation.description) : undefined}
         onClose={() => setConfirmation(null)}>
         {confirmation && (
           <View className="gap-2">
             {confirmation.cancelLabel && (
               <Button
-                label={confirmation.cancelLabel}
+                label={t(confirmation.cancelLabel)}
                 variant="outline"
                 onPress={() => setConfirmation(null)}
               />
             )}
             {confirmation.secondaryLabel && confirmation.secondary ? (
               <BevelButton
-                label={confirmation.secondaryLabel}
+                label={t(confirmation.secondaryLabel)}
                 material="wood"
                 size="sm"
                 fullWidth
@@ -173,7 +170,7 @@ export function AccountSection() {
               />
             ) : null}
             <Button
-              label={confirmation.label}
+              label={t(confirmation.label)}
               variant={confirmation.cancelLabel ? 'destructive' : 'outline'}
               onPress={() => {
                 const proceed = confirmation.proceed;

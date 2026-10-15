@@ -26,21 +26,27 @@ import {
   PidroSpacing,
 } from '@/design/tokens';
 import { useAuth, type GuestSaveField } from '@/hooks/useAuth';
+import { useTranslation, type TranslationKey } from '@/i18n';
+import {
+  guestSaveFieldMessage,
+  guestSaveMessage,
+  type GuestSaveFailure,
+} from '@/features/auth/saveGuest';
 
 export type AuthSheetReason = 'save' | 'multiplayer' | 'postGame';
 
-const COPY: Record<AuthSheetReason, { title: string; description: string }> = {
+const COPY: Record<AuthSheetReason, { title: TranslationKey; description: TranslationKey }> = {
   save: {
-    title: 'Save your player',
-    description: 'Keep your name, games and progress on every device.',
+    title: 'auth.sheet_save_title',
+    description: 'auth.sheet_save_body',
   },
   multiplayer: {
-    title: 'Save to play people',
-    description: 'Create an account without losing this player or your progress.',
+    title: 'auth.sheet_online_title',
+    description: 'auth.sheet_online_body',
   },
   postGame: {
-    title: 'Keep your progress',
-    description: 'Save this player, then carry on from any device.',
+    title: 'auth.keep_progress',
+    description: 'auth.sheet_post_body',
   },
 };
 
@@ -66,6 +72,7 @@ export function AuthSheet({
   showClaimClassic = true,
   providerActions,
 }: AuthSheetProps) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const { width, height } = useWindowDimensions();
   const compactLandscape = width > height && height < 500;
@@ -74,8 +81,18 @@ export function AuthSheet({
   const [displayName, setDisplayName] = useState(initialName);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fields, setFields] = useState<Partial<Record<GuestSaveField, string>>>({});
-  const [message, setMessage] = useState<string | null>(null);
+  const [fields, setFields] = useState<
+    Partial<Record<GuestSaveField, TranslationKey | GuestSaveFailure>>
+  >({});
+  const fieldMessage = (field: GuestSaveField) => {
+    const failure = fields[field];
+    return typeof failure === 'string'
+      ? t(failure, { count: 8 })
+      : failure
+        ? guestSaveFieldMessage(failure, field)
+        : undefined;
+  };
+  const [message, setMessage] = useState<GuestSaveFailure | null>(null);
   const [classicNameReserved, setClassicNameReserved] = useState(false);
   // A screen pushed while this Modal is still on screen opens hidden behind
   // it on iOS. So a claim tap hides the sheet first and hands the action to
@@ -138,10 +155,10 @@ export function AuthSheet({
   };
 
   const submit = async () => {
-    const nextFields: Partial<Record<GuestSaveField, string>> = {};
-    if (!displayName.trim()) nextFields.displayName = 'Enter your public name.';
-    if (!email.trim()) nextFields.email = 'Enter an email address.';
-    if (password.length < 8) nextFields.password = 'Use 8 characters or more.';
+    const nextFields: Partial<Record<GuestSaveField, TranslationKey>> = {};
+    if (!displayName.trim()) nextFields.displayName = 'auth.enter_public_name';
+    if (!email.trim()) nextFields.email = 'auth.enter_an_email';
+    if (password.length < 8) nextFields.password = 'auth.password_min';
     if (Object.keys(nextFields).length) {
       setFields(nextFields);
       return;
@@ -153,9 +170,13 @@ export function AuthSheet({
       setHandingOff(true);
       return;
     }
-    setFields(result.error.fields ?? {});
+    setFields(
+      Object.fromEntries(
+        Object.keys(result.error.fields ?? {}).map((field) => [field, result.error])
+      )
+    );
     setClassicNameReserved(Boolean(result.error.classicNameReserved));
-    setMessage(result.error.fields ? null : result.error.message);
+    setMessage(result.error.fields ? null : result.error);
   };
 
   const copy = COPY[reason];
@@ -170,7 +191,7 @@ export function AuthSheet({
         <SafeAreaView style={styles.safe} edges={['top', 'left', 'right', 'bottom']}>
           <Pressable
             style={StyleSheet.absoluteFill}
-            accessibilityLabel="Dismiss account saving"
+            accessibilityLabel={t('auth.dismiss_save')}
             onPress={onClose}
           />
           <KeyboardAvoidingView
@@ -178,10 +199,10 @@ export function AuthSheet({
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
             <View style={styles.sheet} testID="auth-sheet">
               <View style={styles.grabber} />
-              <PidroText style={styles.title}>{copy.title}</PidroText>
+              <PidroText style={styles.title}>{t(copy.title)}</PidroText>
               {!compactLandscape ? (
                 <PidroText role="body" tone="soft" align="center" style={styles.description}>
-                  {copy.description}
+                  {t(copy.description)}
                 </PidroText>
               ) : null}
               <ScrollView
@@ -193,23 +214,23 @@ export function AuthSheet({
                 {showClaimClassic && !classicNameReserved ? (
                   <PressableFX
                     accessibilityRole="button"
-                    accessibilityLabel="Claim Pidro Classic"
+                    accessibilityLabel={t('auth.claim')}
                     onPress={() => claimClassic(displayName.trim())}
                     style={styles.classicLink}>
                     <PidroText role="label" tone="cyan">
-                      Played Classic? Claim it instead
+                      {t('auth.claim_instead')}
                     </PidroText>
                   </PressableFX>
                 ) : null}
                 <Input
                   containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
-                  label="Public name"
+                  label={t('auth.public_name')}
                   value={displayName}
                   onChangeText={(value) => {
                     setDisplayName(value);
                     clearField('displayName');
                   }}
-                  error={fields.displayName}
+                  error={fieldMessage('displayName')}
                   maxLength={20}
                   editable={!isLoading}
                   autoCapitalize="words"
@@ -219,25 +240,27 @@ export function AuthSheet({
                 {showClaimClassic && classicNameReserved ? (
                   <PressableFX
                     accessibilityRole="button"
-                    accessibilityLabel={`Played Classic as ${displayName}? Claim it and keep your games.`}
+                    accessibilityLabel={t('auth.claim_accessibility', { name: displayName })}
                     onPress={() => claimClassic(displayName.trim())}>
                     <Surface variant="plaque" padded style={styles.claimPlaque}>
-                      <PidroText role="label">Played Classic as {displayName.trim()}?</PidroText>
+                      <PidroText role="label">
+                        {t('auth.played_as', { name: displayName.trim() })}
+                      </PidroText>
                       <PidroText role="metadata" tone="cyan">
-                        Claim it and keep your games.
+                        {t('auth.claim_hint')}
                       </PidroText>
                     </Surface>
                   </PressableFX>
                 ) : null}
                 <Input
                   containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
-                  label="Email"
+                  label={t('auth.email')}
                   value={email}
                   onChangeText={(value) => {
                     setEmail(value);
                     clearField('email');
                   }}
-                  error={fields.email}
+                  error={fieldMessage('email')}
                   editable={!isLoading}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -247,13 +270,13 @@ export function AuthSheet({
                 />
                 <Input
                   containerClassName={compactLandscape ? 'w-[32%] flex-grow' : undefined}
-                  label="Password"
+                  label={t('auth.password')}
                   value={password}
                   onChangeText={(value) => {
                     setPassword(value);
                     clearField('password');
                   }}
-                  error={fields.password}
+                  error={fieldMessage('password')}
                   editable={!isLoading}
                   autoCapitalize="none"
                   autoComplete="new-password"
@@ -264,12 +287,12 @@ export function AuthSheet({
                 />
                 {message ? (
                   <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
-                    {message}
+                    {guestSaveMessage(message)}
                   </PidroText>
                 ) : null}
               </ScrollView>
               <BevelButton
-                label="Save account"
+                label={t('auth.save')}
                 material="wood"
                 size="md"
                 fullWidth
@@ -279,13 +302,13 @@ export function AuthSheet({
               {reason === 'multiplayer' && onJoinCode ? (
                 <PressableFX accessibilityRole="link" onPress={joinCode} style={styles.joinCode}>
                   <PidroText role="metadata" tone="cyan">
-                    Have a table code?
+                    {t('auth.table_code')}
                   </PidroText>
                 </PressableFX>
               ) : null}
               <PressableFX accessibilityRole="button" onPress={onClose} style={styles.notNow}>
                 <PidroText role="label" tone="muted">
-                  Not now
+                  {t('auth.not_now')}
                 </PidroText>
               </PressableFX>
             </View>

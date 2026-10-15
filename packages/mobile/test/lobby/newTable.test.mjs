@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { setLocale } from '@pidro/shared';
 import {
   chooseRequirement,
   chooseSeat,
@@ -6,6 +7,24 @@ import {
   newTableRequest,
   tableFooter,
 } from '../../src/features/lobby/newTable';
+
+it('retranslates full footer sentences without changing the creation request or rules', () => {
+  const seats = { seat_3: 'open', seat_2: 'open', seat_4: 'ai' };
+  const before = newTableRequest('louisiana', seats);
+  try {
+    setLocale('sv');
+    expect(tableFooter(seats)).toBe('2 lediga platser visas för alla.');
+    expect(tableFooter({ ...seats, seat_2: 'invite' })).toBe('En ledig plats visas för alla.');
+    expect(tableFooter({ ...seats, seat_2: 'invite', seat_3: 'invite' })).toBe(
+      'Spelet börjar när dina vänner sätter sig.'
+    );
+    expect(newTableRequest('louisiana', seats)).toEqual(before);
+    setLocale('en');
+    expect(tableFooter(seats)).toBe('2 open seats are listed for everyone.');
+  } finally {
+    setLocale('en');
+  }
+});
 
 const draft = () => ({ seats: { ...defaultSeats }, requirements: {} });
 

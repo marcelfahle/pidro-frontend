@@ -7,6 +7,7 @@ import { RoomCard } from '@/components/lobby/RoomCard';
 import { ruleSetFixture } from '@/features/rules/fixtures';
 import { createTableFixture } from '@/features/lobby/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
+import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { RatingPlaque } from '@/components/home/RatingPlaque';
@@ -33,7 +34,11 @@ import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/toke
  */
 export default function UiDevRoute() {
   if (!__DEV__) return <Redirect href="/home" />;
-  return <UiDevHarness />;
+  return (
+    <LocaleFixture>
+      <UiDevHarness />
+    </LocaleFixture>
+  );
 }
 
 const noop = () => {};

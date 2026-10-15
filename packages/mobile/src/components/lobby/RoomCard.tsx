@@ -11,6 +11,7 @@ import { RuleSetChip } from '@/components/rules/RuleSet';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
 import { OpenChair } from './OpenChair';
 import { SeatRequirementBadge } from './SeatRequirementBadge';
+import { useTranslation, formatNumber } from '@/i18n';
 
 export const RoomCard = memo(function RoomCard({
   room,
@@ -29,8 +30,9 @@ export const RoomCard = memo(function RoomCard({
   error?: string;
   pending?: boolean;
   gamesPlayed?: number;
-  onLocked?: (code: string, reason: string) => void;
+  onLocked?: (code: string, minimum: number, played: number) => void;
 }) {
+  const { t } = useTranslation();
   const row = tableRow(room, category, gamesPlayed);
   const mine = category === 'my_rejoinable';
   return (
@@ -110,7 +112,7 @@ export const RoomCard = memo(function RoomCard({
             <Fragment key={seat.position}>
               {index === 2 ? (
                 <PidroText role="metadata" style={styles.vs}>
-                  vs
+                  {t('social.vs')}
                 </PidroText>
               ) : null}
               {seat.canJoin ? (
@@ -118,13 +120,25 @@ export const RoomCard = memo(function RoomCard({
                   accessibilityRole="button"
                   accessibilityLabel={
                     seat.requirementReason
-                      ? `${seat.position} seat locked, ${seat.requirementReason}`
-                      : `${seat.kind === 'sub' ? 'Sit in' : 'Join'} ${seat.position} seat${seat.minGames > 0 ? `, ${seat.minGames} games played needed` : ''}`
+                      ? t('social.locked_seat', {
+                          position: t(`social.${seat.position}`),
+                          reason: seat.requirementReason,
+                        })
+                      : seat.minGames > 0
+                        ? t('social.seat_minimum', {
+                            seat: t(seat.kind === 'sub' ? 'social.sub_seat' : 'social.join_seat', {
+                              position: t(`social.${seat.position}`),
+                            }),
+                            minimum: formatNumber(seat.minGames),
+                          })
+                        : t(seat.kind === 'sub' ? 'social.sub_seat' : 'social.join_seat', {
+                            position: t(`social.${seat.position}`),
+                          })
                   }
                   disabled={pending}
                   onPress={() =>
                     seat.requirementReason
-                      ? onLocked?.(room.code, seat.requirementReason)
+                      ? onLocked?.(room.code, seat.minGames, gamesPlayed ?? 0)
                       : onJoin(room.code, seat.position)
                   }
                   style={styles.seat}>

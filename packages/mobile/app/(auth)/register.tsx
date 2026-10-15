@@ -23,8 +23,15 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { TextLink } from '@/components/ui/TextLink';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { isEmailAddress } from '@/features/auth/accountEmail';
+import {
+  guestSaveFieldMessage,
+  guestSaveMessage,
+  type GuestSaveFailure,
+  type GuestSaveField,
+} from '@/features/auth/saveGuest';
 import { useAuth } from '@/hooks/useAuth';
 import { useFlowBack, useHardwareBack } from '@/hooks/useFlowBack';
+import { useTranslation, type TranslationKey } from '@/i18n';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
@@ -41,12 +48,8 @@ const FIXTURE_STEP: Partial<Record<Fixture, Step>> = {
 
 const MIN_PASSWORD = 8;
 
-// The server words a taken name per endpoint; players read one sentence.
-function nameError(detail: string): string {
-  return /taken|another account/i.test(detail) ? 'That name is taken.' : detail;
-}
-
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const goBack = useFlowBack();
   const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
@@ -64,12 +67,14 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState(
     fixture && (FIXTURE_STEP[fixture] || fixture === 'email-taken') ? 'you@example.com' : ''
   );
-  const [emailError, setEmailError] = useState<string | null>(
-    fixture === 'email-taken' ? 'That email already has a Pidro account.' : null
+  const [emailError, setEmailError] = useState<TranslationKey | GuestSaveFailure | null>(
+    fixture === 'email-taken' ? 'auth.email_taken' : null
   );
   const [emailTaken, setEmailTaken] = useState(fixture === 'email-taken');
   const [password, setPassword] = useState('');
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordError, setPasswordError] = useState<TranslationKey | GuestSaveFailure | null>(
+    null
+  );
   const [name, setName] = useState(
     fixture === 'name-taken'
       ? 'Bengt'
@@ -77,11 +82,20 @@ export default function RegisterScreen() {
         ? publicPlayerName(user?.username, '', user?.display_name)
         : ''
   );
-  const [nameFieldError, setNameFieldError] = useState<string | null>(
-    fixture === 'name-taken' ? 'That name is taken.' : null
+  const [nameFieldError, setNameFieldError] = useState<TranslationKey | GuestSaveFailure | null>(
+    fixture === 'name-taken' ? 'auth.name_taken' : null
   );
   const [classicNameReserved, setClassicNameReserved] = useState(fixture === 'name-taken');
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<GuestSaveFailure | null>(null);
+  const fieldMessage = (
+    failure: TranslationKey | GuestSaveFailure | null,
+    field: GuestSaveField
+  ) =>
+    typeof failure === 'string'
+      ? t(failure, { count: MIN_PASSWORD })
+      : failure
+        ? guestSaveFieldMessage(failure, field)
+        : undefined;
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const nameRef = useRef<TextInput>(null);
@@ -107,7 +121,7 @@ export default function RegisterScreen() {
     if (busy) return;
     const address = email.trim();
     if (!isEmailAddress(address)) {
-      setEmailError(address ? 'Check that email address.' : 'Enter your email address.');
+      setEmailError(address ? 'auth.check_email' : 'auth.enter_email');
       emailRef.current?.focus();
       return;
     }
@@ -117,7 +131,7 @@ export default function RegisterScreen() {
 
   const continueWithPassword = useCallback(() => {
     if (password.length < MIN_PASSWORD) {
-      setPasswordError(`Use ${MIN_PASSWORD} characters or more.`);
+      setPasswordError('auth.password_min');
       passwordRef.current?.focus();
       return;
     }
@@ -130,7 +144,7 @@ export default function RegisterScreen() {
     if (busy || (fixture && FIXTURE_STEP[fixture])) return;
     const publicName = name.trim();
     if (!publicName) {
-      setNameFieldError('Enter the name other players will see.');
+      setNameFieldError('auth.enter_name');
       nameRef.current?.focus();
       return;
     }
@@ -155,22 +169,20 @@ export default function RegisterScreen() {
     // Each answer goes back to the step that owns the field, so the hook's
     // own copy of the message would only say it twice.
     clearError();
-    const { fields, classicNameReserved: reserved, message: failure } = result.error;
+    const { fields, classicNameReserved: reserved } = result.error;
     if (fields?.displayName) {
-      setNameFieldError(nameError(fields.displayName));
+      setNameFieldError(result.error);
       setClassicNameReserved(Boolean(reserved));
     } else if (fields?.email) {
-      const taken = /taken|another account/i.test(fields.email);
+      const taken = result.error.emailTaken === true;
       setEmailTaken(taken);
-      setEmailError(
-        taken ? 'That email already has a Pidro account.' : 'Check that email address.'
-      );
+      setEmailError(result.error);
       setStep('email');
     } else if (fields?.password) {
-      setPasswordError(fields.password);
+      setPasswordError(result.error);
       setStep('password');
     } else {
-      setMessage(failure);
+      setMessage(result.error);
     }
   }, [
     busy,
@@ -198,14 +210,10 @@ export default function RegisterScreen() {
     return (
       <AuthFlowScreen
         testID="register-screen"
-        headerTitle="Pidro account"
+        headerTitle={t('auth.account')}
         onBack={stepBack}
-        body={'New here or coming back, it’s the same way\u00a0in.'}
-        note={
-          emailTaken
-            ? undefined
-            : 'If we know you, you’re signed in. If not, this starts a free\u00a0account.'
-        }>
+        body={t('auth.account_intro')}
+        note={emailTaken ? undefined : t('auth.account_note')}>
         <AuthFlowWindow testID="auth-window">
           {/* A provider that failed or was unavailable reports through the hook. */}
           {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
@@ -221,8 +229,8 @@ export default function RegisterScreen() {
           <View>
             <Input
               ref={emailRef}
-              label="Email"
-              placeholder="you@example.com"
+              label={t('auth.email')}
+              placeholder={t('auth.email_placeholder')}
               value={email}
               onChangeText={(next) => {
                 setEmail(next);
@@ -230,7 +238,7 @@ export default function RegisterScreen() {
                 setEmailTaken(false);
                 clearError();
               }}
-              error={emailError ?? undefined}
+              error={fieldMessage(emailError, 'email')}
               style={inputStyle}
               autoCapitalize="none"
               autoComplete="email"
@@ -247,14 +255,14 @@ export default function RegisterScreen() {
             />
             {emailTaken ? (
               <TextLink
-                label="Sign in instead"
+                label={t('auth.sign_in_instead')}
                 size={14}
                 style={styles.inlineLink}
                 onPress={signInInstead}
               />
             ) : null}
           </View>
-          <AuthFlowButton label="Continue" onPress={continueWithEmail} />
+          <AuthFlowButton label={t('auth.continue')} onPress={continueWithEmail} />
         </AuthFlowWindow>
         {modal}
       </AuthFlowScreen>
@@ -266,25 +274,21 @@ export default function RegisterScreen() {
     return (
       <AuthFlowScreen
         testID="register-screen"
-        headerTitle="Pidro account"
+        headerTitle={t('auth.account')}
         onBack={stepBack}
-        title="Create a password"
-        body={`This starts a free Pidro account for ${email.trim()}.`}
-        note={
-          guest
-            ? 'Next you pick your name. Your guest games come with\u00a0you.'
-            : 'Next you pick your name.'
-        }>
+        title={t('auth.create_password')}
+        body={t('auth.starts_account', { email: email.trim() })}
+        note={guest ? t('auth.next_name_guest') : t('auth.next_name')}>
         <AuthFlowWindow testID="auth-window">
           <Input
             ref={passwordRef}
-            label="Password"
+            label={t('auth.password')}
             value={password}
             onChangeText={(next) => {
               setPassword(next);
               setPasswordError(null);
             }}
-            error={passwordError ?? undefined}
+            error={fieldMessage(passwordError, 'password')}
             style={inputStyle}
             autoCapitalize="none"
             autoComplete="new-password"
@@ -305,7 +309,9 @@ export default function RegisterScreen() {
             <View
               style={styles.rule}
               accessible
-              accessibilityLabel={`${MIN_PASSWORD} characters or more${longEnough ? ', met' : ''}`}>
+              accessibilityLabel={t(longEnough ? 'auth.password_rule_met' : 'auth.password_rule', {
+                count: MIN_PASSWORD,
+              })}>
               <Icon
                 name="check"
                 size={18}
@@ -316,25 +322,25 @@ export default function RegisterScreen() {
                 role="metadata"
                 tone={longEnough ? 'default' : 'soft'}
                 style={styles.ruleText}>
-                {MIN_PASSWORD} characters or more
+                {t('auth.password_rule', { count: MIN_PASSWORD })}
               </PidroText>
             </View>
           )}
-          <AuthFlowButton label="Create account" onPress={continueWithPassword} />
+          <AuthFlowButton label={t('auth.create')} onPress={continueWithPassword} />
         </AuthFlowWindow>
       </AuthFlowScreen>
     );
   }
 
-  const title = 'Pick your name';
+  const title = t('auth.pick_name');
   const tablet = layout === 'tablet';
   return (
     <AuthFlowScreen
       testID="register-screen"
-      headerTitle={landscape ? 'Pidro account' : undefined}
+      headerTitle={landscape ? t('auth.account') : undefined}
       onBack={stepBack}
       title={title}
-      body="This is the name other players see."
+      body={t('auth.name_description')}
       inlineIntro>
       {landscape ? null : (
         <View style={[styles.logoStage, tablet && styles.logoStageTablet]} pointerEvents="none">
@@ -348,10 +354,10 @@ export default function RegisterScreen() {
             {title}
           </AuthFlowHeading>
         )}
-        {message ? <AuthFlowNotice>{message}</AuthFlowNotice> : null}
+        {message ? <AuthFlowNotice>{guestSaveMessage(message)}</AuthFlowNotice> : null}
         <Input
           ref={nameRef}
-          label="Public name"
+          label={t('auth.public_name')}
           value={name}
           onChangeText={(next) => {
             setName(next);
@@ -359,7 +365,7 @@ export default function RegisterScreen() {
             setClassicNameReserved(false);
             setMessage(null);
           }}
-          error={nameFieldError ?? undefined}
+          error={fieldMessage(nameFieldError, 'displayName')}
           style={inputStyle}
           maxLength={20}
           editable={!busy}
@@ -374,23 +380,23 @@ export default function RegisterScreen() {
         {classicNameReserved ? (
           <PressableFX
             accessibilityRole="button"
-            accessibilityLabel={`Played Classic as ${name.trim()}? Claim it and keep your games.`}
+            accessibilityLabel={t('auth.claim_accessibility', { name: name.trim() })}
             onPress={() => router.push('/(auth)/claim-classic')}
             style={styles.claimPlaque}>
             <View style={styles.claimCopy}>
               <PidroText role="label" style={styles.claimTitle} numberOfLines={1}>
-                Played Classic as {name.trim()}?
+                {t('auth.played_as', { name: name.trim() })}
               </PidroText>
               <PidroText role="metadata" tone="soft" style={styles.claimSubtitle}>
-                Claim it and keep your games.
+                {t('auth.claim_hint')}
               </PidroText>
             </View>
             <View style={styles.chip}>
-              <PidroText style={styles.chipLabel}>CLAIM</PidroText>
+              <PidroText style={styles.chipLabel}>{t('auth.claim_caps')}</PidroText>
             </View>
           </PressableFX>
         ) : null}
-        <AuthFlowButton label="CONTINUE" hero loading={isLoading} onPress={finish} />
+        <AuthFlowButton label={t('auth.continue_caps')} hero loading={isLoading} onPress={finish} />
       </AuthFlowWindow>
     </AuthFlowScreen>
   );

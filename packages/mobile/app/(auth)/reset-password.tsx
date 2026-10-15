@@ -16,8 +16,10 @@ import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+import { useTranslation, type TranslationKey } from '@/i18n';
 
 export default function ResetPasswordScreen() {
+  const { t } = useTranslation();
   const { token: rawToken, fixture: fixtureParam } = useLocalSearchParams<{
     token?: string | string[];
     fixture?: string;
@@ -31,9 +33,7 @@ export default function ResetPasswordScreen() {
   const pendingInvite = usePendingInviteStore((state) => state.pendingInvite);
   const { resetPassword, isLoading, error, errorCode, clearError } = useAuth();
   const refused = fixture === 'refused' || resetLinkRefused(errorCode);
-  const { guard, modal } = useSwitchPlayersGuard(
-    'Resetting this account’s password signs in as that player. Guest results do not merge.'
-  );
+  const { guard, modal } = useSwitchPlayersGuard('auth.reset_switch');
   const { inputStyle } = useAuthFlow();
   // A reset link opens this screen cold, so "back" means the sign-in screen.
   const toSignIn = useCallback(() => router.replace('/(auth)/login'), [router]);
@@ -56,7 +56,7 @@ export default function ResetPasswordScreen() {
   const submit = useCallback(() => {
     if (!token) return;
     if (password.length < 8) {
-      setValidationError('Use 8 characters or more.');
+      setValidationError('auth.password_min');
       inputRef.current?.focus();
       return;
     }
@@ -67,24 +67,26 @@ export default function ResetPasswordScreen() {
   return (
     <AuthFlowScreen
       testID="reset-password-screen"
-      headerTitle="Sign in"
+      headerTitle={t('auth.sign_in')}
       onBack={toSignIn}
-      title="Choose a new password"
-      body={token && !refused ? 'Use 8 characters or more.' : undefined}>
+      title={t('auth.choose_password')}
+      body={token && !refused ? t('auth.password_min', { count: 8 }) : undefined}>
       <AuthFlowWindow testID="auth-window">
         {token && !refused ? (
           <>
             {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
             <Input
               ref={inputRef}
-              label="New password"
+              label={t('auth.new_password')}
               value={password}
               onChangeText={(value) => {
                 setPassword(value);
                 setValidationError(null);
                 clearError();
               }}
-              error={validationError ?? undefined}
+              error={
+                validationError ? t(validationError as TranslationKey, { count: 8 }) : undefined
+              }
               style={inputStyle}
               editable={!isLoading}
               autoCapitalize="none"
@@ -97,15 +99,13 @@ export default function ResetPasswordScreen() {
               submitBehavior="blurAndSubmit"
               onSubmitEditing={submit}
             />
-            <AuthFlowButton label="Set new password" loading={isLoading} onPress={submit} />
+            <AuthFlowButton label={t('auth.set_password')} loading={isLoading} onPress={submit} />
           </>
         ) : (
           <>
-            <AuthFlowNotice>
-              {refused && error ? error : 'This reset link is missing or no longer valid.'}
-            </AuthFlowNotice>
+            <AuthFlowNotice>{refused && error ? error : t('auth.reset_invalid')}</AuthFlowNotice>
             <AuthFlowButton
-              label="Send a new link"
+              label={t('auth.new_link')}
               onPress={() => router.replace('/(auth)/forgot-password')}
             />
           </>

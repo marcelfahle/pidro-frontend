@@ -1,10 +1,11 @@
 import type { AuthProvider, FacebookCredential } from '@/api/auth';
+import { t, type TranslationKey } from '@pidro/shared';
 
 export type SocialCredentialResult =
   | { status: 'success'; provider: 'apple'; token: string }
   | { status: 'success'; provider: 'facebook'; credential: FacebookCredential }
   | { status: 'cancelled'; provider: AuthProvider }
-  | { status: 'failure'; provider: AuthProvider; message: string };
+  | { status: 'failure'; provider: AuthProvider; message: string; messageKey?: TranslationKey };
 
 export interface FacebookNativeModules {
   FBAccessToken?: unknown;
@@ -93,14 +94,24 @@ export async function requestSocialCredential(
   resolvedDependencies: SocialCredentialDependencies
 ): Promise<SocialCredentialResult> {
   if (provider === 'apple' && resolvedDependencies.platform !== 'ios') {
-    return { status: 'failure', provider, message: 'Apple sign-in is unavailable on this device.' };
+    return {
+      status: 'failure',
+      provider,
+      message: t('auth.apple_unavailable'),
+      messageKey: 'auth.apple_unavailable',
+    };
   }
 
   try {
     if (provider === 'apple') {
       const token = await resolvedDependencies.appleSignIn();
       if (!token) {
-        return { status: 'failure', provider, message: 'Apple sign-in did not return a token.' };
+        return {
+          status: 'failure',
+          provider,
+          message: t('auth.apple_token'),
+          messageKey: 'auth.apple_token',
+        };
       }
       return { status: 'success', provider, token };
     }
@@ -111,7 +122,8 @@ export async function requestSocialCredential(
       return {
         status: 'failure',
         provider,
-        message: 'Facebook sign-in did not return a usable token.',
+        message: t('auth.facebook_token'),
+        messageKey: 'auth.facebook_token',
       };
     }
     return { status: 'success', provider, credential: result.credential };
@@ -122,14 +134,21 @@ export async function requestSocialCredential(
     if (
       provider === 'facebook' &&
       error instanceof Error &&
-      error.message === 'Facebook sign-in is unavailable in this build.'
+      'code' in error &&
+      error.code === 'FACEBOOK_UNAVAILABLE'
     ) {
-      return { status: 'failure', provider, message: error.message };
+      return {
+        status: 'failure',
+        provider,
+        message: t('auth.facebook_unavailable'),
+        messageKey: 'auth.facebook_unavailable',
+      };
     }
     return {
       status: 'failure',
       provider,
-      message: `Could not sign in with ${provider}. Try again.`,
+      message: t('auth.social_failed', { provider }),
+      messageKey: 'auth.social_failed',
     };
   }
 }
