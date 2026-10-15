@@ -91,6 +91,29 @@ export async function waitForImages(page) {
   );
 }
 
+// RN Web modals use finite CSS animations, including delayed ones. Wait for
+// their actual end without stopping the application's ambient animation loops.
+// Skia/Reanimated canvas motion has a separate settling window in its caller.
+export async function waitForScreenshotReady(page) {
+  await page.evaluate(() => document.fonts.ready);
+  await waitForImages(page);
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (animation) =>
+            animation.effect?.getComputedTiming().iterations === Infinity ||
+            (!animation.pending && animation.playState !== 'running')
+        ),
+    undefined,
+    { timeout: 5000 }
+  );
+  await page.evaluate(
+    () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)))
+  );
+}
+
 export async function getStableBox(locator, page) {
   for (let attempt = 0; attempt < 10; attempt += 1) {
     const box = await locator.boundingBox();

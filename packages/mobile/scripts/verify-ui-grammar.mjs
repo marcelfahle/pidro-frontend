@@ -1,8 +1,9 @@
-import { mkdir } from 'node:fs/promises';
+import { access, mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { partitionCases, verifyCoverage } from './ui-shards.mjs';
 import {
   assertInsideViewport,
   assertMinimumTouchTargets,
@@ -10,6 +11,7 @@ import {
   suppressDevOverlays,
   UI_VIEWPORTS,
   waitForImages,
+  waitForScreenshotReady,
 } from './ui-test-utils.mjs';
 
 const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -24,7 +26,6 @@ const nameList = (value) =>
       .filter(Boolean)
   );
 const requestedCases = nameList(process.env.UI_CASES);
-// CI shards the run by viewport; the captures are merged before the pixel diff.
 const requestedViewports = nameList(process.env.UI_VIEWPORTS);
 const authFixture = JSON.stringify({
   state: {
@@ -1440,12 +1441,60 @@ async function assertSwitchInteractions(page, name, screenshotDir) {
 
 async function main() {
   const cases = selectCases();
+  const matrix = selectViewports().flatMap((viewport) =>
+    cases
+      .filter((testCase) => {
+        if (viewport.cases && !viewport.cases.includes(testCase.name)) return false;
+        return (
+          !viewport.tableOnly ||
+          testCase.path.startsWith('/table-dev') ||
+          testCase.ruleSet ||
+          testCase.lobbyFixture ||
+          testCase.name === 'join-invite' ||
+          viewport.entryCases?.includes(testCase.name)
+        );
+      })
+      .map((testCase) => ({ id: `${viewport.name}/${testCase.name}` }))
+  );
+  if (process.argv[2] === '--verify-coverage') {
+    const reports = process.argv[3];
+    const completed = (
+      await Promise.all(
+        (await readdir(reports))
+          .filter((name) => name.endsWith('.json'))
+          .map(async (name) => JSON.parse(await readFile(resolve(reports, name), 'utf8')))
+      )
+    ).flat();
+    verifyCoverage(
+      matrix.map(({ id }) => id),
+      completed
+    );
+    for (const { id } of completed) await access(resolve(screenshotRoot, `${id}.png`));
+    console.log(
+      `visual coverage: all ${completed.length} cases completed exactly once, with captures`
+    );
+    console.log('Slowest visual cases:');
+    for (const { id, ms } of [...completed].sort((a, b) => b.ms - a.ms).slice(0, 15)) {
+      console.log(`  ${(ms / 1000).toFixed(2)}s ${id}`);
+    }
+    return;
+  }
+  const costs = JSON.parse(
+    await readFile(new URL('./ui-case-costs.json', import.meta.url), 'utf8')
+  );
+  const selected = partitionCases(matrix, process.env.UI_PARTITION, costs);
+  if (process.argv[2] === '--list') {
+    console.log(JSON.stringify(selected.map(({ id }) => id)));
+    return;
+  }
+  if (!selected.length) throw new Error('No visual cases selected');
+  const selectedIds = new Set(selected.map(({ id }) => id));
   await mkdir(screenshotRoot, { recursive: true });
   const browser = await chromium.launch({
     headless: true,
     args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
   });
-  const results = [];
+  const timings = [];
 
   try {
     for (const viewport of selectViewports()) {
@@ -1462,16 +1511,8 @@ async function main() {
       await mkdir(screenshotDir, { recursive: true });
 
       for (const testCase of cases) {
-        if (viewport.cases && !viewport.cases.includes(testCase.name)) continue;
-        if (
-          viewport.tableOnly &&
-          !testCase.path.startsWith('/table-dev') &&
-          !testCase.ruleSet &&
-          !testCase.lobbyFixture &&
-          testCase.name !== 'join-invite' &&
-          !viewport.entryCases?.includes(testCase.name)
-        )
-          continue;
+        if (!selectedIds.has(`${viewport.name}/${testCase.name}`)) continue;
+        const started = performance.now();
         const page = await context.newPage();
         // Reuse CI's existing tablet shards without resizing any other screen.
         const caseViewport = testCase.lobbyFixture
@@ -1661,7 +1702,7 @@ async function main() {
           }
           if (testCase.open) {
             await page.getByRole('button', { name: testCase.open, exact: true }).click();
-            await page.waitForTimeout(600);
+            await waitForScreenshotReady(page);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
@@ -1696,8 +1737,14 @@ async function main() {
               .getByTestId('victory-confetti')
               .waitFor({ state: 'detached', timeout: 7000 });
           }
-          await page.waitForTimeout(testCase.path.startsWith('/table-dev') ? 1_200 : 150);
-          await waitForImages(page);
+          // Canvas sprites are driven by Reanimated, outside the browser's CSS
+          // animation API. Keep their settling window; DOM-only fixtures can
+          // proceed as soon as their actual assets and modal animations finish.
+          const tablePhase = new URL(testCase.path, baseUrl).searchParams.get('phase') ?? '';
+          if (testCase.path.startsWith('/table-dev') && !/^(waiting|ready)/.test(tablePhase)) {
+            await page.waitForTimeout(1_200);
+          }
+          await waitForScreenshotReady(page);
           if (pageErrors.length) {
             throw new Error(`${testCase.name} page errors: ${pageErrors.join(' | ')}`);
           }
@@ -1734,7 +1781,12 @@ async function main() {
           if (pageErrors.length) {
             throw new Error(`${testCase.name} interaction errors: ${pageErrors.join(' | ')}`);
           }
-          results.push(`${viewport.name}/${testCase.name}`);
+          const timing = {
+            id: `${viewport.name}/${testCase.name}`,
+            ms: Math.round(performance.now() - started),
+          };
+          timings.push(timing);
+          console.log(`ui-case ${(timing.ms / 1000).toFixed(2)}s ${timing.id}`);
         } finally {
           await page.close();
         }
@@ -1743,10 +1795,14 @@ async function main() {
     }
   } finally {
     await browser.close();
+    if (process.env.UI_REPORT_PATH) {
+      await mkdir(dirname(process.env.UI_REPORT_PATH), { recursive: true });
+      await writeFile(process.env.UI_REPORT_PATH, JSON.stringify(timings, null, 2) + '\n');
+    }
   }
 
-  console.log(`ui-grammar ok: ${results.length} captures and geometry checks`);
-  results.forEach((result) => console.log(`  ${result}`));
+  console.log(`ui-grammar ok: ${timings.length} captures and geometry checks`);
+  timings.forEach(({ id }) => console.log(`  ${id}`));
 }
 
 main().catch((error) => {

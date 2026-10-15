@@ -38,7 +38,6 @@ if (!existsSync(captureRoot)) {
 }
 
 const failures = [];
-const notes = [];
 let compared = 0;
 
 for (const viewport of readdirSync(baselineRoot, { withFileTypes: true })) {
@@ -51,7 +50,7 @@ for (const viewport of readdirSync(baselineRoot, { withFileTypes: true })) {
 
     const capturePath = resolve(captureRoot, viewport.name, file);
     if (!existsSync(capturePath)) {
-      notes.push(`missing capture for ${label} (screen removed? refresh baselines)`);
+      failures.push(`missing capture for ${label} (screen removed? refresh baselines)`);
       continue;
     }
 
@@ -89,7 +88,6 @@ for (const viewport of readdirSync(baselineRoot, { withFileTypes: true })) {
   }
 }
 
-for (const note of notes) console.log(`note: ${note}`);
 console.log(`visual diff: ${compared} screens compared, ${failures.length} drifted`);
 
 if (failures.length) {
