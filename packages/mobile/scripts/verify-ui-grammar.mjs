@@ -209,6 +209,8 @@ const allCases = [
         : 'table-rule-set',
     rulesExplainer: fixture.endsWith('explainer'),
   })),
+  { name: 'age', path: '/age?fixture=unanswered', testId: 'age-screen' },
+  { name: 'age-selected', path: '/age?fixture=selected', testId: 'age-screen' },
   { name: 'welcome', path: '/welcome', testId: 'welcome-window' },
   {
     name: 'welcome-guest',
@@ -561,6 +563,35 @@ async function assertTargetGeometry(page, testCase, viewport) {
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
+  await assertWoodButtonsHoldLabels(page, testCase.name, viewport);
+}
+
+// A wood button's keyline stays inside its rim and its label inside the face,
+// so nothing is cut where the platform clips (PID-212).
+async function assertWoodButtonsHoldLabels(page, name, viewport) {
+  const spills = await page.evaluate(() => {
+    const keylineColor = 'rgb(42, 21, 5)';
+    const found = [];
+    for (const rim of document.querySelectorAll('[role="button"], [role="radio"]')) {
+      const keyline = rim.firstElementChild;
+      if (!keyline || getComputedStyle(keyline).backgroundColor !== keylineColor) continue;
+      const rimBox = rim.getBoundingClientRect();
+      if (!rimBox.height) continue;
+      const pad = parseFloat(getComputedStyle(rim).paddingBottom);
+      const keyBox = keyline.getBoundingClientRect();
+      const face = keyline.firstElementChild.getBoundingClientRect();
+      const label = rim.getAttribute('aria-label');
+      if (keyBox.bottom > rimBox.bottom - pad + 0.5) found.push(`${label}: keyline below rim`);
+      for (const text of keyline.querySelectorAll('div[dir="auto"]')) {
+        const box = text.getBoundingClientRect();
+        if (box.top < face.top - 0.5 || box.bottom > face.bottom + 0.5) {
+          found.push(`${label}: label outside face`);
+        }
+      }
+    }
+    return found;
+  });
+  assert.deepEqual(spills, [], `${name} wood buttons in ${viewport.name}`);
 }
 
 async function visibleBox(page, locator) {
