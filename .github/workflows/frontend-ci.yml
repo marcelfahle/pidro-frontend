@@ -70,10 +70,26 @@ jobs:
             exit 1
           fi
 
-  ui-grammar:
-    name: UI grammar
+  # The captures run one page at a time, so the suite is split across parallel
+  # shards; the "UI grammar" job below merges their captures for the pixel diff.
+  ui-grammar-shard:
+    name: UI grammar (${{ matrix.shard }})
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 30
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - shard: portrait
+            viewports: portrait
+          - shard: landscape
+            viewports: landscape
+          - shard: small-and-tablet
+            viewports: compact-portrait,compact-landscape,tablet-portrait,home-tablet-portrait,tablet-landscape
+          - shard: suites
+            viewports: ''
+          - shard: seats-and-game-over
+            viewports: ''
 
     steps:
       - name: Check out repository
@@ -113,6 +129,8 @@ jobs:
           # The full fixture matrix retains Metro/SSR modules across many navigations.
           NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
           UI_SHOT_DIR: /tmp/ui-grammar-screens
+          UI_VIEWPORTS: ${{ matrix.viewports }}
+          UI_SHARD: ${{ matrix.shard }}
         run: |
           cleanup() {
             kill "$expo_pid" 2>/dev/null || true
@@ -140,44 +158,40 @@ jobs:
           }
           start_expo
 
-          bun run test:ui
-          # The screenshot matrix retains enough Metro/SSR state to starve later page loads.
-          # The remaining suites are independent, so continue against a fresh server.
-          cleanup
-          start_expo
+          if [ -n "$UI_VIEWPORTS" ]; then
+            bun run test:ui
+            exit 0
+          fi
+
+          # The remaining suites are independent of the screenshot matrix and of each other.
+          if [ "$UI_SHARD" = "seats-and-game-over" ]; then
+            # Additional sizes/scales are assertion-gated; their captures are diagnostic artifacts.
+            # The waiting-room pixel baselines come from the test:ui shards (three standard viewports).
+            UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs
+            # Bound Metro/SSR retention: the waiting-seat matrix approaches the heap limit.
+            cleanup
+            start_expo
+            UI_SHOT_DIR=/tmp/ui-grammar-screens/game-over node scripts/verify-game-over.mjs
+            exit 0
+          fi
+
           UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
           node scripts/verify-seat-decisions.mjs
           node scripts/verify-dealing.mjs
           UI_SHOT_DIR=/tmp/lobby-screens node scripts/verify-lobby.mjs
           UI_SHOT_DIR=/tmp/ui-grammar-screens/creation node scripts/verify-create-room.mjs
-          # Bound Metro/SSR retention: the preceding matrix approaches the heap limit.
-          # Waiting-seat checks are independent and need no state from earlier suites.
-          cleanup
-          start_expo
-          # Additional sizes/scales are assertion-gated; their captures are diagnostic artifacts.
-          # The waiting-room pixel baselines come from test:ui above (three standard viewports).
-          UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs
-          cleanup
-          start_expo
-          UI_SHOT_DIR=/tmp/ui-grammar-screens/game-over node scripts/verify-game-over.mjs
 
-      - name: Compare against visual baselines
-        working-directory: packages/mobile
-        env:
-          UI_SHOT_DIR: /tmp/ui-grammar-screens
-        run: bun run test:ui:diff
-
-      - name: Upload UI grammar screenshots
+      - name: Upload shard screenshots
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ui-grammar-screenshots
+          name: ui-shard-${{ matrix.shard }}
           path: /tmp/ui-grammar-screens/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 3
 
       - name: Upload lobby diagnostics
-        if: always()
+        if: always() && matrix.shard == 'suites'
         uses: actions/upload-artifact@v4
         with:
           name: lobby-screenshots
@@ -186,6 +200,59 @@ jobs:
             /tmp/pidro-expo.log
           if-no-files-found: ignore
           retention-days: 14
+
+  ui-grammar:
+    name: UI grammar
+    needs: ui-grammar-shard
+    if: ${{ !cancelled() }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Cache bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Merge shard screenshots
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ui-shard-*
+          path: /tmp/ui-grammar-screens
+          merge-multiple: true
+
+      # One artifact for `bun run ui:baselines <runId>`, whatever the diff says.
+      - name: Upload UI grammar screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-grammar-screenshots
+          path: /tmp/ui-grammar-screens/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Require every shard to pass
+        if: needs.ui-grammar-shard.result != 'success'
+        run: |
+          echo "A UI grammar shard did not pass (${{ needs.ui-grammar-shard.result }}); see its job log."
+          exit 1
+
+      - name: Compare against visual baselines
+        working-directory: packages/mobile
+        env:
+          UI_SHOT_DIR: /tmp/ui-grammar-screens
+        run: bun run test:ui:diff
 
   game-e2e:
     name: Game e2e
