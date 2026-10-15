@@ -88,8 +88,8 @@ test('a 1000+ chair explains the local lock and the server refusal @responsive',
     const form = hostPage.getByTestId('create-room-window');
     const partner = form.getByTestId('create-seat_3');
     await partner.getByRole('radio', { name: 'Open', exact: true }).click();
-    await partner.getByRole('radio', { name: '1000+', exact: true }).click();
-    await expect(partner.getByTestId('seat-requirement')).toHaveText('1000+');
+    await partner.getByRole('radio', { name: '1,000+', exact: true }).click();
+    await expect(partner.getByTestId('seat-requirement')).toHaveText('1,000+');
     const created = hostPage.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === '/api/v1/rooms' &&
@@ -112,13 +112,13 @@ test('a 1000+ chair explains the local lock and the server refusal @responsive',
     });
     await page.goto('/lobby');
     const row = page.getByTestId(`lobby-table-${code}`);
-    const reason = '1000 games played needed, you have 0';
+    const reason = '1,000 games played needed, you have 0';
     const chair = row.getByRole('button', {
       name: `south seat locked, ${reason}`,
       exact: true,
     });
     await expect(chair).toBeVisible();
-    await expect(row.getByTestId('seat-requirement')).toHaveText('1000+');
+    await expect(row.getByTestId('seat-requirement')).toHaveText('1,000+');
     await chair.click();
     await expect(row.getByRole('alert')).toHaveText(reason);
     expect(joins).toBe(0);
@@ -133,7 +133,7 @@ test('a 1000+ chair explains the local lock and the server refusal @responsive',
     });
     await page.reload();
     const unlocked = row.getByRole('button', {
-      name: 'Join south seat, 1000 games played needed',
+      name: 'Join south seat, 1,000 games played needed',
       exact: true,
     });
     await expect(unlocked).toBeVisible();
