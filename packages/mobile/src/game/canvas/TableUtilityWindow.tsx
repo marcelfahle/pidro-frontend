@@ -33,6 +33,7 @@ export function TableUtilityWindow({
   const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const pinned = useRef(true);
+  const viewportHeight = useRef(0);
   useEffect(() => {
     if (open) pinned.current = true;
   }, [open]);
@@ -91,7 +92,12 @@ export function TableUtilityWindow({
             contentContainerStyle={styles.content}
             onScroll={followEnd ? onScroll : undefined}
             scrollEventThrottle={100}
-            onContentSizeChange={() => {
+            onLayout={(event) => {
+              viewportHeight.current = event.nativeEvent.layout.height;
+            }}
+            onContentSizeChange={(_width, contentHeight) => {
+              // Content that fits needs no scrolling, so it follows again from here.
+              if (contentHeight <= viewportHeight.current) pinned.current = true;
               if (followEnd && pinned.current) scroll.current?.scrollToEnd({ animated: false });
             }}>
             {children}
