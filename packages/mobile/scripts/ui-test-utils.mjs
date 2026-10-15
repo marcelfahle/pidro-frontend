@@ -20,6 +20,13 @@ export const UI_VIEWPORTS = [
   },
   { name: 'landscape', width: 844, height: 390 },
   {
+    // The smallest landscape phone testers hold (Galaxy A5).
+    name: 'small-landscape',
+    width: 640,
+    height: 360,
+    cases: ['table-bidding', 'table-playing', 'table-completed-trick'],
+  },
+  {
     name: 'compact-landscape',
     width: 667,
     height: 375,

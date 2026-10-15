@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  cardSize,
   computeLayout,
   handLeft,
   handScale,
+  handStep,
   northBackWidth,
   northFanTop,
   northFanWidth,
@@ -65,7 +67,9 @@ describe('side stacks and the hand', () => {
   it('puts the left edge of a fuller hand further left', () => {
     const layout = computeLayout(844, 390, none);
     expect(handLeft(layout, 9)).toBeLessThan(handLeft(layout, 6));
-    expect(handLeft(layout, 1)).toBeCloseTo(layout.hand.cx - (layout.cardW * 0.9 * 1.03) / 2);
+    expect(handLeft(layout, 1)).toBeCloseTo(
+      layout.hand.cx - (layout.cardW * handScale(layout.profile) * 1.03) / 2
+    );
   });
 });
 
@@ -179,6 +183,7 @@ describe('landscape: your played card lands above your hand', () => {
     [667, 375, 0, 0],
     [844, 390, 47, 21],
     [874, 402, 62, 21],
+    [932, 430, 59, 21],
     [956, 440, 62, 21],
   ]) {
     it(`on ${width}×${height}`, () => {
@@ -189,4 +194,51 @@ describe('landscape: your played card lands above your hand', () => {
       expect(pileBottom).toBeLessThanOrEqual(handTop - 8 + 0.5);
     });
   }
+});
+
+describe('landscape phones draw a larger hand beside your seat', () => {
+  // Android (0, or a 48pt button bar on either side) and iPhones with the
+  // Dynamic Island on either side.
+  for (const [width, height, insets] of [
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 0 }],
+    [640, 360, { top: 0, bottom: 0, left: 48, right: 0 }],
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 48 }],
+    [667, 375, { top: 0, bottom: 0, left: 0, right: 0 }],
+    [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }],
+    [844, 390, { top: 0, bottom: 21, left: 47, right: 0 }],
+    [932, 430, { top: 0, bottom: 21, left: 59, right: 59 }],
+    [932, 430, { top: 0, bottom: 21, left: 0, right: 59 }],
+  ]) {
+    it(`on ${width}×${height} ${JSON.stringify(insets)}`, () => {
+      const L = computeLayout(width, height, insets);
+      const handW = L.cardW * handScale(L.profile);
+      expect(handW).toBeCloseTo(cardSize(height) * 1.2);
+      expect(handW).toBeGreaterThanOrEqual(64);
+
+      // Your seat: 70pt in, a 52pt avatar, a 10pt gap and at least 56pt of name.
+      const seatRight = insets.left + 70 + 52 + 10 + 56;
+      for (const n of [1, 6, 9]) {
+        const left = handLeft(L, n);
+        const right = left + (n - 1) * handStep(L, n) + handW * 1.03;
+        expect(left).toBeGreaterThanOrEqual(seatRight + 6);
+        expect(right).toBeLessThanOrEqual(width - insets.right - 8);
+      }
+      // A full hand fits at its usual overlap: every rank in reach of a thumb.
+      expect(handStep(L, 9)).toBeCloseTo(L.cardW * 0.72);
+      expect(L.hand.cy + (L.cardH * handScale(L.profile)) / 2).toBeLessThanOrEqual(
+        height - insets.bottom
+      );
+    });
+  }
+
+  it('keeps a hand that fits on the table’s axis', () => {
+    const L = computeLayout(932, 430, { top: 0, bottom: 21, left: 59, right: 59 });
+    expect(L.hand.cx).toBe(466);
+  });
+
+  it('squeezes the hand before it reaches your seat on a narrow window', () => {
+    const L = computeLayout(560, 340, { top: 0, bottom: 0, left: 48, right: 48 });
+    expect(handStep(L, 9)).toBeLessThan(L.cardW * 0.72);
+    expect(handLeft(L, 9)).toBeGreaterThanOrEqual(48 + 188 + 6);
+  });
 });

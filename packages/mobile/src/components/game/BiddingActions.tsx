@@ -5,7 +5,7 @@ import { pushGameAction } from '@/channels/hooks/useGameChannel';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
-import { computeLayout } from '@/game/canvas/layout';
+import { AVATAR_SIZE, computeLayout, handScale } from '@/game/canvas/layout';
 import { playActionHaptic } from '@/game/useGameHaptics';
 import { useGameStore } from '@/stores/game';
 import type { LegalAction } from '@/types/game';
@@ -76,13 +76,14 @@ export function BiddingActions({
   if (!showBiddingPanel || !canAct) return null;
 
   const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
-  const handHeight = layout.cardH * (landscape ? 0.9 : 1);
+  const handHeight = layout.cardH * handScale(layout.profile);
   const handTop = layout.hand.cy - handHeight / 2;
   const tableTop = insets.top + topReserve;
   // A tight table has no room for the usual air between the grid and the hand.
   const handGap = landscape ? HAND_GAP : layout.tight ? PidroSpacing.sm : PORTRAIT_HAND_GAP;
   const sideBackWidth = Math.max(30, Math.min(56, layout.cardW * 0.62));
-  const northClearance = tableTop + (landscape ? 56 : 82);
+  // Landscape North sits 8pt below the table's top edge.
+  const northClearance = tableTop + (landscape ? 12 + AVATAR_SIZE[layout.profile] : 82);
   const sideClearance =
     layout.trick.cy - (sideBackWidth * 3.4) / 2 - 62 + PidroLayout.touchTarget + handGap;
   const preferredTop = landscape ? northClearance : Math.max(northClearance, sideClearance);
