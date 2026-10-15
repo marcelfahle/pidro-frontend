@@ -260,15 +260,16 @@ export function SeatLayer({
           );
         }
         // East / west card-backs keep hugging the edges, their seats above them.
+        // They bleed past a bare screen edge but never into an inset: in
+        // landscape the Dynamic Island sits on one of these sides.
         const edgeOffset = Math.min(L.cardW * 0.28, 18);
+        const sideEdge = rel === 'east' ? insets.right : insets.left;
+        const backsInset = sideEdge > 0 ? sideEdge : -edgeOffset;
         const seatPos =
           rel === 'east'
             ? { ...sideSeatPos, right: insets.right + sideInset }
             : { ...sideSeatPos, left: insets.left + sideInset };
-        const backsEdge =
-          rel === 'east'
-            ? { right: insets.right - edgeOffset }
-            : { left: insets.left - edgeOffset };
+        const backsEdge = rel === 'east' ? { right: backsInset } : { left: backsInset };
         return (
           <View key={rel} style={StyleSheet.absoluteFill}>
             <View style={[{ position: 'absolute' }, seatPos]}>{avatar}</View>
@@ -289,8 +290,8 @@ export function SeatLayer({
                 dealing={dealing}
                 originX={
                   rel === 'west'
-                    ? L.felt.cx - insets.left + edgeOffset
-                    : L.felt.cx - (width - insets.right + edgeOffset - sideBackW * (110 / 78))
+                    ? L.felt.cx - backsInset
+                    : L.felt.cx - (width - backsInset - sideBackW * (110 / 78))
                 }
                 concealed={data.cardCountConcealed}
               />
