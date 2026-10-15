@@ -7,10 +7,16 @@ import {
   type User,
 } from '@pidro/shared';
 
-type ApiError = {
+type ApiErrorItem = {
+  field?: string;
   error_code?: string;
+  error_params?: Record<string, unknown>;
   code?: string;
-  errors?: { code?: string; error_code?: string; title?: string; detail: string }[];
+  detail?: string;
+};
+type ApiError = ApiErrorItem & {
+  errors?: ApiErrorItem[];
+  field_errors?: ApiErrorItem[];
   message?: string;
 };
 
@@ -52,29 +58,52 @@ export function guestSaveFailure(error: unknown): GuestSaveFailure {
   }
   const data = error.response?.data as ApiError | undefined;
   const fields: Partial<Record<GuestSaveField, string>> = {};
-  for (const [field, message] of Object.entries(localizedFieldErrors(error))) {
-    if (field === 'username' || field === 'display_name') fields.displayName = message;
-    else if (field === 'email' || field === 'password') fields[field] = message;
-  }
   let classicNameReserved = false;
   let emailTaken = false;
   const items = [
-    { code: data?.code, error_code: data?.error_code },
+    ...(Array.isArray(data?.field_errors) ? data.field_errors : []),
+    { code: data?.code, error_code: data?.error_code, error_params: data?.error_params },
     ...(Array.isArray(data?.errors) ? data.errors : []),
   ];
   for (const item of items) {
     const code = item.error_code ?? item.code;
-    if (code === 'classic_name_reserved' || code === 'CLASSIC_NAME_RESERVED') {
-      fields.displayName = t('auth.name_taken');
-      classicNameReserved = true;
-    } else if (code === 'USERNAME_TAKEN' || code === 'username_taken' || code === 'username') {
-      fields.displayName = t('auth.name_taken');
-    } else if (code === 'EMAIL_TAKEN' || code === 'email_taken' || code === 'email') {
-      emailTaken = code === 'EMAIL_TAKEN' || code === 'email_taken';
-      fields.email = t(emailTaken ? 'auth.email_taken' : 'auth.check_email');
-    } else if (code === 'password') {
-      fields.password = t('auth.password_min', { count: 8 });
+    const name = item.field ?? item.code;
+    const reserved = code === 'classic_name_reserved' || code === 'CLASSIC_NAME_RESERVED';
+    const nameTaken = code === 'USERNAME_TAKEN' || code === 'username_taken';
+    const taken = code === 'EMAIL_TAKEN' || code === 'email_taken';
+    let field: GuestSaveField;
+    if (name === 'username' || name === 'display_name' || reserved || nameTaken) {
+      field = 'displayName';
+    } else if (name === 'email' || taken) {
+      field = 'email';
+    } else if (name === 'password') {
+      field = 'password';
+    } else {
+      continue;
     }
+
+    // Structured field reasons win over the parallel legacy field-name entries.
+    if (fields[field] !== undefined) continue;
+    const legacyTaken = item.error_code === undefined && item.detail === 'has already been taken';
+    if (field === 'email') emailTaken = taken || code === 'field_taken' || legacyTaken;
+    if (reserved) classicNameReserved = true;
+
+    if (item.error_code && ['username', 'display_name', 'email', 'password'].includes(name ?? '')) {
+      fields[field] = localizedError(item, 'error.field_invalid');
+    } else if (reserved || nameTaken || (field === 'displayName' && legacyTaken)) {
+      fields[field] = t('auth.name_taken');
+    } else if (taken || (field === 'email' && legacyTaken)) {
+      fields[field] = t('auth.email_taken');
+    } else {
+      fields[field] = localizedError(
+        item,
+        !item.error_code && field === 'email' ? 'auth.check_email' : 'error.field_invalid'
+      );
+    }
+  }
+  for (const [field, message] of Object.entries(localizedFieldErrors(error))) {
+    if (field === 'username' || field === 'display_name') fields.displayName ??= message;
+    else if (field === 'email' || field === 'password') fields[field] ??= message;
   }
   return {
     message: localizedError(error, 'auth.save_failed'),
