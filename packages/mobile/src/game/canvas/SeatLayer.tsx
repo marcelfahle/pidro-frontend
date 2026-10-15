@@ -157,19 +157,26 @@ export function SeatLayer({
   // The dealer chip faces the table: right of West's name, left of everyone
   // else's. In landscape it takes the name's far end, except South's, which
   // sits behind the avatar, away from the hand.
+  // On the shortest phones (`L.tight`) North's and your names sit beside the
+  // avatar, as in landscape, to give the trick their height.
+  const besideName = (rel: RelativePosition) =>
+    !portrait || (L.tight && (rel === 'north' || rel === 'south'));
   const dealerSide = (rel: RelativePosition): 'left' | 'right' =>
-    rel === 'west' || (!portrait && rel === 'north') ? 'right' : 'left';
+    rel === 'west' || (besideName(rel) && rel === 'north') ? 'right' : 'left';
   const seatWidth = (rel: RelativePosition) =>
-    portrait
-      ? { width: rel === 'north' || rel === 'south' ? centerColumn : sideColumn }
-      : {
-          maxWidth:
-            size +
-            gap +
-            (rel === 'south' ? southReach : tablet ? 160 : 104) +
-            (dealerRel === rel && rel !== 'south' && parts.dealer ? parts.dealer.size + gap : 0),
-          gap,
-        };
+    portrait && L.tight && (rel === 'north' || rel === 'south')
+      ? // The row spans what the side columns leave, chip and name included.
+        { maxWidth: width - 2 * (sideColumn + PidroSpacing.xs), gap }
+      : portrait
+        ? { width: rel === 'north' || rel === 'south' ? centerColumn : sideColumn }
+        : {
+            maxWidth:
+              size +
+              gap +
+              (rel === 'south' ? southReach : tablet ? 160 : 104) +
+              (dealerRel === rel && rel !== 'south' && parts.dealer ? parts.dealer.size + gap : 0),
+            gap,
+          };
   const tableTop = insets.top + topReserve;
   // Floating portrait scores no longer mask the fan behind a header band.
   const northBackTop = portrait ? tableTop + PidroSpacing.xs : tableTop - L.cardH * 0.36;
@@ -222,7 +229,7 @@ export function SeatLayer({
           <PlayerAvatar
             testID={`seat-${rel}`}
             size={size}
-            label={portrait ? 'below' : rel === 'east' ? 'left' : 'right'}
+            label={besideName(rel) ? (rel === 'east' ? 'left' : 'right') : 'below'}
             dealerSide={dealerSide(rel)}
             style={seatWidth(rel)}
             {...avatarFor(

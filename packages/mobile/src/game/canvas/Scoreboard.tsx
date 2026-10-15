@@ -1,8 +1,11 @@
 /**
  * Mounted navy-and-brass score plaque. Tap for locally observed score changes.
+ * During a hand it carries the bid line, as Classic's "Bet 6" did: who holds
+ * the bid and for how much, under the plaque in portrait, beside it in
+ * landscape where the West seat sits below.
  */
 import { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
@@ -48,6 +51,9 @@ function formatDelta(value: number): string {
   return value.toString();
 }
 
+/** Who holds the bid this hand: `ours` when it is your team's. */
+export type ScoreboardBid = { name: string; amount: number; ours: boolean };
+
 export function Scoreboard({
   scores,
   youPosition,
@@ -55,6 +61,7 @@ export function Scoreboard({
   roomCode = null,
   top = 0,
   left = 0,
+  bid = null,
 }: {
   scores: Scores;
   youPosition: Position | null;
@@ -62,7 +69,10 @@ export function Scoreboard({
   roomCode?: string | null;
   top?: number;
   left?: number;
+  bid?: ScoreboardBid | null;
 }) {
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
   const { us, them } = teams(scores, youPosition);
   const usLabel = youPosition ? 'US' : 'N/S';
   const themLabel = youPosition ? 'THEM' : 'E/W';
@@ -109,7 +119,13 @@ export function Scoreboard({
   }, [scores, handNumber]);
 
   return (
-    <View style={[styles.wrap, { top, left: left + PidroSpacing.sm }]} pointerEvents="box-none">
+    <View
+      style={[
+        styles.wrap,
+        landscape ? styles.wrapRow : null,
+        { top, left: left + PidroSpacing.sm },
+      ]}
+      pointerEvents="box-none">
       <PressableFX
         accessibilityRole="button"
         accessibilityLabel={`${usLabel} ${us}, ${themLabel} ${them}. Recent scores.`}
@@ -137,6 +153,21 @@ export function Scoreboard({
           <Icon name="chevron-down" size={14} color={PidroColors.goldLight} />
         </View>
       </PressableFX>
+      {bid ? (
+        <View
+          testID="bid-line"
+          pointerEvents="none"
+          style={[styles.bidLine, bid.ours ? styles.bidLineOurs : null]}>
+          <PidroText
+            role="metadata"
+            tone={bid.ours ? 'gold' : 'soft'}
+            style={styles.bidText}
+            numberOfLines={1}
+            maxFontSizeMultiplier={1.3}>
+            {bid.name} bid {bid.amount}
+          </PidroText>
+        </View>
+      ) : null}
 
       <TableUtilityWindow title="Recent scores" open={isOpen} onClose={() => setIsOpen(false)}>
         <PidroText role="metadata" tone="muted">
@@ -194,7 +225,19 @@ export function Scoreboard({
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', zIndex: 44 },
+  wrap: { position: 'absolute', zIndex: 44, alignItems: 'flex-start', gap: PidroSpacing.xxs },
+  wrapRow: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.sm },
+  bidLine: {
+    maxWidth: 168,
+    paddingHorizontal: PidroSpacing.sm,
+    paddingVertical: 2,
+    borderRadius: PidroRadii.full,
+    backgroundColor: PidroColors.trickChipBg,
+    borderWidth: 1,
+    borderColor: PidroColors.border,
+  },
+  bidLineOurs: { borderColor: PidroColors.goldSoft },
+  bidText: { fontWeight: '800' },
   plaque: {
     padding: RIM,
     borderRadius: PidroRadii.lg,

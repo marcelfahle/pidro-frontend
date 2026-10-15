@@ -9,6 +9,7 @@ import { StyleSheet, View, useWindowDimensions, type ViewStyle } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { SCORE_PLAQUE_HEIGHT } from './Scoreboard';
+import { utilityDockReserve } from './layout';
 
 /** Gap between the safe top and the header row, and the reserve's breathing room. */
 export const HEADER_INSET = PidroSpacing.xs;
@@ -26,7 +27,7 @@ export function headerTop(insetTop: number): number {
 export const TABLE_HEADER = HEADER_INSET + Math.max(SCORE_PLAQUE_HEIGHT, PidroLayout.touchTarget);
 // One shared portrait slot below the hand. It can host chat, an adaptive ad,
 // or compact table details, but those modes should never stack vertically.
-export const UTILITY_DOCK_RESERVE = 72;
+export { UTILITY_DOCK_RESERVE } from './layout';
 
 export interface TableReserves {
   landscape: boolean;
@@ -43,9 +44,10 @@ export interface TableDockHeights {
 
 export function useTableReserves({
   top = TABLE_HEADER,
-  bottom = UTILITY_DOCK_RESERVE,
+  bottom,
 }: TableDockHeights = {}): TableReserves {
   const { width, height } = useWindowDimensions();
+  bottom ??= utilityDockReserve(height);
   const insets = useSafeAreaInsets();
   const landscape = width > height;
   return {

@@ -73,6 +73,8 @@ export type TableModel = {
   winningKey: string | null;
   /** What the trick in progress holds for its winner, as the server counts it. */
   trickPoints: number | null;
+  /** The card played last in the trick in progress. */
+  latestPlayKey: string | null;
   /** The trick taken most recently this hand: who took it and what it was worth. */
   lastTrick: TrickResult | null;
   lastHand: ServerLastHand | null;
@@ -254,6 +256,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
       ? input.trickDetails.points
       : null;
   const you = input.players.find((player) => player.isYou);
+  const latestAbs = currentPlays.at(-1)?.player ?? currentPlays.at(-1)?.position;
+  const latestPlay = latestAbs ? (absToRel.get(latestAbs) ?? null) : null;
 
   const seats = {} as Record<RelativePosition, TableSeat | null>;
   for (const rel of REL) {
@@ -298,6 +302,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
     canPlay: input.canPlay,
     winningKey,
     trickPoints,
+    latestPlayKey: latestPlay ? ((currentTrick[latestPlay] ?? null)?.key ?? null) : null,
     lastTrick,
     lastHand: input.lastHand ?? null,
     yourTeam: you ? teamOf(you.absolutePosition) : null,

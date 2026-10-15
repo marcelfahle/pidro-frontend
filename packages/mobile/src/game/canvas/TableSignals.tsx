@@ -1,7 +1,7 @@
 /**
- * What just happened at the table, in the server's words: what the trick in
- * progress holds, a "+N" where a trick was taken (a trick holding a five is a
- * "Pidro!"), and how the last hand scored, before the next deal. The server
+ * What just happened at the table, in the server's words: a "+N" where a
+ * trick was taken (a trick holding a five is a "Pidro!") and how the last
+ * hand scored, before the next deal. The server
  * decides who wins and what anything is worth; this only shows it. Only what
  * matters gets fanfare: a trick worth nothing passes quietly.
  */
@@ -51,26 +51,8 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0 }: Props
   );
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <OnTheTable points={model.trickPoints} L={L} />
       <TrickPop trick={model.lastTrick} L={L} />
       <HandResult hand={model.lastHand} yourTeam={model.yourTeam} L={L} />
-    </View>
-  );
-}
-
-/** "6 on the table": what the trick in progress holds for whoever takes it. */
-function OnTheTable({ points, L }: { points: number | null; L: TableLayout }) {
-  if (!points) return null;
-  return (
-    <View
-      pointerEvents="none"
-      testID="trick-points"
-      style={[styles.onTable, { top: L.trick.cy - L.cardW * 0.82, left: 0, right: 0 }]}>
-      <View style={styles.onTablePill}>
-        <PidroText role="metadata" tone="gold" style={styles.onTableText}>
-          {points} on the table
-        </PidroText>
-      </View>
     </View>
   );
 }
@@ -97,11 +79,14 @@ function TrickPop({ trick, L }: { trick: TrickResult | null; L: TableLayout }) {
   }, [pop]);
 
   if (!pop) return null;
-  // A small "+N" sits just above the card it rose from; a "Pidro!" takes the
-  // middle of the table, where nothing else competes with it.
+  // A small "+N" sits on the table side of the card it rose from, clear of
+  // the seat's name; a "Pidro!" takes the middle, where nothing competes.
   const above = (rel: TrickResult['winner']) => {
     const card = playedCardTarget(L, rel, 0, 1);
-    return { x: card.x, y: card.y - L.cardH * 0.42 };
+    const dx = L.trick.cx - card.x;
+    const dy = L.trick.cy - card.y;
+    const toward = (L.cardH * 0.42) / Math.max(1, Math.hypot(dx, dy));
+    return { x: card.x + dx * toward, y: card.y + dy * toward };
   };
   const big = pop.points >= PIDRO_POINTS;
   const at = big ? { x: L.trick.cx, y: L.trick.cy } : above(pop.winner);

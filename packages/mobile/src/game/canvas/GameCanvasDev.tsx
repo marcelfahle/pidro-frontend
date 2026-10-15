@@ -393,6 +393,8 @@ export default function GameCanvasDev({
             roomCode="DEV01"
             top={headerTop(insets.top)}
             left={insets.left}
+            // East's "Bid 6" from the fixture's bidding, held through the play.
+            bid={phase === 'playing' ? { name: 'Eli', amount: 6, ours: false } : null}
           />
           <TableSettings onLeave={() => {}} />
         </>

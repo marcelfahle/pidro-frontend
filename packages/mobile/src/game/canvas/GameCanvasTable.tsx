@@ -32,13 +32,24 @@ import { useDealPresentation } from './useDealPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
-import { Scoreboard } from './Scoreboard';
+import { Scoreboard, type ScoreboardBid } from './Scoreboard';
+
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals } from './TableSignals';
 import { computeLayout } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
+
+/** Phases after bidding in which someone holds the bid. */
+const BID_HELD_PHASES = new Set<string>([
+  'declaring',
+  'declaring_trump',
+  'trump_declaration',
+  'discarding',
+  'second_deal',
+  'playing',
+]);
 
 type Props = {
   room: Room;
@@ -277,6 +288,20 @@ export function GameCanvasTable({
     handReady: isHandReady,
   });
 
+  // Classic's "Bet 6": once bidding is over, the plaque says who holds the bid.
+  const highBid = serverState?.highest_bid;
+  const bidder = highBid
+    ? viewModel?.players.find((player) => player.absolutePosition === highBid.position)
+    : undefined;
+  const bidLine: ScoreboardBid | null =
+    bidder && typeof highBid?.amount === 'number' && BID_HELD_PHASES.has(controller.phase)
+      ? {
+          name: bidder.isYou ? 'You' : (bidder.username ?? 'Bidder'),
+          amount: highBid.amount,
+          ours: bidder.isYou || bidder.isTeammate,
+        }
+      : null;
+
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
       acc[player.relativePosition] = model.dealStage
@@ -349,6 +374,7 @@ export function GameCanvasTable({
           roomCode={viewModel?.roomCode ?? room.code}
           top={headerTop(insets.top)}
           left={insets.left}
+          bid={bidLine}
         />
       )}
 
