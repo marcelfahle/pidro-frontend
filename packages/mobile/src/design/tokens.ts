@@ -49,6 +49,9 @@ export const PidroColors = {
   turnUrgent: '#ffb86b',
   turnUrgentTrack: 'rgba(255, 184, 107, 0.22)',
   turnUrgentGlow: 'rgba(255, 184, 107, 0.4)',
+  // The shine behind the player on turn, drawn as a soft glow around the ring.
+  turnLightShine: 'rgba(139, 234, 255, 0.6)',
+  turnUrgentShine: 'rgba(255, 184, 107, 0.65)',
   // The table seen from above on Tables and New table: an open chair, a chosen seat.
   chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
   chairSubBorder: 'rgba(255, 184, 107, 0.85)',

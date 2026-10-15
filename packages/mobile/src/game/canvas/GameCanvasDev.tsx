@@ -11,10 +11,10 @@ import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
-import { SeatLayer, type SeatLine } from './SeatLayer';
+import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
-import { HEADER_INSET, TableChromeBars, useTableReserves } from './TableChrome';
+import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
 import { useHandPresentationReady } from './useHandPresentationReady';
@@ -47,6 +47,15 @@ const seat = (
   seatStatus: 'normal',
   ...extra,
 });
+
+/** `names=long`: Classic-length usernames, the longest a seat label has to carry. */
+const LONG_NAMES: Record<Position, string> = {
+  south: 'ThunderThor88',
+  north: 'Pikkupossu123',
+  east: 'MaijaLiisa_K',
+  west: 'KaleviVirtanen',
+};
+const SEATS: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 const basePlayers = (turn: RelativePosition): RelativePlayerView[] => [
   seat('south', 'south', {
@@ -105,6 +114,27 @@ const COUNTS: Record<string, number> = { south: 6, north: 8, east: 8, west: 7 };
 type Play = { player: Position; card: Card };
 const sameCard = (a: Card, b: Card) => a.suit === b.suit && a.rank === b.rank;
 
+/** `timer=running`: the seat on turn gets a 20 s turn timer that restarts with each turn. */
+const FIXTURE_TURN_MS = 20_000;
+function useFixtureTurnTimer(
+  running: boolean,
+  turn: RelativePosition
+): Partial<Record<RelativePosition, SeatTurn>> | undefined {
+  const [tick, setTick] = useState<{ turn: RelativePosition; progress: number } | null>(null);
+  useEffect(() => {
+    if (!running) return;
+    const startedAt = Date.now();
+    const id = setInterval(() => {
+      const left = Math.max(0, 1 - (Date.now() - startedAt) / FIXTURE_TURN_MS);
+      setTick({ turn, progress: left });
+      if (left === 0) clearInterval(id);
+    }, 200);
+    return () => clearInterval(id);
+  }, [running, turn]);
+  const progress = tick?.turn === turn ? tick.progress : 1;
+  return running ? { [turn]: { progress, urgent: progress < 0.25 } } : undefined;
+}
+
 export type GameCanvasDevProps = {
   onHandPresentationReadyChange?: (ready: boolean) => void;
   autoPlay?: boolean;
@@ -129,7 +159,14 @@ export default function GameCanvasDev({
   const [turn, setTurn] = useState<RelativePosition>('south');
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const playing = useRef(false);
-  const { scores: scoreFixture } = useLocalSearchParams<{ scores?: string }>();
+  const {
+    scores: scoreFixture,
+    dealer: dealerFixture,
+    names,
+    timer,
+  } = useLocalSearchParams<{ scores?: string; dealer?: string; names?: string; timer?: string }>();
+  const dealer = SEATS.find((rel) => rel === dealerFixture) ?? ('south' satisfies RelativePosition);
+  const turnTimer = useFixtureTurnTimer(timer === 'running', turn);
   const [scores, setScores] = useState(
     scoreFixture === 'history'
       ? { north_south: -21, east_west: 100 }
@@ -191,21 +228,25 @@ export default function GameCanvasDev({
 
   const players = useMemo(
     () =>
-      basePlayers(turn).map((player) =>
-        lifecycle && !player.isYou
-          ? {
-              ...player,
-              seatStatus: lifecycle,
-              username:
-                lifecycle === 'permanent_bot'
-                  ? 'Bot'
-                  : lifecycle === 'vacant'
-                    ? 'Open seat'
-                    : player.username,
-            }
-          : player
-      ),
-    [turn, lifecycle]
+      basePlayers(turn)
+        .map((player) =>
+          names === 'long' ? { ...player, username: LONG_NAMES[player.absolutePosition] } : player
+        )
+        .map((player) =>
+          lifecycle && !player.isYou
+            ? {
+                ...player,
+                seatStatus: lifecycle,
+                username:
+                  lifecycle === 'permanent_bot'
+                    ? 'Bot'
+                    : lifecycle === 'vacant'
+                      ? 'Open seat'
+                      : player.username,
+              }
+            : player
+        ),
+    [turn, lifecycle, names]
   );
   const canPlay = turn === 'south' && hand.length > 0 && !trick.some((p) => p.player === 'south');
 
@@ -214,7 +255,7 @@ export default function GameCanvasDev({
       buildTableModel({
         phase,
         trumpSuit: trump,
-        dealerRelative: phase === 'dealer_selection' ? 'east' : 'south',
+        dealerRelative: phase === 'dealer_selection' ? 'east' : dealer,
         players,
         yourHand: hand,
         yourCardCount: hand.length,
@@ -226,7 +267,7 @@ export default function GameCanvasDev({
         canPlay,
         getCardCountForPlayer: (abs) => (abs ? (COUNTS[abs] ?? null) : null),
       }),
-    [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay]
+    [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay, dealer]
   );
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
 
@@ -249,8 +290,9 @@ export default function GameCanvasDev({
         bottomReserve={bottomReserve}
       />
       <SeatLayer
+        turnByRel={turnTimer}
         seats={model.seats}
-        dealerRel={phase === 'dealer_selection' ? null : 'south'}
+        dealerRel={phase === 'dealer_selection' ? null : dealer}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
         statusByRel={
@@ -272,7 +314,7 @@ export default function GameCanvasDev({
             youPosition="south"
             handNumber={4}
             roomCode="DEV01"
-            top={insets.top + HEADER_INSET}
+            top={headerTop(insets.top)}
             left={insets.left}
           />
           <TableSettings onLeave={() => {}} />

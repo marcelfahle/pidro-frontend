@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { computeLayout, playedCardTarget } from '../../src/game/canvas/layout.ts';
+import { computeLayout, handLeft, playedCardTarget } from '../../src/game/canvas/layout.ts';
 
 describe('played-card piles', () => {
   for (const [width, height] of [
@@ -34,4 +34,24 @@ describe('played-card piles', () => {
       });
     });
   }
+});
+
+describe('side stacks and the hand', () => {
+  const none = { top: 0, bottom: 0, left: 0, right: 0 };
+
+  it('drops landscape side stacks below the trick line, and their cards leave from there', () => {
+    const landscape = computeLayout(874, 402, { top: 0, bottom: 21, left: 62, right: 62 });
+    expect(landscape.sides.cy).toBeGreaterThan(landscape.trick.cy);
+    expect(landscape.seats.east.y).toBe(landscape.sides.cy);
+    expect(landscape.seats.west.y).toBe(landscape.sides.cy);
+
+    const portrait = computeLayout(402, 874, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 72);
+    expect(portrait.sides.cy).toBe(portrait.trick.cy);
+  });
+
+  it('puts the left edge of a fuller hand further left', () => {
+    const layout = computeLayout(844, 390, none);
+    expect(handLeft(layout, 9)).toBeLessThan(handLeft(layout, 6));
+    expect(handLeft(layout, 1)).toBeCloseTo(layout.hand.cx - (layout.cardW * 0.9 * 1.03) / 2);
+  });
 });

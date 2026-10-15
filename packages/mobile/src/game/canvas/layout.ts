@@ -30,12 +30,19 @@ export type TableLayout = {
   cardH: number;
   felt: { cx: number; cy: number };
   trick: { cx: number; cy: number; r: number };
+  /** Vertical center of the east and west card-back stacks. */
+  sides: { cy: number };
   seats: Record<RelativePosition, Seat>;
   hand: { cx: number; cy: number; maxWidth: number };
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 const CARD_RATIO = 110 / 78; // from the legacy card art (spike)
+/**
+ * Landscape lowers the side stacks below the trick's center line: the side
+ * seats sit on top of them, under the header row, and need air between.
+ */
+const LANDSCAPE_SIDE_DROP = 16;
 
 export function playedCardTarget(
   L: TableLayout,
@@ -68,6 +75,22 @@ export function playedCardTarget(
         ? L.trick.cy + L.trick.r
         : L.trick.cy + off * spacing * (rel === 'east' ? -1 : 1);
   return { x, y, rot, scale: pileScale };
+}
+
+/** Step between hand cards: a straight row, squeezed to fit the hand's width. */
+export function handStep(L: TableLayout, n: number): number {
+  return n > 1 ? Math.min(L.cardW * 0.72, (L.hand.maxWidth - L.cardW) / (n - 1)) : 0;
+}
+
+/** Landscape draws the hand a touch smaller; the south seat sits beside it. */
+export function handScale(profile: Profile): number {
+  return profile.endsWith('landscape') ? 0.9 : 1;
+}
+
+/** Left edge of an n-card hand, a lifted (playable) card included. */
+export function handLeft(L: TableLayout, n: number): number {
+  const half = (Math.max(1, n) - 1) / 2;
+  return L.hand.cx - half * handStep(L, n) - (L.cardW * handScale(L.profile) * 1.03) / 2;
 }
 
 export function pickProfile(w: number, h: number): Profile {
@@ -110,21 +133,24 @@ export function computeLayout(
   const southSeat = profile === 'tablet-portrait' ? 140 : 120;
   const handY = portrait ? tableBottom - southSeat - cardH * 0.5 : tableBottom - cardH * 0.56;
   const northY = tableTop + cardH * (portrait ? 0.48 : 0.22) + 10;
+  const sideCy = portrait ? trickCy : trickCy + LANDSCAPE_SIDE_DROP;
+  // Played cards leave from here; portrait keeps its historical screen-center origin.
+  const sideY = portrait ? cy : sideCy;
 
   const seats: Record<RelativePosition, Seat> = {
     south: { x: cx, y: handY, rot: 0, hand: { x: cx, y: handY } },
     north: { x: cx, y: northY, rot: Math.PI, hand: { x: cx, y: northY } },
     east: {
       x: width - insets.right + cardW * 0.04,
-      y: cy,
+      y: sideY,
       rot: -Math.PI / 2,
-      hand: { x: width - insets.right + cardW * 0.04, y: cy },
+      hand: { x: width - insets.right + cardW * 0.04, y: sideY },
     },
     west: {
       x: insets.left - cardW * 0.04,
-      y: cy,
+      y: sideY,
       rot: Math.PI / 2,
-      hand: { x: insets.left - cardW * 0.04, y: cy },
+      hand: { x: insets.left - cardW * 0.04, y: sideY },
     },
   };
 
@@ -136,6 +162,7 @@ export function computeLayout(
     cardH,
     felt: { cx, cy: trickCy },
     trick: { cx, cy: trickCy, r: trickR },
+    sides: { cy: sideCy },
     seats,
     hand: { cx, cy: handY, maxWidth: width - insets.left - insets.right - 32 },
   };

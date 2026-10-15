@@ -1,5 +1,16 @@
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import Animated, {
+  cancelAnimation,
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { DealerChip } from '@/components/game/DealerChip';
 import { Avatar } from '@/components/ui/Avatar';
@@ -7,6 +18,7 @@ import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroFonts } from '@/design/tokens';
+import { isStillCapture } from '@/utils/stillCapture';
 import {
   avatarLabel,
   avatarParts,
@@ -19,9 +31,10 @@ import {
  * A player, drawn the same way everywhere: the photo in a ring, with up to
  * five signals around it. The ring says whether they pay (glass, gold, or
  * gold with a gem for lifetime), the pin where they come from, the chip their
- * all-time level. At the table the turn light runs down as their timer and
- * the dealer chip sits bottom left. Smaller sizes drop parts, never the ring
- * (`avatarParts`). Read-only: wrap it in a pressable to make it tappable.
+ * all-time level. At the table the turn light runs down as their timer, and
+ * the dealer chip sits beside the name (on the avatar only when there is no
+ * name). Smaller sizes drop parts, never the ring (`avatarParts`). Read-only:
+ * wrap it in a pressable to make it tappable.
  */
 export type AvatarRing = 'glass' | 'gold' | 'lifetime';
 
@@ -32,8 +45,16 @@ export interface PlayerAvatarProps {
   pin?: AvatarPin | null;
   level?: number | null;
   dealer?: boolean;
-  /** `progress` is the time left, 1 to 0; the arc runs clockwise from twelve. */
-  turn?: { progress: number; urgent?: boolean } | null;
+  /**
+   * Which side the dealer chip takes. Below the avatar: that side of the name.
+   * Beside it: the name's far end, or behind the avatar if that is the side asked.
+   */
+  dealerSide?: 'left' | 'right';
+  /**
+   * `progress` is the time left, 1 to 0; the arc runs clockwise from twelve.
+   * `attention` is for your own turn: the light pings once and then breathes.
+   */
+  turn?: { progress: number; urgent?: boolean; attention?: boolean } | null;
   away?: AvatarAway | null;
   kind?: AvatarKind;
   name?: string | null;
@@ -46,6 +67,8 @@ export interface PlayerAvatarProps {
   testID?: string;
 }
 
+/** Space between the name and the dealer chip beside it. */
+const DEALER_GAP = 6;
 const FACE_GRADIENT = `linear-gradient(180deg, ${PidroBevel.panelHi} 0%, ${PidroBevel.panelMid} 60%, ${PidroBevel.panelDeep} 100%)`;
 const AWAY_OPACITY = 0.45;
 
@@ -56,6 +79,7 @@ export function PlayerAvatar({
   pin = null,
   level = null,
   dealer = false,
+  dealerSide = 'left',
   turn = null,
   away = null,
   kind = 'player',
@@ -79,9 +103,15 @@ export function PlayerAvatar({
       ? avatarLabel({ name, status, level, pin, dealer, turn, away, kind })
       : undefined);
 
+  const hasLabel = !!(name || status);
+  const dealerChip =
+    dealer && seated && parts.dealer ? <DealerChip size={parts.dealer.size} /> : null;
+
   const avatar = (
     <View style={{ width: size, height: size }}>
-      {turn && arc ? <TurnLight size={size} urgent={turn.urgent} /> : null}
+      {turn && arc ? (
+        <TurnLight size={size} arc={arc} urgent={turn.urgent} attention={turn.attention} />
+      ) : null}
 
       {seated ? (
         <View
@@ -119,6 +149,7 @@ export function PlayerAvatar({
         </View>
       )}
 
+      {turn?.attention && arc ? <TurnPing size={size} arc={arc} urgent={turn.urgent} /> : null}
       {turn && arc ? <TurnArc size={size} arc={arc} turn={turn} /> : null}
 
       {ring === 'lifetime' && gold && parts.gem ? (
@@ -180,11 +211,11 @@ export function PlayerAvatar({
         </View>
       ) : null}
 
-      {dealer && seated && parts.dealer ? (
+      {dealerChip && parts.dealer && !hasLabel ? (
         <View
           style={[styles.badge, { left: parts.dealer.left, bottom: parts.dealer.bottom }]}
           pointerEvents="none">
-          <DealerChip size={parts.dealer.size} />
+          {dealerChip}
         </View>
       ) : null}
 
@@ -192,8 +223,11 @@ export function PlayerAvatar({
     </View>
   );
 
-  const hasLabel = !!(name || status);
   const below = label === 'below';
+  // Beside the avatar the chip takes the far end of the name; asked for the
+  // other side, it sits behind the avatar instead, without moving the seat.
+  const rowChip = hasLabel && !below ? dealerChip : null;
+  const chipBehind = (label === 'right') === (dealerSide === 'left');
   const levelClearance = chip ? chip.height + chip.bottom + 3 : 4;
 
   return (
@@ -212,21 +246,50 @@ export function PlayerAvatar({
               ? { marginTop: levelClearance, alignItems: 'center', maxWidth: '100%' }
               : { alignItems: label === 'right' ? 'flex-start' : 'flex-end' },
           ]}>
-          <PidroText
-            numberOfLines={1}
-            style={[
-              styles.name,
-              parts.name,
-              { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
-              away ? styles.awayName : null,
-            ]}>
-            {name || (kind === 'open' ? 'Open seat' : '')}
-          </PidroText>
-          <PidroText
-            numberOfLines={1}
-            style={[styles.status, parts.status, { color: STATUS_TONES[statusTone] }]}>
-            {status || ' '}
-          </PidroText>
+          <View style={below ? styles.copyBlock : null}>
+            <PidroText
+              numberOfLines={1}
+              style={[
+                styles.name,
+                parts.name,
+                { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
+                away ? styles.awayName : null,
+              ]}>
+              {name || (kind === 'open' ? 'Open seat' : '')}
+            </PidroText>
+            <PidroText
+              numberOfLines={1}
+              style={[styles.status, parts.status, { color: STATUS_TONES[statusTone] }]}>
+              {status || ' '}
+            </PidroText>
+            {below && dealerChip && parts.dealer ? (
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.besideName,
+                  { marginTop: -parts.dealer.size / 2 },
+                  dealerSide === 'right'
+                    ? { right: -(parts.dealer.size + DEALER_GAP) }
+                    : { left: -(parts.dealer.size + DEALER_GAP) },
+                ]}>
+                {dealerChip}
+              </View>
+            ) : null}
+          </View>
+        </View>
+      ) : null}
+      {rowChip && !chipBehind ? <View pointerEvents="none">{rowChip}</View> : null}
+      {rowChip && chipBehind && parts.dealer ? (
+        <View
+          pointerEvents="none"
+          style={[
+            styles.besideName,
+            { marginTop: -parts.dealer.size / 2 },
+            label === 'right'
+              ? { left: -(parts.dealer.size + DEALER_GAP) }
+              : { right: -(parts.dealer.size + DEALER_GAP) },
+          ]}>
+          {rowChip}
         </View>
       ) : null}
     </View>
@@ -247,16 +310,123 @@ const STATUS_TONES = {
   danger: PidroColors.danger,
 } as const;
 
-function TurnLight({ size, urgent }: { size: number; urgent?: boolean }) {
-  const halo = size * 1.5;
-  const glow = urgent ? PidroColors.turnUrgentGlow : PidroColors.turnLightGlow;
+/** Strong ease-out: the ping leaves the ring fast and settles softly. */
+const PING_EASE = Easing.bezier(0.23, 1, 0.32, 1);
+const PING_MS = 650;
+const PING_GAP_MS = 140;
+/** One breath in or out; quicker when the timer runs low. */
+const BREATH_MS = 1100;
+const URGENT_BREATH_MS = 450;
+/** Another player's shine, held still: present, but quieter than yours. */
+const OTHER_SHINE = 0.55;
+
+/**
+ * The shine behind whoever is on turn: a soft glow just outside the timer
+ * ring. Yours breathes for as long as the turn is yours; another player's
+ * holds still and quieter, so only your turn moves on the table.
+ */
+function TurnLight({
+  size,
+  arc,
+  urgent,
+  attention,
+}: {
+  size: number;
+  arc: { radius: number; stroke: number };
+  urgent?: boolean;
+  attention?: boolean;
+}) {
+  const calm = useReducedMotion() || isStillCapture();
+  const breath = useSharedValue(1);
+  const breathing = !!attention && !calm;
+
+  useEffect(() => {
+    if (!breathing) {
+      breath.set(1);
+      return;
+    }
+    breath.set(
+      withRepeat(
+        withTiming(0.35, {
+          duration: urgent ? URGENT_BREATH_MS : BREATH_MS,
+          easing: Easing.inOut(Easing.sin),
+        }),
+        -1,
+        true
+      )
+    );
+    return () => cancelAnimation(breath);
+  }, [breathing, urgent, breath]);
+
+  const motion = useAnimatedStyle(() => ({
+    opacity: breath.value,
+    transform: [{ scale: 0.96 + 0.06 * breath.value }],
+  }));
+
+  const box = (arc.radius + arc.stroke / 2) * 2;
+  const shine = urgent ? PidroColors.turnUrgentShine : PidroColors.turnLightShine;
   return (
-    <View
+    <Animated.View
       pointerEvents="none"
       style={[
-        styles.halo,
-        gradientBg(`radial-gradient(circle, ${glow} 0%, transparent 70%)`),
-        { width: halo, height: halo, left: (size - halo) / 2, top: (size - halo) / 2 },
+        styles.shine,
+        {
+          width: box,
+          height: box,
+          left: (size - box) / 2,
+          top: (size - box) / 2,
+          boxShadow: `0px 0px ${Math.round(size * 0.42)}px ${Math.round(size * 0.14)}px ${shine}`,
+          opacity: attention ? 1 : OTHER_SHINE,
+        },
+        breathing ? motion : null,
+      ]}
+    />
+  );
+}
+
+/**
+ * Your turn starting: two rings leave the turn light and fade, a knock that
+ * says "you" without words. Plays once per turn; reduced motion skips it.
+ */
+function TurnPing({
+  size,
+  arc,
+  urgent,
+}: {
+  size: number;
+  arc: { radius: number; stroke: number };
+  urgent?: boolean;
+}) {
+  const calm = useReducedMotion() || isStillCapture();
+  const t = useSharedValue(0);
+
+  useEffect(() => {
+    if (calm) return;
+    const ping = withTiming(1, { duration: PING_MS, easing: PING_EASE });
+    t.set(withSequence(ping, withTiming(0, { duration: 0 }), withDelay(PING_GAP_MS, ping)));
+    return () => cancelAnimation(t);
+  }, [calm, t]);
+
+  const motion = useAnimatedStyle(() => ({
+    opacity: t.value > 0 ? 0.9 * (1 - t.value) : 0,
+    transform: [{ scale: 1 + 0.4 * t.value }],
+  }));
+
+  const box = (arc.radius + arc.stroke / 2) * 2;
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.ping,
+        {
+          width: box,
+          height: box,
+          left: (size - box) / 2,
+          top: (size - box) / 2,
+          borderWidth: arc.stroke,
+          borderColor: urgent ? PidroColors.turnUrgent : PidroColors.turnLight,
+        },
+        motion,
       ]}
     />
   );
@@ -409,12 +579,16 @@ const styles = StyleSheet.create({
     borderColor: PidroColors.cyanBorderStrong,
     backgroundColor: PidroColors.panel,
   },
-  halo: {
+  shine: {
     position: 'absolute',
     borderRadius: 999,
   },
   arc: {
     position: 'absolute',
+  },
+  ping: {
+    position: 'absolute',
+    borderRadius: 999,
   },
   gem: {
     position: 'absolute',
@@ -471,6 +645,14 @@ const styles = StyleSheet.create({
   copy: {
     flexShrink: 1,
     minWidth: 0,
+  },
+  copyBlock: {
+    alignItems: 'center',
+    maxWidth: '100%',
+  },
+  besideName: {
+    position: 'absolute',
+    top: '50%',
   },
   name: {
     fontFamily: PidroFonts.ui,

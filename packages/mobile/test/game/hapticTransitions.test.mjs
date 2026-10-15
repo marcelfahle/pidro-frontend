@@ -71,4 +71,22 @@ describe('table haptic transitions', () => {
     ]);
     expect(getTableHapticEvents(cuts, cuts)).toEqual([]);
   });
+
+  it('taps once when your turn starts, and not before your cards are dealt', () => {
+    const seats = (yourTurn) => ({
+      north: { cardCount: 6, isCurrentTurn: !yourTurn },
+      east: { cardCount: 6 },
+      south: { cardCount: 6, isYou: true, isCurrentTurn: yourTurn },
+      west: { cardCount: 6 },
+    });
+    const waiting = model({ seats: seats(false) });
+    const yours = model({ seats: seats(true) });
+    expect(getTableHapticEvents(waiting, yours)).toEqual(['your_turn']);
+    expect(getTableHapticEvents(yours, yours)).toEqual([]);
+    expect(getTableHapticEvents(yours, waiting)).toEqual([]);
+
+    const dealing = model({ dealStage: 'sorting', seats: seats(true) });
+    expect(getTableHapticEvents(waiting, dealing)).toEqual(['hand_shuffle']);
+    expect(getTableHapticEvents(dealing, yours)).toEqual(['your_turn']);
+  });
 });

@@ -49,6 +49,15 @@ function playTrickHaptic() {
   );
 }
 
+/** "Your turn": a two-beat tap, unlike any card or trick, so it reads without looking. */
+function playTurnHaptic() {
+  runHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
+}
+
+/** Lets the card or trick that handed you the turn land first, so the two taps stay apart. */
+const TURN_AFTER_CARD_MS = 250;
+const TURN_AFTER_TRICK_MS = 450;
+
 export function useTableHaptics(model: TableModel) {
   const reducedMotion = useReducedMotion();
   const previousModel = useRef<TableModel | null>(null);
@@ -63,7 +72,13 @@ export function useTableHaptics(model: TableModel) {
       timers.current.add(timer);
     };
 
-    for (const event of getTableHapticEvents(previousModel.current, model)) {
+    const events = getTableHapticEvents(previousModel.current, model);
+    for (const event of events) {
+      if (event === 'your_turn') {
+        if (events.includes('trick_complete')) schedule(playTurnHaptic, TURN_AFTER_TRICK_MS);
+        else if (events.includes('card_landed')) schedule(playTurnHaptic, TURN_AFTER_CARD_MS);
+        else playTurnHaptic();
+      }
       if (event === 'deal_packet' || event === 'card_landed') playDealPacketHaptic();
       if (event === 'trick_complete') playTrickHaptic();
       if (event === 'hand_shuffle') {

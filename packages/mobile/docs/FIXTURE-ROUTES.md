@@ -48,7 +48,9 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 | `notice`     | `true`                                                                                    | same as `feedback=notice`; on a waiting phase, a join notice below the toolbar            |
 | `connection` | `lost`                                                                                    | with `role=`: the channel is down, so the table shows its Reconnecting… banner            |
 | `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                               |
-| `names`      | `long`                                                                                    | west seat → "Alexandria the Long-Named Player" (wrapping)                                 |
+| `names`      | `long`                                                                                    | waiting: west seat → "Alexandria the Long-Named Player" (wrapping); table: Classic-length names on every seat (ThunderThor88 …) |
+| `dealer`     | `north` · `east` · `south` · `west`                                                       | table (mock model): who holds the dealer chip, default `south`                            |
+| `timer`      | `running`                                                                                 | table (mock model): a 20 s turn timer on the seat on turn; amber in its last quarter      |
 | `playerName` | any string                                                                                | name in the first seat decision                                                           |
 | `viewer`     | `east`                                                                                    | you are east instead of south                                                             |
 | `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you |

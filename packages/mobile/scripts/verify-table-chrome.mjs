@@ -45,16 +45,30 @@ try {
     const settingsBox = await settings.boundingBox();
     assertInsideViewport('score', scoreBox, viewport);
     assertInsideViewport('settings', settingsBox, viewport);
-    assert(scoreBox.x >= viewport.left + 8 && scoreBox.y >= viewport.top + 8);
+    // Below a notch or island the header row sits on the safe inset (the game
+    // hides the status bar); with no top inset it keeps 8pt from the edge.
+    assert(scoreBox.x >= viewport.left + 8 && scoreBox.y >= (viewport.top || 8));
     assert(settingsBox.x + settingsBox.width <= viewport.width - viewport.right - 8);
     assert(scoreBox.x + scoreBox.width < settingsBox.x);
     if (viewport.height > viewport.width) {
       const fan = await page.getByTestId('seat-north-cards').boundingBox();
       const north = await page.getByTestId('seat-north').boundingBox();
       assert(scoreBox.y + scoreBox.height <= fan.y, 'score must clear north fan');
+      const overlaps = (a, b) =>
+        a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
       for (const seat of ['east', 'west']) {
         const side = await page.getByTestId(`seat-${seat}`).boundingBox();
-        assert(north.y + north.height < side.y, 'north and side plaques must not overlap');
+        // Side columns may rise beside North's; they only must not touch it.
+        assert(!overlaps(north, side), 'north and side plaques must not overlap');
+        const stack = await page
+          .getByTestId(`seat-${seat}-cards`)
+          .locator(':scope > div')
+          .first()
+          .boundingBox();
+        assert(
+          side.y + side.height <= stack.y,
+          `${seat} must sit above its card stack in ${viewport.name}: seat=${JSON.stringify(side)} stack=${JSON.stringify(stack)}`
+        );
       }
     }
     await assertMinimumTouchTargets(page, 'table chrome', viewport);

@@ -2,7 +2,12 @@ import type { RelativePosition } from '@/types/game';
 import type { TableModel } from './canvas/tableModel';
 
 export type TableHapticEvent =
-  'deal_packet' | 'hand_shuffle' | 'card_landed' | 'trick_complete' | 'dealer_cut_sequence';
+  | 'deal_packet'
+  | 'hand_shuffle'
+  | 'card_landed'
+  | 'trick_complete'
+  | 'dealer_cut_sequence'
+  | 'your_turn';
 
 function dealtCardCount(model: TableModel): number {
   return Object.values(model.seats).reduce((total, seat) => total + (seat?.cardCount ?? 0), 0);
@@ -11,6 +16,13 @@ function dealtCardCount(model: TableModel): number {
 function playedCards(model: TableModel): { key: string; seat: RelativePosition }[] {
   return (['north', 'east', 'south', 'west'] as const).flatMap((seat) =>
     (model.playedCards[seat] ?? []).map((card) => ({ key: card.key, seat }))
+  );
+}
+
+/** Your turn counts once your cards are in hand, not while they are still being dealt. */
+function isYourTurn(model: TableModel): boolean {
+  return (
+    !model.dealStage && Object.values(model.seats).some((seat) => seat?.isYou && seat.isCurrentTurn)
   );
 }
 
@@ -52,5 +64,6 @@ export function getTableHapticEvents(
   ) {
     events.push('dealer_cut_sequence');
   }
+  if (isYourTurn(next) && !isYourTurn(previous)) events.push('your_turn');
   return events;
 }

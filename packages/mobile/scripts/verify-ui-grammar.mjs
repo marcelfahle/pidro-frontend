@@ -1347,9 +1347,12 @@ async function assertSeatPlacement(page, viewport) {
     }
   }
 
-  const maxSeatWidth = portrait ? 112 : 132;
+  // Portrait: North and South own a centered name column; East and West share
+  // the rest. Landscape labels sit beside the avatar and stay compact.
+  const maxSeatWidth = (position) =>
+    !portrait ? 132 : position === 'north' || position === 'south' ? 156 : 112;
   for (const position of ['north', 'east', 'south', 'west']) {
-    if (seats[position].width > maxSeatWidth) {
+    if (seats[position].width > maxSeatWidth(position)) {
       throw new Error(
         `seat-${position} exceeds the compact ${viewport.name} width: ${JSON.stringify(seats[position])}`
       );
@@ -1427,6 +1430,11 @@ async function main() {
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
+      });
+      // Endless motion (your breathing turn light) holds its resting frame, so a
+      // baseline never catches it mid-breath. See src/utils/stillCapture.ts.
+      await context.addInitScript(() => {
+        globalThis.__pidroStill = true;
       });
       const screenshotDir = resolve(screenshotRoot, viewport.name);
       await mkdir(screenshotDir, { recursive: true });
