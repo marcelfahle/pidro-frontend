@@ -140,9 +140,9 @@ try {
       requests[1],
       {
         rule_set: otherRule.toLowerCase(),
-        seats: { seat_2: 'open', seat_3: 'open', seat_4: 'ai' },
+        seats: { seat_2: 'open', seat_3: { type: 'open', min_games: 100 }, seat_4: 'ai' },
       },
-      'requirements and name never leave the client; Friend is sent as open'
+      'open seats send their requirement; no name is sent and Friend stays open'
     );
     await radio(form, 'Partner seat', 'Bot').click();
     assert.equal(
@@ -157,7 +157,7 @@ try {
     await radio(form, 'Partner seat', 'Open').click();
     await checked(radio(form, 'Partner seat', 'Anyone'));
     console.log(
-      `creation ok: ${viewport.name} — inline radios, 44px rows/targets, local requirements, no name, preferred rules, footer, reset`
+      `creation ok: ${viewport.name} — inline radios, 44px rows/targets, seat requirements, no name, preferred rules, footer, reset`
     );
     await context.close();
   }

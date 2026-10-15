@@ -92,7 +92,17 @@ const allCases = [
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'league', path: '/league', testId: 'league-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
-  ...['list', 'badges', 'locked', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].map((fixture) => ({
+  ...[
+    'list',
+    'badges',
+    'locked',
+    'empty',
+    'rejoin',
+    'open',
+    'substitute',
+    'watch',
+    'search-empty',
+  ].map((fixture) => ({
     name: `lobby-${fixture}`,
     path: `/lobby?fixture=${fixture}`,
     testId: fixture === 'empty' ? 'lobby-empty' : 'lobby-screen',
@@ -633,9 +643,17 @@ async function assertLobbyPresentation(page, testCase) {
     assert.equal(await row('OPEN3').getByTestId('seat-requirement').innerText(), '1000+');
   }
   if (fixture === 'locked') {
-    await row('OPEN1').getByRole('button', { name: 'south seat locked, 100 games played needed, you have 40', exact: true }).click();
+    await row('OPEN1')
+      .getByRole('button', {
+        name: 'south seat locked, 100 games played needed, you have 40',
+        exact: true,
+      })
+      .click();
     await row('OPEN1').getByRole('alert').waitFor();
-    assert.equal(await row('OPEN1').getByRole('alert').innerText(), '100 games played needed, you have 40');
+    assert.equal(
+      await row('OPEN1').getByRole('alert').innerText(),
+      '100 games played needed, you have 40'
+    );
   }
   if (['list', 'search-empty', 'substitute'].includes(fixture)) {
     for (const name of ['Anna', 'Pekka', 'Liisa', 'Jussi left in hand 3'])

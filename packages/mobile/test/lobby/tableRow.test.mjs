@@ -24,7 +24,9 @@ describe('lobby table rows', () => {
     const seats = [{ position: 'south', status: 'free', player: null, vacated_by: 'Jussi' }];
     expect(tableRow(room({ game }), 'spectatable').status).toBe('Hand 4 · -5 to 21');
     expect(tableRow(room(), 'spectatable').status).toBe('Playing');
-    expect(tableRow(room({ game, seats }), 'substitute_needed').status).toBe('Jussi left in hand 4');
+    expect(tableRow(room({ game, seats }), 'substitute_needed').status).toBe(
+      'Jussi left in hand 4'
+    );
     expect(tableRow(room({ seats }), 'substitute_needed').status).toBe('Needs a substitute');
     expect(tableRow(room({ game }), 'substitute_needed').status).toBe('Needs a substitute');
   });
@@ -35,7 +37,12 @@ describe('lobby table rows', () => {
       { ...player('north', 'Claas'), min_games: 1000 },
       { ...player('east', 'Bot', { is_bot: true }), min_games: 1000 },
     ];
-    for (const [count, reason] of [[40, '100 games played needed, you have 40'], [100, undefined], [101, undefined], [undefined, undefined]]) {
+    for (const [count, reason] of [
+      [40, '100 games played needed, you have 40'],
+      [100, undefined],
+      [101, undefined],
+      [undefined, undefined],
+    ]) {
       const result = tableRow(room({ seats }), 'open_tables', count);
       expect(result.seats[1].requirementReason).toBe(reason);
       expect(result.seats[1].minGames).toBe(100);
@@ -43,7 +50,9 @@ describe('lobby table rows', () => {
       expect(result.seats[2].minGames).toBe(0);
     }
     for (const category of ['my_rejoinable', 'substitute_needed', 'spectatable'])
-      expect(tableRow(room({ seats, status: 'playing' }), category, 0).seats[1].requirementReason).toBeUndefined();
+      expect(
+        tableRow(room({ seats, status: 'playing' }), category, 0).seats[1].requirementReason
+      ).toBeUndefined();
     expect(tableRow(room(), 'open_tables', 0).seats[1].requirementReason).toBeUndefined();
   });
 
@@ -120,7 +129,10 @@ describe('lobby table rows', () => {
   });
 
   it('keeps north/south first when the server has no host', () => {
-    const result = tableRow(room({ host_id: null, positions: { east: null, west: null } }), 'open_tables');
+    const result = tableRow(
+      room({ host_id: null, positions: { east: null, west: null } }),
+      'open_tables'
+    );
     expect(result.seats.map((seat) => seat.position)).toEqual(positions);
   });
 

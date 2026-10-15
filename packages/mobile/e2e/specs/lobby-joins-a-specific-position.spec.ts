@@ -166,40 +166,61 @@ test('Watch shows the hand and score of a playing table', async ({
   baseURL,
 }) => {
   const host = await register(newPlayer());
+  const partner = await register(newPlayer());
+  const watcher = await register(player);
   const created = await api('/api/v1/rooms', {
     method: 'POST',
     token: host.token,
-    body: { seats: { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' } },
+    body: { seats: { seat_2: 'ai', seat_3: 'open', seat_4: 'ai' } },
   });
   expect(created.status).toBe(201);
   const code = created.payload.data.code;
+  expect(
+    (
+      await api(`/api/v1/rooms/${code}/join`, {
+        method: 'POST',
+        token: partner.token,
+        body: { position: 'south' },
+      })
+    ).status
+  ).toBe(200);
   const hostContext = await browser.newContext({ baseURL });
+  const partnerContext = await browser.newContext({ baseURL });
   try {
-    const hostPage = await hostContext.newPage();
-    await hostPage.addInitScript(() => {
-      localStorage.setItem(
-        'age-gate-storage',
-        JSON.stringify({
-          state: { ageBand: '18_plus', termsVersion: '1' },
-          version: 0,
-        })
-      );
-    });
-    await startSignedIn(hostPage, host);
-    await hostPage.goto(`/game/${code}`);
-    await hostPage.getByRole('button', { name: "I'm ready", exact: true }).click();
-    await expect
-      .poll(
-        async () =>
-          (await api(`/api/v1/rooms/${code}`, { token: host.token })).payload.data.room.status
-      )
-      .toBe('playing');
-    await startSignedIn(page, await register(player));
+    // All-bot opponents make a private solo table, so keep two real players seated.
+    const seated = [];
+    for (const [context, session] of [
+      [hostContext, host],
+      [partnerContext, partner],
+    ] as const) {
+      const seatPage = await context.newPage();
+      await seatPage.addInitScript(() => {
+        localStorage.setItem(
+          'age-gate-storage',
+          JSON.stringify({
+            state: { ageBand: '18_plus', termsVersion: '1' },
+            version: 0,
+          })
+        );
+      });
+      await startSignedIn(seatPage, session);
+      await seatPage.goto(`/game/${code}`);
+      await expect(seatPage.getByRole('button', { name: "I'm ready", exact: true })).toBeEnabled();
+      seated.push(seatPage);
+    }
+    await startSignedIn(page, watcher);
     await page.goto('/lobby');
+    await expect(page.getByTestId('lobby-screen')).toBeVisible();
+    await Promise.all(
+      seated.map((seatPage) =>
+        seatPage.getByRole('button', { name: "I'm ready", exact: true }).click()
+      )
+    );
     const row = page.getByTestId(`lobby-table-${code}`);
     await expect(row.getByRole('button', { name: 'Watch', exact: true })).toBeVisible();
     await expect(row.getByText(/^Hand \d+ · -?\d+ to -?\d+$/)).toBeVisible();
   } finally {
     await hostContext.close();
+    await partnerContext.close();
   }
 });

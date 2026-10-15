@@ -26,15 +26,27 @@ describe('new table request', () => {
   });
 
   it('sends requirements only for open seats, preserving Anyone as the old string', () => {
-    expect(newTableRequest('finnish', { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
-      { seat_2: 100, seat_3: 1000, seat_4: 0 }).request.seats).toEqual({
+    expect(
+      newTableRequest(
+        'finnish',
+        { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
+        { seat_2: 100, seat_3: 1000, seat_4: 0 }
+      ).request.seats
+    ).toEqual({
       seat_2: { type: 'open', min_games: 100 },
       seat_3: { type: 'open', min_games: 1000 },
       seat_4: 'open',
     });
-    expect(newTableRequest('louisiana', { seat_2: 'ai', seat_3: 'invite', seat_4: 'open' },
-      { seat_2: 100, seat_3: 1000 }).request.seats).toEqual({
-      seat_2: 'ai', seat_3: 'open', seat_4: 'open',
+    expect(
+      newTableRequest(
+        'louisiana',
+        { seat_2: 'ai', seat_3: 'invite', seat_4: 'open' },
+        { seat_2: 100, seat_3: 1000 }
+      ).request.seats
+    ).toEqual({
+      seat_2: 'ai',
+      seat_3: 'open',
+      seat_4: 'open',
     });
   });
 });
