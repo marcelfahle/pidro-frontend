@@ -34,7 +34,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { Card } from '@/types/game';
 import { DealerChip } from '@/components/game/DealerChip';
-import { computeLayout } from './layout';
+import { computeLayout, handLeft, handScale } from './layout';
 import { T } from './tokens';
 import type { CardTextures } from './cardTextures';
 import type { TableModel } from './tableModel';
@@ -122,7 +122,7 @@ export default function GameCanvas({
     </Canvas>
   );
 
-  const renderedHandHeight = L.cardH * (L.profile.endsWith('landscape') ? 0.9 : 1);
+  const renderedHandHeight = L.cardH * handScale(L.profile);
 
   return (
     <GestureDetector gesture={gesture}>
@@ -150,7 +150,7 @@ export default function GameCanvas({
           style={{
             position: 'absolute',
             top: L.hand.cy - renderedHandHeight / 2,
-            left: 0,
+            left: handLeft(L, model.yourHand.length),
             width: 1,
             height: 1,
           }}

@@ -92,7 +92,7 @@ export function PlayerAvatar({
   style,
   testID,
 }: PlayerAvatarProps) {
-  const parts = avatarParts(size);
+  const parts = avatarParts(size, { beside: label !== 'below' });
   const seated = kind !== 'open';
   const gold = ring !== 'glass' && kind === 'player';
   const chip = seated && level != null ? parts.level : null;

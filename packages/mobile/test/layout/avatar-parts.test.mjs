@@ -57,6 +57,13 @@ describe('avatar parts by size', () => {
     expect(parts.dealer).toBeNull();
   });
 
+  it('gives a label beside a landscape seat the larger type, but not one below', () => {
+    expect(avatarParts(52, { beside: true }).name.fontSize).toBe(16);
+    expect(avatarParts(52, { beside: true }).status.fontSize).toBe(13);
+    expect(avatarParts(56).name.fontSize).toBe(13);
+    expect(avatarParts(44, { beside: true }).name.fontSize).toBe(13);
+  });
+
   it('is the ring alone at 24', () => {
     expect(avatarParts(24)).toMatchObject({
       ring: 1.5,

@@ -90,6 +90,24 @@ export function tickerPlacement(
   const room = fanLeft + backW / 2 - plaqueLeft - TICKER_CHEVRON;
   return { lineMaxWidth: clamp(room, TICKER_LINE_MIN, TICKER_LINE_MAX), drop: 0 };
 }
+/**
+ * Seat avatars, from the Table boards. Landscape phones draw them larger:
+ * many players are older and read the table at arm's length (PID-217).
+ */
+export const AVATAR_SIZE: Record<Profile, number> = {
+  'phone-portrait': 56,
+  'phone-landscape': 52,
+  'tablet-portrait': 64,
+  'tablet-landscape': 64,
+};
+/** Between a landscape avatar and its name. */
+export const seatNameGap = (profile: Profile) => (profile.startsWith('tablet') ? 14 : 10);
+/** Landscape South's avatar shares the scoreboard divider's axis, ~70pt in. */
+export const LANDSCAPE_SOUTH_LEFT = 70;
+/** The least of South's name a landscape hand leaves room for. */
+export const SOUTH_NAME_MIN = 56;
+/** A full hand, as dealt. */
+const FULL_HAND = 9;
 /** A tight seat: the avatar alone, its name beside it, no level chip. */
 export const TIGHT_AVATAR = 44;
 /** Your tight seat sits left of the hand: the avatar and a gap. */
@@ -144,14 +162,19 @@ export function playedCardTarget(
   return { x, y, rot, scale: pileScale };
 }
 
+const HAND_STEP = 0.72;
 /** Step between hand cards: a straight row, squeezed to fit the hand's width. */
 export function handStep(L: TableLayout, n: number): number {
-  return n > 1 ? Math.min(L.cardW * 0.72, (L.hand.maxWidth - L.cardW) / (n - 1)) : 0;
+  const cardW = L.cardW * handScale(L.profile);
+  return n > 1 ? Math.min(L.cardW * HAND_STEP, (L.hand.maxWidth - cardW) / (n - 1)) : 0;
 }
 
-/** Landscape draws the hand a touch smaller; the south seat sits beside it. */
+/**
+ * How large your hand is drawn. Landscape phones draw it larger, ranks
+ * readable at arm's length (PID-217); landscape tablets a touch smaller.
+ */
 export function handScale(profile: Profile): number {
-  return profile.endsWith('landscape') ? 0.9 : 1;
+  return profile === 'phone-landscape' ? 1.2 : profile === 'tablet-landscape' ? 0.9 : 1;
 }
 
 /** Left edge of an n-card hand, a lifted (playable) card included. */
@@ -227,12 +250,12 @@ export function computeLayout(
   const tight = portrait && !tabletPortrait && fitR(roomy.band, COMPACT_PILE_SCALE) < MIN_COMFORT_R;
   const { handY: portraitHandY, northBottom, band } = portraitBand(tight);
   const compact = portrait && fitR(band, PILE_SCALE) < usualR;
-  const handY = portrait ? portraitHandY : tableBottom - cardH * 0.56;
+  const handH = cardH * handScale(profile);
+  const handY = portrait ? portraitHandY : tableBottom - handH / 2 - cardH * 0.11;
   const trickCy = portrait ? northBottom + band / 2 : height * 0.49;
   // Landscape: your played card lands above the hand. Short phones shrink the
   // circle and its cards until it does.
-  const landscapeR = (scale: number) =>
-    handY - (cardH * handScale(profile)) / 2 - 8 - (cardH * scale) / 2 - trickCy;
+  const landscapeR = (scale: number) => handY - handH / 2 - 8 - (cardH * scale) / 2 - trickCy;
   const shortLandscape = !portrait && landscapeR(LANDSCAPE_PILE_SCALE) < usualR;
   const pileScale = portrait
     ? compact
@@ -251,6 +274,23 @@ export function computeLayout(
   const sideCy = portrait ? trickCy : trickCy + LANDSCAPE_SIDE_DROP;
   // Played cards leave from here; portrait keeps its historical screen-center origin.
   const sideY = portrait ? cy : sideCy;
+
+  // Landscape: your seat sits left of your hand, its name running toward it.
+  // The hand stays on the table's axis, or moves as little right of it as a
+  // full hand needs to clear the seat; only past that does it squeeze.
+  const handRoomLeft =
+    insets.left +
+    LANDSCAPE_SOUTH_LEFT +
+    AVATAR_SIZE[profile] +
+    seatNameGap(profile) +
+    SOUTH_NAME_MIN +
+    8;
+  const handRoomRight = width - insets.right - 16;
+  const fullHand = cardW * handScale(profile) + (FULL_HAND - 1) * cardW * HAND_STEP;
+  const landscapeHandCx = Math.max(
+    cx,
+    handRoomLeft + Math.min(fullHand, handRoomRight - handRoomLeft) / 2
+  );
 
   const seats: Record<RelativePosition, Seat> = {
     south: { x: cx, y: handY, rot: 0, hand: { x: cx, y: handY } },
@@ -281,10 +321,16 @@ export function computeLayout(
     sides: { cy: sideCy },
     seats,
     // A tight hand makes room on its left for your avatar.
-    hand: {
-      cx: tight ? cx + TIGHT_SOUTH_SLOT / 2 : cx,
-      cy: handY,
-      maxWidth: width - insets.left - insets.right - 32 - (tight ? TIGHT_SOUTH_SLOT : 0),
-    },
+    hand: portrait
+      ? {
+          cx: tight ? cx + TIGHT_SOUTH_SLOT / 2 : cx,
+          cy: handY,
+          maxWidth: width - insets.left - insets.right - 32 - (tight ? TIGHT_SOUTH_SLOT : 0),
+        }
+      : {
+          cx: landscapeHandCx,
+          cy: handY,
+          maxWidth: 2 * Math.min(landscapeHandCx - handRoomLeft, handRoomRight - landscapeHandCx),
+        },
   };
 }

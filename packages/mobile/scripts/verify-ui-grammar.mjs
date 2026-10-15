@@ -1412,6 +1412,15 @@ async function assertSeatPlacement(page, viewport) {
     );
   }
 
+  if (!portrait) {
+    const hand = await getStableBox(page.getByTestId('player-hand-top').first(), page);
+    if (seats.south.x + seats.south.width > hand.x) {
+      throw new Error(
+        `seat-south runs into the landscape hand: south=${JSON.stringify(seats.south)} handLeft=${hand.x}`
+      );
+    }
+  }
+
   if (!portrait && seats.north.x <= horizontalCenter + 8) {
     throw new Error(
       `seat-north is not parked right of the landscape hand: ${JSON.stringify(seats.north)}`

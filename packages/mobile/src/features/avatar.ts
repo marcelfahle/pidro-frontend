@@ -71,18 +71,25 @@ export interface AvatarParts {
   } | null;
   dealer: { size: number; left: number; bottom: number } | null;
   turn: { radius: number; stroke: number } | null;
-  /** Name and status type: phone sizes below 64, iPad sizes from 64 up. */
+  /** Name and status type: phone sizes below 64, iPad sizes from 64 up (52 beside). */
   name: { fontSize: number; lineHeight: number };
   status: { fontSize: number; lineHeight: number };
 }
 
-export function avatarParts(size: number): AvatarParts {
+/**
+ * A label beside the avatar has the avatar's height to itself, so from 52 up
+ * it takes the larger type: landscape phone seats read at arm's length.
+ */
+const BESIDE_LARGE_TYPE = 52;
+
+export function avatarParts(size: number, { beside = false } = {}): AvatarParts {
   const [ring] = at(RING, size) ?? [RING[0][1]];
   const pin = at(PIN, size);
   const level = at(LEVEL, size);
   const dealer = at(DEALER, size);
   const turn = at(TURN, size);
   const large = size >= 64;
+  const largeType = large || (beside && size >= BESIDE_LARGE_TYPE);
 
   return {
     ring: half(ring),
@@ -108,8 +115,8 @@ export function avatarParts(size: number): AvatarParts {
       bottom: Math.round(dealer[2]),
     },
     turn: turn && { radius: half(size / 2 + turn[0]), stroke: half(turn[1]) },
-    name: large ? { fontSize: 16, lineHeight: 20 } : { fontSize: 13, lineHeight: 16 },
-    status: large ? { fontSize: 13, lineHeight: 17 } : { fontSize: 11, lineHeight: 14 },
+    name: largeType ? { fontSize: 16, lineHeight: 20 } : { fontSize: 13, lineHeight: 16 },
+    status: largeType ? { fontSize: 13, lineHeight: 17 } : { fontSize: 11, lineHeight: 14 },
   };
 }
 

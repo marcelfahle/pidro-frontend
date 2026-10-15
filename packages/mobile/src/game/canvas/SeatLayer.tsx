@@ -30,16 +30,20 @@ import { PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts } from '@/features/avatar';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import {
+  AVATAR_SIZE,
   computeLayout,
   handLeft,
+  LANDSCAPE_SOUTH_LEFT,
   northBackWidth,
   northFanTop,
   northFanWidth,
+  seatNameGap,
+  SOUTH_NAME_MIN,
   TIGHT_AVATAR,
   TIGHT_SOUTH_SLOT,
-  type Profile,
   type RelativePosition,
 } from './layout';
+import { TABLE_HEADER } from './TableChrome';
 import type { TableSeat } from './tableModel';
 import { DEAL_PACKET_CARD_STAGGER_MS, DEAL_PACKET_TRAVEL_MS } from './animationTiming';
 
@@ -48,14 +52,6 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 
 const BACK: ImageSourcePropType =
   Platform.OS === 'web' ? { uri: '/cards/cardback.png' } : require('~/assets/images/cardback.png');
-
-/** Avatar sizes from the Table boards. */
-const AVATAR_SIZE: Record<Profile, number> = {
-  'phone-portrait': 56,
-  'phone-landscape': 44,
-  'tablet-portrait': 64,
-  'tablet-landscape': 64,
-};
 
 /** The line under a seat's name. `now` is the player on turn. */
 export type SeatLine = { text: string; tone?: 'now' | 'quiet' | 'danger' };
@@ -152,7 +148,7 @@ export function SeatLayer({
   // themselves; east and west get what North's column leaves them. Landscape
   // caps the label's reach and leaves the turn light room, as the boards do,
   // plus room for the dealer chip after the name.
-  const gap = tablet ? 14 : 10;
+  const gap = seatNameGap(L.profile);
   const centerColumn = tablet ? 200 : 156;
   const sideColumn = Math.min(
     tablet ? 150 : 112,
@@ -160,11 +156,11 @@ export function SeatLayer({
   );
   // The scoreboard divider is ~70pt from the safe-area edge. Reusing that
   // vertical axis gives the landscape table a deliberate left rail.
-  const landscapeSouthLeft = insets.left + 70;
+  const landscapeSouthLeft = insets.left + LANDSCAPE_SOUTH_LEFT;
   // Landscape South's name runs toward the hand, so it gets what the hand leaves.
   const southReach = clamp(
     handLeft(L, seats.south?.cardCount ?? 9) - (landscapeSouthLeft + size + gap) - PidroSpacing.sm,
-    56,
+    SOUTH_NAME_MIN,
     tablet ? 160 : 104
   );
   // The dealer chip faces the table: right of West's name, left of everyone
@@ -235,9 +231,16 @@ export function SeatLayer({
           sideStackMaxHeight / 2
       )
     : L.sides.cy;
+  // Landscape seats sit above that line, but never rise into the header row:
+  // on the shortest phones they eat into the stacks' drop instead.
   const sideSeatPos = portrait
     ? { top: sideSeatTop }
-    : { bottom: height - sideStackTop + PidroSpacing.sm };
+    : {
+        top: Math.max(
+          insets.top + TABLE_HEADER + PidroSpacing.xs,
+          sideStackTop - PidroSpacing.sm - size
+        ),
+      };
   const sideInset = tight ? PidroSpacing.xs : portrait ? 0 : 12;
 
   return (
