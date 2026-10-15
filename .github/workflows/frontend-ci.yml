@@ -88,6 +88,8 @@ jobs:
             viewports: compact-portrait,compact-landscape,tablet-portrait,home-tablet-portrait,tablet-landscape
           - shard: suites
             viewports: ''
+          - shard: seats-and-game-over
+            viewports: ''
 
     steps:
       - name: Check out repository
@@ -128,6 +130,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
           UI_SHOT_DIR: /tmp/ui-grammar-screens
           UI_VIEWPORTS: ${{ matrix.viewports }}
+          UI_SHARD: ${{ matrix.shard }}
         run: |
           cleanup() {
             kill "$expo_pid" 2>/dev/null || true
@@ -160,22 +163,23 @@ jobs:
             exit 0
           fi
 
-          # The suites shard: the remaining suites, independent of the screenshot matrix.
+          # The remaining suites are independent of the screenshot matrix and of each other.
+          if [ "$UI_SHARD" = "seats-and-game-over" ]; then
+            # Additional sizes/scales are assertion-gated; their captures are diagnostic artifacts.
+            # The waiting-room pixel baselines come from the test:ui shards (three standard viewports).
+            UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs
+            # Bound Metro/SSR retention: the waiting-seat matrix approaches the heap limit.
+            cleanup
+            start_expo
+            UI_SHOT_DIR=/tmp/ui-grammar-screens/game-over node scripts/verify-game-over.mjs
+            exit 0
+          fi
+
           UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
           node scripts/verify-seat-decisions.mjs
           node scripts/verify-dealing.mjs
           UI_SHOT_DIR=/tmp/lobby-screens node scripts/verify-lobby.mjs
           UI_SHOT_DIR=/tmp/ui-grammar-screens/creation node scripts/verify-create-room.mjs
-          # Bound Metro/SSR retention: the preceding suites approach the heap limit.
-          # Waiting-seat checks are independent and need no state from earlier suites.
-          cleanup
-          start_expo
-          # Additional sizes/scales are assertion-gated; their captures are diagnostic artifacts.
-          # The waiting-room pixel baselines come from the test:ui shards (three standard viewports).
-          UI_SHOT_DIR=/tmp/ui-grammar-screens/waiting-seats node scripts/verify-waiting-seats.mjs
-          cleanup
-          start_expo
-          UI_SHOT_DIR=/tmp/ui-grammar-screens/game-over node scripts/verify-game-over.mjs
 
       - name: Upload shard screenshots
         if: always()
