@@ -46,7 +46,9 @@ for (const shape of shapes) {
         await page.goto('/login');
         await answerNextTap(page, await shape.answer(identity(`down-${player.id}`)));
         await login.button(shape.button).click();
-        await expect(login.alert).toContainText('This sign-in provider is temporarily unavailable.');
+        await expect(login.alert).toContainText(
+          'This sign-in provider is temporarily unavailable.'
+        );
         await expect(login.button(shape.button)).toBeEnabled();
         expect((await sessionOf(page))?.user ?? null).toBeNull();
       });
