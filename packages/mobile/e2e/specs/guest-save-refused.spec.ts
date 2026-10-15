@@ -24,7 +24,7 @@ test('a taken email, a taken name and a Classic name are refused on the field, a
   await expect(alerts).toHaveText([/email/i]);
 
   await sheet.save(player.email, player.password, holder.name);
-  await expect(alerts).toHaveText([/username/i]);
+  await expect(alerts).toHaveText(['That name is taken.']);
 
   await sheet.save(player.email, player.password, RESERVED_CLASSIC_NAME);
   await expect(sheet.root.getByText('That name is taken.')).toBeVisible();

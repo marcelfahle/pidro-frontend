@@ -47,6 +47,21 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('authoritative lifecycle and owner decisions', () => {
+  it('preserves missing names separately from a real user called A player', () => {
+    const value = snapshot(2);
+    value.seats.north.decision = { id: 'n1', player_name: null };
+    useGameStore.getState().applySeatLifecycle(value);
+    const { result } = renderHook(() => useSeatDecisions(vi.fn(), vi.fn()));
+    const key = result.current.decision?.key;
+    expect(result.current.decision).toMatchObject({ playerName: 'A player', playerNameRaw: null });
+    const named = snapshot(3);
+    named.seats.north.decision = { id: 'n1', player_name: 'A player' };
+    act(() => useGameStore.getState().applySeatLifecycle(named));
+    expect(result.current.decision).toMatchObject({
+      key, playerName: 'A player', playerNameRaw: 'A player',
+    });
+  });
+
   it('hydrates each lifecycle state without prior events and ignores stale snapshots and lobby updates', () => {
     const value = snapshot(2);
     value.seats.north = {
@@ -256,13 +271,15 @@ describe('authoritative lifecycle and owner decisions', () => {
   });
 
   it('allows a generation-checked retry after timeout and failed reconciliation', async () => {
-    const push = vi.fn().mockRejectedValue({ reason: 'timeout' });
+    const cause = { error_code: 'seat_not_controlled', reason: 'timeout' };
+    const push = vi.fn().mockRejectedValue(cause);
     const refresh = vi.fn().mockRejectedValue(new Error('offline'));
     const { result } = renderHook(() => useSeatDecisions(push, refresh));
     await act(() => result.current.openSeat());
     expect(result.current.busy).toBe(false);
     expect(result.current.pendingCount).toBe(3);
-    expect(result.current.error).not.toContain('timeout');
+    expect(result.current.error).toBe('Could not confirm the seat update. Please try again.');
+    expect(result.current.errorCause).toBe(cause);
     await act(() => result.current.openSeat());
     expect(push).toHaveBeenCalledTimes(2);
     expect(push).toHaveBeenLastCalledWith('open_seat', { position: 'north', decision_id: 'n1' });

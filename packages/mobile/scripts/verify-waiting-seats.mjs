@@ -136,7 +136,7 @@ try {
           await page.waitForTimeout(400);
           await page.screenshot({ path: `${shots}/table-menu.png` });
         }
-        await page.getByRole('button', { name: 'Close', exact: true }).click();
+        await page.getByRole('button', { name: 'Close Table settings', exact: true }).click();
       }
     }
     await page.goto(`${baseUrl}/table-dev?phase=ready-host&role=spectator`);
@@ -178,7 +178,7 @@ try {
   await page.getByTestId('waiting-seat-east').getByText('Open seat', { exact: true }).waitFor();
   await page.getByRole('button', { name: 'Manage mfios1', exact: true }).click();
   await page.getByRole('button', { name: /Move to Opponents.*East/i }).click();
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: 'Close Table settings', exact: true }).click();
   await page.getByTestId('waiting-seat-east').getByText('mfios1', { exact: true }).waitFor();
   assert.equal(await avatar('east'), westAvatar, 'Moved player lost avatar');
   await page.getByTestId('waiting-seat-west').getByText('Open seat', { exact: true }).waitFor();
@@ -207,7 +207,7 @@ try {
   await page.goto(`${baseUrl}/table-dev?phase=ready-solo&viewer=east`);
   await page
     .getByTestId('waiting-seat-east')
-    .getByRole('button', { name: /Alex, You, Pending/ })
+    .getByRole('button', { name: 'Alex, You, Not ready. View profile', exact: true })
     .waitFor();
   assert.equal(await page.getByTestId('waiting-ready-east').count(), 0);
   await page.getByText('3 of 4 ready', { exact: true }).waitFor();
@@ -218,11 +218,11 @@ try {
   await page.goto(`${baseUrl}/table-dev?phase=ready&viewer=east`);
   await page
     .getByTestId('waiting-seat-east')
-    .getByRole('button', { name: /mfand1, You, Pending/ })
+    .getByRole('button', { name: 'mfand1, You, Not ready. View profile', exact: true })
     .waitFor();
   await page
     .getByTestId('waiting-seat-west')
-    .getByRole('button', { name: /mfios1, Partner, Ready/ })
+    .getByRole('button', { name: 'mfios1, Partner, Ready. View profile', exact: true })
     .waitFor();
   assert.equal(await avatar('east'), eastAvatar, 'Viewer rotation changed identity');
 

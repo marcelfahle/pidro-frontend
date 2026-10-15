@@ -5,7 +5,7 @@ import { DecisionWindow } from '@/components/ui/DecisionWindow';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
-import { computeLayout, northBackWidth, northFanTop, TIGHT_AVATAR } from '@/game/canvas/layout';
+import { computeLayout, northSeatBottom } from '@/game/canvas/layout';
 import { useTableReserves } from '@/game/canvas/TableChrome';
 import type { Card, Suit } from '@/types/game';
 import { useTranslation } from '@/i18n';
@@ -36,15 +36,17 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
   const landscape = width > height;
   const { topReserve, bottomReserve } = useTableReserves();
   const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
-  const tight = !landscape && layout.tight;
-  // Match the table's compact North stack and hand, not the viewport center.
-  // Suit art yields space here; labels and touch targets keep their normal size.
-  const northBottom =
-    northFanTop(layout, insets.top + topReserve) +
-    northBackWidth(layout.cardW) * (110 / 78) +
-    PidroSpacing.sm +
-    TIGHT_AVATAR;
   const handTop = layout.hand.cy - layout.cardH / 2;
+  // Every portrait uses the actual table band, including full-height North's
+  // name/status and the lifted hand. Compact art yields, never type or targets.
+  const paddingTop = landscape
+    ? insets.top + PidroSpacing.lg
+    : northSeatBottom(layout, insets.top + topReserve) + PidroSpacing.xs;
+  const paddingBottom = landscape
+    ? insets.bottom + PidroSpacing.lg
+    : height - handTop + PidroSpacing.xxl;
+  // The roomy two-row window needs about 350pt with its two-line description.
+  const compact = landscape || height - paddingTop - paddingBottom < 360;
 
   const suitCounts = useMemo(() => {
     const counts: Record<Suit, number> = { hearts: 0, diamonds: 0, clubs: 0, spades: 0 };
@@ -77,10 +79,8 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
       style={[
         styles.overlay,
         {
-          paddingTop: tight ? northBottom + PidroSpacing.xs : insets.top + PidroSpacing.lg,
-          paddingBottom: tight
-            ? height - handTop + PidroSpacing.xxl
-            : insets.bottom + PidroSpacing.lg,
+          paddingTop,
+          paddingBottom,
         },
       ]}
       pointerEvents="box-none">
@@ -88,7 +88,8 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
         testID="trump-window"
         title={t('game.choose_trump')}
         description={t('game.choose_trump_description')}
-        compact={landscape || tight}
+        compact={compact}
+        scrollable={compact}
         style={{ width: Math.min(width - 24, landscape ? 620 : 390) }}>
         <View style={[styles.suitGrid, landscape && styles.suitGridLandscape]}>
           {SUITS.map((value) => {
@@ -108,7 +109,7 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
                 disabled={isSubmitting}
                 style={[
                   styles.suitButton,
-                  tight && styles.suitButtonTight,
+                  compact && styles.suitButtonTight,
                   landscape && styles.suitButtonLandscape,
                   selected && styles.suitButtonSelected,
                   isSubmitting && !selected && styles.suitButtonDisabled,
@@ -116,7 +117,7 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
                 pressedStyle={styles.suitButtonPressed}>
                 <Image
                   source={SUIT_IMAGES[value]}
-                  style={[styles.suitImage, (landscape || tight) && styles.suitImageLandscape]}
+                  style={[styles.suitImage, compact && styles.suitImageLandscape]}
                   resizeMode="contain"
                 />
                 <View style={styles.suitCopy}>
@@ -178,9 +179,9 @@ const styles = StyleSheet.create({
     padding: PidroSpacing.xs,
   },
   suitButtonTight: {
-    minHeight: 68,
+    minHeight: 48,
     flexDirection: 'row',
-    padding: PidroSpacing.xs,
+    padding: PidroSpacing.xxs,
   },
   suitButtonSelected: {
     borderColor: PidroColors.gold,

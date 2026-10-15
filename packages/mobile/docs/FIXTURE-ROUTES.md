@@ -54,6 +54,13 @@ switching, and reject clipped natural text without shrinking fonts. Long public
 player names retain intentional ellipsis. Captures precede interactive switching.
 No baseline refresh is implicit.
 
+The bounded `iphone-insets-portrait` (402×874) and `iphone-insets-landscape`
+(874×402) grammar cases cover the trump window and Settings language group.
+`safeArea=iphone-17-portrait` simulates 62/34 top/bottom, and
+`safeArea=iphone-17-landscape` simulates 62pt on both sides and 21pt bottom.
+Settings accepts these via `/ui-dev?state=settings`; table fixtures use `/table-dev`.
+These are browser approximations only. Native review must omit `safeArea`.
+
 ```bash
 NODE_OPTIONS=--max-old-space-size=4096 MOBILE_BASE_URL=http://localhost:8089 \
 UI_CASES=locale-en-settings-system,locale-sv-settings-system,locale-sv-bidding \

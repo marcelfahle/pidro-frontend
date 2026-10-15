@@ -88,7 +88,8 @@ export function LanguageSelector() {
 const styles = StyleSheet.create({
   group: { gap: PidroSpacing.xs, padding: PidroSpacing.sm },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
-  system: { flexBasis: '100%' },
+  // Width includes padding/border in Yoga; percentage flexBasis does not.
+  system: { width: '100%', flexBasis: 'auto', flexGrow: 0, flexShrink: 1 },
   choice: {
     minHeight: 48,
     flexGrow: 1,

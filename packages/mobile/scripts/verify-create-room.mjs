@@ -119,13 +119,13 @@ try {
     // An open seat shows its games-played choice in place; no second tap, no sheet.
     assert.deepEqual(
       await group(form, 'Partner seat, games played').getByRole('radio').allTextContents(),
-      ['Anyone', '100+', '1000+']
+      ['Anyone', '100+', '1,000+']
     );
     await checked(requirement(form, 'Partner seat', 'Anyone'));
     assert.equal(await page.getByTestId('create-seat-sheet').count(), 0);
-    await requirement(form, 'Partner seat', '1000+').click();
+    await requirement(form, 'Partner seat', '1,000+').click();
     await checked(radio(form, 'Partner seat', 'Open'));
-    await checked(requirement(form, 'Partner seat', '1000+'));
+    await checked(requirement(form, 'Partner seat', '1,000+'));
     await requirement(form, 'Partner seat', '100+').click();
     await rowsAndTargets(form);
     await radio(form, 'Left opponent seat', 'Friend').click();
