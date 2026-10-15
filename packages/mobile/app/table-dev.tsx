@@ -228,6 +228,7 @@ function TableDevHarness() {
     dealer?: string;
     clear?: string;
     guest?: string;
+    connection?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -278,6 +279,7 @@ function TableDevHarness() {
             autoClear={params.clear === 'true'}
             ruleSet={ruleSet}
             rulesFixtureSeen={rulesFixtureSeen}
+            connected={params.connection !== 'lost'}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -378,6 +380,11 @@ function TableDevHarness() {
                 setWaitingPositions({ ...fixtureRoom.positions!, [position]: null });
                 setReadyPlayers(['north']);
               }}
+              notice={
+                params.notice === 'true'
+                  ? { message: 'Nora joined the table.', variant: 'success' }
+                  : null
+              }
             />
           </FixtureInsets>
           {hostControls ? (
@@ -471,6 +478,7 @@ function RolePreview({
   autoClear,
   ruleSet = 'finnish',
   rulesFixtureSeen,
+  connected = true,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -481,6 +489,7 @@ function RolePreview({
   autoClear?: boolean;
   ruleSet?: RuleSet;
   rulesFixtureSeen?: boolean;
+  connected?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   useEffect(() => {
@@ -526,7 +535,7 @@ function RolePreview({
     store.initFromRoom({ room: WAITING_ROOM, youPlayerId: 'p-south' });
     store.setRole(role);
     store.setYouPosition('south');
-    store.setChannelStatus(true);
+    store.setChannelStatus(connected);
     store.setServerState({
       variant: ruleSet,
       config: { min_bid: ruleSet === 'louisiana' ? 7 : 6 },
@@ -635,7 +644,7 @@ function RolePreview({
       if (presentationTimer) clearTimeout(presentationTimer);
       store.reset();
     };
-  }, [role, phase, canPass, deal, dealer, autoClear, ruleSet]);
+  }, [role, phase, canPass, deal, dealer, autoClear, ruleSet, connected]);
 
   useEffect(() => {
     if (!Table || deal !== 'true') return;

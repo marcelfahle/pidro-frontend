@@ -12,9 +12,11 @@ import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tok
 import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostControls';
 import { t } from '@/i18n';
 import type { Position, Room } from '@/types/lobby';
+import type { TableNotice } from '@/game/tableNotices';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { WatchingBadge } from './WatchingBadge';
+import { TableFeedback } from './TableFeedback';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 
@@ -141,6 +143,8 @@ interface Props {
   onKickPlayer?: (position: Position) => void;
   /** Host only: fill a vacant seat with a bot. */
   onSeatBot?: (position: Position) => void;
+  /** Join, leave or reconnect notice; floats below the toolbar. */
+  notice?: TableNotice | null;
 }
 
 export function WaitingTable({
@@ -160,6 +164,7 @@ export function WaitingTable({
   onMovePlayer,
   onKickPlayer,
   onSeatBot,
+  notice = null,
 }: Props) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -179,6 +184,7 @@ export function WaitingTable({
   const [readyBusy, setReadyBusy] = useState(false);
   const readyBusyRef = useRef(false);
   const [readyError, setReadyError] = useState<string | null>(null);
+  const [toolbarHeight, setToolbarHeight] = useState(0);
   const isYouReady = !!youPosition && readyPlayers.includes(youPosition);
   const confirmReady = async () => {
     if (isSpectator || !onReady || readyDisabled || readyBusyRef.current || isYouReady) return;
@@ -224,7 +230,10 @@ export function WaitingTable({
           paddingRight: insets.right,
           paddingBottom: insets.bottom + (isSpectator ? 64 : 0),
         }}>
-        <View testID="waiting-toolbar" style={styles.toolbar}>
+        <View
+          testID="waiting-toolbar"
+          style={styles.toolbar}
+          onLayout={(event) => setToolbarHeight(event.nativeEvent.layout.height)}>
           <BevelButton
             label={isSpectator ? 'Back to lobby' : 'Leave'}
             material="glass"
@@ -379,6 +388,7 @@ export function WaitingTable({
         </ScrollView>
       </View>
       {isSpectator && <WatchingBadge />}
+      <TableFeedback notice={notice} top={insets.top + toolbarHeight} />
       <Modal
         isOpen={canManageTable && (tableMenuOpen || selectedSeatIsCurrent)}
         title={

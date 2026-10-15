@@ -277,6 +277,12 @@ const allCases = [
   { name: 'create-seat', path: '/ui-dev?state=create-seat', testId: 'create-seat-sheet' },
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {
+    name: 'table-waiting-notice',
+    path: '/table-dev?phase=ready-host&notice=true',
+    testId: 'table-feedback',
+    protectNorthSeat: true,
+  },
+  {
     name: 'table-ready',
     path: '/table-dev?phase=ready',
     testId: 'waiting-table',
@@ -299,6 +305,18 @@ const allCases = [
     testId: 'invite-window',
   },
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
+  {
+    name: 'table-notice',
+    path: '/table-dev?phase=playing&feedback=notice',
+    testId: 'table-feedback',
+    protectNorthSeat: true,
+  },
+  {
+    name: 'table-reconnecting-banner',
+    path: '/table-dev?phase=playing&role=player&connection=lost',
+    testId: 'connection-banner',
+    protectNorthSeat: true,
+  },
   {
     name: 'table-seats-reconnecting',
     path: '/table-dev?phase=playing&lifecycle=reconnecting',
@@ -404,16 +422,7 @@ async function assertTargetGeometry(page, testCase, viewport) {
     if (!box) throw new Error(`${testCase.name} target has no geometry`);
     assertInsideViewport(`${testCase.name} target`, box, viewport);
 
-    if (testCase.protectNorthSeat) {
-      const northSeat = page.getByTestId('seat-north').first();
-      await northSeat.waitFor({ state: 'visible', timeout: 20_000 });
-      const northBox = await getStableBox(northSeat, page);
-      if (northBox && boxesOverlap(box, northBox)) {
-        throw new Error(
-          `${testCase.name} overlaps the north player plaque in ${viewport.name}: window=${JSON.stringify(box)} seat=${JSON.stringify(northBox)}`
-        );
-      }
-    }
+    await assertNorthClear(page, testCase, viewport, testCase.protectNorthSeat ? box : null);
 
     if (testCase.protectPlayerHand) {
       await assertAbovePlayerHand(page, testCase.name, box, viewport);
@@ -435,6 +444,46 @@ async function assertTargetGeometry(page, testCase, viewport) {
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
+}
+
+async function visibleBox(page, locator) {
+  const first = locator.first();
+  if (!(await first.count()) || !(await first.isVisible())) return null;
+  return getStableBox(first, page);
+}
+
+// The header (score plaque and menu, or the waiting toolbar) and a protected
+// window must never cover the north seat or its cards, nor the window the header.
+async function assertNorthClear(page, testCase, viewport, windowBox) {
+  const waiting = (await page.getByTestId('waiting-seat-north').count()) > 0;
+  const north = waiting
+    ? { 'north seat': page.getByTestId('waiting-seat-north') }
+    : {
+        'north seat': page.getByTestId('seat-north'),
+        'north cards': page.getByTestId('seat-north-cards').locator(':scope > div'),
+      };
+  if (!waiting && windowBox)
+    await north['north seat'].first().waitFor({ state: 'visible', timeout: 20_000 });
+  const header = waiting
+    ? { toolbar: page.getByTestId('waiting-toolbar') }
+    : {
+        'score plaque': page.getByRole('button', { name: /Recent scores\./ }),
+        menu: page.getByRole('button', { name: 'Table settings', exact: true }),
+      };
+  const covers = { ...header, ...(windowBox ? { window: windowBox } : {}) };
+  for (const [coverName, cover] of Object.entries(covers)) {
+    const coverBox = cover === windowBox ? windowBox : await visibleBox(page, cover);
+    if (!coverBox) continue;
+    const targets = cover === windowBox ? { ...north, ...header } : north;
+    for (const [targetName, target] of Object.entries(targets)) {
+      const targetBox = await visibleBox(page, target);
+      if (targetBox && boxesOverlap(coverBox, targetBox)) {
+        throw new Error(
+          `${testCase.name}: ${coverName} overlaps the ${targetName} in ${viewport.name}: ${coverName}=${JSON.stringify(coverBox)} ${targetName}=${JSON.stringify(targetBox)}`
+        );
+      }
+    }
+  }
 }
 
 async function assertFocused(locator, message) {
@@ -488,7 +537,9 @@ async function assertRulePresentation(page, testCase) {
     }[testCase.name];
   if (badge && !testCase.rulesExplainer) {
     await page.getByTestId(badge).waitFor();
-    assert.ok((await page.getByTestId(badge).getAttribute('aria-label')).includes(ruleLabels[ruleSet]));
+    assert.ok(
+      (await page.getByTestId(badge).getAttribute('aria-label')).includes(ruleLabels[ruleSet])
+    );
   }
   if (testCase.rulesSelector) {
     const selector = page.getByTestId(testCase.rulesSelector);

@@ -7,6 +7,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useSettingsStore } from '@/stores/settings';
+import { HEADER_INSET } from './TableChrome';
 import { TableUtilityWindow } from './TableUtilityWindow';
 import { t } from '@/i18n';
 
@@ -35,7 +36,7 @@ export function TableSettings({
       <View
         style={[
           styles.trigger,
-          { top: insets.top + PidroSpacing.xs, right: insets.right + PidroSpacing.sm },
+          { top: insets.top + HEADER_INSET, right: insets.right + PidroSpacing.sm },
         ]}>
         <BevelButton
           material="glass"

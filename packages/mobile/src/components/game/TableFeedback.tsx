@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { useSeatDecisions } from '@pidro/shared';
-import { HUD_RESERVE } from '@/game/canvas/TableChrome';
+import { TABLE_HEADER, useTableReserves } from '@/game/canvas/TableChrome';
 import { enqueueTableNotice, type QueuedTableNotice, type TableNotice } from '@/game/tableNotices';
 
 export function useTableNotices(roomCode: string) {
@@ -46,7 +46,11 @@ export function TableSeatDecision({
   if (!decisions.pendingCount) return null;
   return (
     <SafeAreaView pointerEvents="box-none" className="absolute inset-0 z-[150]">
-      <View pointerEvents="box-none" className="flex-1 justify-center px-6 py-5">
+      {/* The header row stays readable and reachable above the review. */}
+      <View
+        pointerEvents="box-none"
+        className="flex-1 justify-center px-6 py-5"
+        style={{ paddingTop: TABLE_HEADER }}>
         {expanded && decision ? (
           <ScrollView
             testID="seat-decision-card"
@@ -113,10 +117,14 @@ export function TableSeatDecision({
   );
 }
 
-export function TableFeedback({ notice }: { notice: TableNotice | null }) {
-  const { width, height } = useWindowDimensions();
+/**
+ * Floats in the table's notice slot, or at `top` (the waiting room, below its
+ * toolbar). It never moves the table or covers the header and seats.
+ */
+export function TableFeedback({ notice, top }: { notice: TableNotice | null; top?: number }) {
+  const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const landscape = width > height;
+  const { landscape, noticeSlot } = useTableReserves();
 
   useEffect(() => {
     if (!notice || Platform.OS !== 'ios') return;
@@ -125,7 +133,9 @@ export function TableFeedback({ notice }: { notice: TableNotice | null }) {
 
   const noticeWidth = Math.min(360, width - insets.left - insets.right - 24);
   return (
-    <View pointerEvents="none" style={styles.noticeOverlay}>
+    <View
+      pointerEvents="none"
+      style={[styles.noticeOverlay, top === undefined ? noticeSlot : { top }]}>
       {notice ? (
         <View
           testID="table-feedback"
@@ -134,15 +144,8 @@ export function TableFeedback({ notice }: { notice: TableNotice | null }) {
           accessibilityLiveRegion="polite"
           aria-live="polite"
           aria-atomic
-          className="absolute flex-row items-center gap-2 rounded-xl border border-white/20 bg-slate-950 px-3 shadow-lg"
-          style={[
-            styles.notice,
-            {
-              top: landscape ? insets.top + 28 : insets.top + HUD_RESERVE + 104,
-              width: noticeWidth,
-              height: landscape ? 36 : 52,
-            },
-          ]}>
+          className="flex-row items-center gap-2 rounded-xl border border-white/20 bg-slate-950 px-3 shadow-lg"
+          style={{ width: noticeWidth, height: landscape ? 36 : 52 }}>
           <View
             className={
               notice.variant === 'error'
@@ -170,11 +173,11 @@ export function TableFeedback({ notice }: { notice: TableNotice | null }) {
 
 const styles = StyleSheet.create({
   noticeOverlay: {
-    ...StyleSheet.absoluteFill,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
     zIndex: 140,
     elevation: 140,
-  },
-  notice: {
-    alignSelf: 'center',
   },
 });
