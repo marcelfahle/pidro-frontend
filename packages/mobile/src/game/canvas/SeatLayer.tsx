@@ -280,6 +280,7 @@ export function SeatLayer({
             {...(tight && { level: null, pin: null })}
             {...(tight &&
               rel === 'south' && {
+                label: 'below' as const,
                 dealerSide: 'left' as const,
                 name: null,
                 status: line?.short ?? null,

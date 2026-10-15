@@ -54,7 +54,7 @@ test('blocking removes the friendship; unblocking restores nothing @responsive',
   ).toEqual([]);
 
   await page.goto('/profile');
-  await page.getByRole('button', { name: 'Blocked players', exact: true }).click();
+  await page.getByRole('link', { name: 'Blocked players', exact: true }).click();
   const unblock = page.getByRole('button', { name: `Unblock ${otherPlayer.name}`, exact: true });
   await expect(unblock).toBeVisible();
   await expect(page.getByText('Unblocking does not add them back as a friend.')).toBeVisible();
