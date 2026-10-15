@@ -105,13 +105,18 @@ describe('account localization', () => {
       ],
       [{ error_code: 'email_taken' }, true, 'auth.email_taken'],
       [{ code: 'EMAIL_TAKEN' }, true, 'auth.email_taken'],
-      ...['field_taken', 'email_taken', 'field_format', 'future_validation'].map((code) => [
+      ...[
+        ['field_taken', true, 'auth.email_taken'],
+        ['email_taken', true, 'auth.email_taken'],
+        ['field_format', false, 'error.field_format'],
+        ['future_validation', false, 'error.field_invalid'],
+      ].map(([code, taken, key]) => [
         {
           errors: [legacy],
           field_errors: [{ field: 'email', error_code: code, error_params: {} }],
         },
-        code === 'field_taken' || code === 'email_taken',
-        code === 'future_validation' ? 'error.field_invalid' : `error.${code}`,
+        taken,
+        key,
       ]),
     ];
 
@@ -128,6 +133,33 @@ describe('account localization', () => {
         expect(guestSaveFieldMessage(failure, 'email')).not.toMatch(
           /private|has already been taken/
         );
+      }
+    }
+  });
+
+  it('uses account name recovery copy for structured uniqueness and Classic reservation', () => {
+    for (const field of ['username', 'display_name']) {
+      for (const [code, key, reserved] of [
+        ['field_taken', 'auth.name_taken', false],
+        ['username_taken', 'auth.name_taken', false],
+        ['classic_name_reserved', 'auth.name_taken', true],
+        ['field_format', 'error.field_format', false],
+        ['future_validation', 'error.field_invalid', false],
+      ]) {
+        const failure = guestSaveFailure(
+          apiFailure({
+            errors: [{ code: 'CLASSIC_NAME_RESERVED', detail: 'private legacy diagnostic' }],
+            field_errors: [{ field, error_code: code, error_params: {} }],
+          })
+        );
+        expect(failure.classicNameReserved === true).toBe(reserved);
+        for (const locale of ['en', 'sv', 'en']) {
+          setLocale(locale);
+          expect(guestSaveFieldMessage(failure, 'displayName')).toBe(t(key));
+          expect(guestSaveFailure(failure.originalError).classicNameReserved === true).toBe(
+            reserved
+          );
+        }
       }
     }
   });
