@@ -369,6 +369,20 @@ const allCases = [
   },
   { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
   { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },
+  // PID-221: the ticker at its fullest, long names included, stays clear of the
+  // plaque and the North seat; the hand log opens from it.
+  {
+    name: 'table-ticker',
+    path: '/table-dev?phase=playing&ticker=full&names=long',
+    testId: 'ticker-line-bid-4-south',
+    protectNorthSeat: true,
+  },
+  {
+    name: 'table-hand-log',
+    path: '/table-dev?phase=playing',
+    open: "Recent table actions. Opens this hand's log.",
+    testId: 'hand-log-entry-trump-4',
+  },
   {
     name: 'table-bidding',
     path: '/table-dev?phase=bidding',

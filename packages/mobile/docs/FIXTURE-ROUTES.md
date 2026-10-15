@@ -38,26 +38,27 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 
 ### Params
 
-| Param        | Values                                                                                    | Effect                                                                                    |
-| ------------ | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `phase`      | see above                                                                                 | which overlay                                                                             |
-| `safeArea`   | `island` (59/34) · `android`/`android-buttons` (24/48) · `android-gesture` (24/24)        | **fakes insets** — the one way to test notch clearance on web                             |
-| `role`       | `player` · `spectator`                                                                    | non-waiting phases: renders via the **real store/controller**, not the mock model         |
-| `lifecycle`  | `normal` · `reconnecting` · `bot_substitute` · `permanent_bot` · `vacant`                 | seat lifecycle badge state                                                                |
-| `feedback`   | `owner` (3 queued seat decisions) · `notice` · `timed` (dedupe + success at 0.8/1.0/1.2s) | TableFeedback / TableSeatDecision                                                         |
-| `notice`     | `true`                                                                                    | same as `feedback=notice`; on a waiting phase, a join notice below the toolbar            |
-| `connection` | `lost`                                                                                    | with `role=`: the channel is down, so the table shows its Reconnecting… banner            |
-| `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                               |
-| `names`      | `long`                                                                                    | waiting: west seat → "Alexandria the Long-Named Player" (wrapping); table: Classic-length names on every seat (ThunderThor88 …) |
-| `dealer`     | `north` · `east` · `south` · `west`                                                       | table (mock model): who holds the dealer chip, default `south`                            |
-| `timer`      | `running`                                                                                 | table (mock model): a 20 s turn timer on the seat on turn; amber in its last quarter      |
-| `signals`    | `pidro`                                                                                   | table (mock model): North drops the 5 of trump on your ace, so with `autoplay=true` the trick pops "Pidro! +6" |
-| `hand`       | `made` · `set`                                                                            | table (mock model): the last hand's result card appears 1.6 s after the table opens        |
-| `playerName` | any string                                                                                | name in the first seat decision                                                           |
-| `viewer`     | `east`                                                                                    | you are east instead of south                                                             |
-| `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you |
-| `pass`       | `disabled`                                                                                | removes the pass action from legal actions                                                |
-| `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                               |
+| Param        | Values                                                                                    | Effect                                                                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `phase`      | see above                                                                                 | which overlay                                                                                                                                                      |
+| `safeArea`   | `island` (59/34) · `android`/`android-buttons` (24/48) · `android-gesture` (24/24)        | **fakes insets** — the one way to test notch clearance on web                                                                                                      |
+| `role`       | `player` · `spectator`                                                                    | non-waiting phases: renders via the **real store/controller**, not the mock model                                                                                  |
+| `lifecycle`  | `normal` · `reconnecting` · `bot_substitute` · `permanent_bot` · `vacant`                 | seat lifecycle badge state                                                                                                                                         |
+| `feedback`   | `owner` (3 queued seat decisions) · `notice` · `timed` (dedupe + success at 0.8/1.0/1.2s) | TableFeedback / TableSeatDecision                                                                                                                                  |
+| `notice`     | `true`                                                                                    | same as `feedback=notice`; on a waiting phase, a join notice below the toolbar                                                                                     |
+| `connection` | `lost`                                                                                    | with `role=`: the channel is down, so the table shows its Reconnecting… banner                                                                                     |
+| `invite`     | `true`                                                                                    | opens InviteModal (needs `phase=waiting-host`/`ready-host`)                                                                                                        |
+| `names`      | `long`                                                                                    | waiting: west seat → "Alexandria the Long-Named Player" (wrapping); table: Classic-length names on every seat (ThunderThor88 …)                                    |
+| `dealer`     | `north` · `east` · `south` · `west`                                                       | table (mock model): who holds the dealer chip, default `south`                                                                                                     |
+| `timer`      | `running`                                                                                 | table (mock model): a 20 s turn timer on the seat on turn; amber in its last quarter                                                                               |
+| `signals`    | `pidro`                                                                                   | table (mock model): North drops the 5 of trump on your ace, so with `autoplay=true` the trick pops "Pidro! +6"                                                     |
+| `hand`       | `made` · `set`                                                                            | table (mock model): the last hand's result card appears 1.6 s after the table opens                                                                                |
+| `ticker`     | `full`                                                                                    | table (mock model): three bids land 0.3 s after the table opens, so the plaque's action ticker shows three lines (pair with `names=long`); tap it for the hand log |
+| `playerName` | any string                                                                                | name in the first seat decision                                                                                                                                    |
+| `viewer`     | `east`                                                                                    | you are east instead of south                                                                                                                                      |
+| `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you                                                                          |
+| `pass`       | `disabled`                                                                                | removes the pass action from legal actions                                                                                                                         |
+| `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                                                                                                        |
 
 ### Recipes
 
@@ -106,13 +107,13 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 
 ## `/ui-dev` — DS v2 gallery
 
-| URL                         | Shows                                                                                                                                                                                       |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/ui-dev?state=components`  | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
-| `/ui-dev?state=create`      | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
-| `/ui-dev?state=create&fixture=default\|open\|requirement\|bots\|friend` | Inline creation: defaults, Open question, 100+ picked, all bots, Friend selected. testID `create-room-window`; editable rows `create-seat_3`, `create-seat_2`, `create-seat_4`. |
-| `/ui-dev?state=progression` | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
-| `/ui-dev?state=avatars`     | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
+| URL                                                                     | Shows                                                                                                                                                                                       |
+| ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/ui-dev?state=components`                                              | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
+| `/ui-dev?state=create`                                                  | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
+| `/ui-dev?state=create&fixture=default\|open\|requirement\|bots\|friend` | Inline creation: defaults, Open question, 100+ picked, all bots, Friend selected. testID `create-room-window`; editable rows `create-seat_3`, `create-seat_2`, `create-seat_4`.             |
+| `/ui-dev?state=progression`                                             | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
+| `/ui-dev?state=avatars`                                                 | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
@@ -159,24 +160,24 @@ Real screens with deterministic states; `?fixture=` is read in development only 
 never calls the backend. All sit on the `AuthFlow` scaffold, so each one has a phone,
 a phone-landscape and a tablet layout.
 
-| URL                                    | Shows                                                | testID                  |
-| -------------------------------------- | ---------------------------------------------------- | ----------------------- |
-| `/login?fixture=providers`             | Sign in with Apple and Facebook forced on            | `auth-window`           |
-| `/login?email=a@b.co&known=1`          | Sign in after Create account hit an address in use   | `auth-window`           |
-| `/register?fixture=providers`          | Pidro account: providers and the email step          | `auth-window`           |
-| `/register?fixture=password`           | Create a password                                    | `auth-window`           |
-| `/register?fixture=name`               | Pick your name                                       | `auth-window`           |
-| `/register?fixture=email-taken`        | Create account email step: address already has an account | `auth-window`           |
-| `/register?fixture=name-taken`         | Pick your name: taken, with the Classic claim plaque | `auth-window`           |
-| `/classic-forgot`                      | Forgot Classic password                              | `classic-forgot-window` |
-| `/classic-forgot?fixture=sent`         | Sign-in link sent                                    | `classic-link-sent`     |
-| `/classic-forgot?fixture=unavailable`  | Link service down; points to help                    | `classic-forgot-window` |
-| `/classic-forgot?fixture=not-found`    | No Classic account matched                           | `classic-forgot-window` |
-| `/classic-help`                        | Ask support to find a Classic account                | `classic-help-window`   |
-| `/classic-help?fixture=filled`         | …with the form filled in                             | `classic-help-window`   |
-| `/classic-help?fixture=sent` / `=mail` | Sent, or handed to the mail app                      | `classic-help-sent`     |
-| `/reset-password?token=x&fixture=refused` | Reset link the server refused, offering a new one | `auth-window`           |
-| `/forgot-password?fixture=sent`        | Password reset requested                             | `auth-window`           |
+| URL                                       | Shows                                                     | testID                  |
+| ----------------------------------------- | --------------------------------------------------------- | ----------------------- |
+| `/login?fixture=providers`                | Sign in with Apple and Facebook forced on                 | `auth-window`           |
+| `/login?email=a@b.co&known=1`             | Sign in after Create account hit an address in use        | `auth-window`           |
+| `/register?fixture=providers`             | Pidro account: providers and the email step               | `auth-window`           |
+| `/register?fixture=password`              | Create a password                                         | `auth-window`           |
+| `/register?fixture=name`                  | Pick your name                                            | `auth-window`           |
+| `/register?fixture=email-taken`           | Create account email step: address already has an account | `auth-window`           |
+| `/register?fixture=name-taken`            | Pick your name: taken, with the Classic claim plaque      | `auth-window`           |
+| `/classic-forgot`                         | Forgot Classic password                                   | `classic-forgot-window` |
+| `/classic-forgot?fixture=sent`            | Sign-in link sent                                         | `classic-link-sent`     |
+| `/classic-forgot?fixture=unavailable`     | Link service down; points to help                         | `classic-forgot-window` |
+| `/classic-forgot?fixture=not-found`       | No Classic account matched                                | `classic-forgot-window` |
+| `/classic-help`                           | Ask support to find a Classic account                     | `classic-help-window`   |
+| `/classic-help?fixture=filled`            | …with the form filled in                                  | `classic-help-window`   |
+| `/classic-help?fixture=sent` / `=mail`    | Sent, or handed to the mail app                           | `classic-help-sent`     |
+| `/reset-password?token=x&fixture=refused` | Reset link the server refused, offering a new one         | `auth-window`           |
+| `/forgot-password?fixture=sent`           | Password reset requested                                  | `auth-window`           |
 
 Use a guest auth fixture to see the guest wording ("Your guest games come with you").
 On a simulator these open through the dev deep-link allowlist in `app/+native-intent.tsx`
@@ -228,18 +229,18 @@ the grammar script). Invite routes
 show a guest name-entry preview without auth, or the same table's confirmation
 with an authenticated fixture.
 
-| URL | Shows |
-| --- | --- |
-| `/ui-dev?state=create&fixture=finnish` / `fixture=louisiana` | Selected creation rules and description |
-| `/ui-dev?state=settings&fixture=finnish` / `fixture=louisiana` | Preferred rules selector |
-| `/join/7KQ4M2XB?fixture=finnish` / `fixture=louisiana` | Rules badge in guest preview or authenticated confirmation |
-| `/join/7KQ4M2XB?source=typed&fixture=louisiana` | Manual-code arrival at the same confirmation |
-| `/table-dev?fixture=louisiana` | Playing table badge; Table settings → Table rules |
-| `/table-dev?fixture=louisiana-bidding` | Server minimum bid 7; badge clear of the bid grid |
-| `/table-dev?fixture=louisiana-explainer` | First-encounter rules explainer, four facts, feedback and Got it |
-| `/table-dev?fixture=louisiana-game-over` | Game-over rules badge |
-| `/table-dev?fixture=louisiana-waiting` | Waiting rules badge and Table rules action |
-| `/table-dev?fixture=louisiana-waiting-explainer` | Waiting first-encounter explainer; dismiss and reopen |
+| URL                                                            | Shows                                                            |
+| -------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `/ui-dev?state=create&fixture=finnish` / `fixture=louisiana`   | Selected creation rules and description                          |
+| `/ui-dev?state=settings&fixture=finnish` / `fixture=louisiana` | Preferred rules selector                                         |
+| `/join/7KQ4M2XB?fixture=finnish` / `fixture=louisiana`         | Rules badge in guest preview or authenticated confirmation       |
+| `/join/7KQ4M2XB?source=typed&fixture=louisiana`                | Manual-code arrival at the same confirmation                     |
+| `/table-dev?fixture=louisiana`                                 | Playing table badge; Table settings → Table rules                |
+| `/table-dev?fixture=louisiana-bidding`                         | Server minimum bid 7; badge clear of the bid grid                |
+| `/table-dev?fixture=louisiana-explainer`                       | First-encounter rules explainer, four facts, feedback and Got it |
+| `/table-dev?fixture=louisiana-game-over`                       | Game-over rules badge                                            |
+| `/table-dev?fixture=louisiana-waiting`                         | Waiting rules badge and Table rules action                       |
+| `/table-dev?fixture=louisiana-waiting-explainer`               | Waiting first-encounter explainer; dismiss and reopen            |
 
 The actual `/join-code` form routes to `/join/7KQ4M2XB?source=typed`;
 `manual` is **not** a valid arrival source. It ends at the same authenticated
