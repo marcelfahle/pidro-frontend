@@ -1,0 +1,407 @@
+﻿TID_On~På
+TID_Off~Av
+TID_Yes~Ja
+TID_No~Nej
+TID_NoThanks~Nej tack
+TID_Ok~OK
+TID_Select~Välja
+TID_Add~Lägg Till
+TID_Block~Blockera
+TID_UnBlock~Avblockera
+TID_Remove~Ta Bort
+TID_Cancel~Avbryt
+TID_Submit~Skicka
+TID_UserName~Användarnamn
+TID_ConfirmPassword~Bekräfta Lösenord
+TID_EnterPassword~Ange Lösenord
+TID_Password~Lösenord
+TID_SetPassword~Skapa Lösenord
+TID_EmailAddress~E-postadress
+TID_SignIn~Logga In
+TID_English~Engelska
+TID_Swedish~Svenska
+TID_Or~Eller
+TID_Info~INFO
+TID_Stats~Statistik
+TID_YourStats~Rankinglista
+TID_Winners~Vinnare
+TID_Runners~Förlorare
+TID_Score~Resultat
+TID_Facebook~Facebook
+TID_ConnectFacebook~Använd Facebook
+TID_ConnectApple~Logga in med Apple
+TID_Custom~Övriga
+TID_AddFriends~Lägg Till Vänner
+TID_Host~Värd
+TID_Joined~Gick Med
+TID_YouJoined~Du Gick Med
+TID_Public~Allmän
+TID_Private~Privat
+TID_Invite~Bjud In
+TID_OpenPublic~Öppen
+TID_AddMembers~Lägg Till Spelare
+TID_AddTeamMember~Lägg Till Spelare
+TID_AddMember~Lägg till Spelare
+TID_Waiting~Väntar...
+TID_Registering~Registrerar
+TID_SinglePlayer~Spela Mot Datorn
+TID_Multiplayer~Spela Online
+TID_QuickJoin~Snabbspel
+TID_ComingSoon~Kommer Snart
+TID_Loading~Laddar
+TID_Sound~Ljud
+TID_Language~Språk
+TID_Help~Spelregler
+TID_Cards~Kort
+TID_AboutUs~Om Oss
+TID_PointsEarned~Förtjänade Poäng
+TID_Points~Poäng
+TID_Ranking~Rankning
+TID_HighestCard~Högsta Kort
+TID_HighCard~Högt Kort
+TID_NormalCard~Normalt Kort
+TID_PidroCard~Pidro Kort
+TID_Forgot~Glömt Inloggning?
+TID_Resend~Skicka Igen
+TID_OTP~Engångslösenord
+TID_Verify~Verifiera
+TID_Join~Gå Med
+TID_Crop~Beskär
+TID_VS~mot
+TID_Quitter~Fult Spel
+TID_FairPlay~Rent Spel
+TID_TypeMessage~Skriv Ett Meddelande
+TID_Hi~Hej!
+TID_NiceHand~Bra Hand!
+TID_WellPlayed~Bra Spelat!
+TID_GoodTry~Bra Försök!
+TID_Zzz~ZzzZzz...
+TID_PlayAgain~Spela igen?
+TID_ComeOn~Kom Igen!!
+TID_Unlucky~Otur...
+TID_Tack~Tack!
+TID_MyMistake~Mitt Fel...
+TID_NewAccount~Skapa Konto
+TID_Transfer~Överför Gamla Kontot
+TID_CheckUserName~Kontrollera Användarnamn
+TID_CheckPassword~Kontrollera Lösenord
+TID_GetCredentials~Skicka Uppgifter
+TID_DataReceived~Data Mottaget
+TID_FetchingData~Hämtar Data...
+TID_InvalidEmail~Ogiltig E-postadress
+TID_CheckMail~Kontrollera din E-post och fyll i engångslösenord
+TID_WrongOTP~Fel Engångslösenord
+TID_UsernameEmpty~Användarnamn får inte vara tomt
+TID_PasswordEmpty~Lösenord får inte vara tomt
+TID_FetchFriendList~Hämtar vänlista
+TID_Unsuccessful~Misslyckades
+TID_FetchingStats~Hämtar din statistik...
+TID_LoggingOut~Loggar Ut...
+TID_DeleteUser~Käyttäjätietojen poistaminen...
+TID_DeleteUserButton~Poista Käyttäjä
+TID_SuccessfullyLoggedOut~Du Loggades Ut.
+TID_SuccessfullyDeleteUser~Käyttäjän poistaminen onnistui.
+TID_CreatingSlot~Skapar Plats...
+TID_CreatingRoom~Skapar Bord...
+TID_JoiningRoom~Gå Med I Bord...
+TID_Search~Sök...
+TID_MatchesNotAvailable~Ingen data tillgänglig.
+TID_PlayedGames~Spelade Spel
+TID_Wins~Vinster
+TID_Loses~Förluster
+TID_WinPerentage~Vinn %
+TID_NoOfGames~Antal spelade spel
+TID_WinningPercentage~Vinn %
+TID_TapToStart~Tryck för att starta spelet
+TID_SingleplayerStats~Mot Datorn
+TID_MultiplayerStats~Spela Online
+TID_DifferentSuit~Annan Sort Men Samma Färg
+TID_PickFavourite~Välj Din Favorit
+TID_InvitationsLeft~Inbjudningar kvar
+TID_Bio~BIO
+TID_CreditsCaps~CREDITS
+TID_NewAccountCaps~SKAPA KONTO
+TID_TransferCaps~ÖVERFÖR GAMLA KONTOT
+TID_Email~VERIFIERA EPOSTADRESS
+TID_ForgotCaps~GLÖMT INLOGGNING
+TID_AboutUsCaps~OM OSS
+TID_SettingsCaps~INSTÄLLNINGAR
+TID_HelpCaps~HJÄLP
+TID_ChooseThemeCaps~VÄLJ ETT TEMA
+TID_QuitterCaps~FULT SPEL
+TID_FairPlayCaps~RENT SPEL
+TID_ChooseAnAvatar~VÄLJ EN PROFILBILD
+TID_ChooseAvatar~VÄLJ PROFILBILD
+TID_ChooseGalary~VÄLJ FRÅN GALLERI
+TID_ChooseYourPic~ VÄLJ BILD
+TID_CropImage~BESKÄR BILD
+TID_GameOver~GAME OVER
+TID_Profile~PROFIL
+TID_WaitingCaps~VÄNTAR
+TID_CreateOrJoin~GÅ MED ELLER SKAPA BORD
+TID_AddMemberCaps~LÄGG TILL SPELARE
+TID_InviteFriendsCaps~BJUD IN VÄNNER
+TID_CancelCaps~AVBRYT
+TID_SubmitCaps~SKAPA
+TID_MyProfile~MIN PROFIL
+TID_NetWorkErrorProfileUpdateFailed~Nätverksproblem: Profilen kunde inte uppdateras, kontrollera Internetanslutningen.
+TID_ServerErrorProfileUpdateFailed~Nätverksproblem: Profilen kunde inte uppdateras, kontrollera Internetanslutningen.
+TID_ServerErrorSendFinalScore~Nätverksproblem: Poäng kunde inte uppdateras, kontrollera Internetanslutningen.
+TID_NetWorkErrorSendFinalScore~Nätverksproblem: Poäng kunde inte uppdateras, kontrollera Internetanslutningen.
+TID_AlredyTransferred~Detta konto har redan överförts.
+TID_TrySigningIn~Försök Logga In.
+TID_ServerError~Kunde inte ansluta.
+TID_PleaseTryAgain~Vänligen försök igen.
+TID_FetchPreviousGameData~Hämtar Speldata...
+TID_AlredyLogin~Denna ID är redan inloggad från en annan enhet.
+TID_AdminDisable~Denna ID är avstängd av Admin.
+TID_FailedToConnect~Kunde inte ansluta. Kontrollera Internetanslutningen.
+TID_LoginCanceled~Inloggning avbruten.
+TID_LoginFailed~Inloggning misslyckades.
+TID_AlredyActive~Denna ID är aktiv på en annan enhet.
+TID_NetworkError~Nätverksfel!
+TID_FriendAdded~Vän tillagd.
+TID_FriendRemoved~Vän borttagen.
+TID_ServerErrorSendRoundScore~Nätverks Fel: Score Update misslyckades. Kontrollera din Internet.
+TID_RegisteredSuccessfully~Registrering lyckades.
+TID_UsernameExists~Användarnamn finns redan.
+TID_EmailIdUsed~E-post ID används på en annan enhet samtidigt.
+TID_SendingMail~Skickar dina uppgifter till din e-post.
+TID_MailSentSuccess~Ditt lösenord har skickats till din e-post.
+TID_WaitingOtherPlayers~Väntar på andra spelare.
+TID_AlreadySignedIn~Du är redan inloggad.
+TID_LogOutAndTry~Logga ut och prova igen.
+TID_RegisteringOnServer~Registrerar dig på servern.
+TID_FbIdAlreadyRegisteredAndOnline~Denna FbId är redan registrerad och
+TID_IsOnline~inloggad på en annan enhet.
+TID_EmailAlreadyReistered~E-post adressen redan registrerad.
+TID_FbIdAlreadyRegistered~FbId redan registrerad.
+TID_UserNameAlredyTaken~Användarnamnet är redan i bruk.
+TID_ChooseA~välj ett annat användarnamn.
+TID_CheckYourPassword~Vänligen kontrollera Lösenord
+TID_GettingRoomList~Hämtar Bord...
+TID_FbIdMerged~FbId koppling Lyckades.
+TID_FbIdAlredySetForOtherUser~Denna FbId är redan registrerad för en annan användare.
+TID_LastGamePlayed~Senast spelade spel
+TID_TopListPerDay~Toppspelare (dag)
+TID_TopListPerWeek~Toppspelare (vecka)
+TID_TopListPerMonth~Toppspelare (månad)
+TID_Ace~Ace
+TID_Unstoppable~Ostoppbar
+TID_Winner~Vinnaren
+TID_Player~Spelaren
+TID_X3Winstreak~X3 Winstreak
+TID_X5Winstreak~X5 Winstreak
+TID_X10Winstreak~X10 Winstreak
+TID_TheLoser~Förloraren
+TID_FullHouse~Fullt hus
+TID_HomeRun~Homerun
+TID_Forcer~Tvångsarin
+TID_NoRoomAvailable~Inga rum tillgängliga, skapa ett.
+TID_SeatAvailable~/4 Lediga platser
+TID_User~Användare
+TID_OngoingRoomJoinReplacement~Detta är ett pågående spel. vill du hoppa in som ersättare?
+TID_FbIdSetForCurrentUser~FBId används redan för denna användare.
+TID_YouAreAlreadyConnectedWithFbId~Du är redan ansluten med annat fbid.
+TID_FailedToLoadFriendList~Kunde Inte Uppdatera Vänlistan.
+TID_FailedToSearchUserList~Kunde inte söka efter användare.
+TID_EmailEmpty~E-post adressen måste fyllas i
+TID_OTPEmpty~Engångslösen måste fyllas i
+TID_EmailExists~E-post adressen finns redan
+TID_WantToLogout~Vill du logga ut?
+TID_WantToDeleteUserDataLogout~Haluatko poistaa käyttäjän?
+TID_InviteLeft~1 inbjudan kvar
+TID_Invited~Inbjuden
+TID_YouHaveNewInvite~Du har en ny spelinbjudan från
+TID_NoResult~Inga Resultat.
+TID_Achievements~UPPDRAG
+TID_YourStatsCaps~DIN STATISTIK
+TID_SearchingForTable~Söker bord
+TID_PasswordsDontMatch~Lösenorden inte överensstämmer
+TID_TapWhenReady~KLICKA NÄR DU ÄR KLAR
+TID_TapToStartGame~KLICKA FÖR ATT STARTA SPELET
+TID_Pass~Passa
+TID_ChooseASuit~VÄLJ EN FÄRG
+TID_Disconnectd~Frånkopplad
+TID_AboutUsText~Pidro är gjort av www.oneapps.co som ett projekt för pidro fans över hela världen.
+TID_Okay~Ok
+TID_Skip~Hoppa Över
+TID_Next~Nästa
+TID_LetsPlay~Spela!
+TID_LetsLearn~Lär Dig Spela Pidro!
+TID_ItsCardGame~Pidro är ett 2 mot 2 lagspel.
+TID_PlaytSittingAcross~Du spelar alltid med personen mittemot.
+TID_TheSelectedSuit~I detta fall spelar vi SPADER, poängkorten är då följande.
+TID_OnePoint~1 Poäng
+TID_FivePoint~5 Poäng
+TID_TotalPointsInRound~Totalpoängen för en runda är alltid 14.
+TID_CardRankings~KORTENS RANGORDNING
+TID_HigherCardCanBe~Högre rankade kort tar alltid lägre förutom 2:an som alltid är en säker poäng.
+TID_TheCorretPidro~"Rätt pidro", i detta fall Spader 5, är högre rankad än "fel" pidro (Klöver 5).
+TID_DealerChip~Detta är givarens knapp (Dealer).
+TID_DealingStarts~Korten delas ut till vänster från givaren.
+TID_EachPlayersIsDealt~Varje spelare blir tilldelad 9 kort.
+TID_ValidBitMustBe~Ett bud är alltid mellan 6 - 14. Ett bud baseras på hur många poäng du tror du och din medspelare minst får under rundan. Om du inte vill ge ett bud, kan du alltid passa.Ett bud måste alltid vara högre än föregående bud. Spelaren som ger högsta budet väljer vilken färg man spelar i och börjar rundan.
+TID_FinalDealing~AVSLUTNINGSVIS
+TID_WhenTheSuitToPlay~Sedan högsta budgivaren bestämt färg kastas överflödiga kort. Endast korten i den sort som skall spelas behålls på hand + pidron i samma färg, med undantag av givaren som alltid håller sina kort på hand. Härefter delar kortgivaren ut de resterande 16 korten så att alla får 6 kort på hand så långt korten räcker. Eventuellt överblivna kort får givaren behålla. Om en spelare har mer än 6 kort i samma färg, kastas icke poängkort bort automatiskt.
+TID_TheHighestbidder~Högsta budgivaren öppnar spelet med att lägga ett kort på bordet i den färg som han bestämt (A), till färgen hör också de bägge pidrona( Hjärter 5 och Ruter 5). Därefter ”slår” de andra spelarna medsols i ordningsföljd ett kort vardera (4,J,5). Den som slagit det högsta kortet (Antti, A) under ronden erhåller alla poäng A=1p, J=1p och 5=5p. Totalt 7 poäng till Antti och Tommy. Antti fortsätter nästa omgång eftersom han hade högsta kortet (A).
+TID_WhenAllCardsArePut~Sedan alla kort lagts ut på bordet räknas poängen. Om den part som haft budet erhållit lika många poäng eller mera än vad budet var adderas vardera partens poäng till tidigare erhållna poäng. Om den part som har haft budet erhåller mindre poäng än vad budet lydde på (oberoende av hur många poäng de erhöll), ”hålar” denna part det vill säga de går bakåt så många poäng som budet lydde på.
+TID_WinnerOfTheGameisThe~Vinnaren är det lag som först når 62 poäng. Om båda lagen når 62 poäng på samma gång vinner laget som har högsta budet i sista rundan.
+TID_SpecialScenario~Undantagsfall
+TID_IfNoOneBids~- Om alla passar, tvingas givaren ge ett bud.
+TID_IfSomeoneBids~- Om någon bjuder 14 kan givaren bjuda 14 och överta budet, men riskerar att förlora 28 poäng om budet inte uppnås.
+TID_TutorialFairPlay~SPELA RÄTTVIST:
+TID_YouAreNeitherAllowed~Du är inte tillåten att diskutera dina kort eller ge tecken som påverkar spelets utgång.
+TID_TutorialGoodLuck~Lycka till!
+TID_ValueOfCards~Värdet av Korten
+TID_LowCard~Lågt kort
+TID_Draws~Drar
+TID_Ready~Redo
+TID_Bidding~Bjuder
+TID_Passed~Passade
+TID_Bet~Bud
+TID_Plays~Spelar
+TID_JoinedLog~Gick med
+TID_WaitingForPlayers~Väntar på andra
+TID_Players~spelare
+TID_IfYouLeave~Lämnar du spelet räknas det som förlust.
+TID_LeaveGame~Vill du lämna spelet?
+TID_LeaveTable~Vill du lämna bordet?
+TID_NotEnoughPlayers~Inte tillräckligt många spelare för att starta spelet.
+TID_UserNameCaps~ANVÄNDARNAMN
+TID_TellUsAbout~Berätta lite om dig själv, varifrån du är, ålder osv.
+TID_ReplayGame~Vill du spela igen?
+TID_InviteFriends~Bjud in vänner
+TID_Ago~sedan
+TID_Year~år
+TID_Month~månad
+TID_Week~vecka
+TID_Day~dag
+TID_Hour~h
+TID_Minute~m
+TID_Second~s
+TID_Years~år
+TID_Months~månader
+TID_Weeks~veckor
+TID_Days~dagar
+TID_Hours~h
+TID_Minutes~m
+TID_Seconds~s
+TID_WantToExit~Är du säker på att du vill avsluta?
+TID_GameSponsoredBy~Spelet Sponsras av
+TID_ViewMore~Visa Mer
+TID_NoLimit~Ingen gräns
+TID_GamesPlayed~Spelade Spel
+TID_NotPlayedEnoughGames~Du har inte spelat tillräckligt många spel för att gå med i detta bord.
+TID_LogOut~Logga Ut
+TID_Exit~Avsluta
+TID_Rank~Rang
+TID_WinP~Vinst %
+TID_Continue~Fortsätt
+TID_OngoingGames~Pågående spel
+TID_PlayersOnline~Spelare online
+TID_SlotAlreadyTaken~Plats redan upptagen
+TID_ForceUpdate~Goda nyheter! En ny version av spelet finns att hämta!
+TID_FetchingGameData~Hämtar speldata
+TID_AutoKickMsg~Du har blivit utkastad p.g.a. Inaktivitet eller nätverksproblem.
+TID_AutoTerminateMsg~Bordet har stängts p.g.a. inaktivitet.
+TID_BadUserName~Fel användarnamn! Prova igen
+TID_CreateTable~Skapa bord
+TID_CreatePrivateRoom~Skapa privat rum
+TID_LeftWainitgTableName~Öppen
+TID_You~Jag
+TID_ReportAbuse~Anmäl missbruk
+TID_Verbal~Verbalt missbruk / Dåligt språk
+TID_Cheating~Fusk
+TID_Disturbing~Störande profilbild / Namn
+TID_LeavingGame~Lämnar spel
+TID_Report~Anmäl
+TID_GoldCardsCaps~Kortsamling
+TID_GoldCardsTimerName~Aktiv
+TID_GoldCardsButtonVideo~Spela Aktiveringsvideo
+TID_GoldCardsDesc~Du måste aktivera Guldkorts kollektionen för att kunna samla på Guldkort
+TID_GoldCardTheme~Guldkorts Tema
+TID_ClassicTheme~Klassiskt Tema (Alla guldkort är inaktiverade)
+TID_GoldCardNotify~Det finns ett guldkort i denna kortlek. Vem är den lyckliga?
+TID_AI_Easy~Försiktig
+TID_AI_Medium~Medel
+TID_AI_Hard~Aggressiv
+TID_AI_Dif~Välj svårighetsgrad
+TID_AvarageBid~Bud Genomsnitt
+TID_DailyRank~Toplistan, Dag (minst 10 spelade spel)
+TID_WeeklyRank~Toplistan, Vecka (minst 35 spelade spel)
+TID_Monthly~Toplistan, Månad (minst 100 spelade spel)
+TID_InviteFriend~Bjud in en vän
+TID_100Games~100 Spel
+TID_1000Games~1000 Spel
+TID_RemoveAds~Avlägsna reklam, Få fler funktioner
+TID_ReceiveCard~Jag fick ett Guldkort
+TID_ThanksForPidro~Din hjälp uppskattas! Tack!
+TID_NoAdsAvailable~Ingen reklam är tillgänglig just nu._Försök igen om en stund.
+TID_ActivateGoldCardsNotify~Guldkorten är inte aktiva._Vill du aktivera dem nu?
+TID_PremiumAccess~Premium Medlem
+TID_CreateLeague~Pidro League Spel
+TID_CreatePractice~Skapa ett träningsbord
+TID_BecomePro~Premium Medlem
+TID_RemoveAds1~Avlägsna reklam
+TID_JoinPidroLeague~Pidro League Medlem
+TID_GetRanked~Bli Rankad På Topplistorna
+TID_MoreStat~Mer Statistik och Analyser
+TID_PlayWithOther~Spela Med Andra Premium Spelare
+TID_AccessWeb~Spela i Webbläsaren
+TID_SupportDev~Stöd Utvecklingen av Pidro
+TID_JoinNow~Gå Med Nu
+TID_Price~8,99 €/ 1 års Prenumeration
+TID_Question~Vilken typ av spel vill du skapa?
+TID_Practice~Träningsmatch
+TID_PidroLeague~Pidro League
+TID_LeagueInfo~Pidro League spel rankas och visas på topplistorna._Endast för Premium spelare.Personlig statistik sparas för alla från alla typer av spel.
+TID_PleaseVerify~Vänligen Bekräfta din E-postadress
+TID_WEBGLWarning~För att spela Pidro i webbläsaren krävs Premium medlemskap.
+TID_Friends~Vänner
+TID_WEBGLGC~Du kan endast samla Guldkort med iOS eller Android enhet.
+TID_PurchaseProc~Bearbetnings Köp
+TID_PurchaseCanceled~Köp avbröts
+TID_GamePoints~Spel XP
+TID_WinBonus~Vinst Bonus
+TID_ExtraBonus~Extra Bonus
+TID_TotalPoints~Totala XP
+TID_Congratulations~Grattis!
+TID_ReachLevel~Du har nivå
+TID_ContinuePlaying~Fortsätt Spela
+TID_Top30~Top 30 spelare baserat på XP
+TID_XP ~ XP
+TID_FinishedGamesPercent~Slutförda spel %
+TID_NoRematchInPractice~Re-match är endast tillgängligt i Pidro League spel
+TID_NoRematchInPracticePremiumScreen~Spela igen och Text Chat
+TID_PaindMonthly~Månadsvis
+TID_PaindQuarterly~Kvartalvis
+TID_PaindAnually~Årsvis
+TID_NewPrice~Nya priser från 1.12.2018
+TID_WoudYouLike~Skulle du tycka om det?
+TID_WouldYouLikeOffer~ Vi vill gärna erbjuda dig en speciell affär för att fortsätta med ditt Premium-medlemskap
+TID_WouldYouLikeOfferTitle~Din årliga prenumeration har löpt ut!
+TID_ThankYou~Tack så mycket!
+TID_Save45~Spara 45%
+TID_RateUsTitle~Gillar du Pidro?
+TID_RateUsOkButton~Betygsätt 
+TID_RateUsLaterButton~Senare
+TID_RateUsMessage~Betygsätt oss gärna på Play Store.
+TID_HeaderPreiuPopup~Premium Medlemskap
+TID_HeaderPreiuAccept~Acceptera 
+TID_HeaderPreiuTitlePopup~Inga bindningstider. På Dina Villkor.
+TID_Confirmation_Subscription_ios~Betalningen för din prenumeration dras via ditt \n  iTunes konto vid bekräftelse. Prenumerationen förnyas automatiskt\n 24 timmar före nästa prenumerationsperiod börjar. Förnyelse sker månatligen,\n kvartalsvis eller årsvis beroende på ditt val av prenumeration.\n Prenumerationen fortsätter förnyas automatiskt tills den sägs upp.\n\nVänligen läs vår <link="https://pidro.online/privacy/"><color=#FAE50F><b>Integritetspolicy </b></color></link> &  <link="https://pidro.online/terms-of-use/"><color=#FAE50F><b>Användarvillkor </b></color></link> &  <link="https://pidro.online/in-app-purchases/ios/sv/"><color=#FAE50F><b> Prenumerationsvillkor  </b></color></link> \n för mer information.
+TID_Confirmation_Subscription_Android~Betalningen för din prenumeration dras via ditt \n  Google play konto vid bekräftelse. Prenumerationen förnyas automatiskt\n 24 timmar före nästa prenumerationsperiod börjar. Förnyelse sker månatligen,\n kvartalsvis eller årsvis beroende på ditt val av prenumeration.\n Prenumerationen fortsätter förnyas automatiskt tills den sägs upp.\n\nVänligen läs vår <link="https://pidro.online/privacy/"><color=#FAE50F><b>Integritetspolicy </b></color></link> &  <link="https://pidro.online/terms-of-use/"><color=#FAE50F><b>Användarvillkor </b></color></link> &  <link="https://pidro.online/in-app-purchases/android/sv/"><color=#FAE50F><b> Prenumerationsvillkor  </b></color></link> \n för mer information.
+TID_Subscription_Disclaimer~Prenumerationer kan avbrytas när som helst. För mer detaljer och information, vänligen se vår Sekretesspolicy.
+TID_User_subscription~DIN PRENUMERATION
+TID_Manage_subscription_Title~Hantera Prenumeration
+TID_Subscription_Disclaimer_NEW~Det här är en prenumeration med automatisk förnyelse. Betalningen kommer att debiteras ditt konto vid bekräftelse. Prenumerationen förnyas automatiskt om den inte avslutas minst 24 timmar före periodens slut. Ditt konto kommer också att debiteras för förnyelse inom 24 timmar före periodens slut. Du kan stänga av automatisk förnyelse i dina kontoinställningar när som helst.
+TID_PrivacyButton~Integritetspolicy
+TID_RestoreButton~Återställ köp
+TID_TermConditions~Villkor
+TID_SubscribeMiddle_text~Prenumerera nu
+TID_Save_text~Spara
+TID_BlackFriday_Sale~Black Friday rea! 48% rabatt
+TID_RestoreSuccess~Ditt Premium-medlemskap har återställts. Välkommen tillbaka!
+TID_RestoreError~Inget aktivt Premium-medlemskap hittades. Om du tror att detta är fel, kontakta support@pidro.online
+TID_PlayWithoutAccount~Spela Mot Datorn_<size=24><color=#FFFFFFB3>Inget konto behövs</color></size>
