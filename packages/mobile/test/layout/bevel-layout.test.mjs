@@ -43,7 +43,7 @@ function layout(
     pads,
     row = false,
     height,
-    shrink = { keyline: 0, face: 0 },
+    shrink = { keyline: bevel.keyline.flexShrink ?? 0, face: bevel.face.flexShrink ?? 0 },
     padding = sizes.md.paddingVertical,
     labelHeight = wood ? 25 : 21,
   }
@@ -159,14 +159,11 @@ test('a wood face shrinks into a rim with a set height and centres its label', (
       minHeight: styles.rim.minHeight,
       pads: { rim: 2.5, key: 1.5 },
       height: 68,
-      shrink,
+      ...(shrink && { shrink }),
       padding: sizes.lg.paddingVertical,
       labelHeight: 35,
     });
-  const fixed = continueLayout({
-    keyline: bevel.keyline.flexShrink ?? 0,
-    face: bevel.face.flexShrink ?? 0,
-  });
+  const fixed = continueLayout();
   expect(fixed.rim).toBe(68);
   expect(fixed.face).toBe(68 - 2 * (2.5 + 1.5));
   // Centred in the face, give or take Yoga's pixel rounding.
