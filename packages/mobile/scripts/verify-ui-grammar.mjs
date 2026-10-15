@@ -62,13 +62,36 @@ const allCases = [
     testId: 'friends-screen',
     authenticated: true,
   })),
-  ...['profile', 'remove'].map((state) => ({
+  ...['profile', 'remove', 'block'].map((state) => ({
     name: `friends-${state}`,
     path: '/friends?fixture=list',
     testId: 'player-profile-modal',
     authenticated: true,
     open: "View Nora's profile",
   })),
+  ...['empty', 'filled', 'loading', 'error'].map((fixture) => ({
+    name: `blocked-${fixture}`,
+    path: `/blocked-players?fixture=${fixture}`,
+    testId: 'blocked-players-screen',
+    authenticated: true,
+  })),
+  ...['playing', 'game_over', 'waiting'].map((phase) => ({
+    name: `block-profile-${phase}`,
+    path: `/table-dev?phase=${phase}&role=player`,
+    testId: 'player-profile-modal',
+    authenticated: true,
+    open: phase === 'waiting' ? /^mfios1,.*View profile$/ : "View mfios1's profile",
+    playerProfile: true,
+  })),
+  {
+    name: 'block-profile-guest',
+    path: '/table-dev?phase=game_over&role=player',
+    testId: 'player-profile-modal',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+    open: "View mfios1's profile",
+    playerProfile: true,
+  },
   ...['recent', 'results'].map((fixture) => ({
     name: `friends-${fixture}`,
     path: `/friends-add?fixture=${fixture}`,
@@ -530,7 +553,9 @@ allCases.push(
 );
 allCases.push(
   ...allCases
-    .filter((testCase) => testCase.name.startsWith('friends-'))
+    .filter(
+      (testCase) => testCase.name.startsWith('friends-') || testCase.name.startsWith('blocked-')
+    )
     .map((testCase) => {
       const path = new URL(testCase.path, baseUrl);
       return {
@@ -925,6 +950,45 @@ async function assertRulePresentation(page, testCase) {
 async function assertFriendsPresentation(page, name) {
   const swedish = name.startsWith('locale-sv-');
   name = name.replace(/^locale-sv-/, '');
+  if (name.startsWith('blocked-')) {
+    await page
+      .getByText(
+        swedish
+          ? 'Att avblockera någon lägger inte till personen som vän igen.'
+          : 'Unblocking does not add them back as a friend.',
+        { exact: true }
+      )
+      .waitFor();
+    const expected = {
+      'blocked-empty': [swedish ? 'Du har inte blockerat någon.' : 'You have not blocked anyone.'],
+      'blocked-filled': ['Nora', 'Pekka'],
+      'blocked-loading': [swedish ? 'Laddar…' : 'Loading…'],
+      'blocked-error': [
+        swedish
+          ? 'Kunde inte uppdatera blockerade spelare. Försök igen.'
+          : 'Could not update blocked players. Please try again.',
+      ],
+    }[name];
+    for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
+    assert.equal(
+      await page.getByRole('button', { name: swedish ? /^Avblockera / : /^Unblock / }).count(),
+      name === 'blocked-filled' ? 2 : 0
+    );
+    assert.equal(await page.getByText('Online', { exact: true }).count(), 0);
+    if (!swedish) {
+      await page.getByRole('button', { name: 'Home', exact: true }).click();
+      await page.waitForURL('**/home');
+    }
+    return;
+  }
+  if (name.startsWith('block-profile-')) {
+    await page.getByText('mfios1', { exact: true }).last().waitFor();
+    assert.equal(
+      await page.getByRole('button', { name: 'Block', exact: true }).count(),
+      name === 'block-profile-guest' ? 0 : 1
+    );
+    return;
+  }
   if (!name.startsWith('friends-')) return;
   const expected =
     (swedish
@@ -936,8 +1000,12 @@ async function assertFriendsPresentation(page, name) {
           'friends-error': ['Kunde inte uppdatera Vänner. Försök igen.', 'Försök igen'],
           'friends-recent': ['Spelat med nyligen', 'Nora', 'Kalle', 'Tillagd'],
           'friends-results': ['Sökresultat', 'Vän', 'Har lagt till dig', 'Tillagd'],
-          'friends-profile': ['Spelarprofil', 'Nora', 'Ta bort vän'],
+          'friends-profile': ['Spelarprofil', 'Nora', 'Ta bort vän', 'Blockera'],
           'friends-remove': ['Ta bort Nora som vän?', 'Avbryt'],
+          'friends-block': [
+            'Blockera Nora? Ni kommer inte att se varandra i Vänner eller sökningar, och spelaren kan inte sätta sig vid dina bord.',
+            'Avbryt',
+          ],
           'friends-guest': ['Spara din spelare', 'Spara konto'],
         }
       : {
@@ -948,8 +1016,12 @@ async function assertFriendsPresentation(page, name) {
           'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
           'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
           'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
-          'friends-profile': ['Player profile', 'Nora', 'Remove friend'],
+          'friends-profile': ['Player profile', 'Nora', 'Remove friend', 'Block'],
           'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
+          'friends-block': [
+            'Block Nora? You will not see each other in Friends or search, and they cannot sit at your tables.',
+            'Cancel',
+          ],
           'friends-guest': ['Save your player', 'Save account'],
         })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
@@ -969,7 +1041,7 @@ async function assertFriendsPresentation(page, name) {
         ).y
     );
   }
-  if (name === 'friends-remove') {
+  if (name === 'friends-remove' || name === 'friends-block') {
     await page.getByRole('button', { name: swedish ? 'Avbryt' : 'Cancel', exact: true }).click();
     await page.getByRole('button', { name: swedish ? 'Stäng' : 'Close', exact: true }).click();
     await page
@@ -2049,6 +2121,22 @@ async function main() {
           // The away screen needs no server; keep the room and channel requests offline.
           await page.route('**/api/v1/**', (route) => route.abort());
         }
+        if (testCase.playerProfile) {
+          await page.route('**/api/v1/profiles/p-west', (route) =>
+            route.fulfill({
+              json: {
+                data: {
+                  user_id: 'p-west',
+                  username: 'mfios1',
+                  display_name: 'mfios1',
+                  avatar_url: null,
+                  bio: null,
+                  classic: null,
+                },
+              },
+            })
+          );
+        }
         let answerProfile = () => {};
         const profileAnswered = ['profile', 'profile-guest', 'settings'].includes(testCase.name)
           ? new Promise((answer) => (answerProfile = answer))
@@ -2150,7 +2238,18 @@ async function main() {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
           if (testCase.open) {
-            await page.getByRole('button', { name: testCase.open, exact: true }).click();
+            const scope =
+              testCase.playerProfile && testCase.path.includes('game_over')
+                ? page.getByTestId('game-over-overlay')
+                : page;
+            await scope.getByRole('button', { name: testCase.open, exact: true }).click();
+            if (testCase.name.endsWith('friends-block'))
+              await page
+                .getByRole('button', {
+                  name: testCase.locale === 'sv' ? 'Blockera' : 'Block',
+                  exact: true,
+                })
+                .click();
             if (testCase.name.endsWith('friends-remove'))
               await page
                 .getByRole('button', {

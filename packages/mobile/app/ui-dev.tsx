@@ -11,6 +11,7 @@ import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
 import FriendsScreen from './(shell)/friends';
 import AddFriendScreen from './(shell)/friends-add';
+import BlockedPlayersScreen from './(shell)/blocked-players';
 import { TabPill } from '@/components/shell/TabPill';
 import { useAuthStore } from '@/stores/auth';
 import { CtaBadge } from '@/components/home/CtaBadge';
@@ -419,14 +420,20 @@ function UiDevHarness() {
   const { width, height } = useWindowDimensions();
   const guest = useAuthStore((value) => Boolean(value.user?.guest));
 
-  if (state === 'friends' || state === 'friends-add')
+  if (state === 'friends' || state === 'friends-add' || state === 'blocked-players')
     return (
       <View style={styles.fixtureShell}>
-        {state === 'friends' ? <FriendsScreen /> : <AddFriendScreen />}
+        {state === 'friends' ? (
+          <FriendsScreen />
+        ) : state === 'friends-add' ? (
+          <AddFriendScreen />
+        ) : (
+          <BlockedPlayersScreen />
+        )}
         {!guest ? (
           <TabPill
             orientation={width > height ? 'rail' : 'bottom'}
-            active="friends"
+            active={state === 'blocked-players' ? 'stats' : 'friends'}
             onSelect={noop}
           />
         ) : null}

@@ -1,4 +1,10 @@
-import { t, type FriendLists, type FriendPlayer, type FriendResult } from '@pidro/shared';
+import {
+  t,
+  type FriendLists,
+  type FriendPlayer,
+  type FriendResult,
+  type RelativePlayerView,
+} from '@pidro/shared';
 
 export function friendSections(lists: FriendLists) {
   return [
@@ -18,4 +24,14 @@ export function relationLabel(relation: FriendResult['relation']) {
 export function canSearch(query: string) {
   // Hermes has no Segmenter. The server checks the exact grapheme minimum.
   return Array.from(query.normalize('NFKC').trim()).length >= 3;
+}
+
+export function canViewPlayer(player: Pick<RelativePlayerView, 'playerId' | 'seatStatus'>) {
+  // A substitute keeps the reserved human's ID; actual bots have bot_ IDs.
+  return (
+    !!player.playerId &&
+    !player.playerId.startsWith('bot_') &&
+    player.seatStatus !== 'permanent_bot' &&
+    player.seatStatus !== 'vacant'
+  );
 }

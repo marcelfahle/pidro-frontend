@@ -1,4 +1,4 @@
-import type { FriendLists, FriendResult } from '@pidro/shared';
+import type { BlockedPlayers, FriendLists, FriendResult } from '@pidro/shared';
 
 const players: FriendResult[] = [
   { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'online', relation: 'none' },
@@ -41,4 +41,18 @@ export function discoveryFixture(value?: string): FriendResult[] | undefined {
         ...player,
         display_name: ['Nora', 'Norbert', 'Noreen', 'Norman'][index],
       }));
+}
+
+export function blockedFixture(value?: string): BlockedPlayers | undefined {
+  if (!__DEV__ || !['empty', 'filled', 'loading', 'error'].includes(value ?? '')) return;
+  return {
+    blocked:
+      value === 'filled'
+        ? players.slice(0, 2).map(({ user_id, display_name, avatar_url }) => ({
+            user_id,
+            display_name,
+            avatar_url,
+          }))
+        : [],
+  };
 }

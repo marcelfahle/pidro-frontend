@@ -23,6 +23,8 @@ import { BiddingActions } from '@/components/game/BiddingActions';
 import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
 import { DealerSecondDeal } from '@/components/game/DealerSecondDeal';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
+import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
+import { canViewPlayer } from '@/features/friends';
 import type { ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { useCardTextures } from './cardTextures';
@@ -186,6 +188,7 @@ function TimedSeatLayer({
   bottomReserve,
   statusByRel,
   players,
+  onProfile,
 }: {
   seats: TableModel['seats'];
   dealerRel: RelativePosition | null;
@@ -194,6 +197,7 @@ function TimedSeatLayer({
   bottomReserve: number;
   statusByRel: Partial<Record<RelativePosition, SeatLine | null>> | undefined;
   players: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'];
+  onProfile: (playerId: string) => void;
 }) {
   const turnTimer = useGameStore((state) => state.turnTimer);
   const timerProgress = useTurnTimerProgress(turnTimer);
@@ -218,6 +222,11 @@ function TimedSeatLayer({
       bottomReserve={bottomReserve}
       statusByRel={statusByRel}
       turnByRel={turnByRel}
+      onProfile={Object.fromEntries(
+        players
+          .filter(canViewPlayer)
+          .map((player) => [player.relativePosition, () => onProfile(player.playerId!)])
+      )}
     />
   );
 }
@@ -238,6 +247,7 @@ export function GameCanvasTable({
 }: Props) {
   const { locale } = useTranslation();
   const controller = useGameTableController();
+  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const role = useGameStore((state) => state.role);
   const dealerRobPresentation = useGameStore((state) => state.presentation?.dealer_rob ?? null);
   const isPrivateDealerRob =
@@ -365,6 +375,7 @@ export function GameCanvasTable({
         bottomReserve={bottomReserve}
         statusByRel={statusByRel}
         players={viewModel?.players ?? []}
+        onProfile={setProfilePlayerId}
       />
       <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
 
@@ -492,8 +503,10 @@ export function GameCanvasTable({
           playAgainLabel={playAgainLabel}
           showGuestSave={showGuestSave}
           onSaveGuest={onSaveGuest}
+          onProfile={setProfilePlayerId}
         />
       )}
+      <PlayerProfileModal playerId={profilePlayerId} onClose={() => setProfilePlayerId(null)} />
     </GestureHandlerRootView>
   );
 }

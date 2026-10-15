@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { AxiosError } from 'axios';
 import { localizedError, publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { profileApi } from '@/api/profile';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
@@ -7,6 +8,8 @@ import { BevelButton } from '@/components/ui/BevelButton';
 import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSpacing } from '@/design/tokens';
+import { useAuthStore } from '@/stores/auth';
+import { blockPlayer } from '@/stores/friends';
 import { useTranslation } from '@/i18n';
 
 interface PlayerProfileProps {
@@ -30,13 +33,15 @@ export function PlayerProfileModal({ playerId, onClose, onRemove, fixture }: Pla
 
 function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerProfileProps) {
   const { t } = useTranslation();
+  const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<ProfileIdentity | null>(fixture ?? null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
-  const [confirm, setConfirm] = useState(false);
-  const [removing, setRemoving] = useState(false);
-  const [removeError, setRemoveError] = useState<unknown>(null);
-  const confirming = confirm && !!onRemove;
+  const [confirm, setConfirm] = useState<'remove' | 'block' | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<unknown>(null);
+  const canBlock = !!user && !user.guest && user.id !== playerId;
+  const confirming = (confirm === 'remove' && !!onRemove) || (confirm === 'block' && canBlock);
   useEffect(() => {
     if (fixture) return;
     let active = true;
@@ -60,7 +65,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
       isOpen={!!playerId}
       title={t('profile.player_title')}
       onClose={onClose}
-      dismissible={!removing}
+      dismissible={!busy}
       scrollable
       testID="player-profile-modal">
       <View style={styles.content}>
@@ -72,7 +77,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
             <BevelButton
               label={t('profile.retry')}
               onPress={() => {
-                setError(false);
+                setError(null);
                 setAttempt(attempt + 1);
               }}
             />
@@ -95,53 +100,77 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
                 </PidroText>
               </>
             ) : null}
-            {onRemove ? (
-              confirming ? (
-                <>
-                  <PidroText role="body">
-                    {t('friends.remove_confirm', {
-                      name: publicPlayerName(
-                        profile.username,
-                        t('social.player'),
-                        profile.display_name
-                      ),
-                    })}
+            {confirming ? (
+              <>
+                <PidroText role="body">
+                  {t(confirm === 'block' ? 'blocks.confirm' : 'friends.remove_confirm', {
+                    name: publicPlayerName(
+                      profile.username,
+                      t('social.player'),
+                      profile.display_name
+                    ),
+                  })}
+                </PidroText>
+                {actionError ? (
+                  <PidroText role="body" tone="danger" accessibilityRole="alert">
+                    {confirm === 'block' &&
+                    actionError instanceof AxiosError &&
+                    actionError.response?.data?.error === 'USER_NOT_FOUND'
+                      ? t('blocks.unavailable')
+                      : localizedError(
+                          actionError,
+                          confirm === 'block' ? 'blocks.block_failed' : 'friends.remove_failed'
+                        )}
                   </PidroText>
-                  {removeError ? (
-                    <PidroText role="body" tone="danger" accessibilityRole="alert">
-                      {localizedError(removeError, 'friends.remove_failed')}
-                    </PidroText>
-                  ) : null}
+                ) : null}
+                <BevelButton
+                  label={t(confirm === 'block' ? 'blocks.block' : 'friends.remove')}
+                  loading={busy}
+                  onPress={async () => {
+                    setBusy(true);
+                    setActionError(null);
+                    try {
+                      if (confirm === 'block') {
+                        if (!fixture) await blockPlayer(profile.user_id);
+                        onClose();
+                      } else {
+                        await onRemove?.();
+                      }
+                    } catch (error) {
+                      setActionError(error ?? true);
+                    } finally {
+                      setBusy(false);
+                    }
+                  }}
+                />
+                <BevelButton
+                  label={t('common.cancel')}
+                  material="glass"
+                  disabled={busy}
+                  onPress={() => {
+                    setConfirm(null);
+                    setActionError(null);
+                  }}
+                />
+              </>
+            ) : (
+              <>
+                {onRemove ? (
                   <BevelButton
                     label={t('friends.remove')}
-                    loading={removing}
-                    onPress={async () => {
-                      setRemoving(true);
-                      setRemoveError(false);
-                      try {
-                        await onRemove();
-                      } catch (error) {
-                        setRemoveError(error ?? true);
-                      } finally {
-                        setRemoving(false);
-                      }
-                    }}
-                  />
-                  <BevelButton
-                    label={t('common.cancel')}
                     material="glass"
-                    disabled={removing}
-                    onPress={() => setConfirm(false)}
+                    onPress={() => setConfirm('remove')}
                   />
-                </>
-              ) : (
-                <BevelButton
-                  label={t('friends.remove')}
-                  material="glass"
-                  onPress={() => setConfirm(true)}
-                />
-              )
-            ) : null}
+                ) : null}
+                {canBlock ? (
+                  <BevelButton
+                    label={t('blocks.block')}
+                    material="glass"
+                    onPress={() => setConfirm('block')}
+                  />
+                ) : null}
+              </>
+            )}
           </View>
         )}
       </View>
@@ -149,7 +178,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
         <BevelButton
           label={t('profile.close')}
           material="glass"
-          disabled={removing}
+          disabled={busy}
           onPress={onClose}
         />
       ) : null}

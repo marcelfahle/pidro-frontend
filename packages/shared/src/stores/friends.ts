@@ -1,16 +1,22 @@
 import { create } from 'zustand';
-import type { FriendLists } from '../api/friends';
+import type { BlockedPlayers, FriendLists } from '../api/friends';
 
-interface FriendsState extends FriendLists {
+interface FriendsState extends FriendLists, BlockedPlayers {
   isLoading: boolean;
   error: unknown;
-  setLists: (lists: FriendLists) => void;
+  setLists: (lists: FriendLists | BlockedPlayers) => void;
   setLoading: (isLoading: boolean) => void;
   setError: (error: unknown) => void;
   reset: () => void;
 }
 
-const initialState = { friends: [], added_you: [], isLoading: false, error: null };
+const initialState = {
+  friends: [],
+  added_you: [],
+  blocked: [],
+  isLoading: false,
+  error: null,
+};
 
 export const useFriendsStore = create<FriendsState>((set) => ({
   ...initialState,

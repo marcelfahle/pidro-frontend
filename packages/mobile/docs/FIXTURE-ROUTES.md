@@ -315,7 +315,18 @@ The guest route opens the account sheet and continues on Friends after saving.
 
 Grammar cases: `friends-empty`, `friends-list`, `friends-added-you`,
 `friends-loading`, `friends-error`, `friends-profile`, `friends-remove`,
-`friends-recent`, `friends-results`, and `friends-guest`.
+`friends-block`, `friends-recent`, `friends-results`, and `friends-guest`.
+
+## `/blocked-players?fixture=<state>`
+
+Authenticated fixtures: `empty`, `filled`, `loading`, `error`. The filled list
+has no presence labels; Unblock is inert in fixtures. Grammar cases are
+`blocked-empty`, `blocked-filled`, `blocked-loading`, and `blocked-error`.
+`friends-block` opens the confirmation from a friend profile. The
+`block-profile-playing`, `block-profile-waiting`, and `block-profile-game_over`
+cases open a human profile through `/table-dev?phase=<phase>&role=player`, mocking
+only the profile response. `block-profile-guest` checks that guests see no Block
+action in the post-game sheet.
 
 ## Rule-set fixtures
 

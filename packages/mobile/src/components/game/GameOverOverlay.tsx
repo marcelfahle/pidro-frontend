@@ -6,13 +6,14 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
-import { PidroBevel, PidroColors, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import type { RematchVote } from '@pidro/shared';
 import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types/game';
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 import { VictoryConfetti } from './VictoryConfetti';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { t, formatNumber, useTranslation } from '@/i18n';
+import { canViewPlayer } from '@/features/friends';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
@@ -30,6 +31,7 @@ interface GameOverOverlayProps {
   playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
+  onProfile?: (playerId: string) => void;
 }
 
 function displayName(player: RelativePlayerView): string {
@@ -51,6 +53,7 @@ export function GameOverOverlay({
   playAgainLabel,
   showGuestSave = false,
   onSaveGuest,
+  onProfile,
 }: GameOverOverlayProps) {
   useTranslation();
   const { width, height } = useWindowDimensions();
@@ -144,14 +147,22 @@ export function GameOverOverlay({
                           first
                       )
                       .map((player) => (
-                        <View
+                        <PressableFX
                           key={player.absolutePosition}
+                          accessibilityRole={
+                            onProfile && canViewPlayer(player) ? 'button' : undefined
+                          }
+                          accessibilityLabel={t('friends.view_profile', {
+                            name: displayName(player),
+                          })}
+                          disabled={!onProfile || !canViewPlayer(player)}
+                          onPress={() => onProfile?.(player.playerId!)}
                           style={[styles.player, wide && styles.playerWide]}>
                           <PlayerAvatar uri={player.avatar_url} size={compact ? 32 : 44} />
                           <PidroText role="label" numberOfLines={2} style={styles.playerName}>
                             {displayName(player)}
                           </PidroText>
-                        </View>
+                        </PressableFX>
                       ))}
                   </View>
                 </View>
@@ -255,6 +266,7 @@ const styles = StyleSheet.create({
   playersWide: { flexDirection: 'row' },
   player: {
     minWidth: 0,
+    minHeight: PidroLayout.touchTarget,
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.xs,
