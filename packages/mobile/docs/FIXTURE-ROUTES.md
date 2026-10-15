@@ -45,6 +45,13 @@ is still ephemeral.
 Examples: `/ui-dev?state=settings&locale=sv&language=en&deviceLocale=sv-FI`,
 `/table-dev?phase=declaring&locale=sv`, `/auth-flow-dev?locale=sv`.
 
+Friends locale previews use `/ui-dev?state=friends&fixture=added-you&locale=sv`
+or `/ui-dev?state=friends-add&fixture=results&locale=sv`. They reuse the actual
+screens and existing fixture data; `/friends` and `/friends-add` ignore locale
+query parameters. `locale-sv-friends-*` checks list/empty/loading/error, add-back,
+recent/search results, profile/removal and the guest-save gate alongside the
+existing English Friends cases.
+
 Grammar cases `locale-{en,sv}-settings-{system,en,sv}` and
 `locale-{en,sv}-{waiting,bidding,trump,hand-selection,game-over,dealer,playing}`
 run at 390×844, 844×390, 667×375, plus localization-only additions to the

@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { isAxiosError } from 'axios';
-import type { FriendResult } from '@pidro/shared';
+import { localizedError, type FriendResult } from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
 import { usePillClearance } from '@/components/shell/TabPill';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -16,8 +15,10 @@ import { FriendRow } from '@/features/friends/FriendRow';
 import { discoveryFixture } from '@/features/friends/fixtures';
 import { useAuthStore } from '@/stores/auth';
 import { addFriend } from '@/stores/friends';
+import { useTranslation } from '@/i18n';
 
 export default function AddFriendScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { fixture } = useLocalSearchParams<{ fixture?: string }>();
   const preview = discoveryFixture(fixture);
@@ -27,7 +28,7 @@ export default function AddFriendScreen() {
   const [query, setQuery] = useState(preview && fixture === 'results' ? 'Nor' : '');
   const [users, setUsers] = useState<FriendResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ cause: unknown; action: 'search' | 'add' } | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const inFlight = useRef<Promise<unknown>>(Promise.resolve());
@@ -50,12 +51,7 @@ export default function AddFriendScreen() {
             const result = search ? await friendsApi.search(search) : await friendsApi.recent();
             if (active) setUsers(result);
           } catch (error) {
-            if (active)
-              setError(
-                isAxiosError(error) && error.response?.data?.error === 'QUERY_TOO_SHORT'
-                  ? 'Type at least three letters.'
-                  : 'Could not find players. Please try again.'
-              );
+            if (active) setError({ cause: error, action: 'search' });
           } finally {
             if (active) setLoading(false);
           }
@@ -85,10 +81,10 @@ export default function AddFriendScreen() {
           paddingRight: PidroSpacing.md + clearance.right,
         },
       ]}>
-      <ScreenHeader title="Add a friend" onBack={() => router.back()} />
+      <ScreenHeader title={t('friends.add_friend')} onBack={() => router.back()} />
       <Input
-        label="Find a player"
-        placeholder="Type at least three letters"
+        label={t('friends.find')}
+        placeholder={t('friends.query_hint')}
         value={query}
         onChangeText={(value) => {
           setQuery(value);
@@ -102,24 +98,31 @@ export default function AddFriendScreen() {
         autoCapitalize="none"
       />
       <PidroText role="label" tone="soft">
-        {search ? 'Search results' : 'Recently played with'}
+        {t(search ? 'friends.results' : 'friends.recent')}
       </PidroText>
       {!eligible ? (
         <PidroText role="body" tone="soft">
-          Type at least three letters.
+          {t('friends.query_short')}
         </PidroText>
       ) : null}
       {!preview && loading ? (
         <PidroText role="body" tone="soft">
-          Loading…
+          {t('profile.loading')}
         </PidroText>
       ) : null}
       {error ? (
         <>
           <PidroText role="body" tone="danger" accessibilityRole="alert">
-            {error}
+            {localizedError(
+              error.cause,
+              error.action === 'add' ? 'friends.add_failed' : 'friends.search_failed'
+            )}
           </PidroText>
-          <BevelButton label="Retry" material="glass" onPress={() => setAttempt(attempt + 1)} />
+          <BevelButton
+            label={t('profile.retry')}
+            material="glass"
+            onPress={() => setAttempt(attempt + 1)}
+          />
         </>
       ) : null}
       {results.map((player) => (
@@ -129,8 +132,8 @@ export default function AddFriendScreen() {
           action={
             player.relation === 'none' ? (
               <BevelButton
-                label="Add"
-                accessibilityLabel={`Add ${player.display_name}`}
+                label={t('friends.add')}
+                accessibilityLabel={t('friends.add_player', { name: player.display_name })}
                 size="sm"
                 disabled={pending !== null}
                 loading={pending === player.user_id}
@@ -141,8 +144,8 @@ export default function AddFriendScreen() {
                   try {
                     await addFriend(player.user_id);
                     setAttempt((value) => value + 1);
-                  } catch {
-                    setError('Could not add this player. Please try again.');
+                  } catch (error) {
+                    setError({ cause: error, action: 'add' });
                   } finally {
                     setPending(null);
                   }
@@ -158,7 +161,7 @@ export default function AddFriendScreen() {
       ))}
       {!preview && !loading && !error && eligible && results.length === 0 ? (
         <PidroText role="body" tone="soft">
-          {search ? 'No players found.' : 'People you play with will appear here.'}
+          {t(search ? 'friends.no_results' : 'friends.recent_empty')}
         </PidroText>
       ) : null}
     </ScreenShell>

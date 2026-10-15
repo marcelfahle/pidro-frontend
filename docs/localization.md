@@ -39,6 +39,7 @@ Catalog sections place English and Swedish side by side for review.
 | `shell`: settings language/sound/on/off | `TID_Language`, `TID_Sound`, `TID_On`, `TID_Off`, `TID_SettingsCaps` | Språk, Ljud, På, Av; sentence case |
 | `auth`: sign-in/form/actions | `TID_SignIn`, `TID_UserName`, `TID_Password`, `TID_EmailAddress`, `TID_Cancel`, `TID_Continue` | Reuse vocabulary; current full sentences |
 | `social`: friends/home/lobby | `TID_Friends`, `TID_Host`, `TID_QuickJoin`, `TID_Multiplayer`, `TID_VS` | Vänner, värd, Snabbspel, Spela online, mot |
+| `friends` in `social`: PID-224 list/search/add-back/remove | Current merged Friends flow; Unity supplies Vänner terminology | New complete sentences and accessible actions; presence/relation enums and player identities stay unchanged |
 | `social`: profile statistics | `TID_PlayedGames`, `TID_Wins`, `TID_Loses`, `TID_WinningPercentage` | Spelade spel, vinster, förluster; locale number formatting |
 | `game`: bids/suits/turns | `TID_Bet`, `TID_Pass`, `TID_Passed`, `TID_ChooseASuit`, `TID_DealerChip` | Bud, passa/passade, färg, givare; complete interpolated sentences |
 | `core`: original invite/rules keys | `TID_Invite`, `TID_Loading`, `TID_Cancel`, `TID_Host` | Existing English preserved; modern invite and rules sentences newly translated |

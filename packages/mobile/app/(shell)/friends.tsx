@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import type { FriendPlayer } from '@pidro/shared';
+import { localizedError, type FriendPlayer } from '@pidro/shared';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
@@ -16,6 +16,7 @@ import { FriendRow } from '@/features/friends/FriendRow';
 import { friendsFixture } from '@/features/friends/fixtures';
 import { useAuthStore } from '@/stores/auth';
 import { addFriend, refreshFriends, removeFriend, useFriendsStore } from '@/stores/friends';
+import { useTranslation } from '@/i18n';
 
 function LiveFriends() {
   useLobbyChannel();
@@ -28,6 +29,7 @@ function LiveFriends() {
 }
 
 export default function FriendsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { fixture } = useLocalSearchParams<{ fixture?: string }>();
   const preview = friendsFixture(fixture);
@@ -40,11 +42,7 @@ export default function FriendsScreen() {
   const lists = preview ?? store;
   const sections = friendSections(lists);
   const loading = preview ? fixture === 'loading' : store.isLoading;
-  const error = preview
-    ? fixture === 'error'
-      ? 'Could not update Friends. Please try again.'
-      : null
-    : store.error;
+  const error = preview ? fixture === 'error' : store.error;
 
   return (
     <ScreenShell
@@ -59,18 +57,18 @@ export default function FriendsScreen() {
         },
       ]}>
       {!guest && !preview ? <LiveFriends /> : null}
-      <ScreenHeader title="Friends" onBack={() => router.replace('/home')} />
+      <ScreenHeader title={t('social.friends')} onBack={() => router.replace('/home')} />
       {guest ? (
-        <BevelButton label="Save your player" onPress={() => setAccountOpen(true)} />
+        <BevelButton label={t('auth.sheet_save_title')} onPress={() => setAccountOpen(true)} />
       ) : (
         <>
           {error ? (
             <>
               <PidroText role="body" tone="danger" accessibilityRole="alert">
-                {error}
+                {localizedError(error, 'friends.update_failed')}
               </PidroText>
               <BevelButton
-                label="Retry"
+                label={t('profile.retry')}
                 material="glass"
                 onPress={() => {
                   if (!preview) void refreshFriends().catch(() => undefined);
@@ -80,11 +78,11 @@ export default function FriendsScreen() {
           ) : null}
           {loading ? (
             <PidroText role="body" tone="soft">
-              Loading…
+              {t('profile.loading')}
             </PidroText>
           ) : null}
           {sections.map((section) => (
-            <View key={section.title}>
+            <View key={section.addBack ? 'added_you' : 'friends'}>
               <PidroText role="label" tone="soft">
                 {section.title}
               </PidroText>
@@ -96,7 +94,7 @@ export default function FriendsScreen() {
                   action={
                     section.addBack ? (
                       <BevelButton
-                        label="Add back"
+                        label={t('friends.add_back')}
                         size="sm"
                         loading={pending === player.user_id}
                         disabled={pending !== null}
@@ -120,10 +118,14 @@ export default function FriendsScreen() {
           ))}
           {sections.length === 0 && !loading && !error ? (
             <PidroText role="body" tone="soft">
-              Nobody here yet. Add the people you play with.
+              {t('friends.empty')}
             </PidroText>
           ) : null}
-          <BevelButton label="Add a friend" fullWidth onPress={() => router.push('/friends-add')} />
+          <BevelButton
+            label={t('friends.add_friend')}
+            fullWidth
+            onPress={() => router.push('/friends-add')}
+          />
           <PlayerProfileModal
             playerId={selected?.user_id ?? null}
             onClose={() => setSelected(null)}

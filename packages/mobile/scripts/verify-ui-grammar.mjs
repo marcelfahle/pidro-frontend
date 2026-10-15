@@ -517,6 +517,20 @@ const localizationCases = ['en', 'sv'].flatMap((locale) => [
   })),
 ]);
 allCases.push(...localizationCases);
+allCases.push(
+  ...allCases
+    .filter((testCase) => testCase.name.startsWith('friends-'))
+    .map((testCase) => {
+      const path = new URL(testCase.path, baseUrl);
+      return {
+        ...testCase,
+        name: `locale-sv-${testCase.name}`,
+        path: `/ui-dev?state=${path.pathname.slice(1)}&fixture=${path.searchParams.get('fixture') ?? ''}&locale=sv&language=sv`,
+        locale: 'sv',
+        open: testCase.open ? 'Visa profilen för Nora' : undefined,
+      };
+    })
+);
 
 async function assertLocalization(page, testCase, viewport) {
   if (!testCase.locale) return;
@@ -863,34 +877,63 @@ async function assertRulePresentation(page, testCase) {
 }
 
 async function assertFriendsPresentation(page, name) {
+  const swedish = name.startsWith('locale-sv-');
+  name = name.replace(/^locale-sv-/, '');
   if (!name.startsWith('friends-')) return;
   const expected =
-    {
-      'friends-empty': ['Nobody here yet. Add the people you play with.'],
-      'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'At a table', 'Offline'],
-      'friends-added-you': ['Added you', 'Kalle', 'Add back'],
-      'friends-loading': ['Loading…'],
-      'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
-      'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
-      'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
-      'friends-profile': ['Player profile', 'Nora', 'Remove friend'],
-      'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
-      'friends-guest': ['Save your player', 'Save account'],
-    }[name] ?? [];
+    (swedish
+      ? {
+          'friends-empty': ['Ingen här ännu. Lägg till dem du spelar med.'],
+          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'Vid ett bord', 'Offline'],
+          'friends-added-you': ['Har lagt till dig', 'Kalle', 'Lägg till tillbaka'],
+          'friends-loading': ['Laddar…'],
+          'friends-error': ['Kunde inte uppdatera Vänner. Försök igen.', 'Försök igen'],
+          'friends-recent': ['Spelat med nyligen', 'Nora', 'Kalle', 'Tillagd'],
+          'friends-results': ['Sökresultat', 'Vän', 'Har lagt till dig', 'Tillagd'],
+          'friends-profile': ['Spelarprofil', 'Nora', 'Ta bort vän'],
+          'friends-remove': ['Ta bort Nora som vän?', 'Avbryt'],
+          'friends-guest': ['Spara din spelare', 'Spara konto'],
+        }
+      : {
+          'friends-empty': ['Nobody here yet. Add the people you play with.'],
+          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'At a table', 'Offline'],
+          'friends-added-you': ['Added you', 'Kalle', 'Add back'],
+          'friends-loading': ['Loading…'],
+          'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
+          'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
+          'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
+          'friends-profile': ['Player profile', 'Nora', 'Remove friend'],
+          'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
+          'friends-guest': ['Save your player', 'Save account'],
+        })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
   if (name === 'friends-added-you') {
     assert.ok(
-      (await page.getByText('Added you', { exact: true }).boundingBox()).y <
-        (await page.getByRole('button', { name: "View Nora's profile" }).boundingBox()).y
+      (
+        await page
+          .getByText(swedish ? 'Har lagt till dig' : 'Added you', { exact: true })
+          .boundingBox()
+      ).y <
+        (
+          await page
+            .getByRole('button', {
+              name: swedish ? 'Visa profilen för Nora' : "View Nora's profile",
+            })
+            .boundingBox()
+        ).y
     );
   }
   if (name === 'friends-remove') {
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByRole('button', { name: "View Nora's profile" }).waitFor();
+    await page.getByRole('button', { name: swedish ? 'Avbryt' : 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: swedish ? 'Stäng' : 'Close', exact: true }).click();
+    await page
+      .getByRole('button', { name: swedish ? 'Visa profilen för Nora' : "View Nora's profile" })
+      .waitFor();
   }
   if (name === 'friends-guest') {
-    for (const label of ['Public name', 'Email', 'Password']) {
+    for (const label of swedish
+      ? ['Offentligt namn', 'E-post', 'Lösenord']
+      : ['Public name', 'Email', 'Password']) {
       const box = await page.getByRole('textbox', { name: label, exact: true }).boundingBox();
       assert.ok(
         box && box.x >= 0 && box.x + box.width <= page.viewportSize().width,
@@ -2059,11 +2102,16 @@ async function main() {
           }
           if (testCase.open) {
             await page.getByRole('button', { name: testCase.open, exact: true }).click();
-            if (testCase.name === 'friends-remove')
-              await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
+            if (testCase.name.endsWith('friends-remove'))
+              await page
+                .getByRole('button', {
+                  name: testCase.locale === 'sv' ? 'Ta bort vän' : 'Remove friend',
+                  exact: true,
+                })
+                .click();
             await waitForScreenshotReady(page);
           }
-          if (testCase.name === 'friends-guest') {
+          if (testCase.name.endsWith('friends-guest')) {
             await page.getByTestId('auth-sheet').waitFor();
             await waitForScreenshotReady(page);
           }

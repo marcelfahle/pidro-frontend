@@ -1,18 +1,18 @@
-import type { FriendLists, FriendPlayer, FriendResult } from '@pidro/shared';
+import { t, type FriendLists, type FriendPlayer, type FriendResult } from '@pidro/shared';
 
 export function friendSections(lists: FriendLists) {
   return [
-    { title: 'Added you', players: lists.added_you, addBack: true },
-    { title: 'Friends', players: lists.friends, addBack: false },
+    { title: t('friends.added_you'), players: lists.added_you, addBack: true },
+    { title: t('social.friends'), players: lists.friends, addBack: false },
   ].filter((section) => section.players.length > 0);
 }
 
 export function presenceLabel(presence: FriendPlayer['presence']) {
-  return { online: 'Online', at_table: 'At a table', offline: 'Offline' }[presence];
+  return t(`friends.${presence}`);
 }
 
 export function relationLabel(relation: FriendResult['relation']) {
-  return { none: 'Add', friend: 'Friend', added_you: 'Added you', added: 'Added' }[relation];
+  return t(relation === 'none' ? 'friends.add' : `friends.${relation}`);
 }
 
 export function canSearch(query: string) {

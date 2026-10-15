@@ -27,7 +27,7 @@ function updateLists(request: () => Promise<FriendLists>) {
       if (current === revision) store.setLists(lists);
       return lists;
     } catch (error) {
-      if (current === revision) store.setError('Could not update Friends. Please try again.');
+      if (current === revision) store.setError(error ?? true);
       throw error;
     }
   });

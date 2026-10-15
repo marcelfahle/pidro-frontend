@@ -349,7 +349,7 @@ function ProfileContent() {
             ) : null
           }
         />
-        <TextLink label="Friends" onPress={() => router.push('/friends')} />
+        <TextLink label={t('social.friends')} onPress={() => router.push('/friends')} />
         {refreshError && (
           <PidroText role="metadata" tone="danger" accessibilityRole="alert">
             {t('profile.refresh_error')}

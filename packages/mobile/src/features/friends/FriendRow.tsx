@@ -6,6 +6,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { presenceLabel } from './index';
+import { useTranslation } from '@/i18n';
 
 export function FriendRow({
   player,
@@ -16,6 +17,7 @@ export function FriendRow({
   onPress?: () => void;
   action?: ReactNode;
 }) {
+  const { t } = useTranslation();
   const identity = (
     <>
       <PlayerAvatar size={48} uri={player.avatar_url} />
@@ -37,7 +39,7 @@ export function FriendRow({
       {onPress ? (
         <PressableFX
           accessibilityRole="button"
-          accessibilityLabel={`View ${player.display_name}'s profile`}
+          accessibilityLabel={t('friends.view_profile', { name: player.display_name })}
           onPress={onPress}
           style={[styles.identity, player.presence === 'offline' && styles.offline]}>
           {identity}
