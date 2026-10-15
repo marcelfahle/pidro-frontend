@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pidro · Language in Settings · v2</title>
+    <link rel="stylesheet" href="pidro-ds-v2.css" />
+    <style>
+      .phone .back {
+        position: static;
+        border: 0;
+        border-radius: 13px;
+        background: linear-gradient(180deg, rgba(170, 235, 255, 0.72), rgba(16, 72, 112, 0.68));
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+      .phone .screen-copy {
+        min-width: 0;
+        flex: 1;
+      }
+      @font-face {
+        font-family: Nunito;
+        src: url('../../../assets/fonts/Nunito-VariableFont_wght.ttf');
+      }
+      @font-face {
+        font-family: 'Bree Serif';
+        src: url('../../../assets/fonts/BreeSerif-Regular.ttf');
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #07264c;
+        color: white;
+        font-family: Nunito, sans-serif;
+      }
+      main {
+        width: 1280px;
+        padding: 32px;
+        display: grid;
+        gap: 24px;
+      }
+      h1 {
+        font-size: 32px;
+      }
+      h2 {
+        font-size: 23px;
+      }
+      h3 {
+        margin: 0;
+      }
+      p {
+        margin: 0;
+      }
+      header.board-head {
+        display: grid;
+        gap: 8px;
+      }
+      .portraits {
+        display: grid;
+        grid-template-columns: 390px 390px 1fr;
+        gap: 24px;
+      }
+      figure {
+        margin: 0;
+        display: grid;
+        gap: 8px;
+        align-content: start;
+      }
+      figcaption {
+        font-size: 12px;
+        line-height: 18px;
+        color: #8beaff;
+      }
+      .phone {
+        width: 390px;
+        height: 844px;
+        padding: 59px 16px 34px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .phone.wide {
+        width: 844px;
+        height: 390px;
+        padding: 16px 32px;
+      }
+      .screen-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .back {
+        width: 44px;
+        height: 44px;
+        flex: none;
+      }
+      .back .face {
+        font-size: 25px;
+      }
+      .title {
+        font-size: 26px;
+        line-height: 34px;
+      }
+      .screen-copy {
+        display: grid;
+        gap: 4px;
+      }
+      .settings-window {
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+        overflow: auto;
+        min-height: 0;
+      }
+      .group {
+        padding: 12px;
+        display: grid;
+        gap: 8px;
+        align-content: start;
+      }
+      .choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .choice {
+        flex: 1 1 120px;
+        min-width: 0;
+        min-height: 48px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        color: white;
+        font:
+          800 15px/20px Nunito,
+          sans-serif;
+        text-align: left;
+      }
+      .choice.system {
+        flex-basis: 100%;
+      }
+      .choice[aria-checked='true'] {
+        border-color: #8beaff;
+        box-shadow: inset 0 0 0 1px #8beaff;
+        background: rgba(18, 74, 119, 0.9);
+      }
+      .mark {
+        width: 18px;
+        height: 18px;
+        flex: none;
+        border: 1px solid rgba(184, 225, 246, 0.7);
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+      }
+      .choice[aria-checked='true'] .mark:after {
+        content: '';
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #8beaff;
+      }
+      .choice span:last-child {
+        overflow-wrap: anywhere;
+      }
+      .choice:focus-visible {
+        outline: 2px solid #ffd447;
+        outline-offset: 2px;
+      }
+      .choice:active {
+        transform: scale(0.97);
+      }
+      .setting {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        min-height: 72px;
+        padding: 12px;
+      }
+      .setting-copy {
+        flex: 1;
+        min-width: 0;
+        display: grid;
+        gap: 4px;
+      }
+      .switch {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex: none;
+      }
+      .track {
+        width: 44px;
+        height: 26px;
+        border-radius: 20px;
+        background: #08243d;
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.42);
+        padding: 4px;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .thumb {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: #cfefff;
+      }
+      .rules {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+      .rules > span {
+        padding: 10px 12px;
+        min-height: 44px;
+      }
+      .rules .chosen {
+        border-color: #8beaff;
+      }
+      .wide .settings-window {
+        grid-template-columns: 1fr 1fr;
+      }
+      .wide .other-settings {
+        display: grid;
+        gap: 8px;
+        align-content: start;
+      }
+      .other-settings {
+        display: grid;
+        gap: 12px;
+      }
+      .wide .group {
+        gap: 6px;
+      }
+      .wide .setting {
+        min-height: 64px;
+        padding: 8px;
+      }
+      .wide .rules > span {
+        padding: 6px 12px;
+        min-height: 34px;
+      }
+      .wide .settings-window {
+        gap: 16px;
+      }
+      .notes {
+        display: grid;
+        gap: 16px;
+        align-content: start;
+      }
+      .note {
+        padding: 16px;
+        display: grid;
+        gap: 8px;
+      }
+      .landscape-row {
+        display: grid;
+        grid-template-columns: 844px 1fr;
+        gap: 24px;
+      }
+      .stress {
+        padding: 16px;
+        display: grid;
+        gap: 12px;
+      }
+      .stress .glass {
+        min-height: 48px;
+      }
+      .stress .face {
+        padding: 10px 12px;
+        text-align: center;
+        font-size: 15px;
+        line-height: 20px;
+      }
+      .stress .display {
+        font-size: 23px;
+        line-height: 30px;
+      }
+      .fine {
+        font-size: 12px;
+        line-height: 18px;
+        color: rgba(239, 249, 255, 0.8);
+      }
+      .spec {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+      }
+      .spec code {
+        color: #8beaff;
+      }
+      footer {
+        border-top: 1px solid rgba(184, 225, 246, 0.22);
+        padding-top: 16px;
+      }
+      .resolved[hidden] {
+        display: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .choice:active {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="board-head" id="overview">
+        <p class="eyebrow">Pidro / DS v2 / localization / 15 October 2026</p>
+        <h1 class="display">Language belongs in Settings.</h1>
+        <p class="body">
+          One immediate preference inside the existing window. English and Svenska remain autonyms.
+          No separate flow.
+        </p>
+        <p class="fine">
+          Needs from you: no design choice; selected direction implemented. Browser spec, not a
+          native-device certification. Controls below are interactive, independently per frame.
+        </p>
+      </header>
+      <section class="portraits" id="portrait-matrix">
+        <figure id="en-portrait">
+          <div class="phone felt" data-locale="en" data-choice="en" data-system="en"></div>
+          <figcaption>EN · 390 × 844 · explicit English selected</figcaption>
+        </figure>
+        <figure id="sv-portrait">
+          <div class="phone felt" data-locale="sv" data-choice="sv" data-system="sv"></div>
+          <figcaption>SV · 390 × 844 · explicit Svenska selected</figcaption>
+        </figure>
+        <aside class="notes">
+          <section class="window note" id="placement">
+            <p class="eyebrow">F1 / same window</p>
+            <h2 class="display">An inset group, not a CTA.</h2>
+            <p class="body">
+              Language comes before Preferred rules, Sound and Haptics. Keep existing account and
+              update sections below the window; this board isolates the preference window.
+            </p>
+            <p class="body">
+              Independent from Finnish / Louisiana rules. No language flags, wood selection,
+              platform segmented control, Save or restart.
+            </p>
+          </section>
+          <section class="subtle note" id="selection">
+            <p class="eyebrow">F2 / selection</p>
+            <p class="body">
+              Filled radio + cyan keyline identify the selected value without relying on color.
+              System is a full row; the two autonyms share the next row and stack if needed.
+            </p>
+            <p class="body">
+              Only System shows quiet resolved metadata: English or Svenska. Do not replace its
+              label with a device locale code.
+            </p>
+          </section>
+          <section class="subtle note" id="interaction">
+            <p class="eyebrow">F3 / immediate</p>
+            <p class="body">
+              Tap a choice to translate this frame immediately. The selected radio keeps focus.
+              System uses each frame’s declared device language.
+            </p>
+            <p class="fine">
+              These are Settings excerpts, with schematic existing read-only switches/rules, not
+              runtime controls. Portrait top/bottom 59/34 are illustrative fixture reserves only.
+            </p>
+          </section>
+        </aside>
+      </section>
+      <section class="landscape-row" id="en-landscape-row">
+        <figure id="en-landscape">
+          <div class="phone wide felt" data-locale="en" data-choice="system" data-system="en"></div>
+          <figcaption>
+            EN · 844 × 390 · System selected → English · decoration yields; content remains
+            scrollable
+          </figcaption>
+        </figure>
+        <section class="window stress" id="english-game-labels">
+          <p class="eyebrow">F4 / game copy stress plate</p>
+          <h2 class="display">Choose a suit</h2>
+          <p class="body">Waiting for other players.</p>
+          <div class="glass"><span class="face">Waiting for your teammate’s response</span></div>
+          <div class="glass"><span class="face">Keep the selected cards</span></div>
+          <p class="fine">
+            Separate label specimens, not additional Settings actions. Same 15/20 control type in EN
+            and SV.
+          </p>
+        </section>
+      </section>
+      <section class="landscape-row" id="sv-landscape-row">
+        <figure id="sv-landscape">
+          <div class="phone wide felt" data-locale="sv" data-choice="system" data-system="sv"></div>
+          <figcaption>
+            SV · 844 × 390 · Enhetens språk selected → Svenska · Å / Ä / Ö retained
+          </figcaption>
+        </figure>
+        <section class="window stress" lang="sv" id="swedish-game-labels">
+          <p class="eyebrow">F5 / långa speltexter</p>
+          <h2 class="display">Välj en färg</h2>
+          <p class="body">Väntar på andra spelare.</p>
+          <div class="glass"><span class="face">Väntar på din medspelares svar</span></div>
+          <div class="glass"><span class="face">Behåll de markerade korten</span></div>
+          <p class="fine">Väntar på att de andra spelarna ska bli redo för nästa omgång.</p>
+          <p class="fine">
+            Wrap and grow; no ellipsis, fixed label height or Swedish-only font reduction.
+          </p>
+        </section>
+      </section>
+      <section class="spec" id="implementation">
+        <section class="subtle note" id="geometry">
+          <p class="eyebrow">S1 / measurements</p>
+          <p class="body">
+            Window 16px padding; inset group 12px; control gap 8px. Radio targets ≥48px high; 12px
+            horizontal padding. Label 15/20, weight 800; metadata 12/16, weight 700. Both languages
+            use identical roles.
+          </p>
+          <p class="fine">
+            390 wide: 358px window, 324px inset, 298px choice area. 844 wide: 780px window with two
+            365px columns. Height grows with copy; scroll rather than clip at text scaling.
+          </p>
+        </section>
+        <section class="subtle note" id="a11y">
+          <p class="eyebrow">S2 / primitive mapping</p>
+          <p class="body">
+            <code>Surface window → subtle → PressableFX</code>. Use
+            <code>PidroText label / metadata</code>, existing border, cyan and glass tokens. Do not
+            copy raw board CSS into runtime.
+          </p>
+          <p class="fine">
+            Named radiogroup Language / Språk; radio role + checked state, one tab stop, arrow-key
+            selection and Space. Visible focus ring. Autonyms carry en / sv language hints. RN:
+            accessibilityRole radio and accessibilityState checked. Preserve focus on translation.
+          </p>
+        </section>
+        <section class="subtle note" id="behavior">
+          <p class="eyebrow">S3 / locale contract</p>
+          <p class="body">
+            Persist system | en | sv in the existing settings store; migrate to system. Resolve
+            preferred languages in order, sv-SE / sv-FI → sv, otherwise English fallback.
+          </p>
+          <p class="fine">
+            Apply mounted copy, accessibility and formatters without remounting navigation or
+            resetting game/socket state. System refreshes on foreground; explicit choice wins.
+            Resolve persistence before first copy. No restart or success toast.
+          </p>
+        </section>
+      </section>
+      <footer id="sources" class="fine">
+        Sources: docs/localization-contract.md; SettingsScreen.tsx; RuleSetSelector; PressableFX,
+        Surface, PidroText; src/design/tokens.ts and README.md; shared pidro-ds-v2.css. Unity
+        English.txt / Swedish.txt: TID_Language → Språk and TID_Sound → Ljud reused;
+        TID_SettingsCaps and TID_ChooseASuit sentence-cased; TID_WaitingOtherPlayers reused. New:
+        System language / Enhetens språk, touch-feedback copy and long-label specimens. Medspelare
+        adapted from TID_ValidBitMustBe vocabulary only, never its obsolete bid limits. New Swedish
+        copy needs native-speaker review. No game rules inferred from Unity tutorials. Out of scope:
+        app implementation, tablet/native/font-scaling certification and catalog completeness.
+        Production precedent: board commits 970a607 and be22c44 (CSS source + PNG; no Amp trailer).
+      </footer>
+    </main>
+    <script>
+      const copy = {
+        en: {
+          title: 'Settings',
+          subtitle: 'Adjust how the game feels on this device.',
+          language: 'Language',
+          system: 'System language',
+          rules: 'Preferred rules',
+          finnish: 'Finnish',
+          sound: 'Sound',
+          soundHint: 'Play game sound effects.',
+          haptics: 'Haptics',
+          hapticsHint: 'Use touch feedback for game actions.',
+          on: 'On',
+        },
+        sv: {
+          title: 'Inställningar',
+          subtitle: 'Anpassa hur spelet känns på den här enheten.',
+          language: 'Språk',
+          system: 'Enhetens språk',
+          rules: 'Föredragna regler',
+          finnish: 'Finska',
+          sound: 'Ljud',
+          soundHint: 'Spela spelets ljudeffekter.',
+          haptics: 'Haptisk återkoppling',
+          hapticsHint: 'Använd känselåterkoppling vid spelhandlingar.',
+          on: 'På',
+        },
+      };
+      document.querySelectorAll('.phone').forEach((frame, index) => {
+        frame.innerHTML = `<header class="screen-header"><span class="glass back" aria-hidden="true"><span class="face">‹</span></span><div class="screen-copy"><h2 class="display title" data-text="title"></h2><p class="meta" data-text="subtitle"></p></div></header><section class="window settings-window"><section class="subtle group"><p class="label" id="language-${index}" data-text="language"></p><div class="choices" role="radiogroup" aria-labelledby="language-${index}">${['system', 'en', 'sv'].map((value) => `<button type="button" class="choice subtle ${value === 'system' ? 'system' : ''}" role="radio" data-value="${value}"><span class="mark" aria-hidden="true"></span><span ${value === 'system' ? 'data-text="system"' : `lang="${value}"`}>${value === 'en' ? 'English' : value === 'sv' ? 'Svenska' : ''}</span></button>`).join('')}</div><p class="meta resolved"></p></section><div class="other-settings"><section class="subtle group"><p class="label" data-text="rules"></p><div class="rules" aria-hidden="true"><span class="subtle label chosen" data-text="finnish"></span><span class="subtle label">Louisiana</span></div></section>${['sound', 'haptics'].map((key) => `<section class="subtle setting"><div class="setting-copy"><p class="label" data-text="${key}"></p><p class="meta" data-text="${key}Hint"></p></div><span class="switch" aria-hidden="true"><span class="track"><span class="thumb"></span></span><span class="meta" data-text="on"></span></span></section>`).join('')}</div></section>`;
+        const radios = [...frame.querySelectorAll('[role=radio]')];
+        function apply(value) {
+          frame.dataset.choice = value;
+          const locale = value === 'system' ? frame.dataset.system : value;
+          frame.dataset.locale = locale;
+          frame.lang = locale;
+          frame
+            .querySelectorAll('[data-text]')
+            .forEach((el) => (el.textContent = copy[locale][el.dataset.text]));
+          radios.forEach((r) => {
+            r.setAttribute('aria-checked', String(r.dataset.value === value));
+            r.tabIndex = r.dataset.value === value ? 0 : -1;
+          });
+          const resolved = frame.querySelector('.resolved');
+          resolved.hidden = value !== 'system';
+          resolved.textContent = locale === 'sv' ? 'Svenska' : 'English';
+          resolved.lang = locale;
+        }
+        radios.forEach((radio, i) => {
+          radio.addEventListener('click', () => apply(radio.dataset.value));
+          radio.addEventListener('keydown', (event) => {
+            let next;
+            if (['ArrowRight', 'ArrowDown'].includes(event.key)) next = (i + 1) % 3;
+            if (['ArrowLeft', 'ArrowUp'].includes(event.key)) next = (i + 2) % 3;
+            if (event.key === 'Home') next = 0;
+            if (event.key === 'End') next = 2;
+            if (next !== undefined) {
+              event.preventDefault();
+              apply(radios[next].dataset.value);
+              radios[next].focus();
+            }
+          });
+        });
+        apply(frame.dataset.choice);
+      });
+    </script>
+  </body>
+</html>
