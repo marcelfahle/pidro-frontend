@@ -106,7 +106,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ui-dev?state=components`  | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow. testID `ui-foundation-panel` |
 | `/ui-dev?state=create`      | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
-| `/ui-dev?state=create-seat` | CreateRoomModal with the partner's seat sheet up. testID `create-seat-sheet`                                                                                                                |
+| `/ui-dev?state=create&fixture=default\|open\|requirement\|bots\|friend` | Inline creation: defaults, Open question, 100+ picked, all bots, Friend selected. testID `create-room-window`; editable rows `create-seat_3`, `create-seat_2`, `create-seat_4`. |
 | `/ui-dev?state=progression` | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
 | `/ui-dev?state=avatars`     | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 
@@ -270,7 +270,7 @@ renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift w
 
 `UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby-list` `lobby-empty` `lobby-rejoin` `lobby-open` `lobby-substitute` `lobby-watch` `lobby-search-empty` `login` `register` `register-password`
 `register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
-`ui-components` `create-table` `create-seat` `table-waiting` `table-ready` `table-ready-host`
+`ui-components` `create-table` `create-table-open` `create-table-requirement` `create-table-bots` `create-table-friend` `table-waiting` `table-ready` `table-ready-host`
 `table-host-controls` `table-invite` `table-waiting-notice` `table-playing` `table-notice`
 `table-reconnecting-banner` `table-dealer-selection`
 `table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`

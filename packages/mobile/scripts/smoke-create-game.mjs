@@ -171,11 +171,11 @@ async function main() {
     captures.push(...(await captureCurrentScreen(page, 'lobby', 'lobby-screen')));
 
     await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-    await page.getByLabel('Table name').fill(`Smoke ${Date.now().toString().slice(-6)}`);
     for (const seat of ['Left opponent seat', 'Partner seat']) {
-      await page.getByRole('button', { name: `${seat}: open. Change` }).click();
-      await page.getByTestId('create-seat-sheet').getByRole('radio', { name: 'Bot' }).click();
-      await page.getByTestId('create-seat-sheet').getByRole('button', { name: 'Done' }).click();
+      await page
+        .getByRole('radiogroup', { name: seat, exact: true })
+        .getByRole('radio', { name: 'Bot', exact: true })
+        .click();
     }
     captures.push(...(await captureCurrentScreen(page, 'create-table-live', 'create-room-window')));
 

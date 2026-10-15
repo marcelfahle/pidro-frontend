@@ -10,14 +10,14 @@ export const TABLE_UNKNOWN_ERROR =
   'We could not check whether you are at another table. Please try again.';
 
 /** You and three bots, started the same way from Home and from an empty Tables screen. */
-export function useQuickGame(playerName: string, initialError: string | null = null) {
+export function useQuickGame(initialError: string | null = null) {
   const router = useRouter();
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(initialError);
 
   const createSinglePlayerRoom = async () => {
-    const response = await createSoloRoom(playerName);
+    const response = await createSoloRoom();
     if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
     router.replace(gameRoute(response.code, 'single-player'));
   };

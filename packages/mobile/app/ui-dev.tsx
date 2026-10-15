@@ -5,6 +5,7 @@ import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-c
 import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { ruleSetFixture } from '@/features/rules/fixtures';
+import { createTableFixture } from '@/features/lobby/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
@@ -625,8 +626,8 @@ function UiDevHarness() {
       </ScreenShell>
 
       <CreateRoomModal
-        isOpen={state === 'create' || state === 'create-seat'}
-        initialSeat={state === 'create-seat' ? 'seat_3' : null}
+        isOpen={state === 'create'}
+        initialDraft={createTableFixture(params.fixture)}
         key={params.fixture}
         initialRuleSet={ruleSetFixture(params.fixture)}
         onClose={noop}

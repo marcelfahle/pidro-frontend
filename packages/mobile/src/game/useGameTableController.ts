@@ -8,7 +8,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { useShallow } from 'zustand/react/shallow';
-import type { Room, Position } from '@/types/lobby';
+import type { Position } from '@/types/lobby';
 import type {
   Card,
   Suit,
@@ -24,7 +24,6 @@ import { pushGameAction } from '@/channels/hooks/useGameChannel';
 import { playActionHaptic, playCardHaptic } from './useGameHaptics';
 
 export type GameTableController = {
-  roomTitle: string;
   viewModel: GameViewModel | null;
   serverState: ServerGameState | null;
   youPositionAbs: Position | null;
@@ -53,7 +52,7 @@ export type GameTableController = {
   showActionError: (action: string, err: unknown) => void;
 };
 
-export function useGameTableController(room?: Room): GameTableController {
+export function useGameTableController(): GameTableController {
   const viewModel = useGameViewModel();
   const { serverState, youPositionAbs, isChannelJoined, legalActions, role } = useGameStore(
     useShallow((s) => ({
@@ -65,7 +64,6 @@ export function useGameTableController(room?: Room): GameTableController {
     }))
   );
 
-  const roomTitle = room ? room.name || room.code : '';
   const phase = viewModel?.phase ?? 'bidding';
   const trumpSuit = viewModel?.trumpSuit ?? null;
   const players = useMemo(() => viewModel?.players ?? [], [viewModel]);
@@ -196,7 +194,6 @@ export function useGameTableController(room?: Room): GameTableController {
   );
 
   return {
-    roomTitle,
     viewModel,
     serverState,
     youPositionAbs,

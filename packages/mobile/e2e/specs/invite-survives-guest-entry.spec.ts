@@ -5,11 +5,14 @@ import { inviteToTable } from '../support/api';
 import { newPlayer } from '../support/player';
 
 test('an invite survives guest entry and ends at that table', async ({ page }) => {
-  const { code, room } = await inviteToTable(newPlayer());
+  const host = newPlayer();
+  const { code, room } = await inviteToTable(host);
   await page.goto(`/join/${code}`);
   const welcome = new WelcomeWindow(page);
-  await expect(welcome.root.getByText('saved you a seat')).toBeVisible({ timeout: 30_000 });
-  await expect(welcome.root.getByText(`Table ${code}`)).toBeVisible();
+  await expect(welcome.root.getByText(`${host.name} saved you a seat`)).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(welcome.root.getByText(`Table ${code}`)).toHaveCount(0);
 
   await welcome.quickGame.click();
   await new JoinInviteScreen(page).joinTable();

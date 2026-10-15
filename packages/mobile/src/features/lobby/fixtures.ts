@@ -1,5 +1,18 @@
 import { emptyLobbyCategories, POSITION_TO_INDEX } from '@pidro/shared';
 import type { LobbyCategories, Position, Room } from '@pidro/shared';
+import { defaultSeats, type TableDraft } from './newTable';
+
+export function createTableFixture(value?: string): TableDraft | undefined {
+  if (!__DEV__) return;
+  return {
+    seats:
+      value === 'bots'
+        ? { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' }
+        : { ...defaultSeats, ...(value === 'friend' ? { seat_3: 'invite' as const } : {}) },
+    requirements: value === 'requirement' ? { seat_2: 100 } : {},
+    asking: value === 'open' ? 'seat_3' : null,
+  };
+}
 
 function room(code: string, names: (string | null)[], louisiana = false, playing = false): Room {
   const positions: Position[] = ['north', 'south', 'east', 'west'];

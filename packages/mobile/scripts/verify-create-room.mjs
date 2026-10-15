@@ -2,11 +2,43 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { chromium } from 'playwright';
-import { assertMinimumTouchTargets, suppressDevOverlays } from './ui-test-utils.mjs';
+import { suppressDevOverlays } from './ui-test-utils.mjs';
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const output = process.env.UI_SHOT_DIR ?? '/tmp/pidro-create';
-const username = 'Alexandria the Long-Named Player';
+const seats = ['Partner seat', 'Left opponent seat', 'Right opponent seat'];
+const ids = ['seat_3', 'seat_2', 'seat_4'];
+const group = (form, name) => form.getByRole('radiogroup', { name, exact: true });
+const radio = (form, name, choice) =>
+  group(form, name).getByRole('radio', { name: choice, exact: true });
+const checked = async (control) => assert.equal(await control.getAttribute('aria-checked'), 'true');
+
+async function rowsAndTargets(form) {
+  for (const id of ids) {
+    const box = await form.getByTestId(`create-${id}`).boundingBox();
+    assert.ok(box && Math.abs(box.height - 44) < 1, `${id} stays 44px high`);
+  }
+  for (const control of await form.getByRole('radio').all()) {
+    const box = await control.boundingBox();
+    assert.ok(box && box.width >= 44 && box.height >= 44, 'radio target is at least 44px');
+  }
+  for (const control of await form.getByRole('button').all()) {
+    const box = await control.boundingBox();
+    assert.ok(box && box.width >= 44 && box.height >= 44, 'button target is at least 44px');
+  }
+}
+
+async function defaults(form, preferred) {
+  await checked(radio(form, 'Rules', preferred));
+  for (const [i, seat] of seats.entries())
+    await checked(radio(form, seat, i === 2 ? 'Bot' : 'Open'));
+  assert.equal(await form.getByRole('textbox').count(), 0, 'no table-name input');
+  assert.equal(
+    await form.getByTestId('create-footer').textContent(),
+    '2 open seats are listed for everyone.'
+  );
+}
+
 const browser = await chromium.launch({ headless: true });
 await mkdir(output, { recursive: true });
 try {
@@ -15,11 +47,14 @@ try {
     { name: 'small', width: 320, height: 568 },
     { name: 'landscape', width: 844, height: 390 },
     { name: 'compact-landscape', width: 667, height: 375 },
+    { name: 'tablet-portrait', width: 820, height: 1180 },
+    { name: 'tablet-landscape', width: 1180, height: 820 },
   ]) {
     const context = await browser.newContext({ viewport, deviceScaleFactor: 2 });
     const page = await context.newPage();
     const requests = [];
-    await page.addInitScript((username) => {
+    const preferred = viewport.name.includes('tablet') ? 'louisiana' : 'finnish';
+    await page.addInitScript((preferredRuleSet) => {
       localStorage.setItem(
         'age-gate-storage',
         JSON.stringify({ state: { ageBand: '18_plus', termsVersion: '1' }, version: 0 })
@@ -30,12 +65,20 @@ try {
           state: {
             accessToken: 'creation-test',
             refreshToken: null,
-            user: { id: 'viewer', username, age_band: '18_plus' },
+            user: {
+              id: 'viewer',
+              username: 'Alexandria the Long-Named Player',
+              age_band: '18_plus',
+            },
           },
           version: 0,
         })
       );
-    }, username);
+      localStorage.setItem(
+        'settings-storage',
+        JSON.stringify({ state: { preferredRuleSet }, version: 0 })
+      );
+    }, preferred);
     await page.route('**/api/v1/**', async (route) => {
       const request = route.request();
       const path = new URL(request.url()).pathname;
@@ -47,105 +90,80 @@ try {
         });
       } else if (path.endsWith('/rooms') && request.method() === 'POST') {
         requests.push(request.postDataJSON());
-        // Keep the form open to verify failure recovery, not navigation to an unrelated game.
+        // Retain the form to exercise error recovery and reset without a fake game.
         await route.fulfill({ status: 503, json: { errors: [{ detail: 'Try again fixture' }] } });
       } else await route.fulfill({ status: 503, json: {} });
     });
     await page.goto(`${baseUrl}/lobby`);
-    await page.getByText('No one is at a table yet', { exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
+    const start = page.getByRole('button', { name: 'Start a table', exact: true }).first();
+    await start.click();
     const form = page.getByTestId('create-room-window');
     await form.waitFor();
     await page.evaluate(() => document.fonts.ready);
-    await page.waitForFunction(() => [...document.images].every((image) => image.complete));
     await suppressDevOverlays(page);
-    const button = (name) => form.getByRole('button', { name, exact: true });
-    const seat = (label, value = 'open') => button(`${label}: ${value}. Change`);
-    const sheet = page.getByTestId('create-seat-sheet');
-    const choose = async (label, choice) => {
-      await seat(label).click();
-      await sheet.waitFor();
-      assert.equal(await sheet.getByRole('radio').count(), 3);
-      assert.equal(
-        await sheet
-          .getByRole('radio', { name: 'Open seat', exact: true })
-          .getAttribute('aria-checked'),
-        'true'
-      );
-      await sheet.getByRole('radio', { name: choice, exact: true }).click();
-      assert.equal(
-        await sheet.getByRole('radio', { name: choice, exact: true }).getAttribute('aria-checked'),
-        'true'
-      );
-      const done = sheet.getByRole('button', { name: 'Done', exact: true });
-      const doneBox = await done.boundingBox();
-      assert.ok(doneBox.y >= 0 && doneBox.y + doneBox.height <= viewport.height, 'Done is in view');
-      await assertMinimumTouchTargets(page, 'seat sheet', viewport);
-      await page.screenshot({ path: resolve(output, `${viewport.name}-seat.png`) });
-      await done.click();
-      await sheet.waitFor({ state: 'detached' });
-    };
-    const open = button('Open the table');
-    assert.equal(await form.getByRole('button', { name: /: open\. Change$/ }).count(), 3);
-    const name = form.getByRole('textbox', { name: 'Table name' });
-    assert.equal(await name.inputValue(), `${username}'s table`);
-    assert.equal(await form.getByText(/Seat rules|Preview only|Bot strength/).count(), 0);
-    const openBox = await open.boundingBox();
-    assert.ok(
-      openBox.y >= 0 && openBox.y + openBox.height <= viewport.height,
-      'Open the table stays on screen'
-    );
+    await defaults(form, preferred === 'finnish' ? 'Finnish' : 'Louisiana');
+    await rowsAndTargets(form);
+    const open = form.getByRole('button', { name: 'Open the table', exact: true });
     await open.click();
     await form.getByRole('alert').waitFor();
-    assert.deepEqual(requests[0], {
-      name: `${username}'s table`,
-      rule_set: 'finnish',
-      seats: { seat_2: 'open', seat_3: 'open', seat_4: 'open' },
-    });
-    await choose('Partner seat', 'Bot');
-    await choose('Right opponent seat', 'Invite a friend');
-    await seat('Partner seat', 'bot').waitFor();
-    await seat('Right opponent seat', 'invite').waitFor();
-    await name.fill('Friday night');
-    await name.press('Enter');
-    assert.equal(requests.length, 1, 'keyboard Done must not create a table');
-    await assertMinimumTouchTargets(page, 'creation', viewport, { checkInputs: true });
-    // No horizontally escaping descendants, including offscreen scroll content.
-    const escaping = await form.evaluate((root) =>
-      [...root.querySelectorAll('*')]
-        .filter((el) => {
-          const rect = el.getBoundingClientRect();
-          return rect.width > 0 && (rect.left < -1 || rect.right > innerWidth + 1);
-        })
-        .map((el) => el.textContent?.slice(0, 50))
+    assert.deepEqual(requests, [
+      { rule_set: preferred, seats: { seat_2: 'open', seat_3: 'open', seat_4: 'ai' } },
+    ]);
+
+    // Open replaces the choices inline; neither the row nor its neighbours grow.
+    await radio(form, 'Partner seat', 'Open').click();
+    assert.deepEqual(await group(form, 'Partner seat').getByRole('radio').allTextContents(), [
+      'Anyone',
+      '100+',
+      '1000+',
+    ]);
+    await rowsAndTargets(form);
+    assert.equal(await page.getByTestId('create-seat-sheet').count(), 0);
+    await radio(form, 'Partner seat', '1000+').click();
+    await checked(radio(form, 'Partner seat', 'Open'));
+    await radio(form, 'Partner seat', 'Open').click();
+    await checked(radio(form, 'Partner seat', '1000+'));
+    await radio(form, 'Partner seat', '100+').click();
+    await radio(form, 'Left opponent seat', 'Friend').click();
+    await checked(radio(form, 'Left opponent seat', 'Friend'));
+    assert.equal(
+      await form.getByTestId('create-footer').textContent(),
+      'One open seat is listed for everyone.'
     );
-    assert.deepEqual(escaping, []);
-    await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
+    const otherRule = preferred === 'finnish' ? 'Louisiana' : 'Finnish';
+    await radio(form, 'Rules', otherRule).click();
     await open.click();
-    for (let tries = 0; requests.length < 2 && tries < 50; tries += 1) {
+    await page.waitForFunction(() => document.querySelector('[role="alert"]') !== null);
+    for (let tries = 0; requests.length < 2 && tries < 50; tries += 1)
       await page.waitForTimeout(100);
-    }
     assert.deepEqual(
       requests[1],
       {
-        name: 'Friday night',
-        rule_set: 'finnish',
-        seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'open' },
+        rule_set: otherRule.toLowerCase(),
+        seats: { seat_2: 'open', seat_3: 'open', seat_4: 'ai' },
       },
-      'partner is seat 3; an invite seat is sent as an open seat'
+      'requirements and name never leave the client; Friend is sent as open'
     );
-    await button('Cancel creation').click();
-    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-    await seat('Partner seat').waitFor();
-    assert.equal(await name.inputValue(), `${username}'s table`);
+    await radio(form, 'Partner seat', 'Bot').click();
+    assert.equal(
+      await form.getByTestId('create-footer').textContent(),
+      'The game starts when your friends sit down.'
+    );
+    await rowsAndTargets(form);
+    await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
+    await form.getByRole('button', { name: 'Cancel creation', exact: true }).click();
+    await start.click();
+    await defaults(form, preferred === 'finnish' ? 'Finnish' : 'Louisiana');
+    await radio(form, 'Partner seat', 'Open').click();
+    await checked(radio(form, 'Partner seat', 'Anyone'));
     console.log(
-      `creation ok: ${viewport.name} — defaults, name field, seat sheet, partner mapping, invite as open, reset, keyboard Done, 44px targets, containment`
+      `creation ok: ${viewport.name} — inline radios, 44px rows/targets, local requirements, no name, preferred rules, footer, reset`
     );
     await context.close();
   }
-  // These are synthetic layout cases. Native provider placement is separately guarded
-  // by create-modal-safe-area.test.mjs; a browser cannot test native modal measurement.
-  const safeCases = [
+
+  // Synthetic browser insets only; native modal measurement needs device coverage.
+  for (const { preset, width, height, top, bottom, left, right } of [
     { preset: 'island', width: 390, height: 844, top: 59, bottom: 34, left: 0, right: 0 },
     { preset: 'island-left', width: 844, height: 390, top: 0, bottom: 21, left: 59, right: 0 },
     { preset: 'island-right', width: 844, height: 390, top: 0, bottom: 21, left: 0, right: 59 },
@@ -154,8 +172,9 @@ try {
     { preset: 'android-right', width: 640, height: 360, top: 24, bottom: 0, left: 0, right: 48 },
     { preset: 'android-gesture', width: 360, height: 640, top: 24, bottom: 24, left: 0, right: 0 },
     { preset: 'island', width: 390, height: 430, top: 59, bottom: 34, left: 0, right: 0 },
-  ];
-  for (const { preset, width, height, top, bottom, left, right } of safeCases) {
+    { preset: 'island', width: 820, height: 1180, top: 59, bottom: 34, left: 0, right: 0 },
+    { preset: 'island-left', width: 1180, height: 820, top: 0, bottom: 21, left: 59, right: 0 },
+  ]) {
     const page = await browser.newPage({ viewport: { width, height }, deviceScaleFactor: 2 });
     await page.goto(`${baseUrl}/ui-dev?state=create-safe-area&safeArea=${preset}`);
     const form = page.getByTestId('create-room-window');
@@ -166,27 +185,45 @@ try {
       const box = await locator.boundingBox();
       assert.ok(
         box &&
-          box.x >= left &&
-          box.y >= top &&
+          box.x >= left - 1 &&
+          box.y >= top - 1 &&
           box.x + box.width <= width - right + 1 &&
           box.y + box.height <= height - bottom + 1,
-        `${preset} ${width}x${height}: control escaped safe rectangle: ${JSON.stringify(box)}`
+        `${preset} ${width}x${height}: escaped safe rectangle: ${JSON.stringify(box)}`
       );
     };
     await inside(form);
-    await inside(form.getByRole('button', { name: 'Cancel creation', exact: true }));
-    await inside(form.getByRole('button', { name: 'Open the table', exact: true }));
-    const name = form.getByRole('textbox', { name: 'Table name' });
-    await name.scrollIntoViewIfNeeded();
-    await inside(name);
-    await page.screenshot({ path: resolve(output, `safe-${preset}-${height}.png`) });
-    await form.getByRole('button', { name: 'Partner seat: open. Change', exact: true }).click();
-    const sheet = page.getByTestId('create-seat-sheet');
-    await inside(sheet.getByRole('radio', { name: 'Open seat', exact: true }));
-    await inside(sheet.getByRole('button', { name: 'Done', exact: true }));
-    await page.screenshot({ path: resolve(output, `safe-${preset}-${height}-seat.png`) });
+    const controls = [
+      form.getByRole('button', { name: 'Cancel creation', exact: true }),
+      ...(await form.getByRole('radio').all()),
+      form.getByRole('button', { name: 'Open the table', exact: true }),
+      form.getByTestId('create-footer'),
+    ];
+    for (const control of controls) {
+      await control.scrollIntoViewIfNeeded();
+      await inside(control);
+    }
+    await radio(form, 'Partner seat', 'Open').click();
+    await rowsAndTargets(form);
+    for (const control of await group(form, 'Partner seat').getByRole('radio').all()) {
+      await control.scrollIntoViewIfNeeded();
+      await inside(control);
+    }
+    const escaping = await form.evaluate((root) =>
+      [...root.querySelectorAll('*')]
+        .filter((el) => {
+          const rect = el.getBoundingClientRect();
+          const bounds = root.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < bounds.left - 1 || rect.right > bounds.right + 1);
+        })
+        .map((el) => el.textContent?.slice(0, 50))
+    );
+    assert.deepEqual(escaping, [], 'scroll content has no horizontal overflow');
+    await form.getByTestId('create-footer').scrollIntoViewIfNeeded();
+    await inside(form.getByTestId('create-footer'));
+    await page.screenshot({ path: resolve(output, `safe-${preset}-${width}-${height}.png`) });
     console.log(
-      `safe-area layout ok: ${preset} ${width}x${height} — four edges, header/footer, name field, seat sheet`
+      `safe-area layout ok: ${preset} ${width}x${height} — scroll containment, four edges, header/footer, inline requirements`
     );
     await page.close();
   }

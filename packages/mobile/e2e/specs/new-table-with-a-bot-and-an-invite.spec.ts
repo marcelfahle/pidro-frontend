@@ -13,19 +13,18 @@ test('a new table with a bot, an open seat and an invite opens with the invite s
 
   await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
   const form = page.getByTestId('create-room-window');
-  await expect(form.getByRole('textbox', { name: 'Table name' })).toHaveValue(
-    `${player.name}'s table`
-  );
+  await expect(form.getByRole('textbox')).toHaveCount(0);
 
   const choose = async (seat: string, choice: string) => {
-    await form.getByRole('button', { name: `${seat}: open. Change` }).click();
-    const sheet = page.getByTestId('create-seat-sheet');
-    await sheet.getByRole('radio', { name: choice, exact: true }).click();
-    await sheet.getByRole('button', { name: 'Done', exact: true }).click();
+    const radio = form
+      .getByRole('radiogroup', { name: seat, exact: true })
+      .getByRole('radio', { name: choice, exact: true });
+    await radio.click();
+    await expect(radio).toHaveAttribute('aria-checked', 'true');
   };
   await choose('Left opponent seat', 'Bot');
-  await choose('Right opponent seat', 'Invite a friend');
-  await expect(form.getByRole('button', { name: 'Left opponent seat: bot. Change' })).toBeVisible();
+  await choose('Right opponent seat', 'Friend');
+  await expect(page.getByTestId('create-seat-sheet')).toHaveCount(0);
 
   await form.getByRole('button', { name: 'Open the table', exact: true }).click();
   await page.waitForURL(/\/game\/[A-Z0-9]+\?invite=true$/);

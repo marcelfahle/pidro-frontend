@@ -12,7 +12,12 @@ async function createLouisianaTable(page: Page, token: string) {
     .first()
     .click();
   const create = page.getByTestId('create-room-window');
-  await create.getByRole('button', { name: 'Louisiana', exact: true }).click();
+  const rules = create.getByRole('radiogroup', { name: 'Rules', exact: true });
+  await rules.getByRole('radio', { name: 'Louisiana', exact: true }).click();
+  await expect(rules.getByRole('radio', { name: 'Louisiana', exact: true })).toHaveAttribute(
+    'aria-checked',
+    'true'
+  );
   const created = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/api/v1/rooms' && response.request().method() === 'POST'

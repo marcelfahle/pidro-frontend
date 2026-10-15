@@ -225,7 +225,7 @@ export function GameCanvasTable({
   onSaveGuest,
   rulesFixtureSeen,
 }: Props) {
-  const controller = useGameTableController(room);
+  const controller = useGameTableController();
   const role = useGameStore((state) => state.role);
   const dealerRobPresentation = useGameStore((state) => state.presentation?.dealer_rob ?? null);
   const isPrivateDealerRob =
