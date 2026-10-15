@@ -306,7 +306,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
 
   return (
     <ScreenShell scroll compact testID="join-invite-screen" contentStyle={styles.shell}>
-      <ScreenHeader title={t('invite.title')} subtitle={t('invite.code', { code })} onBack={exit} />
+      <ScreenHeader title={t('invite.title')} onBack={exit} />
       <Surface testID="join-invite-window" variant="window" padded style={styles.panel}>
         {flowLoading ? (
           <PidroText role="body" tone="soft" align="center" accessibilityLiveRegion="polite">

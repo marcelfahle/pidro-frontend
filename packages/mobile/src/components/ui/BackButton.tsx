@@ -8,6 +8,7 @@ export interface BackButtonProps {
   size?: number;
   accessibilityLabel?: string;
   testID?: string;
+  disabled?: boolean;
 }
 
 /** The round glass back control that heads a sub-screen. */
@@ -16,6 +17,7 @@ export function BackButton({
   size = 44,
   accessibilityLabel = 'Go back',
   testID,
+  disabled = false,
 }: BackButtonProps) {
   return (
     <BevelPressable
@@ -25,6 +27,7 @@ export function BackButton({
       radius={size / 2}
       onPress={onPress}
       testID={testID}
+      disabled={disabled}
       style={[styles.rim, { width: size, height: size }]}
       contentStyle={styles.face}>
       <Icon name="chevron-left" size={size >= 48 ? 22 : 20} strokeWidth={2.4} />

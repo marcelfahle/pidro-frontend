@@ -219,7 +219,11 @@ try {
     await page.getByRole('textbox', { name: 'Find a player' }).fill('iZzY');
     assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 1);
     await page.getByTestId('lobby-table-SUES').waitFor();
-    for (const query of ['HIDDEN42', 'A long table name that must never wrap', 'no matching player']) {
+    for (const query of [
+      'HIDDEN42',
+      'A long table name that must never wrap',
+      'no matching player',
+    ]) {
       await page.getByRole('textbox', { name: 'Find a player' }).fill(query);
       await page.getByText('No matching tables', { exact: true }).waitFor();
       assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 0);
@@ -284,10 +288,8 @@ try {
     await equalRows(page, '[data-testid^="lobby-table-"]');
     await assertMinimumTouchTargets(page, 'lobby-badges', viewport);
     for (const value of ['100', '1000']) {
-      const badge = page
-        .getByTestId('seat-requirement')
-        .filter({ hasText: new RegExp(`^${value}$`) });
-      assert.equal(await badge.textContent(), value);
+      const badge = page.getByTestId('seat-requirement').filter({ hasText: `${value}+` });
+      assert.equal(await badge.textContent(), `${value}+`);
       assert.ok(
         await badge.evaluate((el) => el.scrollWidth <= el.clientWidth),
         `${value} is clipped`

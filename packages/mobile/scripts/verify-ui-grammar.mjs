@@ -275,8 +275,12 @@ const allCases = [
     testId: 'ui-progression-panel',
   },
   { name: 'ui-avatars', path: '/ui-dev?state=avatars', testId: 'ui-avatars-panel' },
-  { name: 'create-table', path: '/ui-dev?state=create', testId: 'create-room-window' },
-  { name: 'create-seat', path: '/ui-dev?state=create-seat', testId: 'create-seat-sheet' },
+  ...['default', 'open', 'requirement', 'bots', 'friend'].map((fixture) => ({
+    name: fixture === 'default' ? 'create-table' : `create-table-${fixture}`,
+    path: `/ui-dev?state=create&fixture=${fixture}`,
+    testId: 'create-room-window',
+    createFixture: fixture,
+  })),
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {
     name: 'table-waiting-notice',
@@ -519,10 +523,6 @@ async function assertFocused(locator, message) {
 }
 
 const ruleLabels = { finnish: 'Finnish', louisiana: 'Louisiana' };
-const ruleDescriptions = {
-  finnish: 'Only trumps are played. Minimum bid 6.',
-  louisiana: 'Follow suit, nobody sits out. Minimum bid 7.',
-};
 const ruleFacts = {
   finnish: [
     'Only trumps are played, including the same-color five.',
@@ -570,18 +570,13 @@ async function assertRulePresentation(page, testCase) {
   if (testCase.rulesSelector) {
     const selector = page.getByTestId(testCase.rulesSelector);
     await selector.waitFor();
+    const creation = testCase.rulesSelector === 'create-rule-set';
     assert.equal(
       await selector
-        .getByRole('button', { name: new RegExp(ruleLabels[ruleSet]) })
-        .getAttribute('aria-selected'),
+        .getByRole(creation ? 'radio' : 'button', { name: new RegExp(ruleLabels[ruleSet]) })
+        .getAttribute(creation ? 'aria-checked' : 'aria-selected'),
       'true'
     );
-    if (testCase.rulesSelector === 'create-rule-set') {
-      assert.equal(
-        await page.getByTestId('create-rule-description').innerText(),
-        ruleDescriptions[ruleSet]
-      );
-    }
   }
   if (badge === 'invite-rule-set') {
     if (testCase.authenticated)
@@ -670,19 +665,57 @@ async function assertLobbyPresentation(page, testCase) {
   await row('OPEN1').waitFor();
 }
 
+async function assertCreationPresentation(page, testCase) {
+  const fixture = testCase.createFixture;
+  if (!fixture) return;
+  const form = page.getByTestId('create-room-window');
+  assert.equal(await form.getByRole('textbox').count(), 0);
+  const partner = form.getByTestId('create-seat_3');
+  const radio = (name) => partner.getByRole('radio', { name, exact: true });
+  assert.equal(Math.round((await partner.boundingBox()).height), 44);
+  if (fixture === 'open') {
+    assert.deepEqual(await partner.getByRole('radio').allTextContents(), [
+      'Anyone',
+      '100+',
+      '1000+',
+    ]);
+    await partner.getByText('games played', { exact: true }).waitFor();
+  } else {
+    const selected = fixture === 'bots' ? 'Bot' : fixture === 'friend' ? 'Friend' : 'Open';
+    assert.equal(await radio(selected).getAttribute('aria-checked'), 'true');
+  }
+  if (fixture === 'requirement') {
+    assert.equal(await form.getByTestId('seat-requirement').innerText(), '100+');
+  }
+  assert.equal(
+    await form.getByTestId('create-footer').innerText(),
+    fixture === 'bots'
+      ? 'The game starts when your friends sit down.'
+      : fixture === 'friend'
+        ? 'One open seat is listed for everyone.'
+        : '2 open seats are listed for everyone.'
+  );
+  if (fixture !== 'default') return;
+  await radio('Open').click();
+  await radio('100+').click();
+  assert.equal(await partner.getByTestId('seat-requirement').innerText(), '100+');
+  assert.equal(Math.round((await partner.boundingBox()).height), 44);
+  await radio('Bot').click();
+  assert.equal(await radio('Anyone').count(), 0);
+  await radio('Friend').click();
+  assert.equal(await radio('Anyone').count(), 0);
+  assert.equal(await page.getByTestId('create-seat-sheet').count(), 0);
+}
+
 async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
   if (testCase.rulesSelector) {
     const other = testCase.ruleSet === 'finnish' ? 'louisiana' : 'finnish';
+    const creation = testCase.rulesSelector === 'create-rule-set';
     const button = page
       .getByTestId(testCase.rulesSelector)
-      .getByRole('button', { name: new RegExp(ruleLabels[other]) });
+      .getByRole(creation ? 'radio' : 'button', { name: new RegExp(ruleLabels[other]) });
     await button.click();
-    assert.equal(await button.getAttribute('aria-selected'), 'true');
-    if (testCase.rulesSelector === 'create-rule-set')
-      assert.equal(
-        await page.getByTestId('create-rule-description').innerText(),
-        ruleDescriptions[other]
-      );
+    assert.equal(await button.getAttribute(creation ? 'aria-checked' : 'aria-selected'), 'true');
   }
   const waiting =
     testCase.name === 'table-waiting' ||
@@ -1616,6 +1649,7 @@ async function main() {
             fullPage: false,
           });
           await assertLobbyPresentation(page, testCase);
+          await assertCreationPresentation(page, testCase);
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);

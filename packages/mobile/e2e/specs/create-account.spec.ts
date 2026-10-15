@@ -3,7 +3,10 @@ import { HomeScreen } from '../screens/home-screen';
 import { ProfileScreen } from '../screens/profile-screen';
 import { RegisterScreen } from '../screens/register-screen';
 import { WelcomeWindow } from '../screens/welcome-window';
-import { sessionOf } from '../support/session';
+import { register as registerViaApi } from '../support/api';
+import { tableCode } from '../support/game';
+import { AGE_ANSWERED, newPlayer } from '../support/player';
+import { sessionOf, startSignedIn } from '../support/session';
 
 test('a new player creates an account, stays signed in, and signs out @responsive', async ({
   page,
@@ -44,4 +47,67 @@ test('a new player creates an account, stays signed in, and signs out @responsiv
   await expect(profile.root).toBeVisible();
   await profile.signOut();
   await page.waitForURL(/\/welcome$/);
+});
+
+test('a new account opens a Finnish table that another player can find with two open chairs @responsive', async ({
+  page,
+  player,
+  browser,
+}) => {
+  await page.goto('/register');
+  await new RegisterScreen(page).createAccount(player);
+  await expect(new HomeScreen(page).root).toBeVisible();
+  await page.goto('/lobby');
+  await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
+  const form = page.getByTestId('create-room-window');
+  for (const [name, choice] of [
+    ['Rules', 'Finnish'],
+    ['Partner seat', 'Open'],
+    ['Left opponent seat', 'Open'],
+    ['Right opponent seat', 'Bot'],
+  ]) {
+    await expect(
+      form
+        .getByRole('radiogroup', { name, exact: true })
+        .getByRole('radio', { name: choice, exact: true })
+    ).toHaveAttribute('aria-checked', 'true');
+  }
+  const created = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/v1/rooms' && response.request().method() === 'POST'
+  );
+  await form.getByRole('button', { name: 'Open the table', exact: true }).click();
+  const response = await created;
+  expect(response.status()).toBe(201);
+  expect(response.request().postDataJSON()).toEqual({
+    rule_set: 'finnish',
+    seats: { seat_2: 'open', seat_3: 'open', seat_4: 'ai' },
+  });
+  await page.waitForURL(/\/game\/[A-Z0-9]+$/);
+  const code = tableCode(page);
+  await expect(page.getByTestId('waiting-table').last()).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('Finnish');
+
+  // A separate context has neither the host's auth nor its cached lobby data.
+  // Keep the host connected so the server lists this waiting table.
+  const context = await browser.newContext({ baseURL: new URL(page.url()).origin });
+  try {
+    const visitor = await context.newPage();
+    await visitor.addInitScript(
+      (age) => localStorage.setItem('age-gate-storage', age),
+      AGE_ANSWERED
+    );
+    await startSignedIn(visitor, await registerViaApi(newPlayer()));
+    await visitor.goto('/lobby');
+    const table = visitor.getByTestId(`lobby-table-${code}`);
+    await expect(table).toBeVisible({ timeout: 30_000 });
+    await expect(table.getByTestId(`room-rules-${code}`)).toContainText('Finnish');
+    await expect(table.getByText(player.name, { exact: true })).toBeVisible();
+    const chairs = table.getByRole('button', { name: /^Join .* seat$/ });
+    await expect(chairs).toHaveCount(2);
+    await expect(chairs.nth(0)).toBeEnabled();
+    await expect(chairs.nth(1)).toBeEnabled();
+  } finally {
+    await context.close();
+  }
 });

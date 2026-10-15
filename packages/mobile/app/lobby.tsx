@@ -19,7 +19,7 @@ import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
-import { OpenChair } from '@/components/lobby/TableTop';
+import { OpenChair } from '@/components/lobby/OpenChair';
 import { AuthFlowButton, AuthFlowHeading } from '@/components/auth/AuthFlow';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BevelButton } from '@/components/ui/BevelButton';
@@ -100,7 +100,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const pendingAccountActionRef = useRef<(() => Promise<void>) | null>(null);
   const realtimeRevisionRef = useRef(0);
-  const quickGame = useQuickGame(playerName);
+  const quickGame = useQuickGame();
 
   const requestAccount = useCallback((retry: () => Promise<void>) => {
     pendingAccountActionRef.current = retry;

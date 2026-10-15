@@ -15,6 +15,7 @@ export type IconName =
   | 'star'
   | 'play'
   | 'friends'
+  | 'user'
   | 'plus'
   | 'search'
   | 'arrow-left'
@@ -83,6 +84,7 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     mode: 'fill',
   },
   play: { path: 'M6 4.5l13 7.5-13 7.5z', mode: 'stroke' },
+  user: { path: 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M4 21v-2a8 8 0 0 1 16 0v2', mode: 'stroke' },
   friends: {
     path: 'M9 11.2a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4zM3 20a6 6 0 0 1 12 0M16.5 5.5a3.2 3.2 0 0 1 0 5.6M21 20a6 6 0 0 0-4-5.6',
     mode: 'stroke',

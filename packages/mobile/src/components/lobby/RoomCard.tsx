@@ -9,7 +9,7 @@ import { BevelPressable } from '@/components/ui/Bevel';
 import { Surface } from '@/components/ui/Surface';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
-import { OpenChair } from './TableTop';
+import { OpenChair } from './OpenChair';
 import { SeatRequirementBadge } from './SeatRequirementBadge';
 
 export const RoomCard = memo(function RoomCard({

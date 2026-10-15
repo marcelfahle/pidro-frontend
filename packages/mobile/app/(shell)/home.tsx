@@ -47,10 +47,7 @@ export default function HomeScreen() {
   const rawPillClearance = usePillClearance();
   const pillClearance = guest ? { bottom: 0, right: 0 } : rawPillClearance;
   const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
-  const quickGame = useQuickGame(
-    playerName,
-    fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null
-  );
+  const quickGame = useQuickGame(fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null);
 
   useLobbyChannel(
     useCallback(() => {

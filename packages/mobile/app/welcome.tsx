@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Redirect, useRouter, type Href } from 'expo-router';
 import { useNetworkState } from 'expo-network';
-import { publicPlayerName, type InvitePreview } from '@pidro/shared';
+import type { InvitePreview } from '@pidro/shared';
 import { invitesApi } from '@/api/invites';
 import { ClassicPlaque } from '@/components/home/ClassicPlaque';
 import { LogoGlow } from '@/components/home/LogoGlow';
@@ -63,21 +63,18 @@ export default function WelcomeScreen() {
     };
   }, [clearPendingInvite, pendingInvite]);
 
-  const startSolo = useCallback(
-    async (playerName: string) => {
-      setLaunchState('creatingRoom');
-      setLaunchError(null);
-      try {
-        const response = await createSoloRoom(playerName);
-        if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
-        router.replace(gameRoute(response.code, 'single-player'));
-      } catch {
-        setLaunchState('roomFailed');
-        setLaunchError('We could not start your solo table. Try again.');
-      }
-    },
-    [router, upsertLobbyRoom]
-  );
+  const startSolo = useCallback(async () => {
+    setLaunchState('creatingRoom');
+    setLaunchError(null);
+    try {
+      const response = await createSoloRoom();
+      if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
+      router.replace(gameRoute(response.code, 'single-player'));
+    } catch {
+      setLaunchState('roomFailed');
+      setLaunchError('We could not start your solo table. Try again.');
+    }
+  }, [router, upsertLobbyRoom]);
 
   const launch = useCallback(async () => {
     if (launchBusy || offline) return;
@@ -85,7 +82,7 @@ export default function WelcomeScreen() {
     setLaunchError(null);
 
     if (launchState === 'roomFailed' && user) {
-      await startSolo(publicPlayerName(user.username, 'Player', user.display_name));
+      await startSolo();
       return;
     }
 
@@ -103,7 +100,7 @@ export default function WelcomeScreen() {
       return;
     }
 
-    await startSolo(publicPlayerName(session.user.username, 'Player', session.user.display_name));
+    await startSolo();
   }, [
     clearError,
     continueAsGuest,
@@ -169,9 +166,6 @@ export default function WelcomeScreen() {
               <View style={styles.inviteCopy}>
                 <PidroText role="label" numberOfLines={1}>
                   {inviter} saved you a seat
-                </PidroText>
-                <PidroText role="metadata" tone="soft">
-                  Table {pendingInvite.code}
                 </PidroText>
               </View>
               <PidroText role="metadata" tone="cyan">

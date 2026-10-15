@@ -1,18 +1,8 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroBevel, PidroColors } from '@/design/tokens';
 
-/** The felt of a table seen from above, as Tables and New table draw it. */
-export function TableTop({ mark, style }: { mark: number; style: StyleProp<ViewStyle> }) {
-  return (
-    <View pointerEvents="none" style={[styles.top, gradientBg(PidroBevel.tabletopGradient), style]}>
-      <Icon name="spade" size={mark} color={PidroColors.tabletopMark} />
-    </View>
-  );
-}
-
-/** An empty chair at that table. One marked for an invite shows a gold link. */
+/** Open, substitute and friend chairs share the same dashed seat. */
 export function OpenChair({
   size,
   invite = false,
@@ -31,10 +21,11 @@ export function OpenChair({
         styles.chair,
         { width: size, height: size, borderRadius: size / 2 },
         substitute && { borderColor: PidroColors.chairSubBorder },
+        invite && { borderColor: PidroBevel.rim },
         style,
       ]}>
       <Icon
-        name={invite ? 'link' : 'plus'}
+        name={invite ? 'user' : 'plus'}
         size={Math.round(size * 0.4)}
         color={
           invite
@@ -50,15 +41,6 @@ export function OpenChair({
 }
 
 const styles = StyleSheet.create({
-  top: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 999,
-    borderWidth: 6,
-    borderColor: PidroBevel.woodLo,
-    boxShadow: PidroBevel.tabletopShadow,
-  },
   chair: {
     alignItems: 'center',
     justifyContent: 'center',
