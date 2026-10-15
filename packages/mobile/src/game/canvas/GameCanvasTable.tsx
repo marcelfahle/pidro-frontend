@@ -35,6 +35,7 @@ import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import type { TickerRestingLine } from './ActionTicker';
 import { buildHandLog } from '@/game/handLog';
+import { bidSeatLine } from '@/features/game/bidding';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals } from './TableSignals';
@@ -100,9 +101,12 @@ function statusText(
       if (playedCard) return { text: `Draws ${cardLabel(playedCard)}` };
       return now('Drawing…');
     case 'bidding':
-      if (bid === 'pass') return { text: 'Passed', tone: 'quiet' };
-      if (typeof bid === 'number') return { text: `Bid ${bid}` };
-      return now('Bidding…');
+      return bidSeatLine({
+        bid,
+        holdsHigh: state?.highest_bid?.position === absolutePosition,
+        onTurn: player.isCurrentTurn,
+        hand: state?.hand_number ?? state?.round_number,
+      });
     case 'declaring':
     case 'declaring_trump':
     case 'trump_declaration':

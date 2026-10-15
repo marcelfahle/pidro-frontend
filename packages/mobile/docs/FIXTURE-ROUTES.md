@@ -54,6 +54,7 @@ Deep-link form is `exp://127.0.0.1:$METRO_PORT/--/<route>?<params>`. Note the `/
 | `signals`    | `pidro`                                                                                   | table (mock model): North drops the 5 of trump on your ace, so with `autoplay=true` the trick pops "Pidro! +6" |
 | `hand`       | `made` · `set`                                                                            | table (mock model): the last hand's result card appears 1.6 s after the table opens        |
 | `ticker`     | `full`                                                                                    | table (mock model): the table opens with West's pass, and the other three bids land 0.3 s later, so the plaque's action ticker shows three lines; tap it for the hand log |
+| `bids`       | `round` · `high` (with `phase=bidding&role=player`)                                       | you and three bots; the bids land one by one. `round`: West passes, North bids 7, East goes to 9, then it is your turn. `high`: you hold the high bid at 9 and West is still to bid |
 | `playerName` | any string                                                                                | name in the first seat decision                                                           |
 | `viewer`     | `east`                                                                                    | you are east instead of south                                                             |
 | `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you |
@@ -93,6 +94,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 /table-dev?lifecycle=permanent_bot&feedback=owner&notice=true    # decision + notice together
 /table-dev?phase=waiting&names=long               # long-name wrapping
 /table-dev?phase=bidding&role=player&pass=disabled   # real store, no pass
+/table-dev?phase=bidding&role=player&bids=round   # who bid what, against bots (PID-214)
 /table-dev?phase=bidding&role=player&deal=true&dealer=north # clockwise packets, unsorted hand → sort → bid
 /table-dev?phase=bidding&role=player&deal=cold      # reconnect: already-dealt hand, no replay
 /table-dev?phase=second_deal&role=player&dealer=south # dealer sees the authoritative pool and keeps six

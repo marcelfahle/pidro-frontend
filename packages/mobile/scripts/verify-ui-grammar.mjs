@@ -426,6 +426,25 @@ const allCases = [
     protectNorthSeat: true,
     protectPlayerHand: true,
   },
+  // PID-214: against three bots, every seat keeps its bid and the high bid is
+  // named, on the small phones that leave the ticker out too. `high`: you hold
+  // it, and your tight seat says so under its avatar.
+  {
+    name: 'table-bid-round',
+    path: '/table-dev?phase=bidding&role=player&bids=round',
+    testId: 'bidding-window',
+    protectNorthSeat: true,
+    protectPlayerHand: true,
+    bidLines: { west: 'Passed', north: 'Bid 7', east: 'Bid 9 · high' },
+    viewports: { 'compact-landscape': { width: 640, height: 360 } },
+  },
+  {
+    name: 'table-bid-high',
+    path: '/table-dev?phase=bidding&role=player&bids=high',
+    testId: 'seat-south',
+    bidLines: { north: 'Bid 7', east: 'Passed', south: 'Bid 9 · high' },
+    viewports: { 'compact-landscape': { width: 640, height: 360 } },
+  },
   {
     name: 'table-trump',
     path: '/table-dev?phase=declaring',
@@ -1355,6 +1374,45 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
   }
 }
 
+// Each seat says its bid, aloud and on screen. Your tight seat has no name,
+// so it shows the short form under its avatar, inside the seat's column,
+// which ends where your cards begin.
+async function assertBidLines(page, testCase, viewport) {
+  if (!testCase.bidLines) return;
+  for (const [seat, line] of Object.entries(testCase.bidLines)) {
+    const avatar = page.getByTestId(`seat-${seat}`);
+    const spoken = line.replace(/^./, (c) => c.toLowerCase());
+    await page.waitForFunction(
+      ([id, text]) =>
+        document
+          .querySelector(`[data-testid="${id}"]`)
+          ?.getAttribute('aria-label')
+          ?.endsWith(`, ${text}`),
+      [`seat-${seat}`, spoken],
+      { timeout: 10_000 }
+    );
+    const shown = [];
+    for (const text of await avatar.getByText(/^(Bid|High|Passed)/).all()) {
+      if (await text.isVisible()) shown.push(text);
+    }
+    if (shown.length !== 1) {
+      throw new Error(`${testCase.name}: seat ${seat} shows no bid line in ${viewport.name}`);
+    }
+    const box = await getStableBox(shown[0], page);
+    assertInsideViewport(`${testCase.name} ${seat} bid line`, box, viewport);
+    const words = await shown[0].textContent();
+    if (words === line) continue;
+    const short = line.replace(/^Bid (\d+) · high$/, 'High $1');
+    if (seat !== 'south' || words !== short) {
+      throw new Error(`${testCase.name}: seat ${seat} shows "${words}" for "${line}"`);
+    }
+    const column = await getStableBox(avatar, page);
+    if (box.x < column.x - 1 || box.x + box.width > column.x + column.width + 1) {
+      throw new Error(`${testCase.name}: your bid line leaves its seat in ${viewport.name}`);
+    }
+  }
+}
+
 async function assertAbovePlayerHand(page, name, box, viewport) {
   const handBoundary = page.getByTestId('player-hand-top').first();
   await handBoundary.waitFor({ state: 'attached', timeout: 20_000 });
@@ -1655,7 +1713,9 @@ async function main() {
         // Reuse CI's existing tablet shards without resizing any other screen.
         const caseViewport = testCase.lobbyFixture
           ? (viewport.lobbyViewport ?? viewport)
-          : viewport;
+          : testCase.viewports?.[viewport.name]
+            ? { ...viewport, ...testCase.viewports[viewport.name] }
+            : viewport;
         await page.setViewportSize({ width: caseViewport.width, height: caseViewport.height });
         await page.addInitScript(
           ({ ageGate, authenticated, fixture, pendingInvite }) => {
@@ -1851,6 +1911,7 @@ async function main() {
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
+          await assertBidLines(page, testCase, caseViewport);
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();

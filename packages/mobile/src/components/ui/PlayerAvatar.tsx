@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -59,9 +59,14 @@ export interface PlayerAvatarProps {
   kind?: AvatarKind;
   name?: string | null;
   status?: string | null;
+  /**
+   * Names what the player just did (a bid). When it changes, the ring lights
+   * up for a moment and the status swells once; reduced motion skips both.
+   */
+  pulse?: string | null;
   label?: 'below' | 'right' | 'left';
   nameTone?: 'default' | 'you' | 'partner';
-  statusTone?: 'default' | 'now' | 'quiet' | 'warning' | 'danger';
+  statusTone?: 'default' | 'now' | 'quiet' | 'high' | 'warning' | 'danger';
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -85,6 +90,7 @@ export function PlayerAvatar({
   kind = 'player',
   name,
   status,
+  pulse = null,
   label = 'below',
   nameTone = 'default',
   statusTone = 'default',
@@ -104,11 +110,15 @@ export function PlayerAvatar({
       : undefined);
 
   const hasLabel = !!(name || status);
+  // A status alone (your tight seat) sits under the avatar; the chip stays on it.
+  const named = !!name || kind === 'open';
+  const acted = useActedPulse(pulse);
   const dealerChip =
     dealer && seated && parts.dealer ? <DealerChip size={parts.dealer.size} /> : null;
 
   const avatar = (
     <View style={{ width: size, height: size }}>
+      <ActedLight size={size} acted={acted} />
       {turn && arc ? (
         <TurnLight size={size} arc={arc} urgent={turn.urgent} attention={turn.attention} />
       ) : null}
@@ -211,7 +221,7 @@ export function PlayerAvatar({
         </View>
       ) : null}
 
-      {dealerChip && parts.dealer && !hasLabel ? (
+      {dealerChip && parts.dealer && !named ? (
         <View
           style={[styles.badge, { left: parts.dealer.left, bottom: parts.dealer.bottom }]}
           pointerEvents="none">
@@ -226,7 +236,7 @@ export function PlayerAvatar({
   const below = label === 'below';
   // Beside the avatar the chip takes the far end of the name; asked for the
   // other side, it sits behind the avatar instead, without moving the seat.
-  const rowChip = hasLabel && !below ? dealerChip : null;
+  const rowChip = named && !below ? dealerChip : null;
   const chipBehind = (label === 'right') === (dealerSide === 'left');
   const levelClearance = chip ? chip.height + chip.bottom + 3 : 4;
 
@@ -247,22 +257,26 @@ export function PlayerAvatar({
               : { alignItems: label === 'right' ? 'flex-start' : 'flex-end' },
           ]}>
           <View style={below ? styles.copyBlock : null}>
-            <PidroText
-              numberOfLines={1}
-              style={[
-                styles.name,
-                parts.name,
-                { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
-                away ? styles.awayName : null,
-              ]}>
-              {name || (kind === 'open' ? 'Open seat' : '')}
-            </PidroText>
-            <PidroText
-              numberOfLines={1}
-              style={[styles.status, parts.status, { color: STATUS_TONES[statusTone] }]}>
-              {status || ' '}
-            </PidroText>
-            {below && dealerChip && parts.dealer ? (
+            {named ? (
+              <PidroText
+                numberOfLines={1}
+                style={[
+                  styles.name,
+                  parts.name,
+                  { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
+                  away ? styles.awayName : null,
+                ]}>
+                {name || 'Open seat'}
+              </PidroText>
+            ) : null}
+            <Animated.View style={[{ transformOrigin: SWELL_ORIGIN[label] }, acted.swell]}>
+              <PidroText
+                numberOfLines={1}
+                style={[styles.status, parts.status, { color: STATUS_TONES[statusTone] }]}>
+                {status || ' '}
+              </PidroText>
+            </Animated.View>
+            {below && named && dealerChip && parts.dealer ? (
               <View
                 pointerEvents="none"
                 style={[
@@ -306,9 +320,65 @@ const STATUS_TONES = {
   default: PidroColors.cyanText,
   now: PidroColors.text,
   quiet: PidroColors.textSoft,
+  high: PidroColors.goldLight,
   warning: PidroColors.warning,
   danger: PidroColors.danger,
 } as const;
+
+/** A seat that just acted: up quickly, held long enough to find, then gone. */
+const ACTED_IN_MS = 180;
+const ACTED_HOLD_MS = 1100;
+const ACTED_OUT_MS = 700;
+const ACTED_SWELL = 0.14;
+/** The status swells from the edge it is aligned to. */
+const SWELL_ORIGIN = { below: 'center', right: 'left', left: 'right' } as const;
+
+/** 0 at rest, 1 while the seat that just acted is lit; still under reduced motion. */
+function useActedPulse(pulse: string | null) {
+  const calm = useReducedMotion() || isStillCapture();
+  const t = useSharedValue(0);
+  const seen = useRef(pulse);
+
+  useEffect(() => {
+    if (pulse === seen.current) return;
+    seen.current = pulse;
+    if (!pulse || calm) return;
+    t.set(
+      withSequence(
+        withTiming(1, { duration: ACTED_IN_MS, easing: Easing.out(Easing.quad) }),
+        withDelay(
+          ACTED_HOLD_MS,
+          withTiming(0, { duration: ACTED_OUT_MS, easing: Easing.in(Easing.quad) })
+        )
+      )
+    );
+  }, [pulse, calm, t]);
+  useEffect(() => () => cancelAnimation(t), [t]);
+
+  const light = useAnimatedStyle(() => ({ opacity: t.value }));
+  const swell = useAnimatedStyle(() => ({ transform: [{ scale: 1 + ACTED_SWELL * t.value }] }));
+  return { light, swell };
+}
+
+/** The light behind a seat that just acted: the turn's shine, briefly. */
+function ActedLight({ size, acted }: { size: number; acted: ReturnType<typeof useActedPulse> }) {
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.shine,
+        {
+          width: size,
+          height: size,
+          left: 0,
+          top: 0,
+          boxShadow: `0px 0px ${Math.round(size * 0.45)}px ${Math.round(size * 0.16)}px ${PidroColors.turnLightShine}`,
+        },
+        acted.light,
+      ]}
+    />
+  );
+}
 
 /** Strong ease-out: the ping leaves the ring fast and settles softly. */
 const PING_EASE = Easing.bezier(0.23, 1, 0.32, 1);

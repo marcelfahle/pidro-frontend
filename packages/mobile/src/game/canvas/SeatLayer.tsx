@@ -53,8 +53,17 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 const BACK: ImageSourcePropType =
   Platform.OS === 'web' ? { uri: '/cards/cardback.png' } : require('~/assets/images/cardback.png');
 
-/** The line under a seat's name. `now` is the player on turn. */
-export type SeatLine = { text: string; tone?: 'now' | 'quiet' | 'danger' };
+/**
+ * The line under a seat's name. `now` is the player on turn, `high` holds the
+ * high bid. A new `pulse` lights the seat up once (it just bid). `short` is
+ * what your nameless tight seat says; without it, that seat stays quiet.
+ */
+export type SeatLine = {
+  text: string;
+  short?: string;
+  tone?: 'now' | 'quiet' | 'high' | 'danger';
+  pulse?: string;
+};
 export type SeatTurn = { progress: number; urgent: boolean };
 
 function lineFor(data: TableSeat, override?: SeatLine | null): SeatLine | null {
@@ -62,7 +71,9 @@ function lineFor(data: TableSeat, override?: SeatLine | null): SeatLine | null {
     case 'reconnecting':
       return { text: 'Reconnecting…', tone: 'danger' };
     case 'bot_substitute':
-      return { text: 'Bot is playing' };
+      // A line that must show even without a name (the bidding) outranks
+      // who is playing the seat: the badge already says bot.
+      return override?.short ? override : { text: 'Bot is playing' };
     case 'vacant':
       return null;
   }
@@ -100,11 +111,12 @@ function avatarFor(
     kind,
     name: kind === 'open' ? null : data.username,
     status: line?.text ?? null,
+    pulse: line?.pulse ?? null,
     nameTone: data.isYou ? 'you' : data.isTeammate ? 'partner' : 'default',
     statusTone:
       line?.tone === 'now' && onTurn && turn?.urgent
         ? 'warning'
-        : kind === 'bot'
+        : kind === 'bot' && line?.tone !== 'high'
           ? 'quiet'
           : (line?.tone ?? 'default'),
   };
@@ -248,12 +260,8 @@ export function SeatLayer({
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
-        const seat = avatarFor(
-          data,
-          dealerRel === rel,
-          lineFor(data, statusByRel?.[rel]),
-          turnByRel?.[rel]
-        );
+        const line = lineFor(data, statusByRel?.[rel]);
+        const seat = avatarFor(data, dealerRel === rel, line, turnByRel?.[rel]);
         const avatar = (
           <PlayerAvatar
             testID={`seat-${rel}`}
@@ -267,24 +275,26 @@ export function SeatLayer({
         );
 
         if (rel === 'south' && tight) {
-          // Your avatar alone at the left of your hand; the label still speaks.
+          // Your avatar alone at the left of your hand, its short line under
+          // it (your bid, while the hand is bid); the label still speaks.
           return (
             <View
               key={rel}
               style={{
                 position: 'absolute',
-                left: L.hand.cx - L.hand.maxWidth / 2 - TIGHT_SOUTH_SLOT,
+                left: L.hand.cx - L.hand.maxWidth / 2 - TIGHT_SOUTH_SLOT - PidroSpacing.xs,
                 top: L.hand.cy - size / 2,
               }}>
               <PlayerAvatar
                 testID="seat-south"
                 size={size}
                 dealerSide="left"
+                style={{ width: size + PidroSpacing.xs * 2 }}
                 {...seat}
                 level={null}
                 pin={null}
                 name={null}
-                status={null}
+                status={line?.short ?? null}
                 accessibilityLabel={avatarLabel({ ...seat, level: null, pin: null })}
               />
             </View>
