@@ -17,6 +17,8 @@ const PANEL_PADDING = PidroSpacing.xxs;
 const HAND_GAP = 18;
 const PORTRAIT_HAND_GAP = PidroSpacing.xxl;
 const MAX_BUTTON_SIZE = 54;
+/** A failed bid's message: up to two metadata lines. */
+const ERROR_LINES_HEIGHT = 2 * 16;
 const FIXED_GROUP_HEIGHT = PidroLayout.touchTarget + GRID_GAP * 2 + CONTROL_GAP + PANEL_PADDING * 2;
 
 export function BiddingActions({
@@ -92,12 +94,14 @@ export function BiddingActions({
   const gridWidth = buttonSize * 3 + GRID_GAP * 2;
   const gridHeight = buttonSize * 3 + GRID_GAP * 2;
   const hardTop = tableTop + HAND_GAP;
-  // Centered on the trick, but never reaching down onto the hand.
+  // Centered on the trick, but never reaching down onto the hand, a failed
+  // bid's error included.
+  const errorHeight = submissionError ? CONTROL_GAP + ERROR_LINES_HEIGHT : 0;
   const portraitTop = Math.max(
     hardTop,
     Math.min(
       layout.trick.cy - gridHeight / 2 - PANEL_PADDING,
-      handTop - handGap - gridHeight - FIXED_GROUP_HEIGHT
+      handTop - handGap - gridHeight - FIXED_GROUP_HEIGHT - errorHeight
     )
   );
 
