@@ -74,9 +74,44 @@ export interface ServerTrickPlay {
   card: Card;
 }
 
+export type TeamKey = 'north_south' | 'east_west';
+
+/** The 2 of trump's point stays with whoever played it, whoever takes the trick. */
+export interface ServerTwoOfTrump {
+  position: Position;
+  points: number;
+}
+
 export interface ServerTrick {
   cards: ServerTrickPlay[];
   winner: Position;
+  /** The winner's share, without the 2 of trump. */
+  points?: number;
+  two_of_trump?: ServerTwoOfTrump | null;
+}
+
+/** The trick in progress, as the server's rules see it (PID-218). */
+export interface ServerTrickDetails {
+  number?: number;
+  leader?: Position;
+  plays?: ServerTrickPlay[];
+  /** The play that would take the trick if it ended now. */
+  winning?: { position: Position; card: Card } | null;
+  /** What the trick holds so far for its winner, without the 2 of trump. */
+  points?: number;
+  two_of_trump?: ServerTwoOfTrump | null;
+}
+
+/** How the last scored hand ended; kept until the next hand's first trick is done. */
+export interface ServerLastHand {
+  hand_number: number;
+  bidding_team: TeamKey;
+  bidder: Position;
+  bid: number;
+  captured: Record<TeamKey, number>;
+  made: boolean;
+  delta: Record<TeamKey, number>;
+  scores: Record<TeamKey, number>;
 }
 
 export interface ServerGameState {
@@ -105,7 +140,9 @@ export interface ServerGameState {
   trump?: Suit | null;
 
   current_trick?: ServerTrickPlay[];
+  current_trick_details?: ServerTrickDetails | null;
   tricks?: ServerTrick[];
+  last_hand?: ServerLastHand | null;
 
   scores?: {
     north_south: number;

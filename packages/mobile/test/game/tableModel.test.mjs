@@ -226,3 +226,80 @@ describe('table seat identities', () => {
     }
   });
 });
+
+describe('trick signals from the server (PID-218)', () => {
+  // Viewer is East (rendered south); North sits on the viewer's right (east).
+  const ace = { suit: 'spades', rank: 14 };
+  const five = { suit: 'spades', rank: 5 };
+  const king = { suit: 'spades', rank: 13 };
+
+  it('lights the card the server says is winning, with what the trick holds', () => {
+    const model = build({
+      phase: 'playing',
+      trumpSuit: 'spades',
+      currentTrick: [
+        { player: 'north', card: five },
+        { player: 'east', card: ace },
+      ],
+      trickDetails: { winning: { position: 'east', card: ace }, points: 6, two_of_trump: null },
+    });
+    expect(model.winningKey).toBe(model.currentTrick.south.key);
+    expect(model.trickPoints).toBe(6);
+    expect(model.lastTrick).toBeNull();
+    expect(model.yourTeam).toBe('east_west');
+  });
+
+  it("keeps a finished trick's winner lit until the next card, and reports the trick taken", () => {
+    const tricks = [
+      {
+        cards: [
+          { player: 'north', card: five },
+          { player: 'east', card: king },
+          { player: 'south', card: ace },
+        ],
+        winner: 'south',
+        points: 6,
+        two_of_trump: { position: 'north', points: 1 },
+      },
+    ];
+    const done = build({ phase: 'playing', trumpSuit: 'spades', tricks, currentTrick: [] });
+    expect(done.winningKey).toBe(done.playedCards.west[0].key);
+    expect(done.trickPoints).toBeNull();
+    expect(done.lastTrick).toEqual({
+      number: 1,
+      winner: 'west',
+      points: 6,
+      twoOfTrump: { holder: 'east', points: 1 },
+    });
+
+    const next = build({
+      phase: 'playing',
+      trumpSuit: 'spades',
+      tricks,
+      currentTrick: [{ player: 'south', card: { suit: 'spades', rank: 10 } }],
+      trickDetails: {
+        winning: { position: 'south', card: { suit: 'spades', rank: 10 } },
+        points: 1,
+      },
+    });
+    expect(next.winningKey).toBe(next.currentTrick.west.key);
+  });
+
+  it('shows nothing it cannot match: an older server, or a winner whose card is not on the table', () => {
+    const older = build({
+      phase: 'playing',
+      trumpSuit: 'spades',
+      currentTrick: [{ player: 'east', card: ace }],
+    });
+    expect(older.winningKey).toBeNull();
+    expect(older.trickPoints).toBeNull();
+
+    const mismatch = build({
+      phase: 'playing',
+      trumpSuit: 'spades',
+      currentTrick: [{ player: 'east', card: ace }],
+      trickDetails: { winning: { position: 'east', card: king }, points: 1 },
+    });
+    expect(mismatch.winningKey).toBeNull();
+  });
+});

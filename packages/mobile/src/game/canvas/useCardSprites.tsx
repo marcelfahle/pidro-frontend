@@ -29,11 +29,11 @@ import {
   useSharedValue,
   withDelay,
   withSequence,
-  withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import type { Card } from '@/types/game';
+import { isStillCapture } from '@/utils/stillCapture';
 import {
   handScale as handScaleFor,
   handStep,
@@ -56,6 +56,8 @@ import {
 import { T } from './tokens';
 
 const MAX = 36;
+/** A played card's glow waits for the card to land. */
+const LEAD_GLOW_DELAY_MS = 280;
 /** Press feedback on a hand card: lift on touch, play on release. */
 const PRESS_LIFT = 0.1;
 const PRESS_LIFT_MS = 90;
@@ -94,6 +96,8 @@ type SlotInfo = {
   legal: boolean;
   blocked: boolean;
   winner: boolean;
+  /** The played card taking the trick, as the server says. */
+  leading: boolean;
 } | null;
 
 type Opts = {
@@ -144,6 +148,8 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   // ── M3 shared values ──────────────────────────────────────────────
   const trumpPop = useSharedValue(0); // 0..1 flourish on trump declare
   const winnerReveal = useSharedValue(0);
+  // The trick's winning card glows; each new leader pops the glow in again.
+  const leadGlow = useSharedValue(0);
   const cardW = L.cardW;
   const cardH = L.cardH;
   const handScale = handScaleFor(L.profile);
@@ -377,6 +383,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         legal: d.legal,
         blocked: d.blocked,
         winner: d.kind === 'cut' && d.key === winnerCutKey,
+        leading: d.kind === 'played' && d.key === model.winningKey,
       };
 
       const pressed = pressSlot.value === sl;
@@ -521,6 +528,29 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     );
   }, [enabled, model, reduceMotion, winnerReveal]);
 
+  // The glow lands with the card that earned it (a played card flies for
+  // 320ms), pops a touch past full and settles. Each new leader pops again.
+  const leadKey = model?.winningKey ?? null;
+  useEffect(() => {
+    cancelAnimation(leadGlow);
+    if (!leadKey) {
+      leadGlow.value = 0;
+      return;
+    }
+    if (reduceMotion || isStillCapture()) {
+      leadGlow.value = 1;
+      return;
+    }
+    leadGlow.value = 0;
+    leadGlow.value = withDelay(
+      LEAD_GLOW_DELAY_MS,
+      withSequence(
+        withTiming(1.25, { duration: 220, easing: Easing.out(Easing.back(1.6)) }),
+        withTiming(1, { duration: 260, easing: Easing.out(Easing.cubic) })
+      )
+    );
+  }, [leadKey, reduceMotion, leadGlow]);
+
   const playByKey = useCallback((key: string) => {
     const card = modelRef.current?.yourHand.find((c) => c.key === key)?.card;
     if (card) onPlayRef.current?.(card);
@@ -605,6 +635,8 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
             dimmed={s.blocked}
             winner={s.winner}
             winnerReveal={winnerReveal}
+            leading={s.leading}
+            leadGlow={leadGlow}
           />
         ))}
       </>
@@ -647,6 +679,8 @@ function CardSprite({
   dimmed,
   winner,
   winnerReveal,
+  leading,
+  leadGlow,
 }: {
   img: SkImage | null;
   x: SharedValue<number>;
@@ -659,14 +693,22 @@ function CardSprite({
   dimmed: boolean;
   winner: boolean;
   winnerReveal: SharedValue<number>;
+  leading: boolean;
+  leadGlow: SharedValue<number>;
 }) {
   const transform = useDerivedValue(() => [
     { translateX: x.value },
     { translateY: y.value },
     { rotate: rot.value },
-    { scale: scale.value * (winner ? 1 + winnerReveal.value * 0.1 : 1) },
+    {
+      scale:
+        scale.value *
+        (winner ? 1 + winnerReveal.value * 0.1 : leading ? 1 + leadGlow.value * 0.06 : 1),
+    },
   ]);
-  const winnerOpacity = useDerivedValue(() => (winner ? winnerReveal.value : 0));
+  const winnerOpacity = useDerivedValue(() =>
+    winner ? winnerReveal.value : leading ? leadGlow.value * 0.85 : 0
+  );
   const r = Math.min(10, w * 0.12);
   return (
     <Group transform={transform} opacity={opacity}>

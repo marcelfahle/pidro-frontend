@@ -34,6 +34,7 @@ import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
 import { Scoreboard } from './Scoreboard';
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
+import { TableSignals } from './TableSignals';
 import { computeLayout } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
@@ -308,6 +309,7 @@ export function GameCanvasTable({
         statusByRel={statusByRel}
         players={viewModel?.players ?? []}
       />
+      <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
 
       <TableChromeBars reserves={reserves} />
       <View

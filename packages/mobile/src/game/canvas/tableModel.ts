@@ -13,7 +13,10 @@ import type {
   RelativePosition,
   SeatPin,
   SeatStatus,
+  ServerLastHand,
+  ServerTrickDetails,
   Suit,
+  TeamKey,
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import type { GameTableController } from '@/game/useGameTableController';
@@ -63,6 +66,25 @@ export type TableModel = {
   currentTurnRelative: RelativePosition | null;
   legalPlayKeys: Set<CardKey>;
   canPlay: boolean;
+  /**
+   * The played card the server says is taking the trick: the current trick's
+   * leader, or once a trick is done, its winner until the next card lands.
+   */
+  winningKey: string | null;
+  /** What the trick in progress holds for its winner, as the server counts it. */
+  trickPoints: number | null;
+  /** The trick taken most recently this hand: who took it and what it was worth. */
+  lastTrick: TrickResult | null;
+  lastHand: ServerLastHand | null;
+  yourTeam: TeamKey | null;
+};
+
+export type TrickResult = {
+  /** 1-based count of finished tricks this hand; a new value means a new trick was taken. */
+  number: number;
+  winner: RelativePosition;
+  points: number;
+  twoOfTrump: { holder: RelativePosition; points: number } | null;
 };
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
@@ -77,6 +99,9 @@ export type TableModelInput = {
   dealerSelectionCuts?: Partial<Record<Position, Card>> | null;
   currentTrick: unknown;
   tricks: unknown;
+  /** PID-218 trick signals; absent from older servers. */
+  trickDetails?: ServerTrickDetails | null;
+  lastHand?: ServerLastHand | null;
   legalActions: LegalAction[];
   currentTurnRelative: RelativePosition | null;
   canPlay: boolean;
@@ -100,6 +125,22 @@ function normalizeCompletedTricks(tricks: unknown): RawPlay[][] {
   if (!Array.isArray(tricks)) return [];
   return tricks.map(normalizePlays).filter((plays) => plays.length > 0);
 }
+
+type RawTrickMeta = {
+  winner?: Position;
+  points?: number;
+  two_of_trump?: { position?: Position; points?: number } | null;
+};
+
+function completedTrickMeta(tricks: unknown): RawTrickMeta[] {
+  if (!Array.isArray(tricks)) return [];
+  return tricks
+    .filter((trick) => normalizePlays(trick).length > 0)
+    .map((trick) => (trick && typeof trick === 'object' ? (trick as RawTrickMeta) : {}));
+}
+
+const teamOf = (position: Position): TeamKey =>
+  position === 'north' || position === 'south' ? 'north_south' : 'east_west';
 
 export function buildTableModel(input: TableModelInput): TableModel {
   const { trumpSuit } = input;
@@ -172,7 +213,47 @@ export function buildTableModel(input: TableModelInput): TableModel {
   completedTricks.forEach((plays, trickIndex) => addPlayedCards(plays, trickIndex, false));
 
   const currentTrickIndex = completedTricks.length;
-  addPlayedCards(normalizePlays(input.currentTrick), currentTrickIndex, true);
+  const currentPlays = normalizePlays(input.currentTrick);
+  addPlayedCards(currentPlays, currentTrickIndex, true);
+
+  // The server decides who is winning and what a trick is worth; the model
+  // only finds the matching card. A trick's winner keeps the light until the
+  // next trick's first card lands.
+  const trickMeta = completedTrickMeta(input.tricks);
+  const lastMeta = trickMeta[trickMeta.length - 1];
+  const lastWinnerRel = lastMeta?.winner ? (absToRel.get(lastMeta.winner) ?? null) : null;
+  const twoHolder = lastMeta?.two_of_trump?.position
+    ? (absToRel.get(lastMeta.two_of_trump.position) ?? null)
+    : null;
+  const lastTrick: TrickResult | null =
+    lastMeta && lastWinnerRel
+      ? {
+          number: trickMeta.length,
+          winner: lastWinnerRel,
+          points: typeof lastMeta.points === 'number' ? lastMeta.points : 0,
+          twoOfTrump:
+            twoHolder && typeof lastMeta.two_of_trump?.points === 'number'
+              ? { holder: twoHolder, points: lastMeta.two_of_trump.points }
+              : null,
+        }
+      : null;
+
+  let winningKey: string | null = null;
+  if (currentPlays.length > 0) {
+    const winning = input.trickDetails?.winning;
+    const rel = winning ? absToRel.get(winning.position) : undefined;
+    const card = rel ? currentTrick[rel] : undefined;
+    if (card && winning && card.textureKey === cardKey(winning.card)) winningKey = card.key;
+  } else if (lastWinnerRel) {
+    const cards = playedCards[lastWinnerRel] ?? [];
+    winningKey =
+      cards.find((card) => card.key.startsWith(`trick-${currentTrickIndex - 1}-`))?.key ?? null;
+  }
+  const trickPoints =
+    currentPlays.length > 0 && typeof input.trickDetails?.points === 'number'
+      ? input.trickDetails.points
+      : null;
+  const you = input.players.find((player) => player.isYou);
 
   const seats = {} as Record<RelativePosition, TableSeat | null>;
   for (const rel of REL) {
@@ -215,6 +296,11 @@ export function buildTableModel(input: TableModelInput): TableModel {
     currentTurnRelative: input.currentTurnRelative,
     legalPlayKeys,
     canPlay: input.canPlay,
+    winningKey,
+    trickPoints,
+    lastTrick,
+    lastHand: input.lastHand ?? null,
+    yourTeam: you ? teamOf(you.absolutePosition) : null,
   };
 }
 
@@ -231,6 +317,8 @@ export function useTableModel(c: GameTableController, presentationHand?: Card[])
         dealerSelectionCuts: c.serverState?.dealer_selection_cuts,
         currentTrick: c.currentTrick,
         tricks: c.completedTricks,
+        trickDetails: c.serverState?.current_trick_details ?? null,
+        lastHand: c.serverState?.last_hand ?? null,
         legalActions: c.legalActions,
         currentTurnRelative: c.currentTurnRelative,
         canPlay: c.isPlayingTurn && !c.isPlayingCard,
@@ -247,6 +335,8 @@ export function useTableModel(c: GameTableController, presentationHand?: Card[])
       c.serverState?.dealer_selection_cuts,
       c.currentTrick,
       c.completedTricks,
+      c.serverState?.current_trick_details,
+      c.serverState?.last_hand,
       c.legalActions,
       c.currentTurnRelative,
       c.isPlayingTurn,
