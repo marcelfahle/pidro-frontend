@@ -18,6 +18,22 @@ concurrency:
 # Unset the variable to fall back to GitHub-hosted runners.
 
 jobs:
+  integration-backend:
+    name: Resolve integration backend
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.backend.outputs.sha }}
+    steps:
+      - name: Resolve backend main once for this run
+        id: backend
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh api repos/marcelfahle/pidro-backend/commits/main --jq .sha)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Integration backend: $sha" >> "$GITHUB_STEP_SUMMARY"
+
   quality:
     name: Mobile quality
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -233,8 +249,9 @@ jobs:
           path: /tmp/ui-grammar-screens
           merge-multiple: true
 
-      # One artifact for `bun run ui:baselines <runId>`, whatever the diff says.
+      # Keep this artifact capture-only: the baseline updater downloads it verbatim.
       - name: Upload UI grammar screenshots
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ui-grammar-screenshots
@@ -254,8 +271,20 @@ jobs:
           UI_SHOT_DIR: /tmp/ui-grammar-screens
         run: bun run test:ui:diff
 
+      - name: Upload visual diffs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-grammar-diffs
+          path: /tmp/ui-grammar-screens/diffs/
+          if-no-files-found: ignore
+          retention-days: 14
+
   game-e2e:
     name: Game e2e
+    needs: integration-backend
+    env:
+      PIDRO_E2E: '1'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 25
 
@@ -281,6 +310,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: marcelfahle/pidro-backend
+          ref: ${{ needs.integration-backend.outputs.sha }}
           path: backend
 
       - name: Set up Erlang/Elixir
@@ -399,110 +429,37 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  account-e2e-shards:
+    name: Account shards
+    needs: integration-backend
+    uses: ./.github/workflows/account-e2e.yml
+    with:
+      backend-sha: ${{ needs.integration-backend.outputs.sha }}
+
   account-e2e:
     name: Account e2e
+    needs: account-e2e-shards
+    if: ${{ !cancelled() }}
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 25
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
+    timeout-minutes: 5
     steps:
-      - name: Check out frontend
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Check out backend
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-          repository: marcelfahle/pidro-backend
-          path: backend
-
-      - name: Set up Erlang/Elixir
-        id: beam
-        uses: erlef/setup-beam@v1
-        with:
-          version-file: backend/.tool-versions
-          version-type: strict
-
-      - name: Cache mix deps and build
-        uses: actions/cache@v4
-        with:
-          path: |
-            backend/deps
-            backend/_build
-          key: mix-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('backend/mix.lock') }}
-
-      - name: Compile backend and prepare database
-        working-directory: backend
-        run: |
-          mix deps.get
-          mix compile
-          mix ecto.create
-          mix ecto.migrate
-
-      - name: Reserve the Classic names the journeys use
-        working-directory: backend
-        run: mix pidro.import_classic_name_reservations "$GITHUB_WORKSPACE/packages/mobile/e2e/classic-name-reservations.json"
-
-      - name: Set up Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: 1.3.6
-
-      - name: Cache bun packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.bun/install/cache
-          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-
-      - name: Install workspace dependencies
-        run: bun install --frozen-lockfile
-
-      - name: Build shared package
-        run: bun run shared:build
-
-      - name: Cache Playwright browsers
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
-
-      - name: Install Chromium for the journeys
-        run: bunx playwright install --with-deps chromium
-
-      - name: Run the account journeys
-        working-directory: packages/mobile
+      - name: Require every account shard and expiry check to pass
         env:
-          CI: '1'
-          EXPO_NO_DOTENV: '1'
-          NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
-          BACKEND_DIR: ${{ github.workspace }}/backend
-        run: e2e/ci.sh
+          RESULT: ${{ needs.account-e2e-shards.result }}
+        run: |
+          echo "Account journeys: $RESULT"
+          test "$RESULT" = success
 
-      - name: Upload videos, traces and report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: account-e2e-artifacts
-          path: |
-            packages/mobile/e2e/results*/
-            packages/mobile/e2e/report*/
-            /tmp/pidro-backend.log
-            /tmp/pidro-expo.log
-            /tmp/pidro-web.log
-          if-no-files-found: ignore
-          retention-days: 14
+  ready:
+    name: Frontend ready
+    needs: [quality, ui-grammar, game-e2e, account-e2e]
+    if: ${{ !cancelled() }}
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 5
+    steps:
+      - name: Require all regression checks
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")'

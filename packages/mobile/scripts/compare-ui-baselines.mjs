@@ -96,7 +96,7 @@ if (failures.length) {
   for (const failure of failures) console.error(`  ✗ ${failure}`);
   console.error(`diff images: ${diffRoot}`);
   console.error(
-    'intentional change? refresh baselines with `bun run ui:baselines` on a green main run'
+    `intentional change? review this run's captures and refresh with \`bun run ui:baselines ${process.env.GITHUB_RUN_ID ?? '<runId>'}\``
   );
   process.exit(1);
 }
