@@ -352,7 +352,7 @@ export function SeatLayer({
           );
         }
         if (rel === 'north') {
-          const northBackCount = clamp(data.cardCount ?? 0, 0, 9);
+          const northBackCount = clamp(data.revealedCards.length || (data.cardCount ?? 0), 0, 9);
           const northFan = northFanWidth(L.cardW, northBackCount);
           return (
             <View key={rel} style={StyleSheet.absoluteFill} pointerEvents="box-none">

@@ -478,7 +478,7 @@ const allCases = [
     name: 'table-count-help',
     path: '/table-dev?phase=playing&role=player&out=one&count=on',
     testId: 'last-trick',
-    countHelp: { bidder: 'Eli', line: 'bid 6 · 2 of 6', out: ['west'] },
+    countHelp: { bidder: 'Eli', line: 'bid 6 · 2 of 6', out: ['west'], revealed: ['west'] },
   },
   {
     name: 'table-last-trick',
@@ -491,7 +491,7 @@ const allCases = [
     name: 'table-takes-the-rest',
     path: '/table-dev?phase=playing&role=player&out=lone&count=on',
     testId: 'seat-south',
-    countHelp: { out: ['north', 'east', 'west'], lone: 'south' },
+    countHelp: { out: ['north', 'east', 'west'], revealed: ['east', 'west'], lone: 'south' },
   },
   {
     name: 'table-trump',
@@ -1785,16 +1785,15 @@ async function assertCountHelp(page, testCase, viewport) {
       { timeout: 10_000 }
     );
   const words = help.words ?? { out: 'out', lone: 'takes the rest' };
-  for (const seat of help.out) {
-    await spoken(seat, words.out);
+  for (const seat of help.out) await spoken(seat, words.out);
+  for (const seat of help.revealed) {
     const cards = page.getByTestId(`seat-${seat}-revealed`);
-    if (await cards.count()) {
-      assertInsideViewport(
-        `${testCase.name} ${seat} cards`,
-        await getStableBox(cards, page),
-        viewport
-      );
-    }
+    await cards.waitFor({ timeout: 10_000 });
+    assertInsideViewport(
+      `${testCase.name} ${seat} cards`,
+      await getStableBox(cards, page),
+      viewport
+    );
   }
   if (help.lone) await spoken(help.lone, words.lone);
   if (!help.line) return;
