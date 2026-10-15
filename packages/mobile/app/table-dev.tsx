@@ -19,6 +19,7 @@ import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
 import type { Card, Invite, RuleSet, SeatStatus, ServerBid, ServerGameState } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
+import type { TableNotice } from '@/game/tableNotices';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 import { useLocale } from '@/i18n';
@@ -165,38 +166,33 @@ function Loading() {
   );
 }
 
-function TimedTableFeedback() {
-  const { notice, addNotice } = useTableNotices(WAITING_ROOM.code);
+const NORA_LOST: TableNotice = {
+  key: 'game.notice_disconnected_seat',
+  seat: { name: 'Nora', position: 'north' },
+  variant: 'warning',
+};
+
+/** The real notice queue: `timed` replays a burst, otherwise one notice shows until tapped. */
+function FixtureTableFeedback({ timed, notice }: { timed?: boolean; notice?: TableNotice | null }) {
+  const { notice: shown, addNotice, dismissNotice } = useTableNotices(WAITING_ROOM.code);
 
   useEffect(() => {
+    if (!timed) {
+      if (notice) addNotice(notice);
+      return;
+    }
     const timers = [
-      setTimeout(
-        () =>
-          addNotice({
-            key: 'game.notice_disconnected_seat',
-            seat: { name: 'Nora', position: 'north' },
-            variant: 'warning',
-          }),
-        800
-      ),
-      setTimeout(
-        () =>
-          addNotice({
-            key: 'game.notice_disconnected_seat',
-            seat: { name: 'Nora', position: 'north' },
-            variant: 'warning',
-          }),
-        1_000
-      ),
+      setTimeout(() => addNotice(NORA_LOST), 800),
+      setTimeout(() => addNotice(NORA_LOST), 1_000),
       setTimeout(
         () => addNotice({ key: 'game.notice_back', params: { name: 'Nora' }, variant: 'success' }),
         1_200
       ),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [addNotice]);
+  }, [addNotice, notice, timed]);
 
-  return <TableFeedback notice={notice} />;
+  return <TableFeedback notice={shown} onDismiss={dismissNotice} />;
 }
 
 function SkiaDevTable({
@@ -500,21 +496,10 @@ function TableDevHarness() {
               }}
             />
           )}
-          {params.feedback === 'timed' ? (
-            <TimedTableFeedback />
-          ) : (
-            <TableFeedback
-              notice={
-                params.feedback === 'notice' || params.notice === 'true'
-                  ? {
-                      key: 'game.notice_disconnected_seat',
-                      seat: { name: 'Nora', position: 'north' },
-                      variant: 'warning',
-                    }
-                  : null
-              }
-            />
-          )}
+          <FixtureTableFeedback
+            timed={params.feedback === 'timed'}
+            notice={params.feedback === 'notice' || params.notice === 'true' ? NORA_LOST : null}
+          />
         </FixtureInsets>
       </SafeAreaProvider>
     </GestureHandlerRootView>
@@ -769,21 +754,10 @@ function RolePreview({
       ) : (
         <Loading />
       )}
-      {feedback === 'timed' ? (
-        <TimedTableFeedback />
-      ) : (
-        <TableFeedback
-          notice={
-            feedback === 'notice'
-              ? {
-                  key: 'game.notice_disconnected_seat',
-                  seat: { name: 'Nora', position: 'north' },
-                  variant: 'warning',
-                }
-              : null
-          }
-        />
-      )}
+      <FixtureTableFeedback
+        timed={feedback === 'timed'}
+        notice={feedback === 'notice' ? NORA_LOST : null}
+      />
     </View>
   );
 }

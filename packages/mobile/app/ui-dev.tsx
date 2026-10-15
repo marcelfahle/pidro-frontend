@@ -256,7 +256,7 @@ const SEAT_STATES: (Omit<PlayerAvatarProps, 'size'> & { caption: string })[] = [
     level: 31,
     ring: 'lifetime',
     nameTone: 'partner',
-    status: 'Took the trick',
+    status: 'Won the trick',
   },
   {
     caption: 'Lost connection',

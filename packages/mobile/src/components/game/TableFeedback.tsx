@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Platform,
@@ -12,6 +12,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { useSeatDecisions } from '@pidro/shared';
 import { TABLE_HEADER, useTableReserves } from '@/game/canvas/TableChrome';
+import { readingTimeMs } from '@/features/game/readingTime';
 import {
   enqueueTableNotice,
   tableNoticeText,
@@ -21,6 +22,10 @@ import {
 import { useTranslation } from '@/i18n';
 import { localizedError } from '@pidro/shared';
 import { PidroSpacing } from '@/design/tokens';
+import { isStillCapture } from '@/utils/stillCapture';
+
+/** How long a notice lingers when nothing newer is waiting behind it. */
+const NOTICE_LINGER_MS = 4500;
 
 export function useTableNotices(roomCode: string) {
   const [notices, setNotices] = useState<QueuedTableNotice[]>([]);
@@ -33,11 +38,19 @@ export function useTableNotices(roomCode: string) {
   const dismissNotice = useCallback(() => setNotices((current) => current.slice(1)), []);
   const clearNotices = useCallback(() => setNotices([]), []);
   const notice = notices[0]?.roomCode === roomCode ? notices[0] : null;
+  const waiting = notices.length > 1;
+  const shown = useRef<{ notice: QueuedTableNotice; at: number } | null>(null);
   useEffect(() => {
-    if (!notice) return;
-    const timer = setTimeout(dismissNotice, 4500);
+    // UI grammar holds the notice it caught; a tap still closes it.
+    if (!notice || isStillCapture()) return;
+    if (shown.current?.notice !== notice) shown.current = { notice, at: Date.now() };
+    // Every notice gets its reading time; after that a newer one takes its place
+    // rather than waiting out the linger.
+    const read = readingTimeMs(tableNoticeText(notice));
+    const hold = waiting ? read : Math.max(read, NOTICE_LINGER_MS);
+    const timer = setTimeout(dismissNotice, shown.current.at + hold - Date.now());
     return () => clearTimeout(timer);
-  }, [notice, dismissNotice]);
+  }, [notice, waiting, dismissNotice]);
   return { notice, addNotice, dismissNotice, clearNotices };
 }
 
@@ -134,8 +147,17 @@ export function TableSeatDecision({
  * Floats in the table's notice slot, or at `top` (the waiting room, below its
  * toolbar). It never moves the table or covers the header and seats.
  */
-export function TableFeedback({ notice, top }: { notice: TableNotice | null; top?: number }) {
-  useTranslation();
+export function TableFeedback({
+  notice,
+  top,
+  onDismiss,
+}: {
+  notice: TableNotice | null;
+  top?: number;
+  /** A tap closes the notice early. */
+  onDismiss?: () => void;
+}) {
+  const { t } = useTranslation();
   const message = notice ? tableNoticeText(notice) : '';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -149,20 +171,23 @@ export function TableFeedback({ notice, top }: { notice: TableNotice | null; top
   const noticeWidth = Math.min(360, width - insets.left - insets.right - 24);
   return (
     <View
-      pointerEvents="none"
+      pointerEvents="box-none"
       style={[styles.noticeOverlay, top === undefined ? noticeSlot : { top }]}>
       {notice ? (
-        <View
+        <Pressable
           testID="table-feedback"
           accessible={Platform.OS !== 'ios'}
+          accessibilityRole="button"
           accessibilityLabel={message}
+          accessibilityHint={t('game.notice_close_hint')}
           accessibilityLiveRegion="polite"
           aria-live="polite"
           aria-atomic
+          onPress={onDismiss}
           className="flex-row items-center gap-2 rounded-xl border border-white/20 bg-slate-950 px-3 shadow-lg"
           style={{
             width: noticeWidth,
-            minHeight: landscape ? 36 : 52,
+            minHeight: landscape ? 44 : 52,
             paddingVertical: PidroSpacing.xs,
           }}>
           <View
@@ -182,7 +207,7 @@ export function TableFeedback({ notice, top }: { notice: TableNotice | null; top
             }>
             {message}
           </Text>
-        </View>
+        </Pressable>
       ) : null}
     </View>
   );

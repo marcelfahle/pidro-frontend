@@ -22,6 +22,7 @@ import {
   type TickerState,
 } from '@/game/actionTickerSchedule';
 import { presentHandLogEntry, type HandLogEntry } from '@/game/handLog';
+import { readingTimeMs } from '@/features/game/readingTime';
 import { isStillCapture } from '@/utils/stillCapture';
 import { useTranslation } from '@/i18n';
 
@@ -62,6 +63,9 @@ type Schedule = {
   known: ReadonlyMap<string, HandLogEntry>;
 };
 
+const readingTimeIn = (known: Schedule['known']) => (id: string) =>
+  readingTimeMs(known.get(id)?.text ?? '');
+
 export function ActionTicker({
   entries,
   resting,
@@ -80,14 +84,15 @@ export function ActionTicker({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- paces new entries against wall-clock time
     setSchedule((prev) => {
       const now = Date.now();
+      const known = new Map(prev.known);
+      for (const entry of entries) known.set(entry.id, entry);
       const state = stepTicker(
         prev.state,
         entries.map((entry) => entry.id),
         now,
-        stateArrived
+        stateArrived,
+        readingTimeIn(known)
       );
-      const known = new Map(prev.known);
-      for (const entry of entries) known.set(entry.id, entry);
       return { state, now: state === prev.state ? prev.now : now, known };
     });
   }, [entries, stateArrived]);
@@ -100,7 +105,7 @@ export function ActionTicker({
     const timer = setTimeout(() => {
       setSchedule((prev) => {
         const now = Date.now();
-        const state = stepTicker(prev.state, [], now);
+        const state = stepTicker(prev.state, [], now, true, readingTimeIn(prev.known));
         return state === prev.state ? { ...prev, now } : { ...prev, state, now };
       });
     }, wait + 16);

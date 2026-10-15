@@ -42,6 +42,7 @@ import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
 import { shouldAutoReadySolo } from '@/features/game/soloReadiness';
+import { readingTimeMs } from '@/features/game/readingTime';
 import { t, useTranslation } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
@@ -351,7 +352,7 @@ export default function GameScreen() {
   const hasGameState = !!serverPhase;
   const canJoinGameChannel =
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
-  const { notice, addNotice: handleSeatEvent, clearNotices } = useTableNotices(code);
+  const { notice, addNotice: handleSeatEvent, dismissNotice, clearNotices } = useTableNotices(code);
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
   const autoReadyRef = useRef<string | null>(null);
 
@@ -419,7 +420,10 @@ export default function GameScreen() {
       if (event.joiningName) {
         setJoiningName(event.joiningName);
         if (joiningNoticeTimerRef.current) clearTimeout(joiningNoticeTimerRef.current);
-        joiningNoticeTimerRef.current = setTimeout(() => setJoiningName(null), 2500);
+        joiningNoticeTimerRef.current = setTimeout(
+          () => setJoiningName(null),
+          readingTimeMs(t('table.joining', { name: event.joiningName }))
+        );
       }
       refreshSchedulerRef.current?.trigger();
     },
@@ -778,7 +782,7 @@ export default function GameScreen() {
             router.push('/(auth)/claim-classic');
           }}
         />
-        <TableFeedback notice={notice} />
+        <TableFeedback notice={notice} onDismiss={dismissNotice} />
         <TableSeatDecision key={room.code} decisions={decisions} />
       </View>
     );
@@ -803,6 +807,7 @@ export default function GameScreen() {
         onKickPlayer={handleKickPlayer}
         onSeatBot={handleSeatBot}
         notice={notice}
+        onDismissNotice={dismissNotice}
       />
       {canManage ? (
         <InviteModal
