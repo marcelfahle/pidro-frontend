@@ -1,11 +1,20 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { RuleSet } from '@pidro/shared';
 import { useSettingsStore } from '@/stores/settings';
 import type { CreateRoomRequest } from '@/types/lobby';
 import { OpenChair } from '@/components/lobby/OpenChair';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { SeatRequirementBadge } from '@/components/lobby/SeatRequirementBadge';
+import { SeatFold, SeatRequirementPicker } from '@/components/lobby/SeatRequirementPicker';
+import { playSelectionHaptic } from '@/game/useGameHaptics';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BackButton } from '@/components/ui/BackButton';
 import { BevelPressable } from '@/components/ui/Bevel';
@@ -15,13 +24,13 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
 import {
+  chooseRequirement,
   chooseSeat,
   defaultSeats,
   newTableRequest,
   tableFooter,
   type SeatChoice,
   type SeatKey,
-  type SeatRequirement,
   type TableDraft,
 } from '@/features/lobby/newTable';
 
@@ -48,11 +57,8 @@ const CHOICES: { value: SeatChoice; label: string }[] = [
   { value: 'ai', label: 'Bot' },
   { value: 'invite', label: 'Friend' },
 ];
-const REQUIREMENTS: { value: SeatRequirement; label: string }[] = [
-  { value: 0, label: 'Anyone' },
-  { value: 100, label: '100+' },
-  { value: 1000, label: '1000+' },
-];
+/** Chair, gap: where the seat's label column starts. */
+const LABEL_INDENT = 40 + 10;
 const RULES: { value: RuleSet; label: string; detail: string }[] = [
   { value: 'finnish', label: 'Finnish', detail: 'Trumps only · bids from 6' },
   { value: 'louisiana', label: 'Louisiana', detail: 'Off-suit plays · bids from 7' },
@@ -88,7 +94,7 @@ export function CreateRoomForm({
   const preferredRuleSet = useSettingsStore((state) => state.preferredRuleSet);
   const [ruleSet, setRuleSet] = useState<RuleSet>(initialRuleSet ?? preferredRuleSet);
   const [draft, setDraft] = useState<TableDraft>(
-    initialDraft ?? { seats: { ...defaultSeats }, requirements: {}, asking: null }
+    initialDraft ?? { seats: { ...defaultSeats }, requirements: {} }
   );
   const submit = () => {
     if (isLoading) return;
@@ -139,7 +145,6 @@ export function CreateRoomForm({
           </View>
         </View>
         {SEATS.map(({ key, label, spoken }, index) => {
-          const asking = draft.asking === key;
           const choice = draft.seats[key];
           const requirement = draft.requirements[key] ?? 0;
           return (
@@ -153,59 +158,70 @@ export function CreateRoomForm({
                   <View style={styles.line} />
                 </View>
               ) : null}
-              <View testID={`create-${key}`} style={styles.seat}>
-                <View style={styles.chair}>
-                  {choice === 'ai' ? (
-                    <PlayerAvatar kind="bot" size={40} />
-                  ) : (
-                    <OpenChair size={40} invite={choice === 'invite'} />
-                  )}
-                  {choice === 'open' && requirement > 0 ? (
-                    <SeatRequirementBadge games={requirement} />
-                  ) : null}
-                </View>
-                <View style={styles.label}>
-                  <PidroText role="label" style={styles.seatLabel}>
-                    {label}
-                  </PidroText>
-                  {asking ? (
-                    <PidroText role="metadata" tone="cyan" style={styles.asking}>
-                      games played
+              <View testID={`create-${key}`}>
+                <View style={styles.seat}>
+                  <View style={styles.chair}>
+                    {choice === 'ai' ? (
+                      <PlayerAvatar kind="bot" size={40} />
+                    ) : (
+                      <OpenChair size={40} invite={choice === 'invite'} />
+                    )}
+                    {choice === 'open' && requirement > 0 ? (
+                      <BadgePop key={requirement}>
+                        <SeatRequirementBadge games={requirement} />
+                      </BadgePop>
+                    ) : null}
+                  </View>
+                  <View style={styles.label}>
+                    <PidroText role="label" style={styles.seatLabel}>
+                      {label}
                     </PidroText>
-                  ) : null}
+                  </View>
+                  <View
+                    accessibilityRole="radiogroup"
+                    accessibilityLabel={spoken}
+                    style={styles.choices}>
+                    {CHOICES.map((option) => {
+                      const checked = option.value === choice;
+                      return (
+                        <PressableFX
+                          key={option.value}
+                          accessibilityRole="radio"
+                          accessibilityLabel={option.label}
+                          accessibilityHint={
+                            option.value === 'invite'
+                              ? 'Share a link after opening the table. This seat stays open.'
+                              : undefined
+                          }
+                          accessibilityState={{ checked, disabled: isLoading }}
+                          aria-checked={checked}
+                          disabled={isLoading}
+                          onPress={() =>
+                            setDraft((current) => chooseSeat(current, key, option.value))
+                          }
+                          style={[styles.choice, checked && styles.selected]}>
+                          <PidroText
+                            role="label"
+                            style={[styles.choiceLabel, checked && styles.gold]}>
+                            {option.label}
+                          </PidroText>
+                        </PressableFX>
+                      );
+                    })}
+                  </View>
                 </View>
-                <View
-                  accessibilityRole="radiogroup"
-                  accessibilityLabel={spoken}
-                  style={styles.choices}>
-                  {(asking ? REQUIREMENTS : CHOICES).map((option) => {
-                    const checked = asking ? option.value === requirement : option.value === choice;
-                    return (
-                      <PressableFX
-                        key={option.value}
-                        accessibilityRole="radio"
-                        accessibilityLabel={option.label}
-                        accessibilityHint={
-                          option.value === 'invite'
-                            ? 'Share a link after opening the table. This seat stays open.'
-                            : undefined
-                        }
-                        accessibilityState={{ checked, disabled: isLoading }}
-                        aria-checked={checked}
-                        disabled={isLoading}
-                        onPress={() =>
-                          setDraft((current) => chooseSeat(current, key, option.value))
-                        }
-                        style={[styles.choice, checked && styles.selected]}>
-                        <PidroText
-                          role="label"
-                          style={[styles.choiceLabel, checked && styles.gold]}>
-                          {option.label}
-                        </PidroText>
-                      </PressableFX>
-                    );
-                  })}
-                </View>
+                <SeatFold open={choice === 'open'}>
+                  <SeatRequirementPicker
+                    value={requirement}
+                    seatLabel={spoken}
+                    disabled={isLoading}
+                    indent={LABEL_INDENT}
+                    onChange={(games) => {
+                      if (games !== requirement) playSelectionHaptic();
+                      setDraft((current) => chooseRequirement(current, key, games));
+                    }}
+                  />
+                </SeatFold>
               </View>
             </Fragment>
           );
@@ -242,7 +258,27 @@ export function CreateRoomForm({
   );
 }
 
+/** A requirement badge lands on the chair with a small pop. */
+function BadgePop({ children }: { children: ReactNode }) {
+  const reduceMotion = useReducedMotion();
+  const appear = useSharedValue(reduceMotion ? 1 : 0);
+  useEffect(() => {
+    if (reduceMotion) return;
+    appear.value = withTiming(1, { duration: 180, easing: Easing.out(Easing.back(2)) });
+  }, [appear, reduceMotion]);
+  const pop = useAnimatedStyle(() => ({
+    opacity: Math.min(1, appear.value * 2),
+    transform: [{ scale: 0.85 + 0.15 * appear.value }],
+  }));
+  return (
+    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.badgePop, pop]}>
+      {children}
+    </Animated.View>
+  );
+}
+
 const styles = StyleSheet.create({
+  badgePop: { alignItems: 'center' },
   shell: { maxWidth: 480, paddingHorizontal: 20, gap: 14 },
   header: { alignItems: 'flex-start' },
   rules: { flexDirection: 'row', gap: 8 },
@@ -254,7 +290,6 @@ const styles = StyleSheet.create({
   chair: { width: 40, height: 40 },
   label: { width: 76, flexShrink: 1, gap: 1 },
   seatLabel: { fontSize: 14 },
-  asking: { fontSize: 11, lineHeight: 14 },
   choices: { flex: 1, flexDirection: 'row', gap: 4, minWidth: 140 },
   choice: {
     flex: 1,

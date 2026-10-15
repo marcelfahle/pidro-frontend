@@ -13,8 +13,8 @@ export type SeatChoice = 'open' | 'ai' | 'invite';
 export type SeatRequirement = 0 | 100 | 1000;
 export type TableDraft = {
   seats: Record<SeatKey, SeatChoice>;
+  /** Games played an open seat asks for; 0 or missing means anyone may sit. */
   requirements: Partial<Record<SeatKey, SeatRequirement>>;
-  asking: SeatKey | null;
 };
 
 export const defaultSeats: Record<SeatKey, SeatChoice> = {
@@ -23,17 +23,22 @@ export const defaultSeats: Record<SeatKey, SeatChoice> = {
   seat_4: 'ai',
 };
 
-export function chooseSeat(
+/** One tap commits the seat. Leaving Open drops that seat's requirement. */
+export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: SeatChoice): TableDraft {
+  return {
+    seats: { ...draft.seats, [seat]: choice },
+    requirements: choice === 'open' ? draft.requirements : { ...draft.requirements, [seat]: 0 },
+  };
+}
+
+/** Only an open seat can ask for games played. */
+export function chooseRequirement(
   draft: TableDraft,
   seat: SeatKey,
-  choice: SeatChoice | SeatRequirement
+  games: SeatRequirement
 ): TableDraft {
-  if (choice === 'open') return { ...draft, asking: seat };
-  return {
-    seats: { ...draft.seats, [seat]: typeof choice === 'number' ? 'open' : choice },
-    requirements: { ...draft.requirements, [seat]: typeof choice === 'number' ? choice : 0 },
-    asking: null,
-  };
+  if (draft.seats[seat] !== 'open') return draft;
+  return { ...draft, requirements: { ...draft.requirements, [seat]: games } };
 }
 
 export function tableFooter(seats: Record<SeatKey, SeatChoice>): string {

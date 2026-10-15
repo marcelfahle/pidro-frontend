@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'bun:test';
 import {
+  chooseRequirement,
   chooseSeat,
   defaultSeats,
   newTableRequest,
   tableFooter,
 } from '../../src/features/lobby/newTable';
 
-const draft = () => ({ seats: { ...defaultSeats }, requirements: {}, asking: null });
+const draft = () => ({ seats: { ...defaultSeats }, requirements: {} });
 
 describe('new table request', () => {
   it('defaults to two public seats and a bot, without sending a name', () => {
@@ -52,31 +53,37 @@ describe('new table request', () => {
 });
 
 describe('seat draft', () => {
-  it('Open flips only the chosen row to requirements without committing a seat change', () => {
+  it('Open commits at once: one tap changes the seat, nothing waits on a second tap', () => {
     const before = draft();
-    expect(chooseSeat(before, 'seat_4', 'open')).toEqual({ ...before, asking: 'seat_4' });
+    expect(chooseSeat(before, 'seat_4', 'open')).toEqual({
+      seats: { ...defaultSeats, seat_4: 'open' },
+      requirements: {},
+    });
     expect(before).toEqual(draft());
   });
 
   for (const games of [0, 100, 1000]) {
-    it(`commits ${games} games as an open seat and closes the inline question`, () => {
-      const before = chooseSeat(draft(), 'seat_4', 'open');
-      expect(chooseSeat(before, 'seat_4', games)).toEqual({
-        seats: { ...defaultSeats, seat_4: 'open' },
-        requirements: { seat_4: games },
-        asking: null,
+    it(`sets ${games} games on an open seat without touching the others`, () => {
+      const before = { ...draft(), requirements: { seat_2: 1000 } };
+      expect(chooseRequirement(before, 'seat_3', games)).toEqual({
+        seats: { ...defaultSeats },
+        requirements: { seat_2: 1000, seat_3: games },
       });
-      expect(before.seats.seat_4).toBe('ai');
+      expect(before.requirements.seat_3).toBeUndefined();
     });
   }
 
+  it('ignores a requirement for a seat that is not open', () => {
+    const before = draft();
+    expect(chooseRequirement(before, 'seat_4', 100)).toBe(before);
+  });
+
   for (const choice of ['ai', 'invite']) {
     it(`${choice} selects directly and clears only that seat's requirement`, () => {
-      const before = { ...draft(), requirements: { seat_3: 1000, seat_2: 100 }, asking: 'seat_2' };
+      const before = { ...draft(), requirements: { seat_3: 1000, seat_2: 100 } };
       expect(chooseSeat(before, 'seat_3', choice)).toEqual({
         seats: { ...defaultSeats, seat_3: choice },
         requirements: { seat_3: 0, seat_2: 100 },
-        asking: null,
       });
       expect(before.requirements.seat_3).toBe(1000);
     });

@@ -8,9 +8,10 @@ export function createTableFixture(value?: string): TableDraft | undefined {
     seats:
       value === 'bots'
         ? { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' }
-        : { ...defaultSeats, ...(value === 'friend' ? { seat_3: 'invite' as const } : {}) },
+        : value === 'open'
+          ? { seat_2: 'open', seat_3: 'open', seat_4: 'open' }
+          : { ...defaultSeats, ...(value === 'friend' ? { seat_3: 'invite' as const } : {}) },
     requirements: value === 'requirement' ? { seat_2: 100 } : {},
-    asking: value === 'open' ? 'seat_3' : null,
   };
 }
 

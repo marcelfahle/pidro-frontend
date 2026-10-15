@@ -721,17 +721,25 @@ async function assertCreationPresentation(page, testCase) {
   assert.equal(await form.getByRole('textbox').count(), 0);
   const partner = form.getByTestId('create-seat_3');
   const radio = (name) => partner.getByRole('radio', { name, exact: true });
-  assert.equal(Math.round((await partner.boundingBox()).height), 44);
+  const height = async () => Math.round((await partner.boundingBox()).height);
+  // An open seat shows its games-played line under it: a 44 pt row plus a 44 pt line.
+  const seatHeight = fixture === 'bots' || fixture === 'friend' ? 44 : 88;
+  assert.equal(await height(), seatHeight);
+  const selected = fixture === 'bots' ? 'Bot' : fixture === 'friend' ? 'Friend' : 'Open';
+  assert.equal(await radio(selected).getAttribute('aria-checked'), 'true');
   if (fixture === 'open') {
-    assert.deepEqual(await partner.getByRole('radio').allTextContents(), [
-      'Anyone',
-      '100+',
-      '1000+',
-    ]);
-    await partner.getByText('games played', { exact: true }).waitFor();
-  } else {
-    const selected = fixture === 'bots' ? 'Bot' : fixture === 'friend' ? 'Friend' : 'Open';
-    assert.equal(await radio(selected).getAttribute('aria-checked'), 'true');
+    for (const key of ['seat_2', 'seat_3', 'seat_4']) {
+      const seat = form.getByTestId(`create-${key}`);
+      assert.deepEqual(await seat.getByRole('radio').allTextContents(), [
+        'Open',
+        'Bot',
+        'Friend',
+        'Anyone',
+        '100+',
+        '1000+',
+      ]);
+      await seat.getByText('games played', { exact: true }).waitFor();
+    }
   }
   if (fixture === 'requirement') {
     assert.equal(await form.getByTestId('seat-requirement').innerText(), '100+');
@@ -742,16 +750,26 @@ async function assertCreationPresentation(page, testCase) {
       ? 'The game starts when your friends sit down.'
       : fixture === 'friend'
         ? 'One open seat is listed for everyone.'
-        : '2 open seats are listed for everyone.'
+        : fixture === 'open'
+          ? '3 open seats are listed for everyone.'
+          : '2 open seats are listed for everyone.'
   );
   if (fixture !== 'default') return;
-  await radio('Open').click();
-  await radio('100+').click();
+  // One tap sets the requirement; the seat stays open and the badge lands on the chair.
+  await radio('100+ games played').click();
+  assert.equal(await radio('100+ games played').getAttribute('aria-checked'), 'true');
   assert.equal(await partner.getByTestId('seat-requirement').innerText(), '100+');
-  assert.equal(Math.round((await partner.boundingBox()).height), 44);
+  // Leaving Open folds the line away; coming back folds it in at Anyone.
   await radio('Bot').click();
+  await page.waitForTimeout(400);
   assert.equal(await radio('Anyone').count(), 0);
+  assert.equal(await height(), 44);
+  await radio('Open').click();
+  await page.waitForTimeout(400);
+  assert.equal(await radio('Anyone').getAttribute('aria-checked'), 'true');
+  assert.equal(await height(), 88);
   await radio('Friend').click();
+  await page.waitForTimeout(400);
   assert.equal(await radio('Anyone').count(), 0);
   assert.equal(await page.getByTestId('create-seat-sheet').count(), 0);
 }

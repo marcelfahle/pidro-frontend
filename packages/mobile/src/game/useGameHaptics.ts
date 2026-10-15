@@ -25,6 +25,15 @@ export function playActionHaptic() {
   );
 }
 
+/** A choice settled in a set of options: the lightest tick. */
+export function playSelectionHaptic() {
+  runHaptic(() =>
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Segment_Tick)
+      : Haptics.selectionAsync()
+  );
+}
+
 export function playCardHaptic() {
   runHaptic(() =>
     Platform.OS === 'android'
