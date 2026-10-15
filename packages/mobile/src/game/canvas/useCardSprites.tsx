@@ -56,6 +56,16 @@ import {
 import { T } from './tokens';
 
 const MAX = 36;
+/** Press feedback on a hand card: lift on touch, play on release. */
+const PRESS_LIFT = 0.1;
+const PRESS_LIFT_MS = 90;
+const PRESS_SETTLE_MS = 160;
+/** A finger may wander this far and still be a tap; further cancels it. */
+const PRESS_SLOP = 20;
+/** Long enough for a slow, careful press. */
+const PRESS_MAX_MS = 10_000;
+/** A tapped card that has not flown by then was not played; drop it back. */
+const PRESS_UNPLAYED_MS = 700;
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 function handSlotFn(L: TableLayout, n: number) {
@@ -119,10 +129,9 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   onPlayRef.current = onPlayCard;
 
   const handTargets = useSharedValue<HandTarget[]>([]);
-  const dragSlot = useSharedValue(-1);
-  const dragKey = useSharedValue('');
-  const dragStartX = useSharedValue(0);
-  const dragStartY = useSharedValue(0);
+  // The hand card under a finger that is still down: lifted, not yet played.
+  const pressSlot = useSharedValue(-1);
+  const pressKey = useSharedValue('');
 
   useEffect(
     () => () => {
@@ -370,7 +379,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         winner: d.kind === 'cut' && d.key === winnerCutKey,
       };
 
-      const dragging = dragSlot.value === sl;
+      const pressed = pressSlot.value === sl;
       if (cutCard && !reduceMotion) {
         const delay = d.delayOrder * CUT_CARD_STAGGER_MS;
         const cutCfg = {
@@ -434,7 +443,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
           withTiming(d.tscale, { duration: 440 })
         );
       } else if (
-        !dragging &&
+        !pressed &&
         !(
           d.kind === 'hand' &&
           model.dealStage &&
@@ -518,10 +527,6 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
   }, []);
 
   const gesture = useMemo(() => {
-    const ringCx = L.trick.cx;
-    const ringCy = L.trick.cy;
-    const ringR = L.trick.r;
-
     const hit = (px: number, py: number): HandTarget | null => {
       'worklet';
       const ts = handTargets.value;
@@ -531,75 +536,53 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
       }
       return null;
     };
+    const target = (slot: number): HandTarget | null => {
+      'worklet';
+      const ts = handTargets.value;
+      for (let i = 0; i < ts.length; i++) if (ts[i].slot === slot) return ts[i];
+      return null;
+    };
+    const settle = (slot: number, delay: number) => {
+      'worklet';
+      const t = target(slot);
+      if (!t) return;
+      sy[slot].value = withDelay(delay, withTiming(t.y, { duration: PRESS_SETTLE_MS }));
+      sscale[slot].value = withDelay(delay, withTiming(t.scale, { duration: PRESS_SETTLE_MS }));
+    };
 
-    const pan = Gesture.Pan()
+    // One tap plays a legal card, the way a button works: the card lifts as
+    // the finger lands, plays as it lifts, and sliding off before then lets
+    // go without playing. No drag: it raced the tap, so a slightly moving
+    // finger turned a tap into a tiny drag that sprang back. No time limit,
+    // so a slow, careful press still counts.
+    return Gesture.Tap()
+      .maxDuration(PRESS_MAX_MS)
+      .maxDistance(PRESS_SLOP)
       .onBegin((e) => {
         'worklet';
         const t = hit(e.x, e.y);
         if (!t) return;
-        dragSlot.value = t.slot;
-        dragKey.value = t.key;
-        dragStartX.value = sx[t.slot].value;
-        dragStartY.value = sy[t.slot].value;
-        sscale[t.slot].value = withTiming(t.scale * 1.1, { duration: 120 });
+        pressSlot.value = t.slot;
+        pressKey.value = t.key;
+        sy[t.slot].value = withTiming(t.y - t.h * PRESS_LIFT, { duration: PRESS_LIFT_MS });
+        sscale[t.slot].value = withTiming(t.scale * 1.06, { duration: PRESS_LIFT_MS });
       })
-      .onUpdate((e) => {
+      .onEnd((_e, success) => {
         'worklet';
-        const sl = dragSlot.value;
-        if (sl < 0) return;
-        sx[sl].value = dragStartX.value + e.translationX;
-        sy[sl].value = dragStartY.value + e.translationY;
+        if (success && pressSlot.value >= 0) runOnJS(playByKey)(pressKey.value);
       })
-      .onEnd(() => {
+      .onFinalize((_e, success) => {
         'worklet';
-        const sl = dragSlot.value;
-        if (sl < 0) return;
-        const dx = sx[sl].value - ringCx;
-        const dy = sy[sl].value - ringCy;
-        if (Math.sqrt(dx * dx + dy * dy) < ringR) {
-          runOnJS(playByKey)(dragKey.value);
-        } else {
-          const ts = handTargets.value;
-          let tgt: HandTarget | null = null;
-          for (let i = 0; i < ts.length; i++)
-            if (ts[i].slot === sl) {
-              tgt = ts[i];
-              break;
-            }
-          if (tgt) {
-            sx[sl].value = withSpring(tgt.x, { damping: 16, stiffness: 180 });
-            sy[sl].value = withSpring(tgt.y, { damping: 16, stiffness: 180 });
-            sscale[sl].value = withSpring(tgt.scale);
-          }
-        }
-        dragSlot.value = -1;
-      })
-      .onFinalize(() => {
-        'worklet';
-        // If the pan was cancelled (e.g. a tap won the race), clear drag state so
-        // the reconciler doesn't skip animating this slot (which would kill the fly).
-        const sl = dragSlot.value;
-        if (sl >= 0) {
-          const ts = handTargets.value;
-          for (let i = 0; i < ts.length; i++)
-            if (ts[i].slot === sl) {
-              sscale[sl].value = withSpring(ts[i].scale);
-              break;
-            }
-          dragSlot.value = -1;
-        }
+        const slot = pressSlot.value;
+        if (slot < 0) return;
+        pressSlot.value = -1;
+        // A played card flies from where it is; if the play never happens
+        // (not your turn after all, or the table is still settling), it
+        // drops back into the hand.
+        settle(slot, success ? PRESS_UNPLAYED_MS : 0);
       });
-
-    const tap = Gesture.Tap().onEnd((e, ok) => {
-      'worklet';
-      if (!ok) return;
-      const t = hit(e.x, e.y);
-      if (t) runOnJS(playByKey)(t.key);
-    });
-
-    return Gesture.Race(pan, tap);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [L.trick.cx, L.trick.cy, L.trick.r, playByKey]);
+  }, [playByKey]);
 
   const nodes = useMemo(() => {
     const ordered = slots

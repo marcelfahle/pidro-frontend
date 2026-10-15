@@ -14,6 +14,7 @@ import type { Room } from '@/types/lobby';
 import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } from '@/types/game';
 import { useGameTableController } from '@/game/useGameTableController';
 import { useTableHaptics } from '@/game/useGameHaptics';
+import { usePlayGuard } from '@/game/usePlayGuard';
 import { useGameStore } from '@/stores/game';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
 import { TableSettings } from './TableSettings';
@@ -270,6 +271,11 @@ export function GameCanvasTable({
     handlePlayCard,
   } = controller;
 
+  const playCard = usePlayGuard(handlePlayCard, {
+    presentation: dealerRobPresentation,
+    handReady: isHandReady,
+  });
+
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
       acc[player.relativePosition] = model.dealStage
@@ -285,7 +291,7 @@ export function GameCanvasTable({
       <GameCanvas
         model={model}
         textures={textures}
-        onPlayCard={handlePlayCard}
+        onPlayCard={playCard}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
       />
