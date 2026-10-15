@@ -1,5 +1,13 @@
-import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, type ReactNode } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
@@ -12,14 +20,26 @@ export function TableUtilityWindow({
   title,
   open,
   onClose,
+  followEnd = false,
   children,
 }: {
   title: string;
   open: boolean;
   onClose: () => void;
+  /** Open at the newest content and stay there as it grows, unless scrolled back. */
+  followEnd?: boolean;
   children: ReactNode;
 }) {
   const insets = useSafeAreaInsets();
+  const scroll = useRef<ScrollView>(null);
+  const pinned = useRef(true);
+  useEffect(() => {
+    if (open) pinned.current = true;
+  }, [open]);
+  const onScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    pinned.current = contentSize.height - layoutMeasurement.height - contentOffset.y < 24;
+  };
   return (
     <Modal
       visible={open}
@@ -65,7 +85,15 @@ export function TableUtilityWindow({
               <Icon name="close" size={20} />
             </BevelButton>
           </View>
-          <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+          <ScrollView
+            ref={scroll}
+            style={styles.scroll}
+            contentContainerStyle={styles.content}
+            onScroll={followEnd ? onScroll : undefined}
+            scrollEventThrottle={100}
+            onContentSizeChange={() => {
+              if (followEnd && pinned.current) scroll.current?.scrollToEnd({ animated: false });
+            }}>
             {children}
           </ScrollView>
         </Surface>

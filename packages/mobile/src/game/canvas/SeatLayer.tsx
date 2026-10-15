@@ -29,7 +29,15 @@ import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvat
 import { PidroSpacing } from '@/design/tokens';
 import { avatarParts } from '@/features/avatar';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
-import { computeLayout, handLeft, type Profile, type RelativePosition } from './layout';
+import {
+  computeLayout,
+  handLeft,
+  northBackWidth,
+  northFanTop,
+  northFanWidth,
+  type Profile,
+  type RelativePosition,
+} from './layout';
 import type { TableSeat } from './tableModel';
 import { DEAL_PACKET_CARD_STAGGER_MS, DEAL_PACKET_TRAVEL_MS } from './animationTiming';
 
@@ -179,9 +187,9 @@ export function SeatLayer({
           };
   const tableTop = insets.top + topReserve;
   // Floating portrait scores no longer mask the fan behind a header band.
-  const northBackTop = portrait ? tableTop + PidroSpacing.xs : tableTop - L.cardH * 0.36;
+  const northBackTop = northFanTop(L, tableTop);
   const northSeatTop = portrait
-    ? northBackTop + clamp(L.cardW * 0.66, 31, 58) * (110 / 78) + PidroSpacing.sm
+    ? northBackTop + northBackWidth(L.cardW) * (110 / 78) + PidroSpacing.sm
     : tableTop + 8;
   const sideBackW = clamp(L.cardW * 0.62, 30, 56);
   const sideStackMaxHeight = sideBackW * (1 + 5 * 0.48);
@@ -266,12 +274,8 @@ export function SeatLayer({
           );
         }
         if (rel === 'north') {
-          const northBackW = clamp(L.cardW * 0.66, 31, 58);
           const northBackCount = clamp(data.cardCount ?? 0, 0, 9);
-          const northFanWidth =
-            northBackCount > 0
-              ? northBackW * (1 + (Math.min(6, northBackCount) - 1) * 0.52)
-              : northBackW;
+          const northFan = northFanWidth(L.cardW, northBackCount);
           return (
             <View key={rel} style={StyleSheet.absoluteFill}>
               <View
@@ -304,7 +308,7 @@ export function SeatLayer({
                     : {
                         position: 'absolute',
                         top: northSeatTop,
-                        left: width / 2 + northFanWidth / 2 + PidroSpacing.md,
+                        left: width / 2 + northFan / 2 + PidroSpacing.md,
                       }
                 }>
                 {avatar}
@@ -373,7 +377,7 @@ function BacksFan({
 }) {
   const n = clamp(count, 0, 9);
   if (n === 0) return null;
-  const w = clamp(cardW * 0.66, 31, 58);
+  const w = northBackWidth(cardW);
   const h = w * (110 / 78);
   const overlap = w * 0.52 * Math.min(1, 5 / Math.max(1, n - 1));
   const total = w + (n - 1) * overlap;

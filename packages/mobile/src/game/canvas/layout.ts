@@ -51,6 +51,40 @@ const LANDSCAPE_SIDE_DROP = 16;
  * backs, a gap, then the seat (avatar, level chip, name and status).
  */
 const NORTH_SEAT_STACK = { phone: 98, tablet: 115 } as const;
+/** One of North's card backs, as SeatLayer draws them. */
+export const northBackWidth = (cardW: number) => clamp(cardW * 0.66, 31, 58);
+/** North's fan of backs: each back after the first adds half a back, up to six. */
+export const northFanWidth = (cardW: number, count: number) =>
+  count > 0 ? northBackWidth(cardW) * (1 + (Math.min(6, count) - 1) * 0.52) : northBackWidth(cardW);
+/**
+ * Where North's backs start. Portrait hangs them under the header row;
+ * landscape tucks them partly above the table, under the floating scores.
+ */
+export const northFanTop = (L: TableLayout, tableTop: number) =>
+  L.width > L.height ? tableTop - L.cardH * 0.36 : tableTop + 8;
+
+const TICKER_LINE_MAX = 168;
+const TICKER_LINE_MIN = 72;
+/** The chevron and the gap before it. */
+const TICKER_CHEVRON = 16;
+/**
+ * The plaque's ticker, kept off North's fan. Portrait lines may reach half a
+ * back into it, over the first back's edge only; landscape lines sit beside
+ * the plaque, dropped below the fan where it hangs into the header row.
+ */
+export function tickerPlacement(
+  L: TableLayout,
+  { tableTop, plaqueLeft, plaqueTop }: { tableTop: number; plaqueLeft: number; plaqueTop: number }
+): { lineMaxWidth: number; drop: number } {
+  const backW = northBackWidth(L.cardW);
+  if (L.width > L.height) {
+    const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
+    return { lineMaxWidth: TICKER_LINE_MAX, drop: Math.max(0, fanBottom + 4 - plaqueTop) };
+  }
+  const fanLeft = L.seats.north.x - northFanWidth(L.cardW, 6) / 2;
+  const room = fanLeft + backW / 2 - plaqueLeft - TICKER_CHEVRON;
+  return { lineMaxWidth: clamp(room, TICKER_LINE_MIN, TICKER_LINE_MAX), drop: 0 };
+}
 /** A seat whose name sits beside the avatar: the avatar plus its level chip. */
 export const TIGHT_SEAT_STACK = 64;
 /** Below this circle radius the trick reads as a heap: give it the labels' room. */

@@ -1,10 +1,10 @@
 /**
  * Mounted navy-and-brass score plaque. Tap for locally observed score changes.
- * During a hand it carries the bid line, as Classic's "Bet 6" did: who holds
- * the bid and for how much, under the plaque in portrait, beside it in
- * landscape where the West seat sits below.
+ * Under it in portrait, beside it in landscape where the West seat sits below,
+ * the action ticker: the latest table actions, resting on who holds the bid as
+ * Classic's "Bet 6" did. Tap the ticker for the hand's log.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
@@ -12,6 +12,10 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Position } from '@/types/lobby';
+import type { HandLogGroup } from '@/game/handLog';
+import { handLogEntries } from '@/game/handLog';
+import { ActionTicker, type TickerRestingLine } from './ActionTicker';
+import { HandLogWindow } from './HandLogWindow';
 import { TableUtilityWindow } from './TableUtilityWindow';
 
 type Scores = { north_south: number; east_west: number } | null | undefined;
@@ -51,9 +55,6 @@ function formatDelta(value: number): string {
   return value.toString();
 }
 
-/** Who holds the bid this hand: `ours` when it is your team's. */
-export type ScoreboardBid = { name: string; amount: number; ours: boolean };
-
 export function Scoreboard({
   scores,
   youPosition,
@@ -61,7 +62,10 @@ export function Scoreboard({
   roomCode = null,
   top = 0,
   left = 0,
-  bid = null,
+  log = [],
+  resting = null,
+  yourTurn = false,
+  ticker = null,
 }: {
   scores: Scores;
   youPosition: Position | null;
@@ -69,7 +73,13 @@ export function Scoreboard({
   roomCode?: string | null;
   top?: number;
   left?: number;
-  bid?: ScoreboardBid | null;
+  /** The hand log behind the ticker. */
+  log?: HandLogGroup[];
+  resting?: TickerRestingLine | null;
+  /** The log steps aside when it becomes your turn. */
+  yourTurn?: boolean;
+  /** Where the ticker keeps off North's fan (layout's tickerPlacement). */
+  ticker?: { lineMaxWidth: number; drop: number } | null;
 }) {
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
@@ -77,6 +87,14 @@ export function Scoreboard({
   const usLabel = youPosition ? 'US' : 'N/S';
   const themLabel = youPosition ? 'THEM' : 'E/W';
   const [isOpen, setIsOpen] = useState(false);
+  const [logOpen, setLogOpen] = useState(false);
+  // The log steps aside the moment it becomes your turn.
+  const [turnSeen, setTurnSeen] = useState(yourTurn);
+  if (yourTurn !== turnSeen) {
+    setTurnSeen(yourTurn);
+    if (yourTurn) setLogOpen(false);
+  }
+  const entries = useMemo(() => handLogEntries(log), [log]);
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
   const prevScoresRef = useRef<ConcreteScores | null>(scores ? copyScores(scores) : null);
   const prevRoomRef = useRef<string | null>(roomCode);
@@ -85,6 +103,7 @@ export function Scoreboard({
     if (prevRoomRef.current === roomCode) return;
     prevRoomRef.current = roomCode;
     setIsOpen(false);
+    setLogOpen(false);
     setScoreHistory([]);
     prevScoresRef.current = scores ? copyScores(scores) : null;
   }, [roomCode, scores]);
@@ -153,21 +172,17 @@ export function Scoreboard({
           <Icon name="chevron-down" size={14} color={PidroColors.goldLight} />
         </View>
       </PressableFX>
-      {bid ? (
-        <View
-          testID="bid-line"
-          pointerEvents="none"
-          style={[styles.bidLine, bid.ours ? styles.bidLineOurs : null]}>
-          <PidroText
-            role="metadata"
-            tone={bid.ours ? 'gold' : 'soft'}
-            style={styles.bidText}
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.3}>
-            {bid.name} bid {bid.amount}
-          </PidroText>
-        </View>
-      ) : null}
+      {/* A new table starts its ticker afresh. */}
+      <View style={{ marginTop: ticker?.drop ?? 0 }} pointerEvents="box-none">
+        <ActionTicker
+          key={roomCode ?? 'table'}
+          entries={entries}
+          resting={resting}
+          onOpenLog={() => setLogOpen(true)}
+          lineMaxWidth={ticker?.lineMaxWidth}
+        />
+      </View>
+      <HandLogWindow open={logOpen} onClose={() => setLogOpen(false)} groups={log} />
 
       <TableUtilityWindow title="Recent scores" open={isOpen} onClose={() => setIsOpen(false)}>
         <PidroText role="metadata" tone="muted">
@@ -226,18 +241,8 @@ export function Scoreboard({
 
 const styles = StyleSheet.create({
   wrap: { position: 'absolute', zIndex: 44, alignItems: 'flex-start', gap: PidroSpacing.xxs },
-  wrapRow: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.sm },
-  bidLine: {
-    maxWidth: 168,
-    paddingHorizontal: PidroSpacing.sm,
-    paddingVertical: 2,
-    borderRadius: PidroRadii.full,
-    backgroundColor: PidroColors.trickChipBg,
-    borderWidth: 1,
-    borderColor: PidroColors.border,
-  },
-  bidLineOurs: { borderColor: PidroColors.goldSoft },
-  bidText: { fontWeight: '800' },
+  // Top-aligned, so a growing ticker never moves the plaque.
+  wrapRow: { flexDirection: 'row', alignItems: 'flex-start', gap: PidroSpacing.sm },
   plaque: {
     padding: RIM,
     borderRadius: PidroRadii.lg,

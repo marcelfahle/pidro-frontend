@@ -2,7 +2,11 @@ import { describe, expect, it } from 'bun:test';
 import {
   computeLayout,
   handLeft,
+  northBackWidth,
+  northFanTop,
+  northFanWidth,
   playedCardTarget,
+  tickerPlacement,
   utilityDockReserve,
 } from '../../src/game/canvas/layout.ts';
 
@@ -87,4 +91,34 @@ describe('portrait trick fits between North and your hand', () => {
       expect(southCardBottom).toBeLessThanOrEqual(L.hand.cy - L.cardH / 2);
     });
   }
+});
+
+describe('the plaque ticker keeps off North’s fan', () => {
+  const noInsets = { top: 0, bottom: 0, left: 0, right: 0 };
+  const plaque = { plaqueLeft: 12, plaqueTop: 8 };
+
+  for (const [width, height] of [
+    [360, 640],
+    [390, 844],
+    [430, 932],
+  ]) {
+    it(`ends its lines within half a back of the fan on ${width}×${height}`, () => {
+      const L = computeLayout(width, height, noInsets, 64, 0);
+      const { lineMaxWidth, drop } = tickerPlacement(L, { tableTop: 64, ...plaque });
+      const fanLeft = L.seats.north.x - northFanWidth(L.cardW, 9) / 2;
+      // The line, then the chevron and its gap.
+      expect(plaque.plaqueLeft + lineMaxWidth + 16).toBeLessThanOrEqual(
+        fanLeft + northBackWidth(L.cardW) / 2 + 0.5
+      );
+      expect(drop).toBe(0);
+    });
+  }
+
+  it('drops below the fan beside the plaque in landscape', () => {
+    const L = computeLayout(640, 360, noInsets, 64, 0);
+    const { lineMaxWidth, drop } = tickerPlacement(L, { tableTop: 64, ...plaque });
+    const fanBottom = northFanTop(L, 64) + (northBackWidth(L.cardW) * 110) / 78;
+    expect(plaque.plaqueTop + drop).toBeGreaterThanOrEqual(fanBottom);
+    expect(lineMaxWidth).toBe(168);
+  });
 });

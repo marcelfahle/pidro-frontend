@@ -23,6 +23,10 @@ export type HandLogEntry = {
   /** Stable across snapshots: the same action keeps its id when the hand moves on. */
   id: string;
   kind: HandLogKind;
+  /** Who acted, the part that may truncate on a narrow ticker; null for trump. */
+  who: string | null;
+  /** What they did; never truncated. */
+  what: string;
   text: string;
   /** Your side's line; null for spectators and for trump. */
   ours: boolean | null;
@@ -75,13 +79,21 @@ function playsOf(trick: unknown): RawPlay[] {
 }
 
 const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+const say = (who: string | null, what: string) => ({
+  who,
+  what,
+  text: who ? `${who} ${what}` : what,
+});
 
 export function buildHandLog(input: HandLogInput): HandLogGroup[] {
   const you = input.players.find((player) => player.isYou);
   const yourTeam = you ? teamOf(you.absolutePosition) : null;
   const names = new Map<Position, string>();
   for (const player of input.players) {
-    names.set(player.absolutePosition, player.isYou ? 'You' : (player.username ?? player.absolutePosition));
+    names.set(
+      player.absolutePosition,
+      player.isYou ? 'You' : (player.username ?? player.absolutePosition)
+    );
   }
   const name = (position: Position) => names.get(position) ?? position;
   const ours = (team: TeamKey) => (yourTeam ? team === yourTeam : null);
@@ -104,7 +116,7 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
       entries.push({
         id: `bid-${hand}-${bid.position}`,
         kind: 'bid',
-        text: pass ? `${name(bid.position)} passed` : `${name(bid.position)} bid ${bid.amount}`,
+        ...say(name(bid.position), pass ? 'passed' : `bid ${bid.amount}`),
         ours: ours(teamOf(bid.position)),
         hand,
         trick: null,
@@ -114,7 +126,7 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
       entries.push({
         id: `trump-${hand}`,
         kind: 'trump',
-        text: `Trump ${SUIT_SYMBOLS[trump]}`,
+        ...say(null, `Trump ${SUIT_SYMBOLS[trump]}`),
         ours: null,
         hand,
         trick: null,
@@ -129,7 +141,10 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
         entries.push({
           id: `play-${hand}-${trick}-${index}`,
           kind: 'play',
-          text: `${name(position)} ${verb} ${getRankLabel(play.card.rank)}${SUIT_SYMBOLS[play.card.suit] ?? ''}`,
+          ...say(
+            name(position),
+            `${verb} ${getRankLabel(play.card.rank)}${SUIT_SYMBOLS[play.card.suit] ?? ''}`
+          ),
           ours: ours(teamOf(position)),
           hand,
           trick,
@@ -150,7 +165,7 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
         entries.push({
           id: `trick-${hand}-${trick}`,
           kind: 'trick',
-          text: points > 0 ? `${side(team)} took it +${points}` : `${side(team)} took it`,
+          ...say(side(team), points > 0 ? `took it +${points}` : 'took it'),
           ours: ours(team),
           hand,
           trick,
@@ -162,7 +177,7 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
         entries.push({
           id: `two-${hand}-${trick}`,
           kind: 'two',
-          text: `${holder} 2 +${two.points}`,
+          ...say(holder, `2 +${two.points}`),
           ours: ours(teamOf(two.position)),
           hand,
           trick,
@@ -175,11 +190,11 @@ export function buildHandLog(input: HandLogInput): HandLogGroup[] {
 
   const resultEntry = (last: ServerLastHand): HandLogEntry => {
     const team = last.bidding_team;
-    const headline = last.made ? `${side(team)} made it` : `${side(team)} were set`;
+    const outcome = last.made ? 'made it' : 'were set';
     return {
       id: `result-${last.hand_number}`,
       kind: 'result',
-      text: `${headline} ${signed(last.delta?.[team] ?? 0)}`,
+      ...say(side(team), `${outcome} ${signed(last.delta?.[team] ?? 0)}`),
       ours: ours(team),
       hand: last.hand_number,
       trick: null,

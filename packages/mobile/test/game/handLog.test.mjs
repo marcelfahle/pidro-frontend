@@ -80,7 +80,9 @@ describe('buildHandLog', () => {
 
   it('keeps a short trick short once seats have gone cold', () => {
     const entries = handLogEntries(
-      build({ tricks: [trickTo('west', 1, null, [play('east', 8, 'hearts'), play('west', 14, 'hearts')])] })
+      build({
+        tricks: [trickTo('west', 1, null, [play('east', 8, 'hearts'), play('west', 14, 'hearts')])],
+      })
     );
     expect(entries.map((entry) => entry.kind)).toEqual(['play', 'play', 'trick']);
     expect(entries[1].text).toBe('Nora plays A♥');
@@ -88,16 +90,25 @@ describe('buildHandLog', () => {
 
   it('adds the trick in progress after the finished ones, with ids that do not move', () => {
     const before = handLogEntries(
-      build({ tricks: [trickTo('east', 0)], currentTrick: [play('east', 10, 'clubs'), play('south', 3, 'clubs')] })
+      build({
+        tricks: [trickTo('east', 0)],
+        currentTrick: [play('east', 10, 'clubs'), play('south', 3, 'clubs')],
+      })
     );
     const after = handLogEntries(
       build({
         tricks: [trickTo('east', 0)],
-        currentTrick: [play('east', 10, 'clubs'), play('south', 3, 'clubs'), play('west', 7, 'clubs')],
+        currentTrick: [
+          play('east', 10, 'clubs'),
+          play('south', 3, 'clubs'),
+          play('west', 7, 'clubs'),
+        ],
       })
     );
     expect(before.slice(-2).map((entry) => entry.text)).toEqual(['Eli plays 10♣', 'You play 3♣']);
-    expect(after.slice(0, before.length).map((entry) => entry.id)).toEqual(before.map((entry) => entry.id));
+    expect(after.slice(0, before.length).map((entry) => entry.id)).toEqual(
+      before.map((entry) => entry.id)
+    );
     expect(after.at(-1).trick).toBe(2);
   });
 
@@ -206,14 +217,24 @@ describe('buildHandLog', () => {
   it('skips malformed pieces instead of throwing', () => {
     const groups = build({
       bids: [{ position: 'east', amount: 6 }, { amount: 7 }],
-      tricks: [{ cards: [{ player: 'east' }, play('nowhere', 3, 'clubs'), play('west', 2, 'clubs')], winner: 'west', points: 1 }, null],
+      tricks: [
+        {
+          cards: [{ player: 'east' }, play('nowhere', 3, 'clubs'), play('west', 2, 'clubs')],
+          winner: 'west',
+          points: 1,
+        },
+        null,
+      ],
       currentTrick: 'oops',
     });
     expect(texts(groups)).toEqual(['Eli bid 6', 'Nora plays 2♣', 'They took it +1']);
   });
 
   it('builds the same ids and order from the same snapshot', () => {
-    const input = { trump: 'spades', tricks: [trickTo('east', 5, { position: 'south', points: 1 })] };
+    const input = {
+      trump: 'spades',
+      tricks: [trickTo('east', 5, { position: 'south', points: 1 })],
+    };
     expect(handLogEntries(build(input))).toEqual(handLogEntries(build(input)));
   });
 });
