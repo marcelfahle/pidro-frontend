@@ -1,8 +1,8 @@
 import type { CreateRoomRequest, Room, RuleSet } from '@pidro/shared';
 
-export const ruleSets: Record<RuleSet, { labelKey: string; flag: string }> = {
-  finnish: { labelKey: 'rules.finnish', flag: '🇫🇮' },
-  louisiana: { labelKey: 'rules.louisiana', flag: '🇺🇸' },
+export const ruleSets: Record<RuleSet, { labelKey: string }> = {
+  finnish: { labelKey: 'rules.finnish' },
+  louisiana: { labelKey: 'rules.louisiana' },
 };
 
 export function lobbyRuleSetFilter(preferred: RuleSet, saved: RuleSet | 'all' | null) {

@@ -11,7 +11,7 @@ async function createLouisianaTable(page: Page, token: string) {
     .getByRole('button', { name: 'Create table', exact: true })
     .click();
   const create = page.getByTestId('create-room-window');
-  await create.getByRole('button', { name: '🇺🇸 Louisiana', exact: true }).click();
+  await create.getByRole('button', { name: 'Louisiana', exact: true }).click();
   const created = page.waitForResponse(
     (response) =>
       new URL(response.url()).pathname === '/api/v1/rooms' && response.request().method() === 'POST'
@@ -29,7 +29,7 @@ async function createLouisianaTable(page: Page, token: string) {
   expect(room.code).toBe(code);
   expect(room.config.rule_set).toBe('louisiana');
   await expect(page.getByTestId('waiting-table').last()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('🇺🇸 Louisiana');
+  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('Louisiana');
   return code;
 }
 
@@ -43,12 +43,12 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await expect(
     page
       .getByTestId('settings-preferred-rules')
-      .getByRole('button', { name: '🇫🇮 Finnish', exact: true })
+      .getByRole('button', { name: 'Finnish', exact: true })
   ).toHaveAttribute('aria-selected', 'true');
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
   await expect(
-    page.getByTestId('lobby-rule-filter').getByRole('button', { name: '🇫🇮 Finnish', exact: true })
+    page.getByTestId('lobby-rule-filter').getByRole('button', { name: 'Finnish', exact: true })
   ).toHaveAttribute('aria-selected', 'true');
 
   const first = await createLouisianaTable(page, token);
@@ -64,15 +64,15 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
   await page
     .getByTestId('lobby-rule-filter')
-    .getByRole('button', { name: '🇺🇸 Louisiana', exact: true })
+    .getByRole('button', { name: 'Louisiana', exact: true })
     .click();
-  await expect(page.getByTestId(`room-rules-${first}`)).toContainText('🇺🇸 Louisiana');
+  await expect(page.getByTestId(`room-rules-${first}`)).toContainText('Louisiana');
   await page
     .getByTestId('lobby-screen')
     .getByRole('button', { name: 'Rejoin', exact: true })
     .click();
   await page.waitForURL(`**/game/${first}`);
-  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('🇺🇸 Louisiana');
+  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('Louisiana');
   await seatedPage.close();
   await expect(page.getByTestId('rules-explainer')).toBeVisible();
   await page.getByTestId('rules-done').click();
@@ -104,7 +104,7 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await page.reload();
   await page.waitForURL(`**/game/${second}`);
   await expect(page.getByTestId('waiting-table').last()).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('🇺🇸 Louisiana');
+  await expect(page.getByTestId('waiting-rule-set').last()).toContainText('Louisiana');
   await expect(page.getByTestId('rules-explainer')).not.toBeVisible();
   expect(
     await page.evaluate(() => JSON.parse(localStorage.getItem('settings-storage') ?? '{}').state)

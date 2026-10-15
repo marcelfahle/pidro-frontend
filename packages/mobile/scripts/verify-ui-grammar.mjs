@@ -596,7 +596,7 @@ async function assertRulePresentation(page, testCase) {
   }
   if (testCase.rulesLobby) {
     if (testCase.rulesLobby === 'rules-search-empty') {
-      await page.getByText('No 🇺🇸 Louisiana tables match your search.', { exact: true }).waitFor();
+      await page.getByText('No Louisiana tables match your search.', { exact: true }).waitFor();
       return;
     }
     const filter = page.getByTestId('lobby-rule-filter');
@@ -621,7 +621,7 @@ async function assertRulePresentation(page, testCase) {
       }
     }
     if (testCase.rulesLobby === 'rules-empty')
-      await page.getByText('No 🇺🇸 Louisiana tables match this filter.', { exact: true }).waitFor();
+      await page.getByText('No Louisiana tables match this filter.', { exact: true }).waitFor();
   }
 }
 
@@ -659,7 +659,7 @@ async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
         'true'
       );
       assert.equal(
-        await page.getByText('No 🇺🇸 Louisiana tables match this filter.', { exact: true }).count(),
+        await page.getByText('No Louisiana tables match this filter.', { exact: true }).count(),
         0
       );
     }
