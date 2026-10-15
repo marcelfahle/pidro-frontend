@@ -72,8 +72,12 @@ describe('account localization', () => {
     setLocale('en');
     const failure = guestSaveFailure(
       apiFailure({
+        errors: [
+          { code: 'username', detail: 'private name diagnostic' },
+          { code: 'password', detail: 'private password diagnostic' },
+        ],
         field_errors: [
-          { field: 'display_name', error_code: 'field_format' },
+          { field: 'username', error_code: 'field_format' },
           { field: 'password', error_code: 'field_too_short', error_params: { count: 12 } },
         ],
       })
@@ -86,6 +90,69 @@ describe('account localization', () => {
         t('error.field_too_short', { count: 12 })
       );
       expect(guestSaveFieldMessage(failure, 'password')).not.toContain('8');
+    }
+  });
+
+  it('offers sign-in recovery only for precise old or structured email uniqueness', () => {
+    const legacy = { code: 'email', title: 'Email', detail: 'has already been taken' };
+    const cases = [
+      [{ errors: [legacy] }, true, 'auth.email_taken'],
+      [{ errors: [{ ...legacy, detail: 'has invalid format' }] }, false, 'auth.check_email'],
+      [
+        { errors: [{ ...legacy, detail: 'private diagnostic has already been taken' }] },
+        false,
+        'auth.check_email',
+      ],
+      [{ error_code: 'email_taken' }, true, 'auth.email_taken'],
+      [{ code: 'EMAIL_TAKEN' }, true, 'auth.email_taken'],
+      ...['field_taken', 'email_taken', 'field_format', 'future_validation'].map((code) => [
+        {
+          errors: [legacy],
+          field_errors: [{ field: 'email', error_code: code, error_params: {} }],
+        },
+        code === 'field_taken' || code === 'email_taken',
+        code === 'future_validation' ? 'error.field_invalid' : `error.${code}`,
+      ]),
+    ];
+
+    for (const [data, taken, key] of cases) {
+      setLocale('en');
+      const error = apiFailure(data);
+      const failure = guestSaveFailure(error);
+      expect(failure.originalError).toBe(error);
+      expect(failure.emailTaken === true).toBe(taken);
+      for (const locale of ['en', 'sv', 'en']) {
+        setLocale(locale);
+        expect(guestSaveFieldMessage(failure, 'email')).toBe(t(key));
+        expect(guestSaveFailure(error).emailTaken === true).toBe(taken);
+        expect(guestSaveFieldMessage(failure, 'email')).not.toMatch(
+          /private|has already been taken/
+        );
+      }
+    }
+  });
+
+  it('keeps precise inline field codes and literal counts ahead of bare field names', () => {
+    const failure = guestSaveFailure(
+      apiFailure({
+        errors: [
+          { code: 'username', error_code: 'field_format', detail: 'private name diagnostic' },
+          {
+            code: 'password',
+            error_code: 'field_too_long',
+            error_params: { count: 73 },
+            detail: 'private password diagnostic',
+          },
+        ],
+      })
+    );
+    for (const locale of ['en', 'sv']) {
+      setLocale(locale);
+      expect(guestSaveFieldMessage(failure, 'displayName')).toBe(t('error.field_format'));
+      expect(guestSaveFieldMessage(failure, 'password')).toBe(
+        t('error.field_too_long', { count: 73 })
+      );
+      expect(guestSaveFieldMessage(failure, 'password')).toContain('73');
     }
   });
 
@@ -109,9 +176,7 @@ describe('account localization', () => {
       expect(reserved.classicNameReserved).toBe(true);
       expect(guestSaveFieldMessage(taken, 'email')).toBe(t('auth.email_taken'));
       expect(taken.emailTaken).toBe(true);
-      expect(guestSaveFieldMessage(password, 'password')).toBe(
-        t('auth.password_min', { count: 8 })
-      );
+      expect(guestSaveFieldMessage(password, 'password')).toBe(t('error.field_invalid'));
     }
   });
 
