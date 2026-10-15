@@ -11,26 +11,29 @@ export function SeatRequirementBadge({
   locked?: boolean;
 }) {
   return (
-    <View
-      pointerEvents="none"
-      aria-hidden
-      testID="seat-requirement"
-      style={[styles.badge, locked && styles.locked]}>
-      <PidroText
-        role="metadata"
-        style={[styles.label, locked && styles.lockedLabel]}
-        numberOfLines={1}>
-        {games}+
-      </PidroText>
+    // A strip wider than the chair, so "1000+" never truncates to the chair's width.
+    <View pointerEvents="none" aria-hidden style={styles.strip}>
+      <View testID="seat-requirement" style={[styles.badge, locked && styles.locked]}>
+        <PidroText
+          role="metadata"
+          style={[styles.label, locked && styles.lockedLabel]}
+          numberOfLines={1}>
+          {games}+
+        </PidroText>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  badge: {
+  strip: {
     position: 'absolute',
     bottom: -7,
-    alignSelf: 'center',
+    left: -20,
+    right: -20,
+    alignItems: 'center',
+  },
+  badge: {
     minWidth: 26,
     height: 16,
     alignItems: 'center',
