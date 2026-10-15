@@ -27,7 +27,7 @@ const rooms = [
     seats: [player('sues', 'Sues', 0), player('izzy', 'Izzy', 1)],
   },
   {
-    code: 'LONG',
+    code: 'HIDDEN42',
     name: 'A long table name that must never wrap',
     status: 'waiting',
     available_positions: ['south', 'east', 'west'],
@@ -39,6 +39,8 @@ const viewports = [
   { name: 'small-phone', width: 320, height: 568 },
   { name: 'landscape', width: 844, height: 390 },
   { name: 'compact-landscape', width: 667, height: 375 },
+  { name: 'tablet-portrait', width: 820, height: 1180 },
+  { name: 'tablet-landscape', width: 1180, height: 820 },
 ];
 
 async function compactEmptyState(page) {
@@ -62,7 +64,7 @@ async function compactEmptyState(page) {
   }
 }
 
-async function equalRows(page, selector) {
+async function equalRows(page, selector, checkGrid = false) {
   const rows = await page.locator(selector).all();
   assert.equal(rows.length, 3);
   const boxes = await Promise.all(rows.map((row) => row.boundingBox()));
@@ -73,6 +75,15 @@ async function equalRows(page, selector) {
   assert.ok(
     boxes.every((box) => box.x >= 0 && box.x + box.width <= page.viewportSize().width),
     'row exceeds viewport'
+  );
+  if (checkGrid) {
+    const { width, height } = page.viewportSize();
+    const columns = width < height && width < 600 ? 1 : width > height && height >= 600 ? 3 : 2;
+    assert.equal(new Set(boxes.map((box) => Math.round(box.x))).size, columns, 'grid column count');
+  }
+  assert.ok(
+    boxes.every((box) => Math.abs(box.width - boxes[0].width) < 1),
+    'grid row widths differ'
   );
   for (const [index, row] of rows.entries()) {
     const box = boxes[index];
@@ -96,6 +107,9 @@ try {
     const context = await browser.newContext({ viewport, deviceScaleFactor: 2 });
     const page = await context.newPage();
     let state = 'populated';
+    let refuseJoin = false;
+    let lobbyLoads = 0;
+    const dialogs = [];
     const joins = [];
     const creates = [];
     await page.addInitScript(() => {
@@ -122,19 +136,28 @@ try {
         await route.fulfill({ status: 503, json: { errors: [{ detail: 'Try again fixture' }] } });
       } else if (path.endsWith('/join')) {
         joins.push({ path, body: route.request().postDataJSON() });
+        if (refuseJoin) {
+          await route.fulfill({
+            status: 422,
+            json: { errors: [{ code: 'SEAT_TAKEN', detail: 'That chair was just taken.' }] },
+          });
+          return;
+        }
         await route.fulfill({
           json: { data: { room: rooms[0], assigned_position: 'west' } },
         });
       } else if (path.endsWith('/lobby')) {
+        lobbyLoads += 1;
         await route.fulfill(
           state === 'error'
             ? { status: 503, json: {} }
             : {
                 json: {
                   data: {
-                    open_tables: ['empty', 'busy'].includes(state) ? [] : rooms,
+                    open_tables: ['empty', 'busy', 'substitute'].includes(state) ? [] : rooms,
                     my_rejoinable: [],
-                    substitute_needed: [],
+                    substitute_needed:
+                      state === 'substitute' ? [{ ...rooms[0], status: 'playing' }] : [],
                     spectatable: state === 'busy' ? [{ ...rooms[0], status: 'playing' }] : [],
                   },
                 },
@@ -144,20 +167,22 @@ try {
         await route.fulfill({ status: 503, json: {} });
       }
     });
-    page.on('dialog', (dialog) => dialog.dismiss());
+    page.on('dialog', (dialog) => {
+      dialogs.push(dialog.message());
+      void dialog.dismiss();
+    });
     await page.goto(`${baseUrl}/lobby`);
     await page.getByTestId('lobby-table-MEK').waitFor();
-    await page.getByTestId('lobby-rule-filter').getByRole('button', { name: 'All', exact: true }).click();
+    assert.equal(await page.getByTestId('lobby-rule-filter').count(), 0);
     await page.evaluate(() => document.fonts.ready);
     await suppressDevOverlays(page);
-    await equalRows(page, '[data-testid^="lobby-table-"]');
+    await equalRows(page, '[data-testid^="lobby-table-"]', true);
     await assertMinimumTouchTargets(page, 'lobby', viewport, { checkInputs: true });
     const first = page.getByTestId('lobby-table-MEK');
     assert.equal(await first.getByRole('button', { name: /^Join/ }).count(), 2);
-    const mek = await first.getByRole('button', { name: "View Mek's profile" }).boundingBox();
-    const magnolia = await first
-      .getByRole('button', { name: "View Magnolia's profile" })
-      .boundingBox();
+    const mek = await first.getByText('Mek', { exact: true }).boundingBox();
+    const magnolia = await first.getByText('Magnolia', { exact: true }).boundingBox();
+    assert.equal(await first.getByRole('button', { name: /profile/ }).count(), 0);
     const east = await first.getByRole('button', { name: /^Join east/ }).boundingBox();
     const west = await first.getByRole('button', { name: /^Join west/ }).boundingBox();
     assert.ok(
@@ -165,10 +190,25 @@ try {
       'teams must be N/S versus E/W'
     );
     assert.ok(
-      [magnolia, east, west].every((box) => Math.abs(box.y - mek.y) < 1),
+      Math.abs(magnolia.y - mek.y) < 1 && Math.abs(east.y - west.y) < 1,
       'seats must share one row'
     );
     await page.screenshot({ path: resolve(output, `${viewport.name}.png`) });
+    // A refusal stays on this row, refreshes the lobby, and leaves another chair usable.
+    refuseJoin = true;
+    const loadsBeforeRefusal = lobbyLoads;
+    const refreshed = page.waitForResponse((response) =>
+      new URL(response.url()).pathname.endsWith('/lobby')
+    );
+    await first.getByRole('button', { name: 'Join east seat', exact: true }).click();
+    await first.getByText('That chair was just taken.', { exact: true }).waitFor();
+    await refreshed;
+    assert.ok(lobbyLoads > loadsBeforeRefusal, 'refused seat join must refresh lobby');
+    assert.equal(new URL(page.url()).pathname, '/lobby');
+    assert.deepEqual(dialogs, [], 'seat refusal must not open an alert');
+    assert.deepEqual(joins, [{ path: '/api/v1/rooms/MEK/join', body: { position: 'east' } }]);
+    refuseJoin = false;
+    joins.length = 0;
     await first.getByRole('button', { name: /^Join west/ }).click();
     await page.waitForURL((url) => url.pathname === '/game/MEK');
     assert.deepEqual(joins, [{ path: '/api/v1/rooms/MEK/join', body: { position: 'west' } }]);
@@ -176,15 +216,20 @@ try {
     await page.goto(`${baseUrl}/lobby`);
     await page.getByTestId('lobby-table-MEK').waitFor();
     await suppressDevOverlays(page);
-    await page.getByRole('textbox', { name: 'Search tables' }).fill('sues');
+    await page.getByRole('textbox', { name: 'Find a player' }).fill('iZzY');
     assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 1);
-    await page.getByRole('textbox', { name: 'Search tables' }).fill('no matching table');
+    await page.getByTestId('lobby-table-SUES').waitFor();
+    for (const query of ['HIDDEN42', 'A long table name that must never wrap', 'no matching player']) {
+      await page.getByRole('textbox', { name: 'Find a player' }).fill(query);
+      await page.getByText('No matching tables', { exact: true }).waitFor();
+      assert.equal(await page.locator('[data-testid^="lobby-table-"]').count(), 0);
+    }
     await page.getByText('No matching tables', { exact: true }).waitFor();
     await compactEmptyState(page);
     await page.screenshot({ path: resolve(output, `${viewport.name}-no-results.png`) });
     await page.getByRole('button', { name: 'Clear search' }).click();
     await page.getByTestId('lobby-table-MEK').waitFor();
-    await page.getByRole('button', { name: 'Create table', exact: true }).click();
+    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
     await page.getByTestId('create-room-window').waitFor();
     for (const next of ['empty', 'error']) {
       state = next;
@@ -200,7 +245,7 @@ try {
       await page.screenshot({ path: resolve(output, `${viewport.name}-${next}.png`) });
       if (next === 'empty') {
         assert.equal(await page.getByText(/ online$/).count(), 0, 'no one else is online');
-        assert.equal(await page.getByRole('textbox', { name: 'Search tables' }).count(), 0);
+        assert.equal(await page.getByRole('textbox', { name: 'Find a player' }).count(), 0);
         // The quick-game link starts the same solo table as Home's tile.
         await page.getByRole('link', { name: 'Or play a quick game with bots' }).click();
         await page.getByText(/We could not start a solo game/).waitFor();
@@ -208,7 +253,7 @@ try {
         await page.getByRole('button', { name: 'Join with a table code', exact: true }).click();
         await page.waitForURL((url) => url.pathname === '/join-code');
         await page.goBack();
-        await page.getByRole('button', { name: 'Start a table', exact: true }).click();
+        await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
         await page.getByTestId('create-room-window').waitFor();
       } else {
         state = 'populated';
@@ -225,6 +270,15 @@ try {
       'watchable games must not be described as an empty lobby'
     );
     assert.equal(await page.getByTestId('lobby-empty').count(), 0);
+    state = 'substitute';
+    await page.reload();
+    const substitute = page.getByTestId('lobby-table-MEK');
+    await substitute.getByRole('button', { name: 'Sit in west seat', exact: true }).waitFor();
+    assert.equal(await substitute.getByRole('button', { name: /^Join / }).count(), 0);
+    joins.length = 0;
+    await substitute.getByRole('button', { name: 'Sit in west seat', exact: true }).click();
+    await page.waitForURL((url) => url.pathname === '/game/MEK');
+    assert.deepEqual(joins, [{ path: '/api/v1/rooms/MEK/join', body: { position: 'west' } }]);
     await page.goto(`${baseUrl}/ui-dev?state=lobby-seats`);
     await page.getByTestId('lobby-table-SAMPLE0').waitFor();
     await equalRows(page, '[data-testid^="lobby-table-"]');
@@ -246,7 +300,7 @@ try {
       .click();
     assert.equal(await page.getByTestId('lobby-gallery-joined').textContent(), 'SAMPLE2: west');
     console.log(
-      `lobby ok: ${viewport.name} — equal rows, team order, touch targets, join payload, search, create, empty (quick game, join code, start)/error, 100/1000 badges`
+      `lobby ok: ${viewport.name} — equal rows, team order, touch targets, refused join refresh, join payload, player-only search, create, empty (quick game, join code, start)/error, 100/1000 badges`
     );
     await context.close();
   }

@@ -53,7 +53,7 @@ try {
     });
     await page.goto(`${baseUrl}/lobby`);
     await page.getByText('No one is at a table yet', { exact: true }).waitFor();
-    await page.getByRole('button', { name: 'Create table', exact: true }).click();
+    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
     const form = page.getByTestId('create-room-window');
     await form.waitFor();
     await page.evaluate(() => document.fonts.ready);
@@ -135,7 +135,7 @@ try {
       'partner is seat 3; an invite seat is sent as an open seat'
     );
     await button('Cancel creation').click();
-    await page.getByRole('button', { name: 'Create table', exact: true }).click();
+    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
     await seat('Partner seat').waitFor();
     assert.equal(await name.inputValue(), `${username}'s table`);
     console.log(

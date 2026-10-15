@@ -113,8 +113,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
 
-`/ui-dev?state=lobby-seats` shows equal-height lobby rows with no requirement, `100`,
-and `1000` badges plus long names. These are presentation samples, not live seat
+`/ui-dev?state=lobby-seats` shows lobby seat presentation samples, not live seat
 restrictions: the server does not yet supply or enforce minimum games.
 `node scripts/verify-lobby.mjs` checks the real lobby with mocked API responses at
 four phone sizes, including direct seat joins, search, create, error states, the
@@ -196,20 +195,33 @@ missed turns: a bot is taking the seat, I'm back joins again. testID `game-away-
 Renders the invite preview with no backend.
 Canonical: `/join/7KQ4M2XB?source=copy&fixture=open` — testID `join-invite-window`.
 
+## `/lobby?fixture=<state>` — player-first table rows
+
+Development-only, backend-free fixtures; use an authenticated auth fixture.
+`list` shows all categories: MY has Rejoin; OPEN1 has Claas and three open seats;
+OPEN2 has Yaya, a bot and two open seats; SUB has Anna/Pekka/Liisa and one Sit in;
+WATCH1 and the other playing rows have Watch. Table names, codes and levels are
+not displayed. `rejoin`, `open`, `substitute`, and `watch` isolate each row kind.
+`empty` shows the empty Tables screen. `search-empty` starts with an unmatched
+player query and offers Clear search. Search is labelled **Find a player** and
+matches human player names, not table names, codes or bots.
+
+Grammar cases: `lobby-list`, `lobby-empty`, `lobby-rejoin`, `lobby-open`,
+`lobby-substitute`, `lobby-watch`, `lobby-search-empty`. They cover the phone
+viewports plus lobby-specific 834×1194 and 1194×834 tablet sizes. The existing
+`home-tablet-portrait` and `tablet-landscape` CI shards apply those sizes only to
+lobby cases; other screens keep their existing dimensions.
+
 ## Rule-set fixtures
 
 Development-only, no backend needed (except the real manual-code path, mocked by
-the grammar script). Lobby requires an authenticated auth fixture. Invite routes
+the grammar script). Invite routes
 show a guest name-entry preview without auth, or the same table's confirmation
 with an authenticated fixture.
 
 | URL | Shows |
 | --- | --- |
 | `/ui-dev?state=create&fixture=finnish` / `fixture=louisiana` | Selected creation rules and description |
-| `/lobby?fixture=mixed` | Finnish and Louisiana badges in all four categories; All filter |
-| `/lobby?fixture=louisiana` | Louisiana filter across all categories |
-| `/lobby?fixture=rules-empty` | Empty Louisiana filter; Show all rules recovery |
-| `/lobby?fixture=rules-search-empty` | Search with no Louisiana matches; Show all preserves the query |
 | `/ui-dev?state=settings&fixture=finnish` / `fixture=louisiana` | Preferred rules selector |
 | `/join/7KQ4M2XB?fixture=finnish` / `fixture=louisiana` | Rules badge in guest preview or authenticated confirmation |
 | `/join/7KQ4M2XB?source=typed&fixture=louisiana` | Manual-code arrival at the same confirmation |
@@ -225,8 +237,8 @@ The actual `/join-code` form routes to `/join/7KQ4M2XB?source=typed`;
 confirmation as an invite link, not a separate manual-code confirmation screen.
 `join-code-louisiana-confirm` exercises that form with a mocked Louisiana preview.
 
-Grammar cases: `create-table-finnish`, `create-table-louisiana`, `lobby-mixed`,
-`lobby-louisiana`, `lobby-rules-empty`, `lobby-rules-search-empty`, `settings-finnish`, `settings-louisiana`,
+Grammar cases: `create-table-finnish`, `create-table-louisiana`,
+`settings-finnish`, `settings-louisiana`,
 `join-finnish-preview`, `join-finnish-confirm`, `join-louisiana-preview`,
 `join-louisiana-confirm`, `join-louisiana-manual-confirm`, `join-code-louisiana-confirm`,
 `table-finnish`, `table-louisiana`, `table-louisiana-bidding`, `table-louisiana-explainer`, `table-louisiana-game-over`,
@@ -256,7 +268,7 @@ node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/biddi
 renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
 `bun run ui:baselines <runId>`.
 
-`UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby` `lobby-empty` `login` `register` `register-password`
+`UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby-list` `lobby-empty` `lobby-rejoin` `lobby-open` `lobby-substitute` `lobby-watch` `lobby-search-empty` `login` `register` `register-password`
 `register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
 `ui-components` `create-table` `create-seat` `table-waiting` `table-ready` `table-ready-host`
 `table-host-controls` `table-invite` `table-waiting-notice` `table-playing` `table-notice`

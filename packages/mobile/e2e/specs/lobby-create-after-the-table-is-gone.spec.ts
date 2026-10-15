@@ -23,7 +23,7 @@ test('a new table is created when the old one is already gone', async ({ page, p
   });
   const left = page.waitForResponse((response) => response.url().endsWith('/current/leave'));
 
-  await page.getByRole('button', { name: 'Create table' }).first().click();
+  await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
   await page
     .getByTestId('create-room-window')
     .getByRole('button', { name: 'Open the table' })

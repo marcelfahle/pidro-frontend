@@ -16,20 +16,33 @@ export function TableTop({ mark, style }: { mark: number; style: StyleProp<ViewS
 export function OpenChair({
   size,
   invite = false,
+  substitute = false,
   style,
 }: {
   size: number;
   invite?: boolean;
+  substitute?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   return (
     <View
       pointerEvents="none"
-      style={[styles.chair, { width: size, height: size, borderRadius: size / 2 }, style]}>
+      style={[
+        styles.chair,
+        { width: size, height: size, borderRadius: size / 2 },
+        substitute && { borderColor: PidroColors.chairSubBorder },
+        style,
+      ]}>
       <Icon
         name={invite ? 'link' : 'plus'}
         size={Math.round(size * 0.4)}
-        color={invite ? PidroBevel.textGold : PidroColors.cyanText}
+        color={
+          invite
+            ? PidroBevel.textGold
+            : substitute
+              ? PidroColors.rulesLouisianaText
+              : PidroColors.cyanText
+        }
         strokeWidth={2.4}
       />
     </View>

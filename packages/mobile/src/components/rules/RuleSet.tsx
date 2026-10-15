@@ -4,7 +4,7 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
-import { PidroFlagColors, PidroSpacing } from '@/design/tokens';
+import { PidroColors, PidroFlagColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { ruleSets } from '@/features/rules/ruleSets';
 import { t } from '@/i18n';
 
@@ -39,19 +39,35 @@ export function RuleSetChip({
   ruleSet,
   testID,
   flagOnly = false,
+  compact = false,
 }: {
   ruleSet: RuleSet;
   testID?: string;
   flagOnly?: boolean;
+  compact?: boolean;
 }) {
+  const color = ruleSet === 'finnish' ? PidroColors.cyanText : PidroColors.rulesLouisianaText;
   return (
     <Surface
       variant="subtle"
-      style={styles.chip}
+      style={[
+        styles.chip,
+        compact && styles.compactChip,
+        compact && {
+          borderColor:
+            ruleSet === 'finnish'
+              ? PidroColors.rulesFinnishBorder
+              : PidroColors.rulesLouisianaBorder,
+        },
+      ]}
       testID={testID}
       accessibilityLabel={ruleSetLabel(ruleSet)}>
-      <RuleSetFlag ruleSet={ruleSet} />
-      {flagOnly ? null : <PidroText role="metadata">{ruleSetLabel(ruleSet)}</PidroText>}
+      {compact ? null : <RuleSetFlag ruleSet={ruleSet} />}
+      {flagOnly ? null : (
+        <PidroText role="metadata" style={compact && [styles.compactText, { color }]}>
+          {ruleSetLabel(ruleSet)}
+        </PidroText>
+      )}
     </Surface>
   );
 }
@@ -90,6 +106,20 @@ export function RuleSetSelector<T extends RuleSet | 'all'>({
 }
 
 const styles = StyleSheet.create({
+  compactChip: {
+    height: 22,
+    paddingVertical: 0,
+    justifyContent: 'center',
+    borderRadius: PidroRadii.full,
+    backgroundColor: 'transparent',
+  },
+  compactText: {
+    fontSize: 10,
+    lineHeight: 14,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xxs },
   chip: {
     alignSelf: 'flex-start',

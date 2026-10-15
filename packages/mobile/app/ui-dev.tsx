@@ -1,6 +1,6 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-context';
 import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
@@ -373,7 +373,6 @@ function AvatarGallery() {
 }
 
 function LobbySeatGallery() {
-  const { width, height } = useWindowDimensions();
   const [joined, setJoined] = useState('Choose a seat');
   return (
     <ScreenShell scroll contentStyle={styles.shell}>
@@ -382,7 +381,6 @@ function LobbySeatGallery() {
       {[undefined, 100, 1000].map((minimum, index) => (
         <RoomCard
           key={index}
-          compact={width > height}
           room={{
             code: `SAMPLE${index}`,
             name:

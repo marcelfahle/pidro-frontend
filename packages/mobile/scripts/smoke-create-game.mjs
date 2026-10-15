@@ -170,7 +170,7 @@ async function main() {
     await page.getByTestId('lobby-screen').waitFor({ timeout: 15_000 });
     captures.push(...(await captureCurrentScreen(page, 'lobby', 'lobby-screen')));
 
-    await page.getByRole('button', { name: 'Create table', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
     await page.getByLabel('Table name').fill(`Smoke ${Date.now().toString().slice(-6)}`);
     for (const seat of ['Left opponent seat', 'Partner seat']) {
       await page.getByRole('button', { name: `${seat}: open. Change` }).click();
