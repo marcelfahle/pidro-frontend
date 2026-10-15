@@ -33,7 +33,7 @@ const OPTIONS: { value: DeclaredAgeBand; label: string }[] = [
   { value: '18_plus', label: '18 or older' },
 ];
 
-type Fixture = 'selected' | 'under13';
+type Fixture = 'unanswered' | 'selected' | 'under13';
 
 function HelpLink({
   label,
@@ -74,7 +74,7 @@ export default function AgeScreen() {
   const [selection, setSelection] = useState<DeclaredAgeBand | null>(
     fixture === 'selected'
       ? '18_plus'
-      : storedBand === '13_17' || storedBand === '18_plus'
+      : !fixture && (storedBand === '13_17' || storedBand === '18_plus')
         ? storedBand
         : null
   );
@@ -338,6 +338,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   helpLink: {
+    minWidth: PidroLayout.touchTarget,
     minHeight: PidroLayout.touchTarget,
     alignItems: 'center',
     justifyContent: 'center',

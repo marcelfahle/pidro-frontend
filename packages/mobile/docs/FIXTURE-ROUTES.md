@@ -203,6 +203,12 @@ On a simulator these open through the dev deep-link allowlist in `app/+native-in
 (`exp://127.0.0.1:8081/--/classic-forgot?fixture=sent`). A fixture is read when the
 route mounts, so switching between two fixtures of the same route needs an app restart.
 
+## `/age?fixture=<state>` — age gate
+
+`unanswered` (no range chosen, Continue disabled), `selected` (18 or older chosen,
+Continue enabled), `under13` (the stop screen). testID `age-screen`, or
+`age-stop-screen` for `under13`.
+
 ## `/home?fixture=table-unknown`
 
 Home after Quick game was refused as "already in a room" and the lobby that would

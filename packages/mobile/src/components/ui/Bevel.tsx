@@ -299,13 +299,17 @@ export function BevelPressable({
 }
 
 const styles = StyleSheet.create({
+  // Keyline and face shrink into a rim with a set height instead of hanging
+  // out of its bottom; the face then centres its label in what is left.
   keyline: {
+    flexShrink: 1,
     backgroundColor: PidroBevel.keyline,
   },
   fill: {
     flexGrow: 1,
   },
   face: {
+    flexShrink: 1,
     overflow: 'hidden',
   },
   gloss: {

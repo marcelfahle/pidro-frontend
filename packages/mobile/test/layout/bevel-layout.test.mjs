@@ -33,7 +33,21 @@ const tile = styleConstant('HomeTileButton.tsx', 'styles');
 
 // Yoga's RN compatibility mode is essential: browser flexbox misses this bug.
 // This is a layout-engine model, not a device/rendering test.
-function layout(availableHeight, { wood, faceGrow, keylineGrow, minHeight, pads, row = false }) {
+function layout(
+  availableHeight,
+  {
+    wood,
+    faceGrow,
+    keylineGrow,
+    minHeight,
+    pads,
+    row = false,
+    height,
+    shrink = { keyline: bevel.keyline.flexShrink ?? 0, face: bevel.face.flexShrink ?? 0 },
+    padding = sizes.md.paddingVertical,
+    labelHeight = wood ? 25 : 21,
+  }
+) {
   const config = Yoga.Config.create();
   config.setErrata(Yoga.ERRATA_ALL);
   const node = () => Yoga.Node.create(config);
@@ -45,6 +59,7 @@ function layout(availableHeight, { wood, faceGrow, keylineGrow, minHeight, pads,
   screen.insertChild(panel, 0);
   const rim = node();
   rim.setMinHeight(minHeight);
+  if (height) rim.setHeight(height);
   rim.setPadding(Yoga.EDGE_ALL, pads.rim);
   if (row) {
     // Home's tile row: two `flex: 1` rims side by side.
@@ -60,21 +75,28 @@ function layout(availableHeight, { wood, faceGrow, keylineGrow, minHeight, pads,
   const keyline = wood ? node() : rim;
   if (wood) {
     keyline.setFlexGrow(keylineGrow);
+    keyline.setFlexShrink(shrink.keyline);
     keyline.setPadding(Yoga.EDGE_ALL, pads.key);
     rim.insertChild(keyline, 0);
   }
   const face = node();
   face.setFlexGrow(faceGrow);
+  face.setFlexShrink(shrink.face);
   face.setFlexDirection(Yoga.FLEX_DIRECTION_ROW);
-  face.setPadding(Yoga.EDGE_VERTICAL, sizes.md.paddingVertical);
+  face.setAlignItems(Yoga.ALIGN_CENTER);
+  face.setPadding(Yoga.EDGE_VERTICAL, padding);
   face.setPadding(Yoga.EDGE_HORIZONTAL, sizes.md.paddingHorizontal);
   keyline.insertChild(face, 0);
   const label = node();
   label.setWidth(130);
-  label.setHeight(wood ? 25 : 21);
+  label.setHeight(labelHeight);
   face.insertChild(label, 0);
   screen.calculateLayout(undefined, undefined, Yoga.DIRECTION_LTR);
-  const heights = { rim: rim.getComputedHeight(), face: face.getComputedHeight() };
+  const heights = {
+    rim: rim.getComputedHeight(),
+    face: face.getComputedHeight(),
+    labelTop: label.getComputedTop(),
+  };
   screen.freeRecursive();
   config.free();
   return heights;
@@ -124,4 +146,28 @@ test('a filling tile face covers its whole minimum-height rim', () => {
   expect(filled.face).toBe(164 - 2 * (2.5 + 1.5));
   // Control: without the opt-in the face shrinks to its content.
   expect(tileLayout(0).face).toBeLessThan(100);
+});
+
+test('a wood face shrinks into a rim with a set height and centres its label', () => {
+  // The age screen's Continue: a 68 rim (hero chrome) around lg padding and a 35 label,
+  // which together want 2 * (2.5 + 1.5) + 2 * 17 + 35 = 77.
+  const continueLayout = (shrink) =>
+    layout(844, {
+      wood: true,
+      faceGrow: 0,
+      keylineGrow: 0,
+      minHeight: styles.rim.minHeight,
+      pads: { rim: 2.5, key: 1.5 },
+      height: 68,
+      ...(shrink && { shrink }),
+      padding: sizes.lg.paddingVertical,
+      labelHeight: 35,
+    });
+  const fixed = continueLayout();
+  expect(fixed.rim).toBe(68);
+  expect(fixed.face).toBe(68 - 2 * (2.5 + 1.5));
+  // Centred in the face, give or take Yoga's pixel rounding.
+  expect(Math.abs(fixed.labelTop - (60 - 35) / 2)).toBeLessThanOrEqual(0.5);
+  // Control: without shrinking, the face hangs 9px out of the rim.
+  expect(continueLayout({ keyline: 0, face: 0 }).face).toBe(69);
 });
