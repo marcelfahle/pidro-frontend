@@ -23,8 +23,9 @@ scores/legal actions are not translated or recalculated.
   `/ui-dev`, `/table-dev`, `/auth-flow-dev` only. Real navigation ignores them.
 - Grammar covers EN/SV settings selections and seven gameplay phases at 390×844,
   844×390, 667×375, 360×640 and 768×1024. These are browser dimensions, not devices.
-- The compact portrait trump window reserves North and the player's hand and
-  yields decorative suit-image size, never Swedish text size.
+- Every portrait trump window reserves North's full avatar/name/status stack and
+  the player's hand. Compact art/spacing follows available height, not a phone
+  size category; Swedish type and at least 48pt suit targets remain readable.
 
 ## Source translation mapping
 
@@ -65,6 +66,10 @@ codes win over old fields. Known stable legacy identifiers still work; uncoded
 failures get translated context fallbacks. Parallel `field_errors` retain field
 identity and server length parameters, including across live language changes.
 The frontend works before the backend contract is deployed.
+Guest-save recovery recognizes the exact legacy uniqueness detail
+`has already been taken` only when no authoritative structured reason wins.
+Structured email/name uniqueness retains the established account-recovery copy
+and flags; invalid format and password lengths preserve their actual reasons.
 
 ## Native and OTA boundary
 
@@ -82,6 +87,15 @@ Before a native release, check both languages in iOS/Android system settings,
 foreground after OS language changes, explicit preference precedence, photo
 permission prompts, VoiceOver/TalkBack, notch/system bars and both rotations.
 Synthetic browser inset checks do not replace those checks.
+
+Parent device review on 2026-10-15 passed on iPhone 17 Pro, iOS 26.5, Expo Go 56,
+with real insets: EN→SV→EN Settings, portrait and both landscape orientations.
+The Swedish portrait trump window clears North by 13pt and the hand by 45pt;
+all four choices fit and remain 48pt tall. The landscape System radio stays
+inside its Surface, and all language targets remain 48pt. The actual declaring
+game state with nine cards clears the hand by 11pt in landscape (68pt targets).
+This approval does not certify Android, permission dialogs, screen readers,
+OS-locale foreground behavior or large native font scaling.
 
 ## Validation commands
 
