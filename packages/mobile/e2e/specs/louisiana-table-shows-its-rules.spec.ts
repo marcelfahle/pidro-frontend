@@ -87,7 +87,7 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await page
     .getByTestId('waiting-table')
     .last()
-    .getByRole('button', { name: 'Leave', exact: true })
+    .getByRole('button', { name: 'Leave table', exact: true })
     .click();
   expect((await left).ok()).toBe(true);
   await page.waitForURL(/\/lobby$/);
