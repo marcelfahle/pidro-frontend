@@ -86,8 +86,8 @@ jobs:
             exit 1
           fi
 
-  # The captures run one page at a time, so the suite is split across parallel
-  # shards; the "UI grammar" job below merges their captures for the pixel diff.
+  # Balance the full viewport/case matrix by recorded duration. The aggregate
+  # verifies exact coverage before comparing the merged captures.
   ui-grammar-shard:
     name: UI grammar (${{ matrix.shard }})
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -96,16 +96,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - shard: portrait
-            viewports: portrait
-          - shard: landscape
-            viewports: landscape
-          - shard: small-and-tablet
-            viewports: compact-portrait,compact-landscape,tablet-portrait,home-tablet-portrait,tablet-landscape
-          - shard: suites
-            viewports: ''
+          - shard: matrix-1
+            partition: 1/5
+          - shard: matrix-2
+            partition: 2/5
+          - shard: matrix-3
+            partition: 3/5
+          - shard: matrix-4
+            partition: 4/5
+          - shard: matrix-5
+            partition: 5/5
+          - shard: table-behavior
+            partition: ''
+          - shard: lobby-and-creation
+            partition: ''
           - shard: seats-and-game-over
-            viewports: ''
+            partition: ''
 
     steps:
       - name: Check out repository
@@ -145,7 +151,8 @@ jobs:
           # The full fixture matrix retains Metro/SSR modules across many navigations.
           NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
           UI_SHOT_DIR: /tmp/ui-grammar-screens
-          UI_VIEWPORTS: ${{ matrix.viewports }}
+          UI_PARTITION: ${{ matrix.partition }}
+          UI_REPORT_PATH: /tmp/ui-reports/${{ matrix.shard }}.json
           UI_SHARD: ${{ matrix.shard }}
         run: |
           cleanup() {
@@ -174,7 +181,10 @@ jobs:
           }
           start_expo
 
-          if [ -n "$UI_VIEWPORTS" ]; then
+          if [ -n "$UI_PARTITION" ]; then
+            if [ "$UI_SHARD" = "matrix-1" ]; then
+              node scripts/verify-ui-readiness.mjs
+            fi
             bun run test:ui
             exit 0
           fi
@@ -191,9 +201,13 @@ jobs:
             exit 0
           fi
 
-          UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
-          node scripts/verify-seat-decisions.mjs
-          node scripts/verify-dealing.mjs
+          if [ "$UI_SHARD" = "table-behavior" ]; then
+            UI_SHOT_DIR=/tmp/ui-grammar-screens/table-chrome node scripts/verify-table-chrome.mjs
+            node scripts/verify-seat-decisions.mjs
+            node scripts/verify-dealing.mjs
+            exit 0
+          fi
+
           UI_SHOT_DIR=/tmp/lobby-screens node scripts/verify-lobby.mjs
           UI_SHOT_DIR=/tmp/ui-grammar-screens/creation node scripts/verify-create-room.mjs
 
@@ -206,8 +220,17 @@ jobs:
           if-no-files-found: ignore
           retention-days: 3
 
+      - name: Upload case timings and coverage
+        if: always() && matrix.partition != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-report-${{ matrix.shard }}
+          path: /tmp/ui-reports/
+          if-no-files-found: error
+          retention-days: 14
+
       - name: Upload lobby diagnostics
-        if: always() && matrix.shard == 'suites'
+        if: always() && matrix.shard == 'lobby-and-creation'
         uses: actions/upload-artifact@v4
         with:
           name: lobby-screenshots
@@ -264,6 +287,20 @@ jobs:
         run: |
           echo "A UI grammar shard did not pass (${{ needs.ui-grammar-shard.result }}); see its job log."
           exit 1
+
+      - name: Download case timings and coverage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ui-report-*
+          path: /tmp/ui-reports
+          merge-multiple: true
+
+      - name: Require the complete visual inventory
+        shell: bash
+        working-directory: packages/mobile
+        env:
+          UI_SHOT_DIR: /tmp/ui-grammar-screens
+        run: node scripts/verify-ui-grammar.mjs --verify-coverage /tmp/ui-reports | tee -a "$GITHUB_STEP_SUMMARY"
 
       - name: Compare against visual baselines
         working-directory: packages/mobile
