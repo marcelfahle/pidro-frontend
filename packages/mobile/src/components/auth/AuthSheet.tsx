@@ -195,7 +195,7 @@ export function AuthSheet({
                     accessibilityRole="button"
                     accessibilityLabel="Claim Pidro Classic"
                     onPress={() => claimClassic(displayName.trim())}
-                    style={styles.classicLink}>
+                    style={[styles.classicLink, compactLandscape && styles.fullRow]}>
                     <PidroText role="label" tone="cyan">
                       Played Classic? Claim it instead
                     </PidroText>
@@ -330,7 +330,8 @@ const styles = StyleSheet.create({
   description: { maxWidth: 340 },
   scroll: { width: '100%', flexShrink: 1, overflow: 'hidden' },
   form: { width: '100%', maxWidth: 420, alignSelf: 'center', gap: PidroSpacing.sm },
-  formLandscape: { maxWidth: 800, flexDirection: 'row', gap: PidroSpacing.xs },
+  formLandscape: { maxWidth: 800, flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
+  fullRow: { width: '100%' },
   claimPlaque: { width: '100%', gap: PidroSpacing.xxs },
   classicLink: {
     minHeight: PidroLayout.touchTarget,

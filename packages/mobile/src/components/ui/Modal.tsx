@@ -1,5 +1,6 @@
 import { Modal as RNModal, View, ModalProps as RNModalProps, StyleSheet } from 'react-native';
 import { useReducedMotion } from 'react-native-reanimated';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { DecisionWindow } from './DecisionWindow';
 
@@ -10,6 +11,7 @@ export interface ModalProps extends RNModalProps {
   description?: string;
   children?: React.ReactNode;
   dismissible?: boolean;
+  scrollable?: boolean;
 }
 
 export function Modal({
@@ -21,6 +23,7 @@ export function Modal({
   animationType = 'fade',
   transparent = true,
   dismissible = true,
+  scrollable = false,
   ...props
 }: ModalProps) {
   const reduceMotion = useReducedMotion();
@@ -37,11 +40,17 @@ export function Modal({
       animationType={reduceMotion ? 'none' : animationType}
       onRequestClose={handleRequestClose}
       {...props}>
-      <View style={styles.backdrop}>
-        <DecisionWindow title={title} description={description} style={styles.modalWindow}>
-          {children}
-        </DecisionWindow>
-      </View>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.backdrop}>
+          <DecisionWindow
+            title={title}
+            description={description}
+            style={styles.modalWindow}
+            scrollable={scrollable}>
+            {children}
+          </DecisionWindow>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </RNModal>
   );
 }

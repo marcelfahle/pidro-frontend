@@ -1,29 +1,42 @@
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { profileApi } from '@/api/profile';
-import { Avatar } from '@/components/ui/Avatar';
-import { Button } from '@/components/ui/Button';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
+import { PidroSpacing } from '@/design/tokens';
 
-export function PlayerProfileModal({
-  playerId,
-  onClose,
-}: {
+interface PlayerProfileProps {
   playerId: string | null;
   onClose: () => void;
-}) {
+  onRemove?: () => Promise<void>;
+  fixture?: ProfileIdentity;
+}
+
+export function PlayerProfileModal({ playerId, onClose, onRemove, fixture }: PlayerProfileProps) {
   return playerId ? (
-    <PlayerProfileContent key={playerId} playerId={playerId} onClose={onClose} />
+    <PlayerProfileContent
+      key={playerId}
+      playerId={playerId}
+      onClose={onClose}
+      onRemove={onRemove}
+      fixture={__DEV__ ? fixture : undefined}
+    />
   ) : null;
 }
 
-function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose: () => void }) {
-  const [profile, setProfile] = useState<ProfileIdentity | null>(null);
+function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerProfileProps) {
+  const [profile, setProfile] = useState<ProfileIdentity | null>(fixture ?? null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [confirm, setConfirm] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState(false);
+  const confirming = confirm && !!onRemove;
   useEffect(() => {
+    if (fixture) return;
     let active = true;
     if (playerId) {
       profileApi
@@ -38,17 +51,23 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
     return () => {
       active = false;
     };
-  }, [playerId, attempt]);
+  }, [playerId, attempt, fixture]);
 
   return (
-    <Modal isOpen={!!playerId} title="Player profile" onClose={onClose}>
-      <ScrollView className="max-h-80" contentContainerClassName="gap-4">
+    <Modal
+      isOpen={!!playerId}
+      title="Player profile"
+      onClose={onClose}
+      dismissible={!removing}
+      scrollable
+      testID="player-profile-modal">
+      <View style={styles.content}>
         {error ? (
-          <View className="gap-3">
+          <View style={styles.content}>
             <PidroText role="body" tone="danger">
               Could not load this player. Check your connection and try again.
             </PidroText>
-            <Button
+            <BevelButton
               label="Retry"
               onPress={() => {
                 setError(false);
@@ -61,25 +80,72 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
             Loading…
           </PidroText>
         ) : (
-          <View className="gap-3">
-            <Avatar
-              uri={profile.avatar_url}
-              // RN Web gives bundled fallback images intrinsic inline dimensions.
-              style={{ width: 80, height: 80 }}
-              className="self-center rounded-full"
-              resizeMode="cover"
-            />
-            <PidroText role="label" align="center">
-              {publicPlayerName(profile.username, 'Player', profile.display_name)}
-            </PidroText>
-            <PidroText role="label">About me</PidroText>
-            <PidroText role="body" className="break-words" tone={profile.bio ? 'default' : 'muted'}>
-              {profile.bio || 'No bio yet.'}
-            </PidroText>
+          <View style={styles.content}>
+            {!confirming ? (
+              <>
+                <PlayerAvatar uri={profile.avatar_url} size={80} style={styles.avatar} />
+                <PidroText role="label" align="center">
+                  {publicPlayerName(profile.username, 'Player', profile.display_name)}
+                </PidroText>
+                <PidroText role="label">About me</PidroText>
+                <PidroText role="body" tone={profile.bio ? 'default' : 'muted'}>
+                  {profile.bio || 'No bio yet.'}
+                </PidroText>
+              </>
+            ) : null}
+            {onRemove ? (
+              confirming ? (
+                <>
+                  <PidroText role="body">
+                    Remove {publicPlayerName(profile.username, 'Player', profile.display_name)} as a
+                    friend?
+                  </PidroText>
+                  {removeError ? (
+                    <PidroText role="body" tone="danger" accessibilityRole="alert">
+                      Could not remove this friend. Please try again.
+                    </PidroText>
+                  ) : null}
+                  <BevelButton
+                    label="Remove friend"
+                    loading={removing}
+                    onPress={async () => {
+                      setRemoving(true);
+                      setRemoveError(false);
+                      try {
+                        await onRemove();
+                      } catch {
+                        setRemoveError(true);
+                      } finally {
+                        setRemoving(false);
+                      }
+                    }}
+                  />
+                  <BevelButton
+                    label="Cancel"
+                    material="glass"
+                    disabled={removing}
+                    onPress={() => setConfirm(false)}
+                  />
+                </>
+              ) : (
+                <BevelButton
+                  label="Remove friend"
+                  material="glass"
+                  onPress={() => setConfirm(true)}
+                />
+              )
+            ) : null}
           </View>
         )}
-      </ScrollView>
-      <Button label="Close" variant="outline" onPress={onClose} />
+      </View>
+      {!confirming ? (
+        <BevelButton label="Close" material="glass" disabled={removing} onPress={onClose} />
+      ) : null}
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  content: { gap: PidroSpacing.sm },
+  avatar: { alignSelf: 'center' },
+});

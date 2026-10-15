@@ -1,4 +1,5 @@
 export { useLobbyStore } from './lobby';
+export { useFriendsStore } from './friends';
 export { useGameStore, useGameViewModel, roomWithReadiness } from './game';
 export { useUIStore } from './ui';
 export { createAuthStore, type AuthStore, type AuthState, type AuthStatus } from './auth';
