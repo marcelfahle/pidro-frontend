@@ -265,9 +265,11 @@ Needs Expo web running (`bun run web`) and, once per machine,
 `bunx playwright install chromium`.
 
 ```bash
-bun run test:ui            # verify-ui-grammar: 3 viewports, touch targets, containment
+bun run test:ui            # full viewport matrix, touch targets, containment
 UI_CASES=table-bidding,home bun run test:ui      # just these
 UI_SHOT_DIR=/tmp/shots bun run test:ui           # where screenshots land
+UI_PARTITION=1/5 UI_REPORT_PATH=/tmp/ui-report.json bun run test:ui  # one CI-sized batch
+node scripts/verify-ui-grammar.mjs --list        # selected viewport/case IDs, no browser
 MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-seat-decisions.mjs
 node scripts/verify-waiting-seats.mjs   # 6 viewports incl. safeArea variants
 node scripts/verify-profile.mjs
@@ -277,6 +279,15 @@ node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/biddi
 `bun run test:ui:diff` (pixel diff) is **CI-only** — baselines are Linux Chromium
 renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
 `bun run ui:baselines <runId>`.
+
+CI balances the full matrix across five jobs using Linux case durations in
+`scripts/ui-case-costs.json` (initial calibration: Actions run `38744981024`).
+New cases use the median recorded duration and are still included.
+Refresh the weights from a successful run's `ui-report-*`
+artifacts (each record's `id` maps to its `ms`); local Mac timings are not comparable.
+The aggregate checks that every case completed exactly once and its capture
+exists, then compares all committed baselines. Its job summary lists the slowest
+cases so future tuning can use measured costs.
 
 `UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby-list` `lobby-empty` `lobby-rejoin` `lobby-open` `lobby-substitute` `lobby-watch` `lobby-search-empty` `login` `register` `register-password`
 `register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
