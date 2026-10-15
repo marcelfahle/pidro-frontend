@@ -2,13 +2,13 @@
  * Release gate: refuse to ship a commit that CI hasn't proven.
  *
  * Checks that the working tree is clean, HEAD is on main and pushed, and the
- * Frontend CI check runs for HEAD (including the full-game e2e) are green —
+ * Frontend CI's aggregate for HEAD (quality, visuals, game and account e2e) is green —
  * then hands off to EAS:
  *
  *   node scripts/ship.mjs ota     # eas update  --channel production --environment production
  *   node scripts/ship.mjs build   # eas build   --platform ios --profile production
  *
- * Flags: --wait (poll up to 15 min for in-progress checks), --dry-run (run
+ * Flags: --wait (poll up to 30 min for queued/in-progress checks), --dry-run (run
  * the gate, print the EAS command, ship nothing), --skip-gate (emergencies
  * only). Requires an authenticated `gh` and `eas` CLI.
  */
@@ -24,7 +24,7 @@ if (!['ota', 'build'].includes(mode)) {
   process.exit(1);
 }
 
-const REQUIRED_CHECKS = ['Mobile quality', 'UI grammar', 'Game e2e'];
+const REQUIRED_CHECKS = ['Frontend ready'];
 
 function sh(cmd) {
   return execSync(cmd, { encoding: 'utf8' }).trim();
@@ -49,7 +49,7 @@ if (head !== remote) fail('HEAD differs from origin/main — push (or pull) firs
 if (skipGate) {
   console.log('⚠ CI gate SKIPPED (--skip-gate)');
 } else {
-  const deadline = Date.now() + (wait ? 15 * 60_000 : 0);
+  const deadline = Date.now() + (wait ? 30 * 60_000 : 0);
   for (;;) {
     const checks = JSON.parse(
       sh(
@@ -67,22 +67,19 @@ if (skipGate) {
       ({ run }) => run?.status === 'completed' && run.conclusion !== 'success'
     );
 
-    if (missing.length)
-      fail(
-        `no CI run found for ${missing.map((m) => m.name).join(', ')} on ${head.slice(0, 8)} — did CI trigger?`
-      );
     if (red.length)
       fail(
         `CI is red on ${head.slice(0, 8)}: ${red.map((r) => `${r.name}=${r.run.conclusion}`).join(', ')}`
       );
-    if (!pending.length) break;
+    const waiting = [...missing, ...pending];
+    if (!waiting.length) break;
 
-    if (Date.now() > deadline) {
+    if (Date.now() >= deadline) {
       fail(
-        `CI still running (${pending.map((p) => p.name).join(', ')}) — re-run with --wait or try later`
+        `CI not ready (${waiting.map((p) => p.name).join(', ')}) on ${head.slice(0, 8)} — re-run with --wait or try later`
       );
     }
-    console.log(`… waiting on ${pending.map((p) => p.name).join(', ')}`);
+    console.log(`… waiting on ${waiting.map((p) => p.name).join(', ')}`);
     execSync('sleep 20');
   }
   console.log(`✓ CI green on ${head.slice(0, 8)} (${REQUIRED_CHECKS.join(', ')})`);

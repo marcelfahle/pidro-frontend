@@ -1,0 +1,149 @@
+name: Account journeys
+
+on:
+  workflow_call:
+    inputs:
+      backend-sha:
+        description: Exact backend commit shared by every integration job
+        required: true
+        type: string
+      retention-days:
+        type: number
+        default: 14
+
+permissions:
+  contents: read
+
+jobs:
+  journeys:
+    name: Account journeys (${{ matrix.name }})
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    env:
+      PIDRO_E2E: '1'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: shard-1
+            suite: journeys
+            shard: 1/4
+          - name: shard-2
+            suite: journeys
+            shard: 2/4
+          - name: shard-3
+            suite: journeys
+            shard: 3/4
+          - name: shard-4
+            suite: journeys
+            shard: 4/4
+          - name: expiry
+            suite: expiry
+            shard: ''
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check out backend
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          repository: marcelfahle/pidro-backend
+          ref: ${{ inputs.backend-sha }}
+          path: backend
+
+      - name: Set up Erlang/Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: backend/.tool-versions
+          version-type: strict
+
+      - name: Cache mix deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/deps
+            backend/_build
+          key: mix-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('backend/mix.lock') }}
+
+      - name: Compile backend and prepare database
+        working-directory: backend
+        run: |
+          mix deps.get
+          mix compile
+          mix ecto.create
+          mix ecto.migrate
+
+      - name: Reserve the Classic names the journeys use
+        working-directory: backend
+        run: mix pidro.import_classic_name_reservations "$GITHUB_WORKSPACE/packages/mobile/e2e/classic-name-reservations.json"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Cache bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        run: bun run shared:build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Chromium for the journeys
+        run: bunx playwright install --with-deps chromium
+
+      - name: Run the account journeys
+        working-directory: packages/mobile
+        env:
+          CI: '1'
+          EXPO_NO_DOTENV: '1'
+          NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
+          BACKEND_DIR: ${{ github.workspace }}/backend
+          E2E_SUITE: ${{ matrix.suite }}
+          E2E_SHARD: ${{ matrix.shard }}
+        run: e2e/ci.sh
+
+      - name: Upload videos, traces and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: account-e2e-${{ matrix.name }}
+          path: |
+            packages/mobile/e2e/results*/
+            packages/mobile/e2e/report*/
+            packages/mobile/e2e/journeys*.json
+            /tmp/pidro-backend.log
+            /tmp/pidro-expo.log
+            /tmp/pidro-web.log
+          if-no-files-found: ignore
+          retention-days: ${{ inputs.retention-days }}

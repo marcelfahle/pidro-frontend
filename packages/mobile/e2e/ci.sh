@@ -1,17 +1,31 @@
 #!/usr/bin/env bash
 # The account journeys as CI runs them (frontend-ci.yml, account-e2e-weekly.yml): the backend, the
-# old web client and Expo web, then the suite twice. The second run restarts the backend with
-# lifetimes of a second, for the journeys tagged @second-run. The backend never puts reset
+# old web client and Expo web. CI selects journeys or expiry; local runs default to both.
+# Expiry uses lifetimes of a second for journeys tagged @second-run. The backend never puts reset
 # tokens in its answer (PASSWORD_RESET_DEBUG_TOKENS=false).
 # Expects the backend checked out and compiled in $BACKEND_DIR, and Postgres up.
-set -uo pipefail
+set -euo pipefail
 cd "$(dirname "$0")/.."
 backend=${BACKEND_DIR:-../../backend}
+suite=${E2E_SUITE:-all}
+shard=${E2E_SHARD:-}
+case "$suite" in
+  all|journeys|expiry) ;;
+  *) echo "E2E_SUITE must be all, journeys or expiry" >&2; exit 1 ;;
+esac
+if [ -n "$shard" ]; then
+  if [ "$suite" != journeys ] || [[ ! "$shard" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]] ||
+    [ "${BASH_REMATCH[1]}" -gt "${BASH_REMATCH[2]}" ]; then
+    echo "E2E_SHARD must be current/total with 1 <= current <= total, for journeys only" >&2
+    exit 1
+  fi
+fi
+backend_pid=
 
 start_backend() {
   (
     cd "$backend" || exit 1
-    env PORT=4000 \
+    exec env PORT=4000 \
       LIFECYCLE_TURN_TIMER_BID_MS=1200 LIFECYCLE_TURN_TIMER_PLAY_MS=900 \
       LIFECYCLE_BOT_DELAY_MS=60 LIFECYCLE_BOT_DELAY_VARIANCE_MS=40 \
       LIFECYCLE_BOT_MIN_DELAY_MS=20 LIFECYCLE_TRICK_TRANSITION_DELAY_MS=80 \
@@ -20,8 +34,9 @@ start_backend() {
       FACEBOOK_JWKS_URL=http://127.0.0.1:4002/facebook/jwks \
       FACEBOOK_GRAPH_URL=http://127.0.0.1:4002/graph FACEBOOK_APP_ID=1234567890 \
       PASSWORD_RESET_DEBUG_TOKENS=false \
-      "$@" nohup mix phx.server >> /tmp/pidro-backend.log 2>&1 &
-  ) || exit 1
+      "$@" mix phx.server
+  ) >> /tmp/pidro-backend.log 2>&1 &
+  backend_pid=$!
   for _ in $(seq 1 90); do
     curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms && return 0
     sleep 2
@@ -31,10 +46,12 @@ start_backend() {
   exit 1
 }
 
-# A CI runner is ours alone; there is no other Erlang to spare.
 stop_backend() {
-  pkill -f beam.smp || true
-  while curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms; do sleep 1; done
+  if [ -n "$backend_pid" ]; then
+    kill "$backend_pid" 2>/dev/null || true
+    wait "$backend_pid" 2>/dev/null || true
+    backend_pid=
+  fi
 }
 
 wait_for() {
@@ -53,9 +70,13 @@ wait_for() {
 # The only place the flag is set: the Apple and Facebook buttons appear on web and take their
 # answer from the journey.
 EXPO_PUBLIC_E2E=1 bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
-trap 'kill $(jobs -p) 2>/dev/null || true' EXIT
+trap 'stop_backend; kill $(jobs -p) 2>/dev/null || true' EXIT
 
-start_backend
+if [ "$suite" = expiry ]; then
+  start_backend CLASSIC_CLAIM_TICKET_TTL_SECONDS=1 PASSWORD_RESET_TTL_SECONDS=1
+else
+  start_backend
+fi
 wait_for http://127.0.0.1:5173/ 30 /tmp/pidro-web.log
 wait_for http://127.0.0.1:8081/home 60 /tmp/pidro-expo.log
 
@@ -63,19 +84,31 @@ wait_for http://127.0.0.1:8081/home 60 /tmp/pidro-expo.log
 bundle=$(curl --silent http://127.0.0.1:8081/home | grep -o 'src="[^"]*\.bundle[^"]*"' | head -1 | cut -d'"' -f2 | sed 's/&amp;/\&/g')
 curl --fail --silent --output /dev/null "http://127.0.0.1:8081$bundle"
 
-bun run e2e:accounts
-first=$?
+first=0
+second=0
+if [ "$suite" != expiry ]; then
+  if [ -n "$shard" ]; then
+    bun run e2e:accounts --shard "$shard" || first=$?
+  else
+    bun run e2e:accounts || first=$?
+  fi
+fi
 
-stop_backend
-start_backend CLASSIC_CLAIM_TICKET_TTL_SECONDS=1 PASSWORD_RESET_TTL_SECONDS=1
-bun run e2e:accounts:second-run
-second=$?
+if [ "$suite" = all ]; then
+  stop_backend
+  start_backend CLASSIC_CLAIM_TICKET_TTL_SECONDS=1 PASSWORD_RESET_TTL_SECONDS=1
+fi
+if [ "$suite" != journeys ]; then
+  bun run e2e:accounts:second-run || second=$?
+fi
 
 if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
   {
     echo '### Account journeys'
     echo
-    # The backend is its main of the moment: a red run with no frontend change starts here.
+    echo "Suite: $suite${shard:+ ($shard)}"
+    echo
+    # Every integration job in a workflow receives the same resolved backend SHA.
     git -C "$backend" log -1 --format='Backend: [%h](https://github.com/marcelfahle/pidro-backend/commit/%H) %s (%cd)' --date=iso
     echo
     echo '| Journey | Result |'
