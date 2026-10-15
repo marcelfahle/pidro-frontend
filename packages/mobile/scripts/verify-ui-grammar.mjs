@@ -16,12 +16,16 @@ const mobileRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repoRoot = resolve(mobileRoot, '../../..');
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const screenshotRoot = process.env.UI_SHOT_DIR ?? resolve(repoRoot, 'screenshots/agent-mobile-ui');
-const requestedCases = new Set(
-  (process.env.UI_CASES ?? '')
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean)
-);
+const nameList = (value) =>
+  new Set(
+    (value ?? '')
+      .split(',')
+      .map((name) => name.trim())
+      .filter(Boolean)
+  );
+const requestedCases = nameList(process.env.UI_CASES);
+// CI shards the run by viewport; the captures are merged before the pixel diff.
+const requestedViewports = nameList(process.env.UI_VIEWPORTS);
 const authFixture = JSON.stringify({
   state: {
     accessToken: 'ui-grammar-token',
@@ -403,6 +407,20 @@ function selectCases() {
   }
 
   return allCases.filter(({ name }) => requestedCases.has(name));
+}
+
+function selectViewports() {
+  if (requestedViewports.size === 0) return UI_VIEWPORTS;
+
+  const known = new Set(UI_VIEWPORTS.map(({ name }) => name));
+  const unknown = [...requestedViewports].filter((name) => !known.has(name));
+  if (unknown.length) {
+    throw new Error(
+      `Unknown UI_VIEWPORTS: ${unknown.join(', ')}. Choose from: ${[...known].join(', ')}`
+    );
+  }
+
+  return UI_VIEWPORTS.filter(({ name }) => requestedViewports.has(name));
 }
 
 function boxesOverlap(a, b) {
@@ -1312,7 +1330,7 @@ async function main() {
   const results = [];
 
   try {
-    for (const viewport of UI_VIEWPORTS) {
+    for (const viewport of selectViewports()) {
       const context = await browser.newContext({
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
