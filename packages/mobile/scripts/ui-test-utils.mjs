@@ -12,20 +12,25 @@ const lobbyCases = [
 
 export const UI_VIEWPORTS = [
   { name: 'portrait', width: 390, height: 844 },
-  { name: 'compact-portrait', width: 360, height: 640, cases: ['welcome', 'welcome-guest'] },
+  {
+    name: 'compact-portrait',
+    width: 360,
+    height: 640,
+    cases: ['welcome', 'welcome-guest', 'update-notice'],
+  },
   { name: 'landscape', width: 844, height: 390 },
   {
     name: 'compact-landscape',
     width: 667,
     height: 375,
     tableOnly: true,
-    entryCases: ['welcome', 'welcome-guest'],
+    entryCases: ['welcome', 'welcome-guest', 'update-notice'],
   },
   {
     name: 'tablet-portrait',
     width: 768,
     height: 1024,
-    cases: ['table-bidding'],
+    cases: ['table-bidding', 'update-notice'],
   },
   {
     name: 'home-tablet-portrait',
@@ -36,6 +41,7 @@ export const UI_VIEWPORTS = [
       'welcome',
       'home',
       'home-guest',
+      'update-notice',
       'login',
       'register',
       'register-name',
@@ -51,7 +57,15 @@ export const UI_VIEWPORTS = [
     width: 1024,
     height: 768,
     lobbyViewport: { name: 'lobby-tablet-landscape', width: 1194, height: 834 },
-    cases: ['table-bidding', 'welcome', 'home', 'home-guest', ...lobbyCases, 'create-table'],
+    cases: [
+      'table-bidding',
+      'welcome',
+      'home',
+      'home-guest',
+      'update-notice',
+      ...lobbyCases,
+      'create-table',
+    ],
   },
 ];
 

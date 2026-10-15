@@ -1,20 +1,22 @@
 import { useRef, useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
+import { updatesEnabled as enabled } from '@/hooks/useAppUpdate';
 import { PidroSpacing } from '@/design/tokens';
 
 export function AppUpdateSection() {
-  const { isUpdateAvailable, isUpdatePending, isChecking, isDownloading } = Updates.useUpdates();
+  const { isUpdateAvailable, isUpdatePending, isChecking, isDownloading, isRestarting } =
+    Updates.useUpdates();
   const [action, setAction] = useState<'check' | 'download' | 'restart' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const inFlight = useRef(false);
-  const enabled = Platform.OS !== 'web' && !__DEV__ && Updates.isEnabled;
-  const busy = action !== null || isChecking || isDownloading;
+  // isRestarting also covers a Restart from the shell's update notice.
+  const busy = action !== null || isChecking || isDownloading || isRestarting;
 
   async function handleUpdate() {
     if (!enabled || busy || inFlight.current) return;
@@ -54,7 +56,7 @@ export function AppUpdateSection() {
 
   const status = !enabled
     ? 'OTA updates are available in installed release builds, not Expo Go or web previews.'
-    : action === 'restart'
+    : action === 'restart' || isRestarting
       ? 'Restarting…'
       : isDownloading || action === 'download'
         ? 'Downloading update…'
