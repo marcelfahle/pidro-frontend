@@ -32,6 +32,10 @@ export function SettingsScreen({
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
   const toggleSound = useSettingsStore((state) => state.toggleSound);
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
+  const countHelp = useSettingsStore((state) => state.countHelp);
+  const toggleCountHelp = useSettingsStore((state) => state.toggleCountHelp);
+  const pace = useSettingsStore((state) => state.pace);
+  const setPace = useSettingsStore((state) => state.setPace);
   const signedIn = useAuthStore((state) => Boolean(state.user));
   const preferredRuleSet = useSettingsStore((state) => state.preferredRuleSet);
   const setPreferredRuleSet = useSettingsStore((state) => state.setPreferredRuleSet);
@@ -73,6 +77,18 @@ export function SettingsScreen({
             subtitle={t('settings.hapticsHint')}
             value={hapticEnabled}
             onValueChange={toggleHaptic}
+          />
+          <SettingRow
+            title={t('settings.countHelp')}
+            subtitle={t('settings.countHelpHint')}
+            value={countHelp}
+            onValueChange={toggleCountHelp}
+          />
+          <SettingRow
+            title={t('settings.slowPace')}
+            subtitle={t('settings.slowPaceHint')}
+            value={pace === 'slow'}
+            onValueChange={() => setPace(pace === 'slow' ? 'normal' : 'slow')}
           />
         </View>
       </Surface>

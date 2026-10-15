@@ -470,6 +470,29 @@ const allCases = [
     bidLines: { north: 'Bid 7', east: 'Passed', south: 'Bid 9 · high' },
     viewports: { 'compact-landscape': { width: 640, height: 360 } },
   },
+  // PID-220: with count help on, the plaque's bid line carries the bidders'
+  // count and "Last trick" sits under it, clear of every seat, also on the
+  // small phones that leave the ticker out. Wynn is out of trumps: dimmed,
+  // "Out", the two cards laid face up on screen.
+  {
+    name: 'table-count-help',
+    path: '/table-dev?phase=playing&role=player&out=one&count=on',
+    testId: 'last-trick',
+    countHelp: { bidder: 'Eli', line: 'bid 6 · 2 of 6', out: ['west'], revealed: ['west'] },
+  },
+  {
+    name: 'table-last-trick',
+    path: '/table-dev?phase=playing&role=player&out=one&count=on',
+    open: 'Last trick, trick 2',
+    testId: 'last-trick-cards',
+  },
+  // Everyone else is out: the rest of the hand is yours.
+  {
+    name: 'table-takes-the-rest',
+    path: '/table-dev?phase=playing&role=player&out=lone&count=on',
+    testId: 'seat-south',
+    countHelp: { out: ['north', 'east', 'west'], revealed: ['east', 'west'], lone: 'south' },
+  },
   {
     name: 'table-trump',
     path: '/table-dev?phase=declaring',
@@ -549,6 +572,21 @@ allCases.push(
       bidLines: testCase.name.endsWith('-high')
         ? { north: 'Bud 7', east: 'Passat', south: 'Bud 9 · högst' }
         : { west: 'Passat', north: 'Bud 7', east: 'Bud 9 · högst' },
+    }))
+);
+allCases.push(
+  ...allCases
+    .filter((testCase) => testCase.countHelp)
+    .map((testCase) => ({
+      ...testCase,
+      name: `locale-sv-${testCase.name}`,
+      path: `${testCase.path}&locale=sv`,
+      locale: 'sv',
+      countHelp: {
+        ...testCase.countHelp,
+        ...(testCase.countHelp.line && { line: 'bjöd 6 · 2 av 6' }),
+        words: { out: 'ute', lone: 'tar resten' },
+      },
     }))
 );
 allCases.push(
@@ -1729,6 +1767,61 @@ async function assertBidLines(page, testCase, viewport) {
   }
 }
 
+// Count help (PID-220): the bid line reads in full and, with "Last trick",
+// keeps off every seat and North's cards. An out seat says so aloud and lays
+// its cards face up where they can be read.
+async function assertCountHelp(page, testCase, viewport) {
+  const help = testCase.countHelp;
+  if (!help) return;
+  const seats = ['north', 'east', 'south', 'west'];
+  const spoken = (seat, text) =>
+    page.waitForFunction(
+      ([id, words]) =>
+        document
+          .querySelector(`[data-testid="${id}"]`)
+          ?.getAttribute('aria-label')
+          ?.endsWith(`, ${words}`),
+      [`seat-${seat}`, text],
+      { timeout: 10_000 }
+    );
+  const words = help.words ?? { out: 'out', lone: 'takes the rest' };
+  for (const seat of help.out) await spoken(seat, words.out);
+  for (const seat of help.revealed) {
+    const cards = page.getByTestId(`seat-${seat}-revealed`);
+    await cards.waitFor({ timeout: 10_000 });
+    assertInsideViewport(
+      `${testCase.name} ${seat} cards`,
+      await getStableBox(cards, page),
+      viewport
+    );
+  }
+  if (help.lone) await spoken(help.lone, words.lone);
+  if (!help.line) return;
+  const bidLine = page.getByTestId('bid-line');
+  await bidLine.getByText(help.line, { exact: true }).waitFor({ timeout: 10_000 });
+  const who = bidLine.getByText(help.bidder, { exact: true });
+  if (await who.evaluate((el) => el.scrollWidth > el.clientWidth + 1)) {
+    throw new Error(`${testCase.name}: the bidder's name is cut short in ${viewport.name}`);
+  }
+  const pieces = {
+    'bid line': await getStableBox(bidLine, page),
+    'last trick': await getStableBox(page.getByTestId('last-trick'), page),
+  };
+  const others = { 'north cards': page.getByTestId('seat-north-cards').locator(':scope > div') };
+  for (const seat of seats) others[`${seat} seat`] = page.getByTestId(`seat-${seat}`);
+  for (const [name, box] of Object.entries(pieces)) {
+    assertInsideViewport(`${testCase.name} ${name}`, box, viewport);
+    for (const [otherName, other] of Object.entries(others)) {
+      const otherBox = await visibleBox(page, other);
+      if (otherBox && boxesOverlap(box, otherBox)) {
+        throw new Error(
+          `${testCase.name}: the ${name} overlaps the ${otherName} in ${viewport.name}`
+        );
+      }
+    }
+  }
+}
+
 async function assertAbovePlayerHand(page, name, box, viewport) {
   const handBoundary = page.getByTestId('player-hand-top').first();
   await handBoundary.waitFor({ state: 'attached', timeout: 20_000 });
@@ -2275,6 +2368,7 @@ async function main() {
               .getByTestId('victory-confetti')
               .waitFor({ state: 'detached', timeout: 7000 });
           }
+          await assertCountHelp(page, testCase, caseViewport);
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();

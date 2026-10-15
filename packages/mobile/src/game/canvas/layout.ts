@@ -81,14 +81,31 @@ const TICKER_CHEVRON = 16;
  * The plaque's ticker, kept off North's fan. Portrait lines may reach half a
  * back into it, over the first back's edge only; landscape lines sit beside
  * the plaque, dropped below the fan where it hangs into the header row.
- * Null where the table leaves the ticker out (`showsTicker`).
+ * Null where the table leaves the ticker out (`showsTicker`), unless the
+ * player's count help needs its resting line there anyway (`always`). Small
+ * phones then hang it below North's fan, where the line can run as far as
+ * North's avatar.
  */
 export function tickerPlacement(
   L: TableLayout,
-  { tableTop, plaqueLeft, plaqueTop }: { tableTop: number; plaqueLeft: number; plaqueTop: number }
+  {
+    tableTop,
+    plaqueLeft,
+    plaqueTop,
+    plaqueBottom,
+  }: { tableTop: number; plaqueLeft: number; plaqueTop: number; plaqueBottom?: number },
+  always = false
 ): { lineMaxWidth: number; drop: number } | null {
-  if (!showsTicker(L)) return null;
+  if (!always && !showsTicker(L)) return null;
   const backW = northBackWidth(L.cardW);
+  if (L.tight && L.profile.endsWith('portrait')) {
+    const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
+    const room = L.width / 2 - TIGHT_AVATAR / 2 - 4 - plaqueLeft - TICKER_CHEVRON;
+    return {
+      lineMaxWidth: clamp(room, TICKER_LINE_MIN, TICKER_LINE_MAX),
+      drop: Math.max(0, fanBottom - (plaqueBottom ?? plaqueTop)),
+    };
+  }
   if (!L.profile.endsWith('portrait')) {
     const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
     return { lineMaxWidth: TICKER_LINE_MAX, drop: Math.max(0, fanBottom + 4 - plaqueTop) };

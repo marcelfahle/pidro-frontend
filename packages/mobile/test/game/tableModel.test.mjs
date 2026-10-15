@@ -270,6 +270,11 @@ describe('trick signals from the server (PID-218)', () => {
       winner: 'west',
       points: 6,
       twoOfTrump: { holder: 'east', points: 1 },
+      plays: [
+        { holder: 'east', card: five },
+        { holder: 'south', card: king },
+        { holder: 'west', card: ace },
+      ],
     });
 
     const next = build({
@@ -301,5 +306,37 @@ describe('trick signals from the server (PID-218)', () => {
       trickDetails: { winning: { position: 'east', card: king }, points: 1 },
     });
     expect(mismatch.winningKey).toBeNull();
+  });
+});
+
+describe('out of trumps (PID-220)', () => {
+  // Viewer is East (rendered south). West (rendered north) and the viewer have gone cold.
+  const players = (revealed) => ({
+    north: { hand: 2 },
+    east: { hand: [], eliminated: true, revealed_cards: revealed },
+    south: { hand: 3 },
+    west: { hand: 0, eliminated: true, revealed_cards: [{ suit: 'clubs', rank: 9 }] },
+  });
+
+  it('marks who is out and lays their cards face up, yours where you held them', () => {
+    const model = build({
+      phase: 'playing',
+      trumpSuit: 'spades',
+      yourHand: [],
+      serverPlayers: players([{ suit: 'hearts', rank: 13 }]),
+    });
+    expect(model.seats.north.out).toBe(true);
+    expect(model.seats.north.revealedCards.map((card) => card.key)).toEqual(['clubs_9']);
+    expect(model.seats.east.out).toBe(false);
+    expect(model.seats.west.revealedCards).toEqual([]);
+    expect(model.seats.south.out).toBe(true);
+    expect(model.yourHand.map((card) => card.key)).toEqual(['hearts_13']);
+    expect(model.yourHand[0].isLegalPlay).toBe(false);
+  });
+
+  it('is only a thing while the hand is played', () => {
+    const model = build({ phase: 'bidding', serverPlayers: players([]) });
+    expect(model.seats.north.out).toBe(false);
+    expect(model.seats.north.revealedCards).toEqual([]);
   });
 });

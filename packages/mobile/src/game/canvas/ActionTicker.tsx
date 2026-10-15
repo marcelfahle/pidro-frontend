@@ -14,6 +14,7 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import {
   FADE_MS,
+  SHOW_MS,
   initialTickerState,
   isTickerIdle,
   nextTickerChange,
@@ -23,6 +24,8 @@ import {
 } from '@/game/actionTickerSchedule';
 import { presentHandLogEntry, type HandLogEntry } from '@/game/handLog';
 import { readingTimeMs } from '@/features/game/readingTime';
+import { paced } from '@/features/game/tableHelp';
+import type { TablePace } from '@pidro/shared';
 import { isStillCapture } from '@/utils/stillCapture';
 import { useTranslation } from '@/i18n';
 
@@ -37,6 +40,8 @@ type Props = {
   stateArrived: boolean;
   /** Where the lines must stop short of North's fan (layout's tickerPlacement). */
   lineMaxWidth?: number;
+  /** The table's pace: slow holds each line longer. */
+  pace?: TablePace;
 };
 
 /** The ticker's text grows with large text, as the bid line did; the plaque's does not. */
@@ -63,8 +68,9 @@ type Schedule = {
   known: ReadonlyMap<string, HandLogEntry>;
 };
 
-const readingTimeIn = (known: Schedule['known']) => (id: string) =>
-  readingTimeMs(known.get(id)?.text ?? '');
+/** A line's reading time; a slow pace (PID-220) holds it twice as long. */
+const readingTimeIn = (known: Schedule['known'], pace: TablePace) => (id: string) =>
+  paced(Math.max(SHOW_MS, readingTimeMs(known.get(id)?.text ?? '')), pace);
 
 export function ActionTicker({
   entries,
@@ -72,6 +78,7 @@ export function ActionTicker({
   onOpenLog,
   stateArrived,
   lineMaxWidth = 168,
+  pace = 'normal',
 }: Props) {
   const { t } = useTranslation();
   const [schedule, setSchedule] = useState<Schedule>(() => ({
@@ -91,11 +98,11 @@ export function ActionTicker({
         entries.map((entry) => entry.id),
         now,
         stateArrived,
-        readingTimeIn(known)
+        readingTimeIn(known, pace)
       );
       return { state, now: state === prev.state ? prev.now : now, known };
     });
-  }, [entries, stateArrived]);
+  }, [entries, stateArrived, pace]);
 
   useEffect(() => {
     // UI grammar holds the lines it caught instead of letting them fade.
@@ -105,12 +112,12 @@ export function ActionTicker({
     const timer = setTimeout(() => {
       setSchedule((prev) => {
         const now = Date.now();
-        const state = stepTicker(prev.state, [], now, true, readingTimeIn(prev.known));
+        const state = stepTicker(prev.state, [], now, true, readingTimeIn(prev.known, pace));
         return state === prev.state ? { ...prev, now } : { ...prev, state, now };
       });
     }, wait + 16);
     return () => clearTimeout(timer);
-  }, [schedule.state, schedule.now]);
+  }, [schedule.state, schedule.now, pace]);
 
   const lines = visibleLines(schedule.state, schedule.now).flatMap((line) => {
     const entry = schedule.known.get(line.id);

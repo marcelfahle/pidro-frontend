@@ -12,6 +12,7 @@ import type {
   RelativePlayerView,
   RelativePosition,
   SeatPin,
+  ServerPlayerView,
   SeatStatus,
   ServerLastHand,
   ServerTrickDetails,
@@ -48,6 +49,10 @@ export type TableSeat = {
   /** True when rendering the real count would reveal the dealer's private rob pool. */
   cardCountConcealed: boolean;
   lastPlayedCard: TableCard | null;
+  /** Out of trumps for the rest of the hand, as the server says. */
+  out: boolean;
+  /** What an out player lays face up. */
+  revealedCards: TableCard[];
 };
 export type TableModel = {
   phase: GamePhase;
@@ -87,6 +92,8 @@ export type TrickResult = {
   winner: RelativePosition;
   points: number;
   twoOfTrump: { holder: RelativePosition; points: number } | null;
+  /** The trick's cards in the order played. */
+  plays: { holder: RelativePosition; card: Card }[];
 };
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
@@ -108,6 +115,8 @@ export type TableModelInput = {
   currentTurnRelative: RelativePosition | null;
   canPlay: boolean;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
+  /** The server's per-seat view: who is out of trumps and what they revealed. */
+  serverPlayers?: Partial<Record<Position, ServerPlayerView>> | null;
 };
 
 type RawPlay = { player?: Position; position?: Position; card?: Card };
@@ -168,9 +177,22 @@ export function buildTableModel(input: TableModelInput): TableModel {
     };
   };
 
-  const yourHand = concealPrivateDealerPool
-    ? []
-    : (input.yourHand ? sortCards(input.yourHand, trumpSuit) : []).map((card) => toCard(card));
+  // Out of trumps only means something while the hand is played.
+  const playing = input.phase === 'playing';
+  const outOf = (abs: Position) => playing && !!input.serverPlayers?.[abs]?.eliminated;
+  const revealedOf = (abs: Position) =>
+    outOf(abs) && Array.isArray(input.serverPlayers?.[abs]?.revealed_cards)
+      ? sortCards(input.serverPlayers[abs].revealed_cards, trumpSuit).map((card) => toCard(card))
+      : [];
+  const you = input.players.find((player) => player.isYou);
+  // Gone cold, the cards you laid face up stay where you held them.
+  const heldHand =
+    input.yourHand && input.yourHand.length > 0
+      ? sortCards(input.yourHand, trumpSuit).map((card) => toCard(card))
+      : you
+        ? revealedOf(you.absolutePosition)
+        : [];
+  const yourHand = concealPrivateDealerPool ? [] : heldHand;
 
   const absToRel = new Map<Position, RelativePosition>();
   for (const p of input.players) absToRel.set(p.absolutePosition, p.relativePosition);
@@ -227,6 +249,11 @@ export function buildTableModel(input: TableModelInput): TableModel {
   const twoHolder = lastMeta?.two_of_trump?.position
     ? (absToRel.get(lastMeta.two_of_trump.position) ?? null)
     : null;
+  const lastPlays = (completedTricks.at(-1) ?? []).flatMap((play) => {
+    const abs = play.player ?? play.position;
+    const holder = abs ? absToRel.get(abs) : undefined;
+    return holder && play.card ? [{ holder, card: play.card }] : [];
+  });
   const lastTrick: TrickResult | null =
     lastMeta && lastWinnerRel
       ? {
@@ -237,6 +264,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
             twoHolder && typeof lastMeta.two_of_trump?.points === 'number'
               ? { holder: twoHolder, points: lastMeta.two_of_trump.points }
               : null,
+          plays: lastPlays,
         }
       : null;
 
@@ -255,7 +283,6 @@ export function buildTableModel(input: TableModelInput): TableModel {
     currentPlays.length > 0 && typeof input.trickDetails?.points === 'number'
       ? input.trickDetails.points
       : null;
-  const you = input.players.find((player) => player.isYou);
   const latestAbs = currentPlays.at(-1)?.player ?? currentPlays.at(-1)?.position;
   const latestPlay = latestAbs ? (absToRel.get(latestAbs) ?? null) : null;
 
@@ -282,6 +309,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
               : input.getCardCountForPlayer(p.absolutePosition),
           cardCountConcealed: input.phase === 'second_deal' && input.dealerRelative === rel,
           lastPlayedCard: currentTrick[rel] ?? null,
+          out: outOf(p.absolutePosition),
+          revealedCards: p.isYou ? [] : revealedOf(p.absolutePosition),
         }
       : null;
   }
@@ -328,6 +357,7 @@ export function useTableModel(c: GameTableController, presentationHand?: Card[])
         currentTurnRelative: c.currentTurnRelative,
         canPlay: c.isPlayingTurn && !c.isPlayingCard,
         getCardCountForPlayer: c.getCardCountForPlayer,
+        serverPlayers: c.serverState?.players ?? null,
       }),
     [
       c.phase,
@@ -347,6 +377,7 @@ export function useTableModel(c: GameTableController, presentationHand?: Card[])
       c.isPlayingTurn,
       c.isPlayingCard,
       c.getCardCountForPlayer,
+      c.serverState?.players,
     ]
   );
 }

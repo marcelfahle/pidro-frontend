@@ -27,6 +27,10 @@ export function TableSettings({
   const [panel, setPanel] = useState<'settings' | 'leave' | null>(null);
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
+  const countHelp = useSettingsStore((state) => state.countHelp);
+  const toggleCountHelp = useSettingsStore((state) => state.toggleCountHelp);
+  const pace = useSettingsStore((state) => state.pace);
+  const setPace = useSettingsStore((state) => state.setPace);
   const close = () => setPanel(null);
   const leave = () => {
     close();
@@ -101,6 +105,32 @@ export function TableSettings({
                 accessibilityLabel={t('game.haptics')}
                 value={hapticEnabled}
                 onValueChange={toggleHaptic}
+              />
+            </View>
+            <View style={styles.row}>
+              <View style={styles.copy}>
+                <PidroText role="label">{t('settings.countHelp')}</PidroText>
+                <PidroText role="metadata" tone="muted">
+                  {t('settings.countHelpHint')}
+                </PidroText>
+              </View>
+              <PidroSwitch
+                accessibilityLabel={t('settings.countHelp')}
+                value={countHelp}
+                onValueChange={toggleCountHelp}
+              />
+            </View>
+            <View style={styles.row}>
+              <View style={styles.copy}>
+                <PidroText role="label">{t('settings.slowPace')}</PidroText>
+                <PidroText role="metadata" tone="muted">
+                  {t('settings.slowPaceHint')}
+                </PidroText>
+              </View>
+              <PidroSwitch
+                accessibilityLabel={t('settings.slowPace')}
+                value={pace === 'slow'}
+                onValueChange={() => setPace(pace === 'slow' ? 'normal' : 'slow')}
               />
             </View>
             <View style={styles.exit}>

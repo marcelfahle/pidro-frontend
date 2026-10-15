@@ -30,7 +30,18 @@ export const UI_VIEWPORTS = [
     name: 'compact-portrait',
     width: 360,
     height: 640,
-    cases: ['welcome', 'welcome-guest', 'update-notice', 'table-bid-round', 'table-bid-high'],
+    cases: [
+      'welcome',
+      'welcome-guest',
+      'update-notice',
+      'table-bid-round',
+      'table-bid-high',
+      'table-count-help',
+      'table-last-trick',
+      'table-takes-the-rest',
+      'locale-sv-table-count-help',
+      'locale-sv-table-takes-the-rest',
+    ],
   },
   { name: 'landscape', width: 844, height: 390 },
   {
@@ -38,7 +49,7 @@ export const UI_VIEWPORTS = [
     name: 'small-landscape',
     width: 640,
     height: 360,
-    cases: ['table-bidding', 'table-playing', 'table-completed-trick'],
+    cases: ['table-bidding', 'table-playing', 'table-completed-trick', 'table-count-help'],
   },
   {
     name: 'compact-landscape',
@@ -51,7 +62,7 @@ export const UI_VIEWPORTS = [
     name: 'tablet-portrait',
     width: 768,
     height: 1024,
-    cases: ['table-bidding', 'update-notice'],
+    cases: ['table-bidding', 'table-count-help', 'update-notice'],
   },
   {
     name: 'home-tablet-portrait',
@@ -80,6 +91,7 @@ export const UI_VIEWPORTS = [
     lobbyViewport: { name: 'lobby-tablet-landscape', width: 1194, height: 834 },
     cases: [
       'table-bidding',
+      'table-count-help',
       'welcome',
       'home',
       'home-guest',

@@ -66,6 +66,9 @@ export interface GamePresentation {
 export interface ServerPlayerView {
   hand?: Card[] | number;
   card_count?: number;
+  /** Out of trumps ("cold"): the player sits out the rest of the hand. */
+  eliminated?: boolean;
+  /** What a cold player lays face up, as Classic does. */
   revealed_cards?: Card[];
 }
 

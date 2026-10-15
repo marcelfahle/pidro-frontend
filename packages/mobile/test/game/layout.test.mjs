@@ -177,6 +177,22 @@ describe('small phones leave the ticker out', () => {
   }
 });
 
+describe('count help keeps the bid line on small phones (PID-220)', () => {
+  it('hangs it below North’s fan, ending before North’s avatar', () => {
+    const L = computeLayout(360, 640, { top: 24, bottom: 0, left: 0, right: 0 }, 60, 0);
+    const plaqueBottom = 64;
+    const placed = tickerPlacement(
+      L,
+      { tableTop: 84, plaqueLeft: 12, plaqueTop: 32, plaqueBottom },
+      true
+    );
+    const fanBottom = northFanTop(L, 84) + (northBackWidth(L.cardW) * 110) / 78;
+    expect(plaqueBottom + placed.drop).toBeGreaterThanOrEqual(fanBottom);
+    // The line, then the chevron and its gap, short of the tight North avatar.
+    expect(12 + placed.lineMaxWidth + 16).toBeLessThan(360 / 2 - 44 / 2);
+  });
+});
+
 describe('landscape: your played card lands above your hand', () => {
   for (const [width, height, side, bottom] of [
     [640, 360, 0, 0],
