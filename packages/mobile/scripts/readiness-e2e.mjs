@@ -2,9 +2,9 @@
 export async function confirmInitialTable(
   pages,
   activeSelector,
-  { onWaiting = async () => {}, waitForStart = true } = {}
+  { onWaiting = async () => {}, waitForStart = true, readyLabel = "I'm ready" } = {}
 ) {
-  const ready = (page) => page.getByRole('button', { name: "I'm ready", exact: true });
+  const ready = (page) => page.getByRole('button', { name: readyLabel, exact: true });
   const active = (page) => page.locator(activeSelector).first();
   // An old backend starts immediately. Do not mistake a slow-loading page for it.
   await ready(pages[0]).or(active(pages[0])).first().waitFor({ timeout: 30_000 });
@@ -29,14 +29,14 @@ export async function confirmInitialTable(
     // Do not retry stale errors or automatically confirm subsequent epochs.
     await pages[index]
       .waitForFunction(
-        () => {
+        (label) => {
           const button = [...document.querySelectorAll('button, [role="button"]')].find(
             (element) =>
-              (element.getAttribute('aria-label') ?? element.textContent)?.trim() === "I'm ready"
+              (element.getAttribute('aria-label') ?? element.textContent)?.trim() === label
           );
           return !button || button.disabled || button.getAttribute('aria-disabled') === 'true';
         },
-        null,
+        readyLabel,
         { timeout: 10_000 }
       )
       .catch((error) => {

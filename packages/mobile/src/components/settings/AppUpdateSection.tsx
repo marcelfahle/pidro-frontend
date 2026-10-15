@@ -7,12 +7,14 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { updatesEnabled as enabled } from '@/hooks/useAppUpdate';
 import { PidroSpacing } from '@/design/tokens';
+import { useTranslation, type TranslationKey } from '@/i18n';
 
 export function AppUpdateSection() {
+  const { t } = useTranslation();
   const { isUpdateAvailable, isUpdatePending, isChecking, isDownloading, isRestarting } =
     Updates.useUpdates();
   const [action, setAction] = useState<'check' | 'download' | 'restart' | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [message, setMessage] = useState<TranslationKey | null>(null);
   const [error, setError] = useState(false);
   const inFlight = useRef(false);
   // isRestarting also covers a Restart from the shell's update notice.
@@ -34,92 +36,88 @@ export function AppUpdateSection() {
         const result = await Updates.fetchUpdateAsync();
         if (!result.isNew && !result.isRollBackToEmbedded) {
           setError(true);
-          setMessage('No update was downloaded. Please try again.');
+          setMessage('update.downloadError');
         }
       } else {
         const result = await Updates.checkForUpdateAsync();
         if (!result.isAvailable && !result.isRollBackToEmbedded) {
-          setMessage('You have the latest update for this build.');
+          setMessage('update.latest');
         }
       }
     } catch {
       setError(true);
-      setMessage(
-        nextAction === 'restart'
-          ? 'Could not restart. Close and reopen the app to apply the downloaded update.'
-          : 'Could not reach the update service. Check your connection and try again.'
-      );
+      setMessage(nextAction === 'restart' ? 'update.restartError' : 'update.serviceError');
     }
     inFlight.current = false;
     setAction(null);
   }
 
   const status = !enabled
-    ? 'OTA updates are available in installed release builds, not Expo Go or web previews.'
+    ? 'update.disabled'
     : action === 'restart' || isRestarting
-      ? 'Restarting…'
+      ? 'update.restarting'
       : isDownloading || action === 'download'
-        ? 'Downloading update…'
+        ? 'update.downloading'
         : isChecking || action === 'check'
-          ? 'Checking for updates…'
+          ? 'update.checking'
           : error
             ? message
             : isUpdatePending
-              ? 'Update ready. Restart when you’re finished playing to apply it.'
+              ? 'update.pending'
               : isUpdateAvailable
-                ? 'A new update is available to download.'
-                : (message ?? 'Check for the latest update for this build.');
+                ? 'update.available'
+                : (message ?? 'update.prompt');
 
   return (
     <Surface variant="window" padded style={styles.panel} testID="app-update-section">
-      <PidroText role="label">About the app</PidroText>
+      <PidroText role="label">{t('update.title')}</PidroText>
       <Surface variant="subtle" style={styles.details}>
         <View style={styles.versionRow}>
           <PidroText role="metadata" tone="muted">
-            Version
+            {t('update.version')}
           </PidroText>
           <PidroText role="metadata" selectable>
-            {Application.nativeApplicationVersion ?? 'Not available'}
+            {Application.nativeApplicationVersion ?? t('update.unavailable')}
           </PidroText>
         </View>
         <View style={styles.versionRow}>
           <PidroText role="metadata" tone="muted">
-            Build
+            {t('update.build')}
           </PidroText>
           <PidroText role="metadata" selectable>
-            {Application.nativeBuildVersion ?? 'Not available'}
+            {Application.nativeBuildVersion ?? t('update.unavailable')}
           </PidroText>
         </View>
         <View style={styles.versionRow}>
           <PidroText role="metadata" tone="muted">
-            Channel
+            {t('update.channel')}
           </PidroText>
           <PidroText role="metadata" selectable>
-            {Updates.channel || 'Not available'}
+            {Updates.channel || t('update.unavailable')}
           </PidroText>
         </View>
         <PidroText role="metadata" tone="muted">
-          Running update
+          {t('update.running')}
         </PidroText>
         <PidroText role="metadata" selectable>
           {enabled
             ? Updates.isEmbeddedLaunch
-              ? 'Included with this build'
-              : (Updates.updateId ?? 'Not available')
-            : 'Development / preview'}
+              ? t('update.embedded')
+              : (Updates.updateId ?? t('update.unavailable'))
+            : t('update.development')}
         </PidroText>
       </Surface>
       <PidroText role="metadata" tone={error ? 'danger' : 'muted'} accessibilityLiveRegion="polite">
-        {status}
+        {status ? t(status) : null}
       </PidroText>
       {enabled && (
         <BevelButton
           label={
             isUpdatePending
-              ? 'Restart to apply'
+              ? t('update.apply')
               : isUpdateAvailable
-                ? 'Download update'
-                : 'Check for updates'
+                ? t('update.download')
+                : t('update.check')
           }
           material={isUpdatePending || isUpdateAvailable ? 'wood' : 'glass'}
           fullWidth

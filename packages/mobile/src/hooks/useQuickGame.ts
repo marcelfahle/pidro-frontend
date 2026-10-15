@@ -4,17 +4,20 @@ import { lobbyApi } from '@/api/lobby';
 import { createSoloRoom } from '@/features/game/solo';
 import { gameRoute } from '@/navigation/gameRoute';
 import { useLobbyStore } from '@/stores/lobby';
-import { apiErrorInfo } from '@/utils/apiErrors';
+import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
+import { useTranslation, type TranslationKey } from '@/i18n';
 
-export const TABLE_UNKNOWN_ERROR =
-  'We could not check whether you are at another table. Please try again.';
+export const TABLE_UNKNOWN_ERROR = 'social.quick_unknown' as const;
 
 /** You and three bots, started the same way from Home and from an empty Tables screen. */
-export function useQuickGame(initialError: string | null = null) {
+export function useQuickGame(initialError: TranslationKey | null = null) {
+  useTranslation();
   const router = useRouter();
   const upsertLobbyRoom = useLobbyStore((state) => state.upsertLobbyRoom);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(initialError);
+  const [failure, setError] = useState<{ cause?: unknown; fallback: TranslationKey } | null>(
+    initialError ? { fallback: initialError } : null
+  );
 
   const createSinglePlayerRoom = async () => {
     const response = await createSoloRoom();
@@ -29,14 +32,14 @@ export function useQuickGame(initialError: string | null = null) {
     try {
       await createSinglePlayerRoom();
     } catch (err: unknown) {
-      const { code, detail } = apiErrorInfo(err);
+      const { code } = apiErrorInfo(err);
       if (code === 'ALREADY_IN_ROOM') {
         const lobbyResponse = await lobbyApi.listLobby().catch(() => null);
         if (!lobbyResponse) {
           // Without the lobby we cannot tell a solo table from a live multiplayer one.
-          setError(TABLE_UNKNOWN_ERROR);
+          setError({ fallback: TABLE_UNKNOWN_ERROR });
         } else if (lobbyResponse.lobby.my_rejoinable.length) {
-          setError('You already have a multiplayer table. Rejoin it or leave it first.');
+          setError({ fallback: 'social.quick_multiplayer' });
           router.push('/lobby');
         } else {
           try {
@@ -44,25 +47,20 @@ export function useQuickGame(initialError: string | null = null) {
             await lobbyApi.leaveRoom('current').catch(() => undefined);
             await createSinglePlayerRoom();
           } catch (retryError) {
-            const retryDetail = apiErrorInfo(retryError).detail;
-            setError(
-              retryDetail
-                ? `We could not start a solo game: ${retryDetail}`
-                : 'We could not clear your previous solo table. Please try again.'
-            );
+            setError({ cause: retryError, fallback: 'social.quick_clear' });
           }
         }
       } else {
-        setError(
-          detail
-            ? `We could not start a solo game: ${detail}`
-            : 'We could not start a solo game. Please try again.'
-        );
+        setError({ cause: err, fallback: 'social.quick_error' });
       }
     } finally {
       setLoading(false);
     }
   };
 
-  return { start, loading, error };
+  return {
+    start,
+    loading,
+    error: failure ? localizedError(failure.cause, failure.fallback) : null,
+  };
 }

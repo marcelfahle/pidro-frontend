@@ -7,17 +7,19 @@
 import { StyleSheet, View } from 'react-native';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
-import type { HandLogEntry, HandLogGroup } from '@/game/handLog';
+import { presentHandLogEntry, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
 import { TableUtilityWindow } from './TableUtilityWindow';
+import { t, useTranslation } from '@/i18n';
 
 type Section = { key: string; title: string | null; entries: HandLogEntry[] };
 
 /** Where an entry goes: bids and trump open a hand, each trick gets its own heading. */
 function sectionFor(entry: HandLogEntry): { key: string; title: string | null } {
   if (entry.kind === 'result') return { key: 'result', title: null };
-  if (entry.trick != null) return { key: `trick-${entry.trick}`, title: `Trick ${entry.trick}` };
+  if (entry.trick != null)
+    return { key: `trick-${entry.trick}`, title: t('game.trick', { number: entry.trick }) };
   if (entry.kind === 'trump') return { key: 'trump', title: null };
-  return { key: 'bids', title: 'Bids' };
+  return { key: 'bids', title: t('game.bids') };
 }
 
 function sections(group: HandLogGroup): Section[] {
@@ -40,19 +42,20 @@ export function HandLogWindow({
   onClose: () => void;
   groups: HandLogGroup[];
 }) {
+  useTranslation();
   return (
-    <TableUtilityWindow title="This hand" open={open} onClose={onClose} followEnd>
+    <TableUtilityWindow title={t('game.this_hand')} open={open} onClose={onClose} followEnd>
       {groups.length === 0 ? (
         <PidroText role="metadata" tone="muted" align="center" style={styles.empty}>
-          Nothing yet this hand
+          {t('game.nothing_yet')}
         </PidroText>
       ) : (
         groups.map((group) => (
           <View key={group.hand} testID={`hand-log-${group.hand}`} style={styles.group}>
             <PidroText role="label" tone="gold" accessibilityRole="header">
               {groups.length > 1 && group.finished
-                ? `Last hand (${group.hand})`
-                : `Hand ${group.hand}`}
+                ? t('game.last_hand', { number: group.hand })
+                : t('game.hand', { number: group.hand })}
             </PidroText>
             {sections(group).map((section) => (
               <View key={section.key} style={styles.section}>
@@ -68,7 +71,7 @@ export function HandLogWindow({
                     role={entry.kind === 'result' || entry.kind === 'trick' ? 'label' : 'body'}
                     tone={entry.ours ? 'gold' : 'default'}
                     style={entry.kind === 'result' ? styles.result : null}>
-                    {entry.text}
+                    {presentHandLogEntry(entry).text}
                   </PidroText>
                 ))}
               </View>

@@ -16,6 +16,7 @@ import { handLogEntries, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
 import { HandLogWindow } from './HandLogWindow';
 import { TableUtilityWindow } from './TableUtilityWindow';
+import { formatNumber, useTranslation } from '@/i18n';
 
 type Scores = { north_south: number; east_west: number } | null | undefined;
 type ConcreteScores = { north_south: number; east_west: number };
@@ -50,8 +51,7 @@ function scoresChanged(a: ConcreteScores, b: ConcreteScores): boolean {
 }
 
 function formatDelta(value: number): string {
-  if (value > 0) return `+${value}`;
-  return value.toString();
+  return `${value > 0 ? '+' : ''}${formatNumber(value)}`;
 }
 
 export function Scoreboard({
@@ -83,11 +83,12 @@ export function Scoreboard({
   /** False until the table has its first server state; the ticker waits for it. */
   stateArrived?: boolean;
 }) {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const { us, them } = teams(scores, youPosition);
-  const usLabel = youPosition ? 'US' : 'N/S';
-  const themLabel = youPosition ? 'THEM' : 'E/W';
+  const usLabel = youPosition ? t('game.us').toLocaleUpperCase() : t('game.ns_short');
+  const themLabel = youPosition ? t('game.them').toLocaleUpperCase() : t('game.ew_short');
   const [isOpen, setIsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   // The log steps aside the moment it becomes your turn.
@@ -149,7 +150,7 @@ export function Scoreboard({
       pointerEvents="box-none">
       <PressableFX
         accessibilityRole="button"
-        accessibilityLabel={`${usLabel} ${us}, ${themLabel} ${them}. Recent scores.`}
+        accessibilityLabel={t('game.score_accessibility', { usLabel, us, themLabel, them })}
         accessibilityState={{ expanded: isOpen }}
         onPress={() => setIsOpen((open) => !open)}
         style={[styles.plaque, gradientBg(PidroBevel.goldRimGradient)]}>
@@ -159,7 +160,7 @@ export function Scoreboard({
               {usLabel}
             </PidroText>
             <PidroText role="title" style={styles.value} maxFontSizeMultiplier={1}>
-              {us}
+              {formatNumber(us)}
             </PidroText>
           </View>
           <View style={styles.divider} />
@@ -168,7 +169,7 @@ export function Scoreboard({
               {themLabel}
             </PidroText>
             <PidroText role="title" style={styles.value} maxFontSizeMultiplier={1}>
-              {them}
+              {formatNumber(them)}
             </PidroText>
           </View>
           <Icon name="chevron-down" size={14} color={PidroColors.goldLight} />
@@ -190,9 +191,12 @@ export function Scoreboard({
       {/* Closed, the log builds nothing. */}
       <HandLogWindow open={logOpen} onClose={() => setLogOpen(false)} groups={logOpen ? log : []} />
 
-      <TableUtilityWindow title="Recent scores" open={isOpen} onClose={() => setIsOpen(false)}>
+      <TableUtilityWindow
+        title={t('game.recent_scores')}
+        open={isOpen}
+        onClose={() => setIsOpen(false)}>
         <PidroText role="metadata" tone="muted">
-          Recorded while this table is open. Latest first.
+          {t('game.score_description')}
         </PidroText>
         <View style={styles.historyHeader}>
           <PidroText role="metadata" tone="gold" style={styles.historyDelta}>
@@ -204,7 +208,7 @@ export function Scoreboard({
         </View>
         {scoreHistory.length === 0 ? (
           <PidroText role="metadata" tone="muted" align="center" style={styles.historyEmpty}>
-            No score changes recorded yet
+            {t('game.no_scores')}
           </PidroText>
         ) : (
           [...scoreHistory].reverse().map((entry) => {
@@ -225,7 +229,7 @@ export function Scoreboard({
                     {formatDelta(deltaScores.us)}
                   </PidroText>
                   <PidroText role="metadata" tone="muted" align="center">
-                    Total {totalScores.us}
+                    {t('game.total', { number: formatNumber(totalScores.us) })}
                   </PidroText>
                 </View>
                 <View style={styles.historyDelta}>
@@ -233,7 +237,7 @@ export function Scoreboard({
                     {formatDelta(deltaScores.them)}
                   </PidroText>
                   <PidroText role="metadata" tone="muted" align="center">
-                    Total {totalScores.them}
+                    {t('game.total', { number: formatNumber(totalScores.them) })}
                   </PidroText>
                 </View>
               </View>

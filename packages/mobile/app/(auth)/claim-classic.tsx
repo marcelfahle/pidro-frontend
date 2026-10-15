@@ -27,6 +27,8 @@ import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import { apiErrorInfo } from '@/utils/apiErrors';
+import { formatNumber, useTranslation, type TranslationKey } from '@/i18n';
+import { localizedError } from '@pidro/shared';
 
 // Ticket errors a retry can't fix: start over with a fresh verification.
 const DEAD_TICKET_CODES = new Set([
@@ -52,10 +54,10 @@ const FIXTURE_PREVIEW: ClassicVerification = {
 };
 
 const SIGNED_IN_WITH = {
-  password: 'You signed in with your email and password.',
-  apple: 'You signed in with Apple.',
-  facebook: 'You signed in with Facebook.',
-};
+  password: 'auth.signed_password',
+  apple: 'auth.signed_apple',
+  facebook: 'auth.signed_facebook',
+} as const;
 
 function memberSince(value: string): string {
   const date = new Date(value);
@@ -64,6 +66,7 @@ function memberSince(value: string): string {
 }
 
 export default function ClaimClassicScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { fixture: fixtureParam, from } = useLocalSearchParams<{
     fixture?: string;
@@ -102,7 +105,12 @@ export default function ClaimClassicScreen() {
   const [displayName, setDisplayName] = useState('');
   const [fields, setFields] = useState<Partial<Record<Field, string>>>({});
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<TranslationKey | null>(null);
+  const [requestFailure, setRequestFailure] = useState<{
+    error: unknown;
+    fallback: TranslationKey;
+  } | null>(null);
+  const [errorProvider, setErrorProvider] = useState('');
   const [canSignIn, setCanSignIn] = useState(false);
   const alreadyClaimed = verification?.already_claimed ?? null;
   // A guest's password claim sets the email and password the account is recovered with.
@@ -112,6 +120,7 @@ export default function ClaimClassicScreen() {
   const clearField = useCallback((field: Field) => {
     setFields((current) => ({ ...current, [field]: undefined }));
     setError(null);
+    setRequestFailure(null);
     setCanSignIn(false);
   }, []);
 
@@ -121,33 +130,35 @@ export default function ClaimClassicScreen() {
       setVerification(result);
       setDisplayName(result.classic.name_allowed ? (result.classic.name ?? '') : '');
       setError(null);
+      setRequestFailure(null);
     },
     []
   );
 
   const reportRequestError = useCallback(
-    (requestError: unknown, fallback: string, provider?: 'apple' | 'facebook') => {
+    (requestError: unknown, fallback: TranslationKey, provider?: 'apple' | 'facebook') => {
       const info = apiErrorInfo(requestError);
+      setError(null);
+      setRequestFailure(null);
+      setErrorProvider(provider === 'apple' ? 'Apple' : 'Facebook');
       // Signing in from here would replace whoever is signed in on this phone
       // (a guest's games included), so only offer it when nobody is.
       setCanSignIn(!user && info.code === 'ALREADY_CLAIMED' && info.action?.type === 'sign_in');
       if (info.code === 'PROVIDER_UNAVAILABLE') {
-        setError('Classic or the sign-in provider is temporarily unavailable. Try again.');
+        setError('auth.provider_unavailable');
       } else if (DEAD_TICKET_CODES.has(info.code ?? '')) {
         setVerification(null);
-        setError('That verification is no longer valid. Verify your Classic account again.');
+        setError('auth.verification_invalid');
       } else if (provider && info.code === 'INVALID_CREDENTIALS') {
-        setError(
-          `No Classic account uses that ${provider === 'apple' ? 'Apple' : 'Facebook'} account.`
-        );
+        setError('auth.classic_provider_missing');
       } else if (info.code === 'email' || info.code === 'EMAIL_TAKEN') {
-        setFields({ email: info.detail || 'Enter a valid email address.' });
+        setFields({ email: 'auth.valid_email' });
       } else if (info.code === 'password') {
-        setFields({ password: info.detail || 'Use 8 characters or more.' });
+        setFields({ password: 'auth.password_min' });
       } else if (info.code === 'ALREADY_CLAIMED' && user) {
-        setError('This Classic account is already linked to another Pidro account.');
+        setError('auth.classic_linked_other');
       } else {
-        setError(info.detail || fallback);
+        setRequestFailure({ error: requestError, fallback });
       }
     },
     [user]
@@ -155,13 +166,14 @@ export default function ClaimClassicScreen() {
 
   const verifyPassword = useCallback(async () => {
     const nextFields: Partial<Record<Field, string>> = {};
-    if (!login.trim()) nextFields.login = 'Enter your Classic username or email.';
-    if (!classicPassword) nextFields.classicPassword = 'Enter your Classic password.';
+    if (!login.trim()) nextFields.login = 'auth.enter_classic_identifier';
+    if (!classicPassword) nextFields.classicPassword = 'auth.enter_classic_password';
     setFields(nextFields);
     if (Object.keys(nextFields).length) return;
     Keyboard.dismiss();
     setBusy(true);
     setError(null);
+    setRequestFailure(null);
     try {
       const installId = user ? undefined : await getInstallId();
       const result = await classicApi.verify({
@@ -172,7 +184,7 @@ export default function ClaimClassicScreen() {
       });
       finishVerification(result, 'password');
     } catch (requestError) {
-      reportRequestError(requestError, 'We could not verify that Classic account. Try again.');
+      reportRequestError(requestError, 'auth.classic_verify_failed');
     } finally {
       setBusy(false);
     }
@@ -182,11 +194,13 @@ export default function ClaimClassicScreen() {
     async (provider: 'apple' | 'facebook') => {
       setBusy(true);
       setError(null);
+      setRequestFailure(null);
       try {
         const credential = await requestNativeSocialCredential(provider);
         if (credential.status === 'cancelled') return;
         if (credential.status === 'failure') {
-          setError(credential.message);
+          setError(credential.messageKey ?? 'auth.social_failed');
+          setErrorProvider(provider === 'apple' ? 'Apple' : 'Facebook');
           return;
         }
         const installId = user ? undefined : await getInstallId();
@@ -201,11 +215,7 @@ export default function ClaimClassicScreen() {
         );
         finishVerification(result, provider);
       } catch (requestError) {
-        reportRequestError(
-          requestError,
-          `We could not verify that ${provider} account. Try again.`,
-          provider
-        );
+        reportRequestError(requestError, 'auth.classic_verify_failed', provider);
       } finally {
         setBusy(false);
       }
@@ -216,19 +226,20 @@ export default function ClaimClassicScreen() {
   const confirmClaim = useCallback(async () => {
     if (!verification || !method || fixture) return;
     const nextFields: Partial<Record<Field, string>> = {};
-    if (!user && username.trim().length < 3) nextFields.username = 'Use at least 3 characters.';
+    if (!user && username.trim().length < 3) nextFields.username = 'auth.username_min';
     if (needsCredentials) {
-      if (!email.trim()) nextFields.email = 'Enter an email address.';
-      if (password.length < 8) nextFields.password = 'Use 8 characters or more.';
+      if (!email.trim()) nextFields.email = 'auth.enter_an_email';
+      if (password.length < 8) nextFields.password = 'auth.password_min';
     }
     if (!verification.classic.name_allowed && displayName.trim().length < 2) {
-      nextFields.displayName = 'Choose a public name with at least 2 characters.';
+      nextFields.displayName = 'auth.public_name_min';
     }
     setFields(nextFields);
     if (Object.keys(nextFields).length) return;
     Keyboard.dismiss();
     setBusy(true);
     setError(null);
+    setRequestFailure(null);
     try {
       const installId = user ? undefined : await getInstallId();
       const account = {
@@ -266,9 +277,9 @@ export default function ClaimClassicScreen() {
         });
         if (!saved.ok) {
           if (refusal && !saved.error.uncertain) {
-            reportRequestError(refusal, 'We could not claim that Classic account. Try again.');
+            reportRequestError(refusal, 'auth.classic_claim_failed');
           } else {
-            setError(saved.error.message);
+            setError(saved.error.uncertain ? 'auth.save_uncertain' : 'auth.save_failed');
           }
           return;
         }
@@ -295,7 +306,7 @@ export default function ClaimClassicScreen() {
         });
       }
     } catch (requestError) {
-      reportRequestError(requestError, 'We could not claim that Classic account. Try again.');
+      reportRequestError(requestError, 'auth.classic_claim_failed');
     } finally {
       setBusy(false);
     }
@@ -319,15 +330,16 @@ export default function ClaimClassicScreen() {
   const resetVerification = () => {
     setVerification(null);
     setError(null);
+    setRequestFailure(null);
     setCanSignIn(false);
   };
 
   const credentialFields = (
     <>
       <Input
-        label="Email"
+        label={t('auth.email')}
         value={email}
-        error={fields.email}
+        error={fields.email ? t(fields.email as TranslationKey) : undefined}
         editable={!busy}
         keyboardType="email-address"
         autoCapitalize="none"
@@ -338,9 +350,9 @@ export default function ClaimClassicScreen() {
         }}
       />
       <Input
-        label="New Pidro password"
+        label={t('auth.new_pidro_password')}
         value={password}
-        error={fields.password}
+        error={fields.password ? t(fields.password as TranslationKey, { count: 8 }) : undefined}
         editable={!busy}
         secureTextEntry
         revealPassword
@@ -356,19 +368,23 @@ export default function ClaimClassicScreen() {
     <ScreenShell scroll compact testID="claim-classic-screen">
       <View style={styles.page}>
         <ScreenHeader
-          title="Claim Pidro Classic"
-          subtitle="Bring your Classic name and games into Pidro."
+          title={t('auth.claim')}
+          subtitle={t('auth.claim_intro')}
           onBack={() => router.back()}
         />
 
-        {error ? (
+        {error || requestFailure ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger" align="center">
-              {error}
+              {requestFailure
+                ? localizedError(requestFailure.error, requestFailure.fallback)
+                : error
+                  ? t(error, { provider: errorProvider })
+                  : null}
             </PidroText>
             {canSignIn ? (
               <BevelButton
-                label="Sign in to that account"
+                label={t('auth.sign_in_that')}
                 material="glass"
                 size="sm"
                 fullWidth
@@ -382,24 +398,24 @@ export default function ClaimClassicScreen() {
           <Surface variant="window" padded style={styles.panel}>
             <View style={styles.heading}>
               <PidroText role="title" tone="gold" align="center">
-                How did you use Classic?
+                {t('auth.claim_method')}
               </PidroText>
               <PidroText role="body" tone="soft" align="center">
-                Verify the account you owned. Nothing changes until you confirm the preview.
+                {t('auth.claim_verify_note')}
               </PidroText>
             </View>
 
             {fixture && Platform.OS === 'web' ? (
               <View style={styles.providerFixtures}>
                 <BevelButton
-                  label="Continue with Apple"
+                  label={t('auth.apple')}
                   material="glass"
                   size="md"
                   fullWidth
                   onPress={() => undefined}
                 />
                 <BevelButton
-                  label="Continue with Facebook"
+                  label={t('auth.facebook')}
                   material="glass"
                   size="md"
                   fullWidth
@@ -417,7 +433,7 @@ export default function ClaimClassicScreen() {
             <View style={styles.divider}>
               <View style={styles.rule} />
               <PidroText role="metadata" tone="muted">
-                or
+                {t('auth.or')}
               </PidroText>
               <View style={styles.rule} />
             </View>
@@ -426,9 +442,9 @@ export default function ClaimClassicScreen() {
               <View style={[styles.form, compactLandscape && styles.formLandscape]}>
                 <Input
                   containerClassName={compactLandscape ? 'w-[48%] flex-grow' : undefined}
-                  label="Classic username or email"
+                  label={t('auth.classic_identifier')}
                   value={login}
-                  error={fields.login}
+                  error={fields.login ? t(fields.login as TranslationKey) : undefined}
                   editable={!busy}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -439,9 +455,11 @@ export default function ClaimClassicScreen() {
                 />
                 <Input
                   containerClassName={compactLandscape ? 'w-[48%] flex-grow' : undefined}
-                  label="Classic password"
+                  label={t('auth.classic_password')}
                   value={classicPassword}
-                  error={fields.classicPassword}
+                  error={
+                    fields.classicPassword ? t(fields.classicPassword as TranslationKey) : undefined
+                  }
                   editable={!busy}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -455,7 +473,7 @@ export default function ClaimClassicScreen() {
                   }}
                 />
                 <TextLink
-                  label="Forgot your Classic password?"
+                  label={t('auth.classic_forgot')}
                   size={14}
                   style={styles.forgot}
                   onPress={() =>
@@ -466,7 +484,7 @@ export default function ClaimClassicScreen() {
                   }
                 />
                 <BevelButton
-                  label="Verify Classic account"
+                  label={t('auth.classic_verify')}
                   material="wood"
                   size="md"
                   fullWidth
@@ -476,7 +494,7 @@ export default function ClaimClassicScreen() {
               </View>
             ) : (
               <BevelButton
-                label="Classic username & password"
+                label={t('auth.classic_credentials')}
                 material="glass"
                 size="md"
                 fullWidth
@@ -489,11 +507,11 @@ export default function ClaimClassicScreen() {
           <Surface variant="window" padded style={styles.panel}>
             <View style={styles.heading}>
               <PidroText role="title" tone="gold" align="center">
-                Classic account found
+                {t('auth.classic_found')}
               </PidroText>
               {alreadyClaimed ? null : (
                 <PidroText role="body" tone="soft" align="center">
-                  Check this is yours before bringing it into your current player.
+                  {t('auth.classic_check')}
                 </PidroText>
               )}
             </View>
@@ -505,33 +523,39 @@ export default function ClaimClassicScreen() {
                 </PidroText>
               ) : (
                 <PidroText role="label" tone="muted" align="center">
-                  Classic name kept private
+                  {t('auth.classic_private')}
                 </PidroText>
               )}
               <View style={styles.stats}>
                 <Stat
-                  label="Games played"
-                  value={verification.classic.games_played.toLocaleString()}
+                  label={t('auth.games_played')}
+                  value={formatNumber(verification.classic.games_played)}
                 />
-                <Stat label="Classic level" value={String(verification.classic.level)} />
-                <Stat label="Member since" value={memberSince(verification.classic.member_since)} />
+                <Stat
+                  label={t('auth.classic_level')}
+                  value={formatNumber(verification.classic.level)}
+                />
+                <Stat
+                  label={t('auth.member_since')}
+                  value={memberSince(verification.classic.member_since)}
+                />
               </View>
             </Surface>
 
             {alreadyClaimed ? (
               <View style={styles.form}>
                 <PidroText role="body" tone="soft" align="center">
-                  This Classic account is already linked to a Pidro account.
+                  {t('auth.classic_linked')}
                 </PidroText>
                 {!user ? (
                   <>
                     {alreadyClaimed.sign_in_method ? (
                       <PidroText role="metadata" tone="muted" align="center">
-                        {SIGNED_IN_WITH[alreadyClaimed.sign_in_method]}
+                        {t(SIGNED_IN_WITH[alreadyClaimed.sign_in_method])}
                       </PidroText>
                     ) : null}
                     <BevelButton
-                      label="Sign in to that account"
+                      label={t('auth.sign_in_that')}
                       material="wood"
                       size="md"
                       fullWidth
@@ -540,7 +564,7 @@ export default function ClaimClassicScreen() {
                   </>
                 ) : null}
                 <BevelButton
-                  label="Back"
+                  label={t('auth.back')}
                   material="glass"
                   size="sm"
                   fullWidth
@@ -552,13 +576,12 @@ export default function ClaimClassicScreen() {
             {!alreadyClaimed && !verification.classic.name_allowed ? (
               <View style={styles.form}>
                 <PidroText role="body" tone="soft">
-                  That name can&apos;t be shown in the new game. Pick a new one; your Classic name
-                  stays yours.
+                  {t('auth.classic_rename')}
                 </PidroText>
                 <Input
-                  label="New public name"
+                  label={t('auth.new_public_name')}
                   value={displayName}
-                  error={fields.displayName}
+                  error={fields.displayName ? t(fields.displayName as TranslationKey) : undefined}
                   maxLength={20}
                   editable={!busy}
                   onChangeText={(value) => {
@@ -571,11 +594,11 @@ export default function ClaimClassicScreen() {
 
             {!alreadyClaimed && !user ? (
               <View style={styles.form}>
-                <PidroText role="label">Create your Pidro account</PidroText>
+                <PidroText role="label">{t('auth.create_your_account')}</PidroText>
                 <Input
-                  label="Username"
+                  label={t('auth.username')}
                   value={username}
-                  error={fields.username}
+                  error={fields.username ? t(fields.username as TranslationKey) : undefined}
                   maxLength={20}
                   editable={!busy}
                   autoCapitalize="none"
@@ -593,7 +616,7 @@ export default function ClaimClassicScreen() {
               <View style={styles.form}>
                 {credentialFields}
                 <PidroText role="metadata" tone="muted">
-                  Your guest games come with you.
+                  {t('auth.guest_games')}
                 </PidroText>
               </View>
             ) : null}
@@ -601,7 +624,7 @@ export default function ClaimClassicScreen() {
             {!alreadyClaimed && !canSignIn ? (
               <View style={styles.actions}>
                 <BevelButton
-                  label="Back"
+                  label={t('auth.back')}
                   material="glass"
                   size="sm"
                   fullWidth
@@ -609,7 +632,7 @@ export default function ClaimClassicScreen() {
                   onPress={resetVerification}
                 />
                 <BevelButton
-                  label={user ? 'Claim this Classic account' : 'Create account and claim'}
+                  label={t(user ? 'auth.claim_this' : 'auth.create_claim')}
                   material="wood"
                   size="md"
                   fullWidth

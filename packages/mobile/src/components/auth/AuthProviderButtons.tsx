@@ -8,6 +8,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import type { SocialProviderAvailability } from '@/features/auth/socialCredentials';
 import { getSocialProviderAvailability } from '@/features/auth/socialProviders';
+import { useTranslation } from '@/i18n';
 
 export interface AuthProviderButtonsProps {
   onApple: () => void;
@@ -46,6 +47,7 @@ export function AuthProviderButtons({
   direction = 'column',
   availability: availabilityOverride,
 }: AuthProviderButtonsProps) {
+  const { t } = useTranslation();
   const [detectedAvailability, setDetectedAvailability] = useState<SocialProviderAvailability>({
     apple: false,
     facebook: false,
@@ -76,6 +78,7 @@ export function AuthProviderButtons({
             // guidelines ask for on a dark surface.
             <AppleAuthentication.AppleAuthenticationButton
               testID="apple-sign-in"
+              accessibilityLabel={t('auth.apple')}
               buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
               buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
               cornerRadius={12}
@@ -88,13 +91,13 @@ export function AuthProviderButtons({
             // previews show the real composition.
             <PressableFX
               accessibilityRole="button"
-              accessibilityLabel="Continue with Apple"
+              accessibilityLabel={t('auth.apple')}
               onPress={onApple}
               style={[styles.provider, styles.appleStandIn, row && styles.providerInRow]}
               pressedStyle={styles.appleStandInPressed}>
               <AppleLogo />
               <PidroText style={[styles.providerLabel, styles.appleLabel]} numberOfLines={1}>
-                {row ? 'Apple' : 'Continue with Apple'}
+                {row ? 'Apple' : t('auth.apple')}
               </PidroText>
             </PressableFX>
           )
@@ -102,13 +105,13 @@ export function AuthProviderButtons({
         {availability.facebook ? (
           <PressableFX
             accessibilityRole="button"
-            accessibilityLabel="Continue with Facebook"
+            accessibilityLabel={t('auth.facebook')}
             onPress={onFacebook}
             style={[styles.provider, styles.facebookButton, row && styles.providerInRow]}
             pressedStyle={styles.facebookPressed}>
             <FacebookLogo />
             <PidroText style={styles.providerLabel} numberOfLines={1}>
-              {row ? 'Facebook' : 'Continue with Facebook'}
+              {row ? 'Facebook' : t('auth.facebook')}
             </PidroText>
           </PressableFX>
         ) : null}
@@ -117,14 +120,14 @@ export function AuthProviderButtons({
         <View style={styles.dividerRow}>
           <View style={styles.divider} />
           <PidroText role="metadata" tone="soft">
-            or with email
+            {t('auth.or_email')}
           </PidroText>
           <View style={styles.divider} />
         </View>
       ) : null}
       {showEmail && onEmail ? (
         <BevelButton
-          label="Continue with email"
+          label={t('auth.with_email')}
           material="glass"
           size="md"
           fullWidth

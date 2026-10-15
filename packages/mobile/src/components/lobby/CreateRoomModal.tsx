@@ -5,6 +5,7 @@ import type { RuleSet } from '@pidro/shared';
 import { useSettingsStore } from '@/stores/settings';
 import type { CreateRoomRequest } from '@/types/lobby';
 import { OpenChair } from '@/components/lobby/OpenChair';
+import { useTranslation, type TranslationKey } from '@/i18n';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -47,21 +48,21 @@ interface CreateRoomModalProps {
   initialRuleSet?: RuleSet;
 }
 
-const SEATS: { key: SeatKey; label: string; spoken: string }[] = [
-  { key: 'seat_3', label: 'Partner', spoken: 'Partner seat' },
-  { key: 'seat_2', label: 'Opponent', spoken: 'Left opponent seat' },
-  { key: 'seat_4', label: 'Opponent', spoken: 'Right opponent seat' },
+const SEATS: { key: SeatKey; label: TranslationKey; spoken: TranslationKey }[] = [
+  { key: 'seat_3', label: 'social.partner', spoken: 'social.partner_seat' },
+  { key: 'seat_2', label: 'social.opponent', spoken: 'social.left_seat' },
+  { key: 'seat_4', label: 'social.opponent', spoken: 'social.right_seat' },
 ];
-const CHOICES: { value: SeatChoice; label: string }[] = [
-  { value: 'open', label: 'Open' },
-  { value: 'ai', label: 'Bot' },
-  { value: 'invite', label: 'Friend' },
+const CHOICES: { value: SeatChoice; label: TranslationKey }[] = [
+  { value: 'open', label: 'social.open' },
+  { value: 'ai', label: 'social.bot' },
+  { value: 'invite', label: 'social.friend' },
 ];
 /** Chair, gap: where the seat's label column starts. */
 const LABEL_INDENT = 40 + 10;
-const RULES: { value: RuleSet; label: string; detail: string }[] = [
-  { value: 'finnish', label: 'Finnish', detail: 'Trumps only · bids from 6' },
-  { value: 'louisiana', label: 'Louisiana', detail: 'Off-suit plays · bids from 7' },
+const RULES: { value: RuleSet; label: TranslationKey; detail: TranslationKey }[] = [
+  { value: 'finnish', label: 'social.finnish', detail: 'social.finnish_detail' },
+  { value: 'louisiana', label: 'social.louisiana', detail: 'social.louisiana_detail' },
 ];
 
 export function CreateRoomModal(props: CreateRoomModalProps) {
@@ -91,6 +92,7 @@ export function CreateRoomForm({
   initialDraft,
   initialRuleSet,
 }: CreateRoomModalProps) {
+  const { t } = useTranslation();
   const preferredRuleSet = useSettingsStore((state) => state.preferredRuleSet);
   const [ruleSet, setRuleSet] = useState<RuleSet>(initialRuleSet ?? preferredRuleSet);
   const [draft, setDraft] = useState<TableDraft>(
@@ -105,19 +107,23 @@ export function CreateRoomForm({
   return (
     <ScreenShell scroll testID="create-room-window" contentStyle={styles.shell}>
       <View style={styles.header}>
-        <BackButton accessibilityLabel="Cancel creation" disabled={isLoading} onPress={onClose} />
+        <BackButton
+          accessibilityLabel={t('social.cancel_creation')}
+          disabled={isLoading}
+          onPress={onClose}
+        />
       </View>
       <View
         testID="create-rule-set"
         accessibilityRole="radiogroup"
-        accessibilityLabel="Rules"
+        accessibilityLabel={t('social.rules')}
         style={styles.rules}>
         {RULES.map((rule) => (
           <PressableFX
             key={rule.value}
             accessibilityRole="radio"
-            accessibilityLabel={rule.label}
-            accessibilityHint={rule.detail}
+            accessibilityLabel={t(rule.label)}
+            accessibilityHint={t(rule.detail)}
             accessibilityState={{ checked: ruleSet === rule.value, disabled: isLoading }}
             aria-checked={ruleSet === rule.value}
             disabled={isLoading}
@@ -126,21 +132,21 @@ export function CreateRoomForm({
             <PidroText
               role="label"
               style={[styles.ruleLabel, ruleSet === rule.value && styles.gold]}>
-              {rule.label}
+              {t(rule.label)}
             </PidroText>
             <PidroText role="metadata" tone="soft" style={styles.ruleDetail}>
-              {rule.detail}
+              {t(rule.detail)}
             </PidroText>
           </PressableFX>
         ))}
       </View>
       <Surface variant="window" style={styles.window}>
         <View style={styles.seat}>
-          <PlayerAvatar uri={avatarUrl} size={40} accessibilityLabel="You, the host" />
+          <PlayerAvatar uri={avatarUrl} size={40} accessibilityLabel={t('social.host_you')} />
           <View style={styles.label}>
-            <PidroText role="label">You</PidroText>
+            <PidroText role="label">{t('social.you')}</PidroText>
             <PidroText role="metadata" tone="gold">
-              Host
+              {t('social.host')}
             </PidroText>
           </View>
         </View>
@@ -153,7 +159,7 @@ export function CreateRoomForm({
                 <View style={styles.divider}>
                   <View style={styles.line} />
                   <PidroText role="label" style={styles.vs}>
-                    vs
+                    {t('social.vs')}
                   </PidroText>
                   <View style={styles.line} />
                 </View>
@@ -174,12 +180,12 @@ export function CreateRoomForm({
                   </View>
                   <View style={styles.label}>
                     <PidroText role="label" style={styles.seatLabel}>
-                      {label}
+                      {t(label)}
                     </PidroText>
                   </View>
                   <View
                     accessibilityRole="radiogroup"
-                    accessibilityLabel={spoken}
+                    accessibilityLabel={t(spoken)}
                     style={styles.choices}>
                     {CHOICES.map((option) => {
                       const checked = option.value === choice;
@@ -187,11 +193,9 @@ export function CreateRoomForm({
                         <PressableFX
                           key={option.value}
                           accessibilityRole="radio"
-                          accessibilityLabel={option.label}
+                          accessibilityLabel={t(option.label)}
                           accessibilityHint={
-                            option.value === 'invite'
-                              ? 'Share a link after opening the table. This seat stays open.'
-                              : undefined
+                            option.value === 'invite' ? t('social.invite_hint') : undefined
                           }
                           accessibilityState={{ checked, disabled: isLoading }}
                           aria-checked={checked}
@@ -203,7 +207,7 @@ export function CreateRoomForm({
                           <PidroText
                             role="label"
                             style={[styles.choiceLabel, checked && styles.gold]}>
-                            {option.label}
+                            {t(option.label)}
                           </PidroText>
                         </PressableFX>
                       );
@@ -213,7 +217,7 @@ export function CreateRoomForm({
                 <SeatFold open={choice === 'open'}>
                   <SeatRequirementPicker
                     value={requirement}
-                    seatLabel={spoken}
+                    seatLabel={t(spoken)}
                     disabled={isLoading}
                     indent={LABEL_INDENT}
                     onChange={(games) => {
@@ -238,7 +242,7 @@ export function CreateRoomForm({
           material="wood"
           fill
           accessibilityRole="button"
-          accessibilityLabel="Open the table"
+          accessibilityLabel={t('social.open_table')}
           accessibilityState={{ disabled: isLoading, busy: isLoading }}
           disabled={isLoading}
           onPress={submit}
@@ -247,7 +251,7 @@ export function CreateRoomForm({
           {isLoading ? (
             <ActivityIndicator color={PidroBevel.textGold} />
           ) : (
-            <PidroText style={styles.submitLabel}>Open the table</PidroText>
+            <PidroText style={styles.submitLabel}>{t('social.open_table')}</PidroText>
           )}
         </BevelPressable>
         <PidroText testID="create-footer" role="metadata" tone="soft" align="center">
@@ -282,18 +286,18 @@ const styles = StyleSheet.create({
   shell: { maxWidth: 480, paddingHorizontal: 20, gap: 14 },
   header: { alignItems: 'flex-start' },
   rules: { flexDirection: 'row', gap: 8 },
-  ruleChoice: { height: 56, gap: 1 },
+  ruleChoice: { minHeight: 56, gap: 1, paddingVertical: 6 },
   ruleLabel: { fontSize: 15 },
   ruleDetail: { fontSize: 11, lineHeight: 14, textAlign: 'center' },
   window: { padding: 12, gap: 10 },
-  seat: { height: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  seat: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 10 },
   chair: { width: 40, height: 40 },
   label: { width: 76, flexShrink: 1, gap: 1 },
   seatLabel: { fontSize: 14 },
   choices: { flex: 1, flexDirection: 'row', gap: 4, minWidth: 140 },
   choice: {
     flex: 1,
-    height: 44,
+    minHeight: 44,
     minWidth: 44,
     alignItems: 'center',
     justifyContent: 'center',

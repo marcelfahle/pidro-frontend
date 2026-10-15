@@ -23,14 +23,15 @@ import { entryDestination, needsAgeGate } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
+import { useTranslation, type TranslationKey } from '@/i18n';
 
 const TERMS_URL = 'https://www.pidro.online/terms-of-use';
 const PRIVACY_URL = 'https://www.pidro.online/privacy-policy';
 
-const OPTIONS: { value: DeclaredAgeBand; label: string }[] = [
-  { value: 'under_13', label: 'Under 13' },
-  { value: '13_17', label: '13 to 17' },
-  { value: '18_plus', label: '18 or older' },
+const OPTIONS: { value: DeclaredAgeBand; label: TranslationKey }[] = [
+  { value: 'under_13', label: 'auth.age_under' },
+  { value: '13_17', label: 'auth.age_teen' },
+  { value: '18_plus', label: 'auth.age_adult' },
 ];
 
 type Fixture = 'unanswered' | 'selected' | 'under13';
@@ -59,6 +60,7 @@ function HelpLink({
 }
 
 export default function AgeScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
   const fixture = (__DEV__ ? fixtureParam : undefined) as Fixture | undefined;
@@ -113,7 +115,7 @@ export default function AgeScreen() {
         setAnswer('under_13', termsVersion);
         setStopped(true);
       } else {
-        setError(result.message);
+        setError(result.messageKey);
       }
       setSubmitting(false);
     },
@@ -174,20 +176,20 @@ export default function AgeScreen() {
         ) : null}
         <View style={[styles.stopCopy, compact && styles.stopCopyCompact]}>
           <PidroText role="display" tone="gold" align="center" style={styles.stopTitle}>
-            Pidro is for players aged 13 and older
+            {t('auth.age_stop')}
           </PidroText>
           <PidroText role="body" align="center">
-            Thanks for stopping by.
+            {t('auth.age_thanks')}
           </PidroText>
         </View>
-        <View accessibilityLabel="Help" style={styles.stopLinks}>
+        <View accessibilityLabel={t('auth.help')} style={styles.stopLinks}>
           <HelpLink
-            label="Privacy Policy"
+            label={t('auth.privacy')}
             onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
           />
           <View style={styles.dot} />
           <HelpLink
-            label="Contact support"
+            label={t('auth.support')}
             onPress={() => Linking.openURL('mailto:support@pidro.net')}
           />
         </View>
@@ -205,20 +207,23 @@ export default function AgeScreen() {
 
       <View style={styles.intro}>
         <PidroText role="display" tone="gold" align="center" style={styles.title}>
-          How old are you?
+          {t('auth.age_title')}
         </PidroText>
         <PidroText role="body" align="center">
-          Choose your age range. We don&apos;t ask for your birthday.
+          {t('auth.age_body')}
         </PidroText>
       </View>
 
-      <View accessibilityRole="radiogroup" accessibilityLabel="Age range" style={styles.options}>
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel={t('auth.age_range')}
+        style={styles.options}>
         {OPTIONS.map((option) => {
           const checked = selection === option.value;
           return (
             <BevelButton
               key={option.value}
-              label={option.label}
+              label={t(option.label)}
               material="glass"
               size="lg"
               accessibilityRole="radio"
@@ -236,12 +241,12 @@ export default function AgeScreen() {
 
       {error ? (
         <PidroText accessibilityRole="alert" role="metadata" tone="danger" align="center">
-          {error}
+          {t(error as TranslationKey)}
         </PidroText>
       ) : null}
 
       <BevelButton
-        accessibilityLabel="Continue"
+        accessibilityLabel={t('auth.continue')}
         material="wood"
         size="lg"
         weight="hero"
@@ -250,23 +255,27 @@ export default function AgeScreen() {
         loading={submitting}
         onPress={continueWithSelection}
         style={styles.continueButton}>
-        <PidroText style={styles.continueLabel}>Continue</PidroText>
+        <PidroText style={styles.continueLabel}>{t('auth.continue')}</PidroText>
       </BevelButton>
 
       <View style={styles.termsLine}>
-        <PidroText role="metadata" tone="soft" style={styles.termsText}>
-          By continuing you agree to our{' '}
-        </PidroText>
-        <HelpLink label="Terms" onPress={() => WebBrowser.openBrowserAsync(TERMS_URL)} />
-        <PidroText role="metadata" tone="soft" style={styles.termsText}>
-          {' '}
-          and{' '}
-        </PidroText>
-        <HelpLink
-          label="Privacy Policy"
-          punctuation="."
-          onPress={() => WebBrowser.openBrowserAsync(PRIVACY_URL)}
-        />
+        {t('auth.terms_agreement', { terms: '\uFFF0', privacy: '\uFFF1' })
+          .split(/(\uFFF0|\uFFF1)/)
+          .map((part, index) =>
+            part === '\uFFF0' || part === '\uFFF1' ? (
+              <HelpLink
+                key={index}
+                label={t(part === '\uFFF0' ? 'auth.terms' : 'auth.privacy')}
+                onPress={() =>
+                  WebBrowser.openBrowserAsync(part === '\uFFF0' ? TERMS_URL : PRIVACY_URL)
+                }
+              />
+            ) : (
+              <PidroText key={index} role="metadata" tone="soft" style={styles.termsText}>
+                {part}
+              </PidroText>
+            )
+          )}
       </View>
     </ScreenShell>
   );

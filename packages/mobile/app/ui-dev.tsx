@@ -1,12 +1,18 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-context';
 import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { ruleSetFixture } from '@/features/rules/fixtures';
 import { createTableFixture } from '@/features/lobby/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
+import { LocaleFixture } from '@/components/dev/LocaleFixture';
+import { FixtureInsets } from '@/components/dev/FixtureInsets';
+import FriendsScreen from './(shell)/friends';
+import AddFriendScreen from './(shell)/friends-add';
+import { TabPill } from '@/components/shell/TabPill';
+import { useAuthStore } from '@/stores/auth';
 import { CtaBadge } from '@/components/home/CtaBadge';
 import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { RatingPlaque } from '@/components/home/RatingPlaque';
@@ -33,7 +39,11 @@ import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/toke
  */
 export default function UiDevRoute() {
   if (!__DEV__) return <Redirect href="/home" />;
-  return <UiDevHarness />;
+  return (
+    <LocaleFixture>
+      <UiDevHarness />
+    </LocaleFixture>
+  );
 }
 
 const noop = () => {};
@@ -406,8 +416,28 @@ function LobbySeatGallery() {
 function UiDevHarness() {
   const params = useLocalSearchParams<{ state?: string; safeArea?: string; fixture?: string }>();
   const state = typeof params.state === 'string' ? params.state : 'components';
+  const { width, height } = useWindowDimensions();
+  const guest = useAuthStore((value) => Boolean(value.user?.guest));
 
-  if (state === 'settings') return <SettingsScreen key={params.fixture} onBack={noop} />;
+  if (state === 'friends' || state === 'friends-add')
+    return (
+      <View style={styles.fixtureShell}>
+        {state === 'friends' ? <FriendsScreen /> : <AddFriendScreen />}
+        {!guest ? (
+          <TabPill
+            orientation={width > height ? 'rail' : 'bottom'}
+            active="friends"
+            onSelect={noop}
+          />
+        ) : null}
+      </View>
+    );
+  if (state === 'settings')
+    return (
+      <FixtureInsets preset={params.safeArea}>
+        <SettingsScreen key={params.fixture} onBack={noop} />
+      </FixtureInsets>
+    );
   if (state === 'progression') return <ProgressionGallery />;
   if (state === 'avatars') return <AvatarGallery />;
   if (state === 'lobby-seats') return <LobbySeatGallery />;
@@ -639,6 +669,7 @@ function UiDevHarness() {
 }
 
 const styles = StyleSheet.create({
+  fixtureShell: { flex: 1 },
   shell: {
     gap: PidroSpacing.md,
   },

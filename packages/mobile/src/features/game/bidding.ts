@@ -1,3 +1,5 @@
+import { t } from '@pidro/shared';
+
 /**
  * A seat's line while the hand is bid (PID-214). Every seat keeps its bid
  * until bidding ends, and whoever holds the high bid says so, so the round
@@ -24,11 +26,17 @@ export function bidSeatLine({
   hand?: number | null;
 }): BidSeatLine | null {
   const pulse = `${hand ?? 0}:${bid}`;
-  if (bid === 'pass') return { text: 'Passed', short: 'Passed', tone: 'quiet', pulse };
+  if (bid === 'pass')
+    return { text: t('game.passed'), short: t('game.passed'), tone: 'quiet', pulse };
   if (typeof bid === 'number') {
     return holdsHigh
-      ? { text: `Bid ${bid} · high`, short: `High ${bid}`, tone: 'high', pulse }
-      : { text: `Bid ${bid}`, short: `Bid ${bid}`, pulse };
+      ? {
+          text: t('game.bid_high', { amount: bid }),
+          short: t('game.bid_high_short', { amount: bid }),
+          tone: 'high',
+          pulse,
+        }
+      : { text: t('game.bid', { amount: bid }), short: t('game.bid', { amount: bid }), pulse };
   }
-  return onTurn ? { text: 'Bidding…', short: 'Bidding…', tone: 'now' } : null;
+  return onTurn ? { text: t('game.bidding'), short: t('game.bidding'), tone: 'now' } : null;
 }

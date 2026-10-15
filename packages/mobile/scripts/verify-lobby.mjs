@@ -201,7 +201,8 @@ try {
       new URL(response.url()).pathname.endsWith('/lobby')
     );
     await first.getByRole('button', { name: 'Join east seat', exact: true }).click();
-    await first.getByText('That chair was just taken.', { exact: true }).waitFor();
+    await first.getByText('This seat is occupied.', { exact: true }).waitFor();
+    assert.equal(await first.getByText('That chair was just taken.', { exact: true }).count(), 0);
     await refreshed;
     assert.ok(lobbyLoads > loadsBeforeRefusal, 'refused seat join must refresh lobby');
     assert.equal(new URL(page.url()).pathname, '/lobby');
@@ -287,7 +288,7 @@ try {
     await page.getByTestId('lobby-table-SAMPLE0').waitFor();
     await equalRows(page, '[data-testid^="lobby-table-"]');
     await assertMinimumTouchTargets(page, 'lobby-badges', viewport);
-    for (const value of ['100', '1000']) {
+    for (const value of ['100', '1,000']) {
       const badge = page.getByTestId('seat-requirement').filter({ hasText: `${value}+` });
       assert.equal(await badge.textContent(), `${value}+`);
       assert.ok(

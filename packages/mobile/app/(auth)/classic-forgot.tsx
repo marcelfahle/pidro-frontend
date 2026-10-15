@@ -21,19 +21,21 @@ import { requestClassicSignInLink } from '@/features/auth/classicRecovery';
 import { getInstallId } from '@/features/invites/installId';
 import { useFlowBack, useHardwareBack } from '@/hooks/useFlowBack';
 import { useAuthStore } from '@/stores/auth';
+import { useTranslation } from '@/i18n';
 
 type Fixture = 'sent' | 'unavailable' | 'not-found';
 
 const PROBLEMS = {
-  not_found: 'We can’t find a Classic account with that name or email.',
-  no_email: 'That account has no email address on it. Get help and we’ll find another way in.',
-  rate_limited: 'Too many tries. Wait a minute, then try again.',
-  unavailable: 'We can’t send sign-in links right now. Get help and we’ll find your account.',
+  not_found: 'auth.classic_not_found',
+  no_email: 'auth.classic_no_email',
+  rate_limited: 'auth.rate_limited',
+  unavailable: 'auth.links_unavailable',
 } as const;
 
 type Problem = keyof typeof PROBLEMS;
 
 export default function ClassicForgotScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const goBack = useFlowBack();
   const params = useLocalSearchParams<{ login?: string; fixture?: string }>();
@@ -64,7 +66,7 @@ export default function ClassicForgotScreen() {
     if (busy) return;
     const value = login.trim();
     if (!value) {
-      setFieldError('Enter your Classic username or email.');
+      setFieldError('auth.enter_classic_identifier');
       inputRef.current?.focus();
       return;
     }
@@ -97,29 +99,38 @@ export default function ClassicForgotScreen() {
   useHardwareBack(emailHint !== null, backToForm);
 
   if (emailHint !== null) {
-    const device = deviceNoun(layout);
     const landscape = layout === 'landscape';
     const sentTo = (
       <>
-        <PidroText
-          role="body"
-          tone="soft"
-          align={landscape ? 'left' : 'center'}
-          style={metrics.body}>
-          We sent a sign-in link to
-        </PidroText>
-        <PidroText
-          align={landscape ? 'left' : 'center'}
-          style={[styles.hint, metrics.emphasis]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
-          minimumFontScale={0.8}>
-          {emailHint}
-        </PidroText>
+        {t('auth.link_sent_to', { email: '\uFFF0' })
+          .split(/(\uFFF0)/)
+          .filter(Boolean)
+          .map((part, index) =>
+            part === '\uFFF0' ? (
+              <PidroText
+                key={index}
+                align={landscape ? 'left' : 'center'}
+                style={[styles.hint, metrics.emphasis]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                minimumFontScale={0.8}>
+                {emailHint}
+              </PidroText>
+            ) : (
+              <PidroText
+                key={index}
+                role="body"
+                tone="soft"
+                align={landscape ? 'left' : 'center'}
+                style={metrics.body}>
+                {part.trim()}
+              </PidroText>
+            )
+          )}
       </>
     );
     const status = problem ? (
-      <AuthFlowNotice>{PROBLEMS[problem]}</AuthFlowNotice>
+      <AuthFlowNotice>{t(PROBLEMS[problem])}</AuthFlowNotice>
     ) : resent ? (
       <PidroText
         role="metadata"
@@ -127,18 +138,18 @@ export default function ClassicForgotScreen() {
         align="center"
         accessibilityLiveRegion="polite"
         style={metrics.note}>
-        Sent again. Check your spam folder too.
+        {t('auth.resent')}
       </PidroText>
     ) : null;
     const actions = (
       <>
         {status}
-        <AuthFlowButton label="Send it again" material="glass" loading={busy} onPress={send} />
+        <AuthFlowButton label={t('auth.resend')} material="glass" loading={busy} onPress={send} />
       </>
     );
     const help = (
       <TextLink
-        label="No longer use that email? Get help"
+        label={t('auth.email_help')}
         size={metrics.link}
         style={styles.centerLink}
         onPress={openHelp}
@@ -148,10 +159,10 @@ export default function ClassicForgotScreen() {
     return (
       <AuthFlowScreen
         testID="classic-forgot-screen"
-        headerTitle="Pidro Classic"
+        headerTitle={t('auth.classic')}
         onBack={backToForm}
-        title="Check your email"
-        body={`Open the link on this ${device} and you’re in.`}
+        title={t('auth.check_inbox')}
+        body={t('auth.open_link_device', { device: deviceNoun(layout) })}
         inlineIntro
         fill>
         {landscape ? (
@@ -173,11 +184,11 @@ export default function ClassicForgotScreen() {
               <AuthFlowIconTile icon="mail" />
               <View style={styles.sentCopy}>
                 <AuthFlowHeading align="center" hero>
-                  Check your email
+                  {t('auth.check_inbox')}
                 </AuthFlowHeading>
                 {sentTo}
                 <PidroText role="body" tone="soft" align="center" style={metrics.body}>
-                  Open it on this {device} and you’re in.
+                  {t('auth.open_it_device', { device: deviceNoun(layout) })}
                 </PidroText>
               </View>
             </View>
@@ -194,24 +205,22 @@ export default function ClassicForgotScreen() {
   return (
     <AuthFlowScreen
       testID="classic-forgot-screen"
-      headerTitle="Pidro Classic"
+      headerTitle={t('auth.classic')}
       onBack={goBack}
-      title="Forgot your password?"
-      body={
-        'No new password needed. We email a sign\u2060-\u2060in link to the address on your Classic\u00a0account.'
-      }>
+      title={t('auth.forgot_title')}
+      body={t('auth.classic_forgot_intro')}>
       <AuthFlowWindow testID="classic-forgot-window">
-        {problem ? <AuthFlowNotice>{PROBLEMS[problem]}</AuthFlowNotice> : null}
+        {problem ? <AuthFlowNotice>{t(PROBLEMS[problem])}</AuthFlowNotice> : null}
         <Input
           ref={inputRef}
-          label="Classic username or email"
+          label={t('auth.classic_identifier')}
           value={login}
           onChangeText={(next) => {
             setLogin(next);
             setFieldError(null);
             setProblem(null);
           }}
-          error={fieldError ?? undefined}
+          error={fieldError ? t('auth.enter_classic_identifier') : undefined}
           style={inputStyle}
           editable={!busy}
           autoCapitalize="none"
@@ -223,10 +232,10 @@ export default function ClassicForgotScreen() {
           submitBehavior="blurAndSubmit"
           onSubmitEditing={send}
         />
-        <AuthFlowButton label="Email me a link" loading={busy} onPress={send} />
+        <AuthFlowButton label={t('auth.email_link')} loading={busy} onPress={send} />
       </AuthFlowWindow>
       <TextLink
-        label="Don’t remember either? Get help"
+        label={t('auth.forgot_help')}
         size={metrics.link}
         style={styles.centerLink}
         onPress={openHelp}

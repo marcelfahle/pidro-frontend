@@ -10,7 +10,8 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostControls';
-import { t } from '@/i18n';
+import { t, useTranslation } from '@/i18n';
+import { localizedError } from '@pidro/shared';
 import type { Position, Room } from '@/types/lobby';
 import type { TableNotice } from '@/game/tableNotices';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -49,7 +50,9 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
     return {
       absolute,
       rel: relatives[(absoluteIndex - youIdx + 4) % 4],
-      name: seatDisplayName(seat?.player) || (isBot ? 'Bot' : playerId ? 'Player' : 'Open seat'),
+      name:
+        seatDisplayName(seat?.player) ||
+        t(isBot ? 'game.bot' : playerId ? 'game.player' : 'game.open_seat'),
       playerId,
       isYou: !!playerId && playerId === youPlayerId,
       isBot,
@@ -72,7 +75,8 @@ function SeatPlate({
   onProfile?: () => void;
   compact: boolean;
 }) {
-  const status = seat.occupied ? (ready ? 'Ready' : 'Pending') : 'Available';
+  useTranslation();
+  const status = t(seat.occupied ? (ready ? 'game.ready' : 'game.not_ready') : 'game.available');
   const identity = (
     <View style={styles.identity}>
       <View>
@@ -99,10 +103,10 @@ function SeatPlate({
         {seat.name}
       </PidroText>
       <PidroText role="metadata" tone="soft">
-        {seat.isYou ? 'You' : ' '}
+        {seat.isYou ? t('game.you') : ' '}
       </PidroText>
       <PidroText role="metadata" style={ready ? styles.readyText : styles.pendingText}>
-        {seat.occupied ? (ready ? 'Ready' : 'Not ready') : 'Available'}
+        {status}
       </PidroText>
     </View>
   );
@@ -111,13 +115,23 @@ function SeatPlate({
       {onProfile ? (
         <PressableFX
           accessibilityRole="button"
-          accessibilityLabel={`${seat.name}, ${relationship}, ${status}. View profile`}
-          accessibilityHint="Opens the player's full name and profile"
+          accessibilityLabel={t('game.profile_accessibility', {
+            name: seat.name,
+            relationship,
+            status,
+          })}
+          accessibilityHint={t('game.profile_hint')}
           onPress={onProfile}>
           {identity}
         </PressableFX>
       ) : (
-        <View accessible accessibilityLabel={`${seat.name}, ${relationship}, ${status}`}>
+        <View
+          accessible
+          accessibilityLabel={t('game.seat_accessibility', {
+            name: seat.name,
+            relationship,
+            status,
+          })}>
           {identity}
         </View>
       )}
@@ -166,6 +180,7 @@ export function WaitingTable({
   onSeatBot,
   notice = null,
 }: Props) {
+  useTranslation();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const portrait = height >= width;
@@ -183,7 +198,7 @@ export function WaitingTable({
   const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
   const [readyBusy, setReadyBusy] = useState(false);
   const readyBusyRef = useRef(false);
-  const [readyError, setReadyError] = useState<string | null>(null);
+  const [readyError, setReadyError] = useState<unknown>(null);
   const [toolbarHeight, setToolbarHeight] = useState(0);
   const isYouReady = !!youPosition && readyPlayers.includes(youPosition);
   const confirmReady = async () => {
@@ -193,8 +208,8 @@ export function WaitingTable({
     setReadyError(null);
     try {
       await onReady();
-    } catch {
-      setReadyError('Readiness was not confirmed. Check the table and try again.');
+    } catch (error) {
+      setReadyError(error);
     } finally {
       readyBusyRef.current = false;
       setReadyBusy(false);
@@ -207,11 +222,11 @@ export function WaitingTable({
   const teamName = (seat: SeatInfo) =>
     seat.rel === 'bottom' || seat.rel === 'top'
       ? youPosition
-        ? 'Your team'
-        : 'North / South'
+        ? t('game.your_team')
+        : t('game.ns')
       : youPosition
-        ? 'Opponents'
-        : 'East / West';
+        ? t('game.opponents')
+        : t('game.ew');
 
   return (
     <Background>
@@ -235,7 +250,8 @@ export function WaitingTable({
           style={styles.toolbar}
           onLayout={(event) => setToolbarHeight(event.nativeEvent.layout.height)}>
           <BevelButton
-            label={isSpectator ? 'Back to lobby' : 'Leave'}
+            label={t(isSpectator ? 'game.lobby' : 'game.leave_short')}
+            accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
             material="glass"
             size="sm"
             onPress={onLeave}
@@ -260,7 +276,7 @@ export function WaitingTable({
           )}
           {canManageTable && (
             <BevelButton
-              label="Table"
+              label={t('game.table')}
               material="glass"
               size="sm"
               onPress={() => setTableMenuOpen(true)}
@@ -275,12 +291,16 @@ export function WaitingTable({
           {!compact && (
             <View style={styles.heading}>
               <PidroText role="display" align="center">
-                {openSeats > 0 ? 'Gather your table' : isYouReady ? 'All set!' : 'Ready to play?'}
+                {t(
+                  openSeats > 0
+                    ? 'game.gather'
+                    : isYouReady
+                      ? 'game.all_set'
+                      : 'game.ready_question'
+                )}
               </PidroText>
               <PidroText role="metadata" tone="soft" align="center">
-                {openSeats > 0
-                  ? 'Four seats. Two teams. One great game.'
-                  : 'The game begins when everyone is ready.'}
+                {openSeats > 0 ? t('game.four_seats') : t('game.begin_ready')}
               </PidroText>
             </View>
           )}
@@ -317,12 +337,12 @@ export function WaitingTable({
                           ready={readyPlayers.includes(seat.absolute)}
                           relationship={
                             seat.isYou
-                              ? 'You'
+                              ? t('game.you')
                               : youPosition
                                 ? seat.rel === 'top'
-                                  ? 'Partner'
-                                  : 'Opponent'
-                                : seat.absolute
+                                  ? t('game.partner')
+                                  : t('game.opponent')
+                                : t(`table.position.${seat.absolute}`)
                           }
                           onProfile={
                             seat.occupied && !seat.isBot
@@ -351,8 +371,8 @@ export function WaitingTable({
                 {joiningName
                   ? t('table.joining', { name: joiningName })
                   : openSeats > 0
-                    ? `Waiting for ${openSeats} ${openSeats === 1 ? 'player' : 'players'}`
-                    : `${readyPlayers.length} of 4 ready`}
+                    ? t('game.waiting_players', { count: openSeats })
+                    : t('game.ready_count', { count: readyPlayers.length })}
               </PidroText>
             </View>
             {canManageTable && openSeats > 0 && onSeatBot && (
@@ -370,7 +390,9 @@ export function WaitingTable({
             )}
             {!isSpectator && openSeats === 0 && onReady && (
               <BevelButton
-                label={isYouReady ? "You're ready" : readyBusy ? 'Confirming…' : "I'm ready"}
+                label={t(
+                  isYouReady ? 'game.you_ready' : readyBusy ? 'game.confirming' : 'game.im_ready'
+                )}
                 fullWidth
                 size={compact ? 'md' : 'lg'}
                 weight="hero"
@@ -379,9 +401,9 @@ export function WaitingTable({
                 loading={readyBusy}
               />
             )}
-            {readyError && (
+            {!!readyError && (
               <PidroText role="metadata" tone="danger" align="center">
-                {readyError}
+                {localizedError(readyError, 'game.ready_failed')}
               </PidroText>
             )}
           </View>
@@ -394,7 +416,7 @@ export function WaitingTable({
         title={
           selectedSeatIsCurrent
             ? t('table.managePlayer', { name: selectedSeat!.name })
-            : 'Table settings'
+            : t('game.settings')
         }
         onClose={() => {
           setTableMenuOpen(false);
@@ -436,7 +458,7 @@ export function WaitingTable({
                 </PidroText>
               </BevelButton>
               <BevelButton
-                label="Back"
+                label={t('game.back')}
                 material="glass"
                 fullWidth
                 onPress={() => setSelectedSeat(null)}
@@ -452,7 +474,7 @@ export function WaitingTable({
                 loading={controlsBusy}
               />
               <PidroText role="metadata" tone="soft">
-                Players
+                {t('game.players')}
               </PidroText>
               {seats
                 .filter((seat) => seat.occupied && !seat.isYou && !seat.isBot)
@@ -467,10 +489,10 @@ export function WaitingTable({
                   />
                 ))}
               <PidroText role="metadata" tone="muted">
-                Seat changes or disconnects reset readiness. Bots are ready automatically.
+                {t('game.readiness_description')}
               </PidroText>
               <BevelButton
-                label="Close"
+                label={t('game.close', { title: t('game.settings') })}
                 material="glass"
                 fullWidth
                 onPress={() => setTableMenuOpen(false)}

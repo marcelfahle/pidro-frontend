@@ -5,15 +5,12 @@ import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { useTranslation } from '@/i18n';
 
-const RULES = [
-  ['Partners', 'North and South play as a team against East and West.'],
-  ['Bid', 'Win the bid to choose the trump suit for the hand.'],
-  ['Play', 'Take turns playing cards and collect point cards with your partner.'],
-  ['Score', 'The bidding team must make its bid or lose that many points.'],
-];
+const RULES = ['partners', 'bid', 'play', 'score'] as const;
 
 export default function HelpScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
@@ -21,14 +18,14 @@ export default function HelpScreen() {
   return (
     <ScreenShell scroll compact={!landscape} testID="help-screen" contentStyle={styles.shell}>
       <ScreenHeader
-        title="How to play"
-        subtitle="The essentials for joining a Pidro table."
+        title={t('help.title')}
+        subtitle={t('help.subtitle')}
         onBack={() => router.back()}
       />
       <Surface variant="window" style={[styles.panel, landscape && styles.panelLandscape]} padded>
-        {RULES.map(([title, text], index) => (
+        {RULES.map((rule, index) => (
           <Surface
-            key={title}
+            key={rule}
             variant="subtle"
             style={[styles.rule, landscape && styles.ruleLandscape]}>
             <View style={styles.ruleNumber}>
@@ -37,9 +34,9 @@ export default function HelpScreen() {
               </PidroText>
             </View>
             <View style={styles.ruleCopy}>
-              <PidroText role="label">{title}</PidroText>
+              <PidroText role="label">{t(`help.${rule}`)}</PidroText>
               <PidroText role="body" tone="soft">
-                {text}
+                {t(`help.${rule}Body`)}
               </PidroText>
             </View>
           </Surface>

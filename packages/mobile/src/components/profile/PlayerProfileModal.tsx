@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { publicPlayerName, type ProfileIdentity } from '@pidro/shared';
+import { localizedError, publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { profileApi } from '@/api/profile';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSpacing } from '@/design/tokens';
+import { useTranslation } from '@/i18n';
 
 interface PlayerProfileProps {
   playerId: string | null;
@@ -28,12 +29,13 @@ export function PlayerProfileModal({ playerId, onClose, onRemove, fixture }: Pla
 }
 
 function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerProfileProps) {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<ProfileIdentity | null>(fixture ?? null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const [confirm, setConfirm] = useState(false);
   const [removing, setRemoving] = useState(false);
-  const [removeError, setRemoveError] = useState(false);
+  const [removeError, setRemoveError] = useState<unknown>(null);
   const confirming = confirm && !!onRemove;
   useEffect(() => {
     if (fixture) return;
@@ -44,8 +46,8 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
         .then((identity) => {
           if (active) setProfile(identity);
         })
-        .catch(() => {
-          if (active) setError(true);
+        .catch((error) => {
+          if (active) setError(error ?? true);
         });
     }
     return () => {
@@ -56,7 +58,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
   return (
     <Modal
       isOpen={!!playerId}
-      title="Player profile"
+      title={t('profile.player_title')}
       onClose={onClose}
       dismissible={!removing}
       scrollable
@@ -65,10 +67,10 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
         {error ? (
           <View style={styles.content}>
             <PidroText role="body" tone="danger">
-              Could not load this player. Check your connection and try again.
+              {localizedError(error, 'profile.player_error')}
             </PidroText>
             <BevelButton
-              label="Retry"
+              label={t('profile.retry')}
               onPress={() => {
                 setError(false);
                 setAttempt(attempt + 1);
@@ -77,7 +79,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
           </View>
         ) : !profile || profile.user_id !== playerId ? (
           <PidroText role="body" tone="soft" align="center">
-            Loading…
+            {t('profile.loading')}
           </PidroText>
         ) : (
           <View style={styles.content}>
@@ -85,11 +87,11 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
               <>
                 <PlayerAvatar uri={profile.avatar_url} size={80} style={styles.avatar} />
                 <PidroText role="label" align="center">
-                  {publicPlayerName(profile.username, 'Player', profile.display_name)}
+                  {publicPlayerName(profile.username, t('social.player'), profile.display_name)}
                 </PidroText>
-                <PidroText role="label">About me</PidroText>
+                <PidroText role="label">{t('profile.about')}</PidroText>
                 <PidroText role="body" tone={profile.bio ? 'default' : 'muted'}>
-                  {profile.bio || 'No bio yet.'}
+                  {profile.bio || t('profile.no_bio')}
                 </PidroText>
               </>
             ) : null}
@@ -97,31 +99,36 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
               confirming ? (
                 <>
                   <PidroText role="body">
-                    Remove {publicPlayerName(profile.username, 'Player', profile.display_name)} as a
-                    friend?
+                    {t('friends.remove_confirm', {
+                      name: publicPlayerName(
+                        profile.username,
+                        t('social.player'),
+                        profile.display_name
+                      ),
+                    })}
                   </PidroText>
                   {removeError ? (
                     <PidroText role="body" tone="danger" accessibilityRole="alert">
-                      Could not remove this friend. Please try again.
+                      {localizedError(removeError, 'friends.remove_failed')}
                     </PidroText>
                   ) : null}
                   <BevelButton
-                    label="Remove friend"
+                    label={t('friends.remove')}
                     loading={removing}
                     onPress={async () => {
                       setRemoving(true);
                       setRemoveError(false);
                       try {
                         await onRemove();
-                      } catch {
-                        setRemoveError(true);
+                      } catch (error) {
+                        setRemoveError(error ?? true);
                       } finally {
                         setRemoving(false);
                       }
                     }}
                   />
                   <BevelButton
-                    label="Cancel"
+                    label={t('common.cancel')}
                     material="glass"
                     disabled={removing}
                     onPress={() => setConfirm(false)}
@@ -129,7 +136,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
                 </>
               ) : (
                 <BevelButton
-                  label="Remove friend"
+                  label={t('friends.remove')}
                   material="glass"
                   onPress={() => setConfirm(true)}
                 />
@@ -139,7 +146,12 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
         )}
       </View>
       {!confirming ? (
-        <BevelButton label="Close" material="glass" disabled={removing} onPress={onClose} />
+        <BevelButton
+          label={t('profile.close')}
+          material="glass"
+          disabled={removing}
+          onPress={onClose}
+        />
       ) : null}
     </Modal>
   );

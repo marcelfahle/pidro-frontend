@@ -25,6 +25,7 @@ import { HandSelector } from '@/components/game/HandSelector';
 import type { RematchVote } from '@pidro/shared';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { useTableReserves } from './TableChrome';
+import { useTranslation } from '@/i18n';
 
 const noop = () => {};
 
@@ -145,6 +146,7 @@ export function DevOverlays({
   playerName?: string;
   guest?: boolean;
 }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const [voted, setVoted] = useState(false);
   const insets = useSafeAreaInsets();
@@ -234,7 +236,7 @@ export function DevOverlays({
           onPlayAgain={() => setVoted(true)}
           rematch={voted && vote ? { ...vote, agreed: vote.agreed + 1, youAgreed: true } : vote}
           rematchPending={rematch === 'pending'}
-          playAgainLabel={guest ? 'Play again' : undefined}
+          playAgainLabel={guest ? t('game.play_again') : undefined}
           showGuestSave={guest}
           onSaveGuest={() => {}}
           progressionSummary={

@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'bun:test';
+import { setLocale } from '@pidro/shared';
 import {
   availableMoveTargets,
   canManageRoom,
+  inviteShareMessage,
   seatDisplayName,
 } from '../../src/features/invites/hostControls.ts';
 
@@ -29,6 +31,26 @@ const room = {
 };
 
 describe('waiting-table host controls', () => {
+  it('shares in the current locale with the original URL and dashed invite code', () => {
+    const invite = {
+      url: 'https://example.com/i/7KQ4M2XB',
+      code: '7KQ4M2XB',
+      share_text: 'Server English',
+    };
+    try {
+      setLocale('en');
+      expect(inviteShareMessage(invite)).toBe(
+        'Come play Pidro with me 🃏 https://example.com/i/7KQ4M2XB — code 7KQ4-M2XB'
+      );
+      setLocale('sv');
+      expect(inviteShareMessage(invite)).toBe(
+        'Kom och spela Pidro med mig 🃏 https://example.com/i/7KQ4M2XB — kod 7KQ4-M2XB'
+      );
+    } finally {
+      setLocale('en');
+    }
+  });
+
   it('only exposes controls to the room host while waiting', () => {
     expect(canManageRoom(room, 'host-1', 'player')).toBe(true);
     expect(canManageRoom(room, 'guest-1', 'player')).toBe(false);

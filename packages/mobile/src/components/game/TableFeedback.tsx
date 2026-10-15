@@ -12,7 +12,15 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { useSeatDecisions } from '@pidro/shared';
 import { TABLE_HEADER, useTableReserves } from '@/game/canvas/TableChrome';
-import { enqueueTableNotice, type QueuedTableNotice, type TableNotice } from '@/game/tableNotices';
+import {
+  enqueueTableNotice,
+  tableNoticeText,
+  type QueuedTableNotice,
+  type TableNotice,
+} from '@/game/tableNotices';
+import { useTranslation } from '@/i18n';
+import { localizedError } from '@pidro/shared';
+import { PidroSpacing } from '@/design/tokens';
 
 export function useTableNotices(roomCode: string) {
   const [notices, setNotices] = useState<QueuedTableNotice[]>([]);
@@ -39,6 +47,7 @@ export function TableSeatDecision({
 }: {
   decisions: ReturnType<typeof useSeatDecisions>;
 }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const decision = decisions.decision;
   // Losing eligibility or starting your turn closes review without resolving it.
@@ -58,24 +67,28 @@ export function TableSeatDecision({
             contentContainerClassName="p-6">
             <View className="flex-row items-center justify-between gap-3">
               <Text className="flex-1 text-sm font-semibold text-amber-200">
-                {decisions.pendingCount} pending
+                {t('game.pending', { count: decisions.pendingCount })}
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel="Review seats later"
-                accessibilityHint="Leaves these decisions waiting while you play."
+                accessibilityLabel={t('game.review_later')}
+                accessibilityHint={t('game.review_hint')}
                 onPress={() => setExpanded(false)}
                 className="min-h-11 justify-center px-3">
-                <Text className="font-semibold text-amber-100">Later</Text>
+                <Text className="font-semibold text-amber-100">{t('game.later')}</Text>
               </Pressable>
             </View>
             <Text className="mt-3 text-lg font-bold text-amber-100">
-              {decision.playerName} left
+              {decision.playerNameRaw
+                ? t('game.player_left', { name: decision.playerNameRaw })
+                : t('game.unnamed_player_left')}
             </Text>
-            <Text className="mt-1 text-sm text-amber-200 capitalize">{decision.position} seat</Text>
+            <Text className="mt-1 text-sm text-amber-200 capitalize">
+              {t('game.position_seat', { position: t(`table.position.${decision.position}`) })}
+            </Text>
             {decisions.error && (
               <Text accessibilityLiveRegion="polite" className="mt-4 text-sm text-red-200">
-                {decisions.error}
+                {localizedError(decisions.errorCause, 'game.seat_update_failed')}
               </Text>
             )}
             <View className="mt-6 gap-3">
@@ -86,7 +99,7 @@ export function TableSeatDecision({
                 onPress={decisions.openSeat}
                 className="min-h-12 items-center justify-center rounded-lg bg-amber-400 px-3 py-2 disabled:opacity-50">
                 <Text className="text-center font-bold text-amber-950">
-                  {decisions.busy ? 'Updating seat…' : 'Open seat for a player'}
+                  {t(decisions.busy ? 'game.updating_seat' : 'game.open_player')}
                 </Text>
               </Pressable>
               <Pressable
@@ -95,7 +108,7 @@ export function TableSeatDecision({
                 disabled={decisions.busy}
                 onPress={decisions.keepBot}
                 className="min-h-12 items-center justify-center rounded-lg border border-amber-400/40 px-3 py-2 disabled:opacity-50">
-                <Text className="text-center font-bold text-amber-100">Keep bot</Text>
+                <Text className="text-center font-bold text-amber-100">{t('game.keep_bot')}</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -107,9 +120,9 @@ export function TableSeatDecision({
             onPress={() => setExpanded(true)}
             className="min-h-11 self-end rounded-xl border border-amber-400/40 bg-amber-950 px-3 py-3">
             <Text className="text-sm font-semibold text-amber-100">
-              Review seats ({decisions.pendingCount})
+              {t('game.review_seats', { count: decisions.pendingCount })}
             </Text>
-            {!decision && <Text className="text-xs text-amber-200">After your turn</Text>}
+            {!decision && <Text className="text-xs text-amber-200">{t('game.after_turn')}</Text>}
           </Pressable>
         )}
       </View>
@@ -122,14 +135,16 @@ export function TableSeatDecision({
  * toolbar). It never moves the table or covers the header and seats.
  */
 export function TableFeedback({ notice, top }: { notice: TableNotice | null; top?: number }) {
+  useTranslation();
+  const message = notice ? tableNoticeText(notice) : '';
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { landscape, noticeSlot } = useTableReserves();
 
   useEffect(() => {
     if (!notice || Platform.OS !== 'ios') return;
-    AccessibilityInfo.announceForAccessibilityWithOptions(notice.message, { queue: true });
-  }, [notice]);
+    AccessibilityInfo.announceForAccessibilityWithOptions(message, { queue: true });
+  }, [notice, message]);
 
   const noticeWidth = Math.min(360, width - insets.left - insets.right - 24);
   return (
@@ -140,12 +155,16 @@ export function TableFeedback({ notice, top }: { notice: TableNotice | null; top
         <View
           testID="table-feedback"
           accessible={Platform.OS !== 'ios'}
-          accessibilityLabel={notice.message}
+          accessibilityLabel={message}
           accessibilityLiveRegion="polite"
           aria-live="polite"
           aria-atomic
           className="flex-row items-center gap-2 rounded-xl border border-white/20 bg-slate-950 px-3 shadow-lg"
-          style={{ width: noticeWidth, height: landscape ? 36 : 52 }}>
+          style={{
+            width: noticeWidth,
+            minHeight: landscape ? 36 : 52,
+            paddingVertical: PidroSpacing.xs,
+          }}>
           <View
             className={
               notice.variant === 'error'
@@ -156,14 +175,12 @@ export function TableFeedback({ notice, top }: { notice: TableNotice | null; top
             }
           />
           <Text
-            numberOfLines={landscape ? 1 : 2}
-            ellipsizeMode="tail"
             className={
               notice.variant === 'error'
                 ? 'flex-1 text-sm text-red-100'
                 : 'flex-1 text-sm text-white'
             }>
-            {notice.message}
+            {message}
           </Text>
         </View>
       ) : null}

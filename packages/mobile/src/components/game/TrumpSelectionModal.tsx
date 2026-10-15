@@ -5,7 +5,11 @@ import { DecisionWindow } from '@/components/ui/DecisionWindow';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { computeLayout, northSeatBottom } from '@/game/canvas/layout';
+import { useTableReserves } from '@/game/canvas/TableChrome';
 import type { Card, Suit } from '@/types/game';
+import { useTranslation } from '@/i18n';
+import { localizedError } from '@pidro/shared';
 
 const SUIT_IMAGES = {
   hearts: require('~/assets/images/heart.png'),
@@ -14,12 +18,7 @@ const SUIT_IMAGES = {
   spades: require('~/assets/images/spade.png'),
 };
 
-const SUITS: { value: Suit; label: string }[] = [
-  { value: 'hearts', label: 'Hearts' },
-  { value: 'diamonds', label: 'Diamonds' },
-  { value: 'clubs', label: 'Clubs' },
-  { value: 'spades', label: 'Spades' },
-];
+const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
 
 interface TrumpSelectionModalProps {
   isOpen: boolean;
@@ -28,12 +27,26 @@ interface TrumpSelectionModalProps {
 }
 
 export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelectionModalProps) {
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedSuit, setSelectedSuit] = useState<Suit | null>(null);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<unknown>(null);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const landscape = width > height;
+  const { topReserve, bottomReserve } = useTableReserves();
+  const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
+  const handTop = layout.hand.cy - layout.cardH / 2;
+  // Every portrait uses the actual table band, including full-height North's
+  // name/status and the lifted hand. Compact art yields, never type or targets.
+  const paddingTop = landscape
+    ? insets.top + PidroSpacing.lg
+    : northSeatBottom(layout, insets.top + topReserve) + PidroSpacing.xs;
+  const paddingBottom = landscape
+    ? insets.bottom + PidroSpacing.lg
+    : height - handTop + PidroSpacing.xxl;
+  // The roomy two-row window needs about 350pt with its two-line description.
+  const compact = landscape || height - paddingTop - paddingBottom < 360;
 
   const suitCounts = useMemo(() => {
     const counts: Record<Suit, number> = { hearts: 0, diamonds: 0, clubs: 0, spades: 0 };
@@ -52,7 +65,7 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
       await onSelectTrump(suit);
     } catch (error) {
       console.error('[Game] Declare trump failed:', error);
-      setSubmissionError('We could not declare that suit. Check your connection and try again.');
+      setSubmissionError(error);
       setSelectedSuit(null);
     } finally {
       setIsSubmitting(false);
@@ -66,31 +79,37 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
       style={[
         styles.overlay,
         {
-          paddingTop: insets.top + PidroSpacing.lg,
-          paddingBottom: insets.bottom + PidroSpacing.lg,
+          paddingTop,
+          paddingBottom,
         },
       ]}
       pointerEvents="box-none">
       <DecisionWindow
         testID="trump-window"
-        title="Choose trump"
-        description="You won the bid. Choose the trump suit for this hand."
-        compact={landscape}
+        title={t('game.choose_trump')}
+        description={t('game.choose_trump_description')}
+        compact={compact}
+        scrollable={compact}
         style={{ width: Math.min(width - 24, landscape ? 620 : 390) }}>
         <View style={[styles.suitGrid, landscape && styles.suitGridLandscape]}>
-          {SUITS.map(({ value, label }) => {
+          {SUITS.map((value) => {
+            const label = t(`game.${value}`);
             const count = suitCounts[value];
             const selected = selectedSuit === value;
             return (
               <PressableFX
                 key={value}
                 accessibilityRole="button"
-                accessibilityLabel={`${label}, ${count} ${count === 1 ? 'card' : 'cards'} in your hand`}
+                accessibilityLabel={t('game.suit_hand', {
+                  suit: label,
+                  cards: t('game.cards', { count }),
+                })}
                 accessibilityState={{ selected, disabled: isSubmitting }}
                 onPress={() => handleSelect(value)}
                 disabled={isSubmitting}
                 style={[
                   styles.suitButton,
+                  compact && styles.suitButtonTight,
                   landscape && styles.suitButtonLandscape,
                   selected && styles.suitButtonSelected,
                   isSubmitting && !selected && styles.suitButtonDisabled,
@@ -98,7 +117,7 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
                 pressedStyle={styles.suitButtonPressed}>
                 <Image
                   source={SUIT_IMAGES[value]}
-                  style={[styles.suitImage, landscape && styles.suitImageLandscape]}
+                  style={[styles.suitImage, compact && styles.suitImageLandscape]}
                   resizeMode="contain"
                 />
                 <View style={styles.suitCopy}>
@@ -106,9 +125,7 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
                     {label}
                   </PidroText>
                   <PidroText role="metadata" tone={selected ? 'gold' : 'muted'} align="center">
-                    {selected && isSubmitting
-                      ? 'Declaring…'
-                      : `${count} ${count === 1 ? 'card' : 'cards'}`}
+                    {selected && isSubmitting ? t('game.declaring') : t('game.cards', { count })}
                   </PidroText>
                 </View>
               </PressableFX>
@@ -117,7 +134,7 @@ export function TrumpSelectionModal({ isOpen, onSelectTrump, cards }: TrumpSelec
         </View>
         {submissionError ? (
           <PidroText role="metadata" tone="danger" align="center">
-            {submissionError}
+            {localizedError(submissionError, 'game.trump_failed')}
           </PidroText>
         ) : null}
       </DecisionWindow>
@@ -160,6 +177,11 @@ const styles = StyleSheet.create({
     minHeight: 68,
     flexDirection: 'row',
     padding: PidroSpacing.xs,
+  },
+  suitButtonTight: {
+    minHeight: 48,
+    flexDirection: 'row',
+    padding: PidroSpacing.xxs,
   },
   suitButtonSelected: {
     borderColor: PidroColors.gold,

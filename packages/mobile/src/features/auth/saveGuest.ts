@@ -1,14 +1,31 @@
 import { AxiosError } from 'axios';
-import type { User } from '@pidro/shared';
+import {
+  localizedError,
+  localizedFieldErrors,
+  t,
+  type TranslationKey,
+  type User,
+} from '@pidro/shared';
 
-type ApiError = {
-  errors?: { code?: string; title?: string; detail: string }[];
+type ApiErrorItem = {
+  field?: string;
+  error_code?: string;
+  error_params?: Record<string, unknown>;
+  code?: string;
+  detail?: string;
+};
+type ApiError = ApiErrorItem & {
+  errors?: ApiErrorItem[];
+  field_errors?: ApiErrorItem[];
   message?: string;
 };
 
 export type GuestSaveField = 'displayName' | 'email' | 'password';
 export type GuestSaveFailure = {
   message: string;
+  messageKey?: TranslationKey;
+  originalError?: unknown;
+  emailTaken?: boolean;
   fields?: Partial<Record<GuestSaveField, string>>;
   classicNameReserved?: boolean;
   uncertain?: boolean;
@@ -21,28 +38,78 @@ type GuestSaveSession = {
   user: { id: string; guest?: boolean } | null;
 };
 
+/** Resolve again on render so an existing failure follows a language change. */
+export function guestSaveMessage(failure: GuestSaveFailure): string {
+  if (failure.messageKey) return t(failure.messageKey);
+  return localizedError(failure.originalError, 'auth.save_failed');
+}
+
+/** Keep the failure and field identity in UI state, not its translated snapshot. */
+export function guestSaveFieldMessage(
+  failure: GuestSaveFailure,
+  field: GuestSaveField
+): string | undefined {
+  return guestSaveFailure(failure.originalError).fields?.[field];
+}
+
 export function guestSaveFailure(error: unknown): GuestSaveFailure {
   if (!(error instanceof AxiosError)) {
-    return { message: error instanceof Error ? error.message : 'Could not save your account.' };
+    return { message: localizedError(error, 'auth.save_failed'), originalError: error };
   }
   const data = error.response?.data as ApiError | undefined;
   const fields: Partial<Record<GuestSaveField, string>> = {};
   let classicNameReserved = false;
-  for (const item of data?.errors ?? []) {
-    if (item.code === 'classic_name_reserved') {
-      fields.displayName = 'That name is taken.';
-      classicNameReserved = true;
-    } else if (item.code === 'USERNAME_TAKEN' || item.code === 'username') {
-      fields.displayName = item.detail;
-    } else if (item.code === 'EMAIL_TAKEN' || item.code === 'email') {
-      fields.email = item.detail;
-    } else if (item.code === 'password') {
-      fields.password = item.detail;
+  let emailTaken = false;
+  const items = [
+    ...(Array.isArray(data?.field_errors) ? data.field_errors : []),
+    { code: data?.code, error_code: data?.error_code, error_params: data?.error_params },
+    ...(Array.isArray(data?.errors) ? data.errors : []),
+  ];
+  for (const item of items) {
+    const code = item.error_code ?? item.code;
+    const name = item.field ?? item.code;
+    const reserved = code === 'classic_name_reserved' || code === 'CLASSIC_NAME_RESERVED';
+    const nameTaken = code === 'USERNAME_TAKEN' || code === 'username_taken';
+    const taken = code === 'EMAIL_TAKEN' || code === 'email_taken';
+    let field: GuestSaveField;
+    if (name === 'username' || name === 'display_name' || reserved || nameTaken) {
+      field = 'displayName';
+    } else if (name === 'email' || taken) {
+      field = 'email';
+    } else if (name === 'password') {
+      field = 'password';
+    } else {
+      continue;
+    }
+
+    // Structured field reasons win over the parallel legacy field-name entries.
+    if (fields[field] !== undefined) continue;
+    const legacyTaken = item.error_code === undefined && item.detail === 'has already been taken';
+    if (field === 'email') emailTaken = taken || code === 'field_taken' || legacyTaken;
+    if (reserved) classicNameReserved = true;
+
+    if (
+      field === 'displayName' &&
+      (reserved || nameTaken || code === 'field_taken' || legacyTaken)
+    ) {
+      fields[field] = t('auth.name_taken');
+    } else if (field === 'email' && emailTaken) {
+      fields[field] = t('auth.email_taken');
+    } else {
+      fields[field] = localizedError(
+        item,
+        !item.error_code && field === 'email' ? 'auth.check_email' : 'error.field_invalid'
+      );
     }
   }
+  for (const [field, message] of Object.entries(localizedFieldErrors(error))) {
+    if (field === 'username' || field === 'display_name') fields.displayName ??= message;
+    else if (field === 'email' || field === 'password') fields[field] ??= message;
+  }
   return {
-    message:
-      data?.errors?.[0]?.detail || data?.message || 'Could not save your account. Try again.',
+    message: localizedError(error, 'auth.save_failed'),
+    originalError: error,
+    ...(emailTaken ? { emailTaken: true } : {}),
     ...(Object.keys(fields).length ? { fields } : {}),
     ...(classicNameReserved ? { classicNameReserved: true } : {}),
   };
@@ -70,7 +137,10 @@ export async function runGuestSave({
   setSessionPreservation: (preserve: boolean) => void;
 }): Promise<GuestSaveResult> {
   if (!original.user?.guest || !original.accessToken) {
-    return { ok: false, error: { message: 'This guest session is no longer available.' } };
+    return {
+      ok: false,
+      error: { message: t('auth.guest_missing'), messageKey: 'auth.guest_missing' },
+    };
   }
   const originalUser = original.user;
   const installIfOriginal = (response: GuestSaveResponse) => {
@@ -97,7 +167,7 @@ export async function runGuestSave({
     setSessionPreservation(false);
     return {
       ok: false,
-      error: { message: 'Your session changed while the account was being saved.' },
+      error: { message: t('auth.session_changed'), messageKey: 'auth.session_changed' },
     };
   } catch (upgradeError) {
     const recoverable =
@@ -119,7 +189,8 @@ export async function runGuestSave({
     return {
       ok: false,
       error: {
-        message: 'The connection was interrupted. Your save may have completed; try again.',
+        message: t('auth.save_uncertain'),
+        messageKey: 'auth.save_uncertain',
         uncertain: true,
       },
     };

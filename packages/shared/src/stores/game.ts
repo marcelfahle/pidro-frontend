@@ -171,7 +171,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         playerMeta[position] = {
           ...playerMeta[position],
           playerId: seat.player_id,
-          username: publicPlayerName(seat.username, 'Player', seat.display_name),
+          username: publicPlayerName(seat.username, '', seat.display_name),
           avatar_url: seat.avatar_url !== undefined ? seat.avatar_url : (known?.avatar_url ?? null),
           level: seat.level !== undefined ? seat.level : (known?.level ?? null),
           pin: seat.pin !== undefined ? seat.pin : (known?.pin ?? null),
@@ -250,7 +250,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           username: seat?.player
             ? publicPlayerName(
                 seat.player.username,
-                sameOccupant ? (previous.username ?? 'Player') : 'Player',
+                sameOccupant ? (previous.username ?? '') : '',
                 seat.player.display_name,
               )
             : sameOccupant
@@ -313,7 +313,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         if (!player || player.is_bot) continue;
         playerMeta[position] = {
           ...meta,
-          username: publicPlayerName(player.username, meta.username ?? 'Player', player.display_name),
+          username: publicPlayerName(player.username, meta.username ?? '', player.display_name),
           ...(player.avatar_url !== undefined ? { avatar_url: player.avatar_url } : {}),
           ...(player.level !== undefined ? { level: player.level } : {}),
           ...(player.pin !== undefined ? { pin: player.pin } : {}),
@@ -517,7 +517,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           playerId,
           username:
             (keepsKnownGuestName ? previous.username : snapshotName || previous?.username) ??
-            (seat.occupant_type === 'bot' ? 'Bot' : playerId ? 'Player' : null),
+            null,
           avatar_url:
             seat.avatar_url !== undefined ? seat.avatar_url : (previous?.avatar_url ?? null),
           level: seat.level !== undefined ? seat.level : (previous?.level ?? null),
@@ -596,7 +596,7 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
               id,
               username: publicPlayerName(
                 snapshot.seats[position].username,
-                known?.username ?? 'Player',
+                known?.username ?? '',
                 snapshot.seats[position].display_name ?? known?.display_name,
               ),
               avatar_url:

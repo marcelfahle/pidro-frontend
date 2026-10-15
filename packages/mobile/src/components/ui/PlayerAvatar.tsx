@@ -19,6 +19,7 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroFonts } from '@/design/tokens';
 import { isStillCapture } from '@/utils/stillCapture';
+import { useTranslation } from '@/i18n';
 import {
   avatarLabel,
   avatarParts,
@@ -98,6 +99,7 @@ export function PlayerAvatar({
   style,
   testID,
 }: PlayerAvatarProps) {
+  const { t } = useTranslation();
   const parts = avatarParts(size, { beside: label !== 'below' });
   const seated = kind !== 'open';
   const gold = ring !== 'glass' && kind === 'player';
@@ -266,7 +268,7 @@ export function PlayerAvatar({
                   { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
                   away ? styles.awayName : null,
                 ]}>
-                {name || 'Open seat'}
+                {name || (kind === 'open' ? t('ui.openSeat') : '')}
               </PidroText>
             ) : null}
             <Animated.View style={[{ transformOrigin: SWELL_ORIGIN[label] }, acted.swell]}>

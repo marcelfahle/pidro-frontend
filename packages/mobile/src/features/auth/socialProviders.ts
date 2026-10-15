@@ -40,7 +40,7 @@ async function facebookSignIn(): Promise<{
   credential: FacebookCredential | null;
 }> {
   if (!facebookNativeModuleLoaded()) {
-    throw new Error('Facebook sign-in is unavailable in this build.');
+    throw Object.assign(new Error('FACEBOOK_UNAVAILABLE'), { code: 'FACEBOOK_UNAVAILABLE' });
   }
   const { AccessToken, AuthenticationToken, LoginManager, Settings } =
     await import('react-native-fbsdk-next');

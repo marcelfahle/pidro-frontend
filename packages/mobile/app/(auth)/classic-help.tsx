@@ -18,12 +18,14 @@ import { isEmailAddress } from '@/features/auth/accountEmail';
 import { sendClassicHelp, SUPPORT_EMAIL } from '@/features/auth/classicRecovery';
 import { useFlowBack } from '@/hooks/useFlowBack';
 import { useAuthStore } from '@/stores/auth';
+import { useTranslation, type TranslationKey } from '@/i18n';
 
 type Fixture = 'filled' | 'sent' | 'mail';
 type Field = 'name' | 'email';
 type Outcome = 'sent' | 'mail';
 
 export default function ClassicHelpScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const goBack = useFlowBack();
   const params = useLocalSearchParams<{ name?: string; email?: string; fixture?: string }>();
@@ -49,9 +51,7 @@ export default function ClassicHelpScreen() {
   const detailsRef = useRef<TextInput>(null);
   // Someone with an account is not playing as a guest while they wait.
   const keepPlaying =
-    user && !user.guest
-      ? 'You can keep playing while we\u00a0look.'
-      : 'You can keep playing as a guest while we\u00a0look.';
+    user && !user.guest ? t('auth.keep_playing_note') : t('auth.keep_playing_guest');
 
   const clear = (field: Field) => {
     setFields((current) => ({ ...current, [field]: undefined }));
@@ -61,11 +61,9 @@ export default function ClassicHelpScreen() {
   const submit = useCallback(async () => {
     if (busy) return;
     const nextFields: Partial<Record<Field, string>> = {};
-    if (!name.trim()) nextFields.name = 'Enter the name you played as.';
+    if (!name.trim()) nextFields.name = 'auth.support_enter_name';
     if (!isEmailAddress(email)) {
-      nextFields.email = email.trim()
-        ? 'Check that email address.'
-        : 'Enter an email we can reply to.';
+      nextFields.email = email.trim() ? 'auth.check_email' : 'auth.support_enter_email';
     }
     setFields(nextFields);
     if (nextFields.name) {
@@ -90,27 +88,27 @@ export default function ClassicHelpScreen() {
     setBusy(false);
     if (result.status === 'sent' || result.status === 'mail') setOutcome(result.status);
     else if (result.status === 'rejected' && result.field === 'email')
-      setFields({ email: 'Check that email address.' });
-    else if (result.status === 'rejected') setFailure(result.message);
-    else setFailure(`We couldn’t send that. Email us at ${SUPPORT_EMAIL} and we’ll find it.`);
+      setFields({ email: 'auth.check_email' });
+    else if (result.status === 'rejected') setFailure(result.messageKey);
+    else setFailure('auth.support_failed');
   }, [busy, details, email, fixture, name]);
 
   if (outcome) {
-    const title = outcome === 'sent' ? 'Message sent' : 'Almost there';
+    const title = t(outcome === 'sent' ? 'auth.support_sent' : 'auth.support_mail');
     const body =
       outcome === 'sent'
-        ? `A person reads it and replies to ${email.trim()}.`
-        : `We opened a message to ${SUPPORT_EMAIL} in your mail app. Send it and a person replies by email.`;
+        ? t('auth.support_reply', { email: email.trim() })
+        : t('auth.support_mail_body', { email: SUPPORT_EMAIL });
     const done = (
       <AuthFlowButton
-        label="Keep playing"
+        label={t('auth.keep_playing')}
         onPress={() => router.replace(user ? '/home' : '/welcome')}
       />
     );
     return (
       <AuthFlowScreen
         testID="classic-help-screen"
-        headerTitle="Pidro Classic"
+        headerTitle={t('auth.classic')}
         onBack={() => router.replace(user ? '/home' : '/welcome')}
         title={title}
         body={body}
@@ -122,9 +120,7 @@ export default function ClassicHelpScreen() {
             <View style={styles.sentRow}>
               <AuthFlowIconTile icon={outcome === 'sent' ? 'check' : 'mail'} quiet />
               <PidroText role="body" tone="soft" style={[styles.sentRowCopy, metrics.body]}>
-                {outcome === 'sent'
-                  ? 'We have your message. Watch your inbox for a reply.'
-                  : 'Your message is waiting in your mail app.'}
+                {outcome === 'sent' ? t('auth.support_received') : t('auth.support_waiting')}
               </PidroText>
             </View>
             {done}
@@ -157,13 +153,13 @@ export default function ClassicHelpScreen() {
   const nameField = (
     <Input
       ref={nameRef}
-      label="Name you played as"
+      label={t('auth.support_name')}
       value={name}
       onChangeText={(next) => {
         setName(next);
         clear('name');
       }}
-      error={fields.name}
+      error={fields.name ? t(fields.name as TranslationKey) : undefined}
       style={inputStyle}
       editable={!busy}
       autoCapitalize="words"
@@ -178,14 +174,14 @@ export default function ClassicHelpScreen() {
   const emailField = (
     <Input
       ref={emailRef}
-      label="Email to reach you"
-      placeholder="you@example.com"
+      label={t('auth.support_email')}
+      placeholder={t('auth.email_placeholder')}
       value={email}
       onChangeText={(next) => {
         setEmail(next);
         clear('email');
       }}
-      error={fields.email}
+      error={fields.email ? t(fields.email as TranslationKey) : undefined}
       style={inputStyle}
       editable={!busy}
       autoCapitalize="none"
@@ -203,13 +199,15 @@ export default function ClassicHelpScreen() {
   return (
     <AuthFlowScreen
       testID="classic-help-screen"
-      headerTitle="Pidro Classic"
+      headerTitle={t('auth.classic')}
       onBack={goBack}
-      title="We’ll find it for you"
-      body="Tell us what you remember. A person reads this and replies by email."
+      title={t('auth.support_title')}
+      body={t('auth.support_intro')}
       note={keepPlaying}>
       <AuthFlowWindow testID="classic-help-window">
-        {failure ? <AuthFlowNotice>{failure}</AuthFlowNotice> : null}
+        {failure ? (
+          <AuthFlowNotice>{t(failure as TranslationKey, { email: SUPPORT_EMAIL })}</AuthFlowNotice>
+        ) : null}
         {landscape ? (
           <View style={styles.pair}>
             <View style={styles.pairField}>{nameField}</View>
@@ -223,8 +221,8 @@ export default function ClassicHelpScreen() {
         )}
         <Input
           ref={detailsRef}
-          label="Anything else that helps"
-          placeholder="An old email address, when you last played"
+          label={t('auth.support_details')}
+          placeholder={t('auth.support_placeholder')}
           value={details}
           onChangeText={setDetails}
           style={[
@@ -239,7 +237,7 @@ export default function ClassicHelpScreen() {
           textAlignVertical="top"
           keyboardAppearance="dark"
         />
-        <AuthFlowButton label="Send to support" loading={busy} onPress={submit} />
+        <AuthFlowButton label={t('auth.support_send')} loading={busy} onPress={submit} />
       </AuthFlowWindow>
     </AuthFlowScreen>
   );

@@ -23,7 +23,8 @@ import {
 import { invitePlatform } from '@/features/invites/platform';
 import { getInstallId } from '@/features/invites/installId';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
-import { t } from '@/i18n';
+import { useTranslation, formatNumber, type TranslationKey } from '@/i18n';
+import { localizedError } from '@/utils/apiErrors';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
@@ -46,6 +47,7 @@ const stateMessageKeys = {
 } as const;
 
 export function JoinInviteScreen({ code, source, fixture }: Props) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const compactLandscape = width > height && height < 500;
@@ -64,8 +66,8 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
     const normalized = validateDisplayName(fixture.label);
     return normalized.error ? '' : normalized.value;
   });
-  const [nameError, setNameError] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<TranslationKey | null>(null);
+  const [error, setError] = useState<{ cause?: unknown; fallback: TranslationKey } | null>(null);
   const [terminalLoadError, setTerminalLoadError] = useState(false);
   const [movedCode, setMovedCode] = useState<string | null>(null);
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -117,7 +119,10 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       const status = (caught as { response?: { status?: number } })?.response?.status;
       const terminal = status === 404 || status === 410;
       setTerminalLoadError(terminal);
-      setError(terminal ? t('invite.state.unknown') : t('invite.error.network'));
+      setError({
+        cause: caught,
+        fallback: terminal ? 'invite.state.unknown' : 'invite.error.network',
+      });
       if (terminal) clearPendingInvite();
     } finally {
       if (routeActiveRef.current) setLoading(false);
@@ -146,9 +151,9 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
   );
 
   const applyStateChange = useCallback(
-    (state: Exclude<InvitePreview['state'], 'open' | 'moved'>, detail?: string) => {
+    (state: Exclude<InvitePreview['state'], 'open' | 'moved'>) => {
       setPreview((current) => (current ? { ...current, state } : current));
-      setError(detail ?? null);
+      setError(null);
       if (classifyInviteState(state) === 'terminal') clearPendingInvite();
     },
     [clearPendingInvite]
@@ -186,14 +191,14 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
           setMovedCode(outcome.nextCode);
           setPendingInvite(outcome.nextCode, source);
         } else if (outcome.kind === 'stateChanged') {
-          applyStateChange(outcome.state, outcome.detail);
+          applyStateChange(outcome.state);
         } else if (outcome.kind === 'confirmLeave') {
           setConfirmLeave(true);
-          setError(outcome.detail ?? t('invite.error.alreadyInRoom'));
+          setError({ cause: caught, fallback: 'invite.error.alreadyInRoom' });
         } else if (outcome.kind === 'sessionCleared') {
-          setError(t('invite.error.sessionExpired'));
+          setError({ fallback: 'invite.error.sessionExpired' });
         } else {
-          setError(outcome.detail ?? t('invite.error.redeem'));
+          setError({ cause: caught, fallback: 'invite.error.redeem' });
         }
       } finally {
         redeemingRef.current = false;
@@ -209,6 +214,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
       setPendingInvite,
       source,
       upsertRoom,
+      t,
     ]
   );
 
@@ -216,7 +222,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
     if (fixture || guestCreatingRef.current) return;
     const validation = validateDisplayName(displayName);
     if (validation.error) {
-      setNameError(t(`invite.name.${validation.error}`));
+      setNameError(`invite.name.${validation.error}`);
       return;
     }
 
@@ -253,11 +259,9 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
         setMovedCode(outcome.nextCode);
         setPendingInvite(outcome.nextCode, source);
       } else if (outcome.kind === 'stateChanged') {
-        applyStateChange(outcome.state, outcome.detail);
+        applyStateChange(outcome.state);
       } else {
-        setError(
-          outcome.kind === 'failed' && outcome.detail ? outcome.detail : t('invite.error.guest')
-        );
+        setError({ cause: caught, fallback: 'invite.error.guest' });
       }
     } finally {
       guestCreatingRef.current = false;
@@ -323,8 +327,8 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
             </PidroText>
             <PidroText role="body" tone="soft" align="center">
               {t('invite.seats', {
-                taken: preview.seats_taken,
-                total: preview.seats_total,
+                taken: formatNumber(preview.seats_taken),
+                total: formatNumber(preview.seats_total),
               })}
             </PidroText>
             <RuleSetChip ruleSet={preview.config?.rule_set ?? 'finnish'} testID="invite-rule-set" />
@@ -338,7 +342,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
 
         {error ? (
           <PidroText role="body" tone="danger" align="center" accessibilityRole="alert">
-            {error}
+            {localizedError(error.cause, error.fallback)}
           </PidroText>
         ) : null}
 
@@ -376,7 +380,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
                   placeholder={t('invite.name.placeholder')}
                   value={displayName}
                   onChangeText={setDisplayName}
-                  error={nameError ?? undefined}
+                  error={nameError ? t(nameError) : undefined}
                   editable={!submitting}
                   maxLength={80}
                   autoCapitalize="words"
@@ -397,18 +401,18 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
             <View style={styles.accountEntry}>
               {compactLandscape ? null : (
                 <PidroText role="metadata" tone="muted" align="center">
-                  Or join with an account
+                  {t('social.join_account')}
                 </PidroText>
               )}
               <View style={styles.accountActions}>
                 <BevelButton
-                  label="Create account"
+                  label={t('social.create_account')}
                   material="glass"
                   size="sm"
                   onPress={() => router.push('/(auth)/register')}
                 />
                 <BevelButton
-                  label="Sign in"
+                  label={t('social.sign_in')}
                   material="glass"
                   size="sm"
                   onPress={() => router.push('/(auth)/login')}
@@ -424,7 +428,7 @@ export function JoinInviteScreen({ code, source, fixture }: Props) {
               {submitting
                 ? t('invite.joining')
                 : t('invite.readyAs', {
-                    name: publicPlayerName(user.username, 'Player', user.display_name),
+                    name: publicPlayerName(user.username, t('social.player'), user.display_name),
                   })}
             </PidroText>
             {!confirmLeave ? (

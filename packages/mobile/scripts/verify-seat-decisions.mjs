@@ -55,7 +55,9 @@ try {
     await open.click();
     await page.getByRole('button', { name: 'Updating seat…' }).waitFor();
     assert.equal(await keep.getAttribute('aria-disabled'), 'true');
-    await page.getByText('Could not confirm the seat update. Please try again.').waitFor();
+    await page
+      .getByText('Could not confirm the seat update. Please try again.', { exact: true })
+      .waitFor();
     assert.match(await card.textContent(), /3 pending/);
     await keep.scrollIntoViewIfNeeded();
     if (shots) await page.screenshot({ path: resolve(shots, `pid93-${viewport.width}.png`) });
@@ -73,6 +75,45 @@ try {
       `PASS ${viewport.width}x${viewport.height}: bounds, hit targets, defer/revisit, loading/error, three-decision queue, stable table`
     );
     await page.close();
+  }
+  for (const locale of ['en', 'sv']) {
+    for (const name of ['', 'A player']) {
+      const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      await page.goto(
+        `${baseUrl}/table-dev?lifecycle=permanent_bot&feedback=owner&locale=${locale}&playerName=${encodeURIComponent(name)}`
+      );
+      await page
+        .getByRole('button', {
+          name: locale === 'sv' ? 'Granska platser (3)' : 'Review seats (3)',
+          exact: true,
+        })
+        .click();
+      const card = page.getByTestId('seat-decision-card');
+      await card
+        .getByText(
+          locale === 'sv' ? `${name || 'En spelare'} lämnade` : `${name || 'A player'} left`,
+          { exact: true }
+        )
+        .waitFor();
+      await card
+        .getByRole('button', {
+          name: locale === 'sv' ? 'Öppna platsen för en spelare' : 'Open seat for a player',
+          exact: true,
+        })
+        .click();
+      await card
+        .getByText(
+          locale === 'sv'
+            ? 'Kunde inte bekräfta platsändringen. Försök igen.'
+            : 'Could not confirm the seat update. Please try again.',
+          { exact: true }
+        )
+        .waitFor();
+      console.log(
+        `PASS ${locale}: preserved ${name ? 'literal A player' : 'missing identity'} and localized seat failure`
+      );
+      await page.close();
+    }
   }
 } finally {
   await browser.close();

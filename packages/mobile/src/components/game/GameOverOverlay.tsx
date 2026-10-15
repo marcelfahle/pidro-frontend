@@ -12,6 +12,7 @@ import type { GameViewModel, RelativePlayerView, ServerGameState } from '@/types
 import { getTeamScores, isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 import { VictoryConfetti } from './VictoryConfetti';
 import { RuleSetChip } from '@/components/rules/RuleSet';
+import { t, formatNumber, useTranslation } from '@/i18n';
 
 interface GameOverOverlayProps {
   viewModel: GameViewModel;
@@ -32,10 +33,11 @@ interface GameOverOverlayProps {
 }
 
 function displayName(player: RelativePlayerView): string {
-  if (player.isYou) return 'You';
+  if (player.isYou) return t('game.you');
   if (player.username) return player.username;
-  if (player.seatStatus === 'bot_substitute' || player.seatStatus === 'permanent_bot') return 'Bot';
-  return player.absolutePosition;
+  if (player.seatStatus === 'bot_substitute' || player.seatStatus === 'permanent_bot')
+    return t('game.bot');
+  return t(`table.position.${player.absolutePosition}`);
 }
 
 export function GameOverOverlay({
@@ -46,10 +48,11 @@ export function GameOverOverlay({
   onPlayAgain,
   rematch,
   rematchPending = false,
-  playAgainLabel = 'Rematch',
+  playAgainLabel,
   showGuestSave = false,
   onSaveGuest,
 }: GameOverOverlayProps) {
+  useTranslation();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const compact = height - insets.top - insets.bottom < 520;
@@ -63,15 +66,15 @@ export function GameOverOverlay({
   const firstWon = !tied && (winningTeam === 'north_south') === firstIsNorthSouth;
   const viewerWon = !spectator && firstWon;
   const outcome = tied
-    ? 'A tie!'
+    ? t('game.tie')
     : spectator
-      ? `${winningTeam === 'north_south' ? 'North / South' : 'East / West'} win!`
+      ? t('game.team_wins', { team: t(winningTeam === 'north_south' ? 'game.ns' : 'game.ew') })
       : viewerWon
-        ? 'You won!'
-        : 'Opponents win';
+        ? t('game.won')
+        : t('game.opponents_win');
   const rematchStatus =
     rematch && rematch.needed > 1 && rematch.agreed > 0
-      ? `${rematch.agreed} of ${rematch.needed} want to play again`
+      ? t('game.rematch_status', { agreed: rematch.agreed, needed: rematch.needed })
       : null;
 
   return (
@@ -112,24 +115,26 @@ export function GameOverOverlay({
                   <PidroText role="label" tone="soft" align="center">
                     {spectator
                       ? first
-                        ? 'North / South'
-                        : 'East / West'
+                        ? t('game.ns')
+                        : t('game.ew')
                       : first
-                        ? 'Your team'
-                        : 'Opponents'}
+                        ? t('game.your_team')
+                        : t('game.opponents')}
                   </PidroText>
                   <PidroText
                     testID={first ? 'result-score-first' : 'result-score-second'}
                     role={compact ? 'display' : 'score'}
                     tone={!tied && first === firstWon ? 'gold' : 'default'}
                     align="center">
-                    {spectator
-                      ? first
-                        ? rawScores.north_south
-                        : rawScores.east_west
-                      : first
-                        ? relativeScores.us
-                        : relativeScores.them}
+                    {formatNumber(
+                      spectator
+                        ? first
+                          ? rawScores.north_south
+                          : rawScores.east_west
+                        : first
+                          ? relativeScores.us
+                          : relativeScores.them
+                    )}
                   </PidroText>
                   <View style={[styles.players, wide && styles.playersWide]}>
                     {viewModel.players
@@ -155,9 +160,9 @@ export function GameOverOverlay({
             {!spectator && progressionSummary && (
               <Surface variant="subtle" style={styles.progression}>
                 <PidroText role="label" tone="gold" align="center">
-                  +{progressionSummary.xp_earned} XP
+                  +{formatNumber(progressionSummary.xp_earned)} XP
                   {progressionSummary.leveled_up
-                    ? ` · Level ${progressionSummary.veteran_level}!`
+                    ? t('game.level', { level: progressionSummary.veteran_level })
                     : ''}
                 </PidroText>
               </Surface>
@@ -166,10 +171,10 @@ export function GameOverOverlay({
               <PressableFX accessibilityRole="button" onPress={onSaveGuest}>
                 <Surface variant="plaque" style={styles.guestSave}>
                   <PidroText role="label" tone="gold" align="center">
-                    Ready for real players?
+                    {t('game.real_players')}
                   </PidroText>
                   <PidroText role="metadata" tone="cyan" align="center">
-                    Save your progress to play people.
+                    {t('game.save_progress')}
                   </PidroText>
                 </Surface>
               </PressableFX>
@@ -192,7 +197,7 @@ export function GameOverOverlay({
           <View style={styles.actions}>
             <BevelButton
               testID="game-over-home"
-              accessibilityLabel="Home"
+              accessibilityLabel={t('game.home')}
               material="glass"
               size="icon"
               onPress={onHome}>
@@ -201,7 +206,9 @@ export function GameOverOverlay({
             {!spectator && (
               <BevelButton
                 testID="play-again"
-                label={rematch?.youAgreed ? 'Waiting…' : playAgainLabel}
+                label={
+                  rematch?.youAgreed ? t('game.waiting') : (playAgainLabel ?? t('game.rematch'))
+                }
                 leadingIcon={<Icon name="rematch" size={22} color={PidroBevel.textGold} />}
                 disabled={!rematch || rematch.youAgreed}
                 loading={rematchPending}

@@ -492,6 +492,130 @@ const allCases = [
   },
 ];
 
+const localizationCases = ['en', 'sv'].flatMap((locale) => [
+  ...['system', 'en', 'sv'].map((language) => ({
+    name: `locale-${locale}-settings-${language}`,
+    path: `/ui-dev?state=settings&locale=${locale}&language=${language}&deviceLocale=${locale}-FI`,
+    testId: 'settings-screen',
+    locale,
+    language,
+  })),
+  ...[
+    ['waiting', 'waiting', 'waiting-table'],
+    ['bidding', 'bidding', 'bidding-window'],
+    ['trump', 'declaring', 'trump-window'],
+    ['hand-selection', 'second_deal&role=player&dealer=south', 'hand-selection-window'],
+    ['game-over', 'game_over', 'game-over-window'],
+    ['dealer', 'dealer_selection', 'seat-north'],
+    ['playing', 'playing', 'seat-north'],
+  ].map(([name, phase, testId]) => ({
+    name: `locale-${locale}-${name}`,
+    path: `/table-dev?phase=${phase}&locale=${locale}&language=${locale}`,
+    testId,
+    locale,
+    protectNorthSeat: ['bidding', 'trump', 'hand-selection'].includes(name),
+  })),
+]);
+allCases.push(...localizationCases);
+allCases.push(
+  ...allCases
+    .filter((testCase) => testCase.bidLines)
+    .map((testCase) => ({
+      ...testCase,
+      name: `locale-sv-${testCase.name}`,
+      path: `${testCase.path}&locale=sv`,
+      locale: 'sv',
+      bidLines: testCase.name.endsWith('-high')
+        ? { north: 'Bud 7', east: 'Passat', south: 'Bud 9 · högst' }
+        : { west: 'Passat', north: 'Bud 7', east: 'Bud 9 · högst' },
+    }))
+);
+allCases.push(
+  ...allCases
+    .filter((testCase) => testCase.name.startsWith('friends-'))
+    .map((testCase) => {
+      const path = new URL(testCase.path, baseUrl);
+      return {
+        ...testCase,
+        name: `locale-sv-${testCase.name}`,
+        path: `/ui-dev?state=${path.pathname.slice(1)}&fixture=${path.searchParams.get('fixture') ?? ''}&locale=sv&language=sv`,
+        locale: 'sv',
+        open: testCase.open ? 'Visa profilen för Nora' : undefined,
+      };
+    })
+);
+
+async function assertLocalization(page, testCase, viewport) {
+  if (!testCase.locale) return;
+  const clipped = await page.locator('[dir="auto"]').evaluateAll((nodes) =>
+    nodes
+      .filter((node) => node.getBoundingClientRect().width && node.getClientRects().length)
+      // Public player names deliberately ellipsize; localized sentences may not.
+      .filter((node) => !['Alexandria the Long-Named Player'].includes(node.textContent))
+      .filter(
+        (node) =>
+          getComputedStyle(node).overflow === 'hidden' &&
+          (node.scrollWidth > node.clientWidth + 1 || node.scrollHeight > node.clientHeight + 1)
+      )
+      .map((node) => node.textContent)
+  );
+  assert.deepEqual(clipped, [], `${testCase.name}: clipped natural text in ${viewport.name}`);
+  if (testCase.locale === 'sv') {
+    const expected = testCase.language
+      ? 'Språk'
+      : testCase.name.endsWith('-trump')
+        ? 'Välj trumf'
+        : testCase.name.endsWith('-hand-selection')
+          ? 'Välj din hand'
+          : null;
+    if (expected) await page.getByText(expected, { exact: true }).waitFor();
+  }
+  if (testCase.language) {
+    const group = page.getByTestId('settings-language');
+    const labels = [
+      testCase.locale === 'sv' ? 'Enhetens språk' : 'System language',
+      'English',
+      'Svenska',
+    ];
+    const selected = ['system', 'en', 'sv'].indexOf(testCase.language);
+    const groupBox = await group.boundingBox();
+    for (const [index, label] of labels.entries()) {
+      const radio = group.getByRole('radio', { name: label, exact: true });
+      const box = await radio.boundingBox();
+      assert.ok(box.height >= 48, `${label}: 48pt target`);
+      assert.ok(
+        box.x >= groupBox.x && box.x + box.width <= groupBox.x + groupBox.width,
+        `${label}: radio must stay within the language Surface`
+      );
+      assert.equal(await radio.getAttribute('aria-checked'), String(index === selected));
+    }
+    if (testCase.language === 'system') {
+      await group
+        .getByText(
+          `${testCase.locale === 'sv' ? 'Just nu' : 'Currently'}: ${testCase.locale === 'sv' ? 'Svenska' : 'English'}`,
+          { exact: true }
+        )
+        .waitFor();
+    }
+    const before = await page.evaluate(() => localStorage.getItem('settings-storage'));
+    await group.getByRole('radio', { name: 'Svenska', exact: true }).click();
+    await group.getByText('Språk', { exact: true }).waitFor();
+    await group.getByRole('radio', { name: 'English', exact: true }).click();
+    await group.getByText('Language', { exact: true }).waitFor();
+    await group.getByRole('radio', { name: 'English', exact: true }).press('ArrowRight');
+    await group.getByText('Språk', { exact: true }).waitFor();
+    assert.equal(
+      await group.getByRole('radio', { name: 'Svenska', exact: true }).getAttribute('aria-checked'),
+      'true'
+    );
+    assert.equal(await page.evaluate(() => localStorage.getItem('settings-storage')), before);
+    // Normal screens must ignore even a complete fixture override query.
+    await page.goto(`${baseUrl}/device-settings?locale=sv&language=sv&deviceLocale=sv-FI`);
+    await page.getByTestId('settings-language').getByText('Language', { exact: true }).waitFor();
+    assert.equal(await page.evaluate(() => localStorage.getItem('settings-storage')), before);
+  }
+}
+
 function selectCases() {
   if (requestedCases.size === 0) return allCases;
 
@@ -539,9 +663,20 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
     await assertNorthClear(page, testCase, viewport, testCase.protectNorthSeat ? box : null);
 
+    if (testCase.testId === 'trump-window') {
+      await assertAbovePlayerHand(page, testCase.name, box, viewport);
+      for (const choice of await target.getByRole('button').all()) {
+        const choiceBox = await choice.boundingBox();
+        assert.ok(choiceBox.height >= 48, 'Trump choice keeps a 48pt touch target');
+        assert.ok(
+          choiceBox.y >= box.y && choiceBox.y + choiceBox.height <= box.y + box.height,
+          'All trump choices must fit within the window without clipping'
+        );
+      }
+    }
     if (testCase.protectPlayerHand) {
       await assertAbovePlayerHand(page, testCase.name, box, viewport);
-      await assertBidGridLayout(page, viewport);
+      await assertBidGridLayout(page, viewport, testCase.locale);
     }
 
     if (testCase.name === 'table-playing') {
@@ -615,8 +750,8 @@ async function assertNorthClear(page, testCase, viewport, windowBox) {
   const header = waiting
     ? { toolbar: page.getByTestId('waiting-toolbar') }
     : {
-        'score plaque': page.getByRole('button', { name: /Recent scores\./ }),
-        menu: page.getByRole('button', { name: 'Table settings', exact: true }),
+        'score plaque': page.getByRole('button', { name: /Recent scores\.|Senaste poäng\./ }),
+        menu: page.getByRole('button', { name: /^(Table settings|Bordsinställningar)$/ }),
       };
   const covers = { ...header, ...(windowBox ? { window: windowBox } : {}) };
   for (const [coverName, cover] of Object.entries(covers)) {
@@ -755,34 +890,63 @@ async function assertRulePresentation(page, testCase) {
 }
 
 async function assertFriendsPresentation(page, name) {
+  const swedish = name.startsWith('locale-sv-');
+  name = name.replace(/^locale-sv-/, '');
   if (!name.startsWith('friends-')) return;
   const expected =
-    {
-      'friends-empty': ['Nobody here yet. Add the people you play with.'],
-      'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'At a table', 'Offline'],
-      'friends-added-you': ['Added you', 'Kalle', 'Add back'],
-      'friends-loading': ['Loading…'],
-      'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
-      'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
-      'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
-      'friends-profile': ['Player profile', 'Nora', 'Remove friend'],
-      'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
-      'friends-guest': ['Save your player', 'Save account'],
-    }[name] ?? [];
+    (swedish
+      ? {
+          'friends-empty': ['Ingen här ännu. Lägg till dem du spelar med.'],
+          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'Vid ett bord', 'Offline'],
+          'friends-added-you': ['Har lagt till dig', 'Kalle', 'Lägg till tillbaka'],
+          'friends-loading': ['Laddar…'],
+          'friends-error': ['Kunde inte uppdatera Vänner. Försök igen.', 'Försök igen'],
+          'friends-recent': ['Spelat med nyligen', 'Nora', 'Kalle', 'Tillagd'],
+          'friends-results': ['Sökresultat', 'Vän', 'Har lagt till dig', 'Tillagd'],
+          'friends-profile': ['Spelarprofil', 'Nora', 'Ta bort vän'],
+          'friends-remove': ['Ta bort Nora som vän?', 'Avbryt'],
+          'friends-guest': ['Spara din spelare', 'Spara konto'],
+        }
+      : {
+          'friends-empty': ['Nobody here yet. Add the people you play with.'],
+          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'At a table', 'Offline'],
+          'friends-added-you': ['Added you', 'Kalle', 'Add back'],
+          'friends-loading': ['Loading…'],
+          'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
+          'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
+          'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
+          'friends-profile': ['Player profile', 'Nora', 'Remove friend'],
+          'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
+          'friends-guest': ['Save your player', 'Save account'],
+        })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
   if (name === 'friends-added-you') {
     assert.ok(
-      (await page.getByText('Added you', { exact: true }).boundingBox()).y <
-        (await page.getByRole('button', { name: "View Nora's profile" }).boundingBox()).y
+      (
+        await page
+          .getByText(swedish ? 'Har lagt till dig' : 'Added you', { exact: true })
+          .boundingBox()
+      ).y <
+        (
+          await page
+            .getByRole('button', {
+              name: swedish ? 'Visa profilen för Nora' : "View Nora's profile",
+            })
+            .boundingBox()
+        ).y
     );
   }
   if (name === 'friends-remove') {
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    await page.getByRole('button', { name: "View Nora's profile" }).waitFor();
+    await page.getByRole('button', { name: swedish ? 'Avbryt' : 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: swedish ? 'Stäng' : 'Close', exact: true }).click();
+    await page
+      .getByRole('button', { name: swedish ? 'Visa profilen för Nora' : "View Nora's profile" })
+      .waitFor();
   }
   if (name === 'friends-guest') {
-    for (const label of ['Public name', 'Email', 'Password']) {
+    for (const label of swedish
+      ? ['Offentligt namn', 'E-post', 'Lösenord']
+      : ['Public name', 'Email', 'Password']) {
       const box = await page.getByRole('textbox', { name: label, exact: true }).boundingBox();
       assert.ok(
         box && box.x >= 0 && box.x + box.width <= page.viewportSize().width,
@@ -823,7 +987,7 @@ async function assertLobbyPresentation(page, testCase) {
     await row('OPEN2').getByText('2 seats open', { exact: true }).waitFor();
     assert.equal(await row('OPEN1').getByTestId('seat-requirement').count(), 3);
     assert.equal(await row('OPEN2').getByTestId('seat-requirement').count(), 0);
-    assert.equal(await row('OPEN3').getByTestId('seat-requirement').innerText(), '1000+');
+    assert.equal(await row('OPEN3').getByTestId('seat-requirement').innerText(), '1,000+');
   }
   if (fixture === 'locked') {
     await row('OPEN1')
@@ -897,7 +1061,7 @@ async function assertCreationPresentation(page, testCase) {
         'Friend',
         'Anyone',
         '100+',
-        '1000+',
+        '1,000+',
       ]);
       await seat.getByText('games played', { exact: true }).waitFor();
     }
@@ -1165,7 +1329,11 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
     await route.fulfill({
       status: 429,
       contentType: 'application/json',
-      body: JSON.stringify({ errors: [{ detail: 'Too many attempts. Try again soon.' }] }),
+      body: JSON.stringify({
+        error_code: 'rate_limited',
+        error_params: { retry_after: 30 },
+        errors: [{ detail: 'Too many attempts. Try again soon.' }],
+      }),
     });
   });
   const roomBodies = [];
@@ -1184,7 +1352,11 @@ async function assertWelcomeGuestInteractions(page, name, viewport) {
     exact: true,
   });
   await submit.click();
-  await page.getByText('Too many attempts. Try again soon.', { exact: true }).waitFor();
+  await page.getByText('Too many requests. Try again in 30 seconds.', { exact: true }).waitFor();
+  assert.equal(
+    await page.getByText('Too many attempts. Try again soon.', { exact: true }).count(),
+    0
+  );
   assert.equal('display_name' in requestBodies[0], false);
   assert.match(requestBodies[0].creation_token, /^[0-9a-f-]{36}$/i);
   assert.equal('invite_code' in requestBodies[0], false);
@@ -1280,7 +1452,8 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   await page.waitForTimeout(400);
   assert.equal(deletes, 1, 'a double tap on Delete account sent more than one request');
   refuse();
-  await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
+  await page.getByText('Could not delete your account. Try again.', { exact: true }).waitFor();
+  assert.equal(await page.getByText('Deleting accounts is paused.', { exact: true }).count(), 0);
   assert.ok(new URL(page.url()).pathname.endsWith('/settings'), 'a failed deletion left Settings');
   const action = page.getByRole('button', { name: 'Delete account', exact: true });
   assert.equal(await action.count(), 1, 'the confirmation stayed open after a failed deletion');
@@ -1293,7 +1466,8 @@ async function assertDeleteAccountConfirmation(page, name, screenshotDir) {
   assert.equal(await page.getByText(/photo or bio/).count(), 0, 'deleting waits on a photo or bio');
   await page.getByRole('button', { name: 'OK', exact: true }).click();
   refuse();
-  await page.getByText('Deleting accounts is paused.', { exact: true }).waitFor();
+  await page.getByText('Could not delete your account. Try again.', { exact: true }).waitFor();
+  assert.equal(await page.getByText('Deleting accounts is paused.', { exact: true }).count(), 0);
 }
 
 async function assertAuthSheetKeepsTyping(page, name) {
@@ -1379,12 +1553,12 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
     }
 
     for (const label of [
-      '8 of clubs',
-      'A of spades, worth 1 point',
-      '3 of hearts',
-      'J of diamonds',
-      '10 of hearts',
-      '2 of spades, worth 1 point',
+      '8 of Clubs',
+      'Ace of Spades, worth 1 point',
+      '3 of Hearts',
+      'Jack of Diamonds',
+      '10 of Hearts',
+      '2 of Spades, worth 1 point',
     ]) {
       const card = page.getByRole('button', { name: label, exact: true });
       await card.scrollIntoViewIfNeeded();
@@ -1423,7 +1597,7 @@ async function assertBidLines(page, testCase, viewport) {
       { timeout: 10_000 }
     );
     const shown = [];
-    for (const text of await avatar.getByText(/^(Bid|High|Passed)/).all()) {
+    for (const text of await avatar.getByText(/^(Bid|High|Passed|Bud|Högst|Passat)/).all()) {
       if (await text.isVisible()) shown.push(text);
     }
     if (shown.length !== 1) {
@@ -1433,7 +1607,9 @@ async function assertBidLines(page, testCase, viewport) {
     assertInsideViewport(`${testCase.name} ${seat} bid line`, box, viewport);
     const words = await shown[0].textContent();
     if (words === line) continue;
-    const short = line.replace(/^Bid (\d+) · high$/, 'High $1');
+    const short = line
+      .replace(/^Bid (\d+) · high$/, 'High $1')
+      .replace(/^Bud (\d+) · högst$/, 'Högst $1');
     if (seat !== 'south' || words !== short) {
       throw new Error(`${testCase.name}: seat ${seat} shows "${words}" for "${line}"`);
     }
@@ -1452,15 +1628,17 @@ async function assertAbovePlayerHand(page, name, box, viewport) {
   const handTop = handBox.y;
   const minimumClearance = viewport.height >= viewport.width ? 28 : 8;
 
-  if (box.y + box.height > handTop - minimumClearance) {
+  // Layout/card transforms can land on opposite sides of a half-pixel boundary.
+  if (box.y + box.height > handTop - minimumClearance + 0.5) {
     throw new Error(
       `${name} is too close to the player hand in ${viewport.name}: window=${JSON.stringify(box)} protectedHandTop=${handTop} minimumClearance=${minimumClearance}`
     );
   }
 }
 
-async function assertBidGridLayout(page, viewport) {
-  const bidButtons = await page.getByRole('button', { name: /^Bid \d+$/ }).all();
+async function assertBidGridLayout(page, viewport, locale) {
+  const bid = locale === 'sv' ? 'Bud' : 'Bid';
+  const bidButtons = await page.getByRole('button', { name: new RegExp(`^${bid} \\d+$`) }).all();
   if (bidButtons.length !== 9) {
     throw new Error(
       `bidding grid has ${bidButtons.length} values instead of 9 in ${viewport.name}`
@@ -1498,7 +1676,7 @@ async function assertBidGridLayout(page, viewport) {
   }
 
   if (viewport.height >= viewport.width) {
-    const centerButton = await getStableBox(page.getByRole('button', { name: 'Bid 10' }), page);
+    const centerButton = await getStableBox(page.getByRole('button', { name: `${bid} 10` }), page);
     const trickCenter = await getStableBox(page.getByTestId('table-trick-center').first(), page);
     if (!centerButton || !trickCenter) {
       throw new Error(`bidding center has no geometry in ${viewport.name}`);
@@ -1670,10 +1848,16 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
-        if (viewport.cases && !viewport.cases.includes(testCase.name)) return false;
+        if (
+          viewport.cases &&
+          !viewport.cases.includes(testCase.name) &&
+          !(testCase.locale && ['compact-portrait', 'tablet-portrait'].includes(viewport.name))
+        )
+          return false;
         if (testCase.skipViewports?.includes(viewport.name)) return false;
         return (
           !viewport.tableOnly ||
+          testCase.locale ||
           testCase.path.startsWith('/table-dev') ||
           testCase.ruleSet ||
           testCase.lobbyFixture ||
@@ -1902,7 +2086,9 @@ async function main() {
         page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
 
         try {
-          const response = await page.goto(`${baseUrl}${testCase.path}`, {
+          const url = new URL(`${baseUrl}${testCase.path}`);
+          if (viewport.safeArea) url.searchParams.set('safeArea', viewport.safeArea);
+          const response = await page.goto(url.href, {
             waitUntil: 'domcontentloaded',
             timeout: 30_000,
           });
@@ -1932,17 +2118,27 @@ async function main() {
           }
           if (testCase.open) {
             await page.getByRole('button', { name: testCase.open, exact: true }).click();
-            if (testCase.name === 'friends-remove')
-              await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
+            if (testCase.name.endsWith('friends-remove'))
+              await page
+                .getByRole('button', {
+                  name: testCase.locale === 'sv' ? 'Ta bort vän' : 'Remove friend',
+                  exact: true,
+                })
+                .click();
             await waitForScreenshotReady(page);
           }
-          if (testCase.name === 'friends-guest') {
+          if (testCase.name.endsWith('friends-guest')) {
             await page.getByTestId('auth-sheet').waitFor();
             await waitForScreenshotReady(page);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
           await assertBidLines(page, testCase, caseViewport);
+          if (testCase.locale && testCase.path.includes('game_over')) {
+            await page
+              .getByTestId('victory-confetti')
+              .waitFor({ state: 'detached', timeout: 7000 });
+          }
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();
@@ -1990,6 +2186,7 @@ async function main() {
             path: resolve(screenshotDir, `${testCase.name}.png`),
             fullPage: false,
           });
+          await assertLocalization(page, testCase, caseViewport);
           if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
           await assertFriendsPresentation(page, testCase.name);
           await assertCreationPresentation(page, testCase);

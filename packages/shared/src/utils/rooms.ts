@@ -22,7 +22,7 @@ function normalizeSeat(raw: any, fallbackIndex: number): Seat {
     (raw?.player_id
       ? {
           id: String(raw.player_id),
-          username: publicPlayerName(raw.player_username, raw.player_is_bot ? 'Bot' : 'Player'),
+          username: publicPlayerName(raw.player_username, ''),
           display_name: raw.player_display_name ?? null,
           is_bot: raw.player_is_bot ?? false,
           avatar_url: raw.player_avatar_url ?? null,
@@ -90,7 +90,7 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
         playerId
           ? {
               id: String(playerId),
-              username: publicPlayerName(username, isBot ? 'Bot' : 'Player'),
+              username: publicPlayerName(username, ''),
               display_name: displayName,
               is_bot: isBot,
               avatar_url: value?.avatar_url ?? null,

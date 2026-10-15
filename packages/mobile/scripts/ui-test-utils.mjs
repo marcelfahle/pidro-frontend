@@ -11,6 +11,20 @@ const lobbyCases = [
 ].map((fixture) => `lobby-${fixture}`);
 
 export const UI_VIEWPORTS = [
+  {
+    name: 'iphone-insets-portrait',
+    width: 402,
+    height: 874,
+    safeArea: 'iphone-17-portrait',
+    cases: ['locale-en-trump', 'locale-sv-trump'],
+  },
+  {
+    name: 'iphone-insets-landscape',
+    width: 874,
+    height: 402,
+    safeArea: 'iphone-17-landscape',
+    cases: ['locale-en-settings-system', 'locale-sv-settings-system', 'locale-sv-settings-sv'],
+  },
   { name: 'portrait', width: 390, height: 844 },
   {
     name: 'compact-portrait',
@@ -150,7 +164,7 @@ export async function assertMinimumTouchTargets(
   viewport,
   { checkInputs = false } = {}
 ) {
-  for (const role of ['button', 'link', 'switch']) {
+  for (const role of ['button', 'link', 'switch', 'radio']) {
     const controls = await page.getByRole(role).all();
     for (let index = 0; index < controls.length; index += 1) {
       if (!(await controls[index].isVisible())) continue;

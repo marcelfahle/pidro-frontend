@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { useTranslation } from '@/i18n';
 
 interface UpdateNoticeProps {
   restarting: boolean;
@@ -26,6 +27,7 @@ export function UpdateNotice({
   onDismiss,
   rightClearance,
 }: UpdateNoticeProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
@@ -48,12 +50,12 @@ export function UpdateNotice({
         style={styles.notice}>
         <Icon name="rematch" size={20} color={PidroColors.cyan} />
         <PidroText role="label" style={styles.copy}>
-          A new version is ready
+          {t('update.notice')}
         </PidroText>
         <View style={styles.actions}>
           <BevelButton
             testID="update-notice-restart"
-            label="Restart"
+            label={t('update.restart')}
             material="wood"
             size="sm"
             loading={restarting}
@@ -61,7 +63,7 @@ export function UpdateNotice({
             style={styles.restart}
           />
           <BevelButton
-            accessibilityLabel="Dismiss"
+            accessibilityLabel={t('update.dismiss')}
             material="glass"
             size="icon"
             onPress={onDismiss}>

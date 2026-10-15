@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import { useTranslation } from '@/i18n';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { PidroText } from './PidroText';
 
@@ -7,13 +8,14 @@ interface ConnectionBannerProps {
 }
 
 export function ConnectionBanner({ isConnected }: ConnectionBannerProps) {
+  const { t } = useTranslation();
   if (isConnected) return null;
 
   return (
     <View testID="connection-banner" style={styles.banner} accessibilityRole="alert">
       <View style={styles.dot} />
       <PidroText role="metadata" tone="default">
-        Reconnecting…
+        {t('ui.reconnecting')}
       </PidroText>
     </View>
   );

@@ -3,10 +3,10 @@ import type { FriendLists } from '../api/friends';
 
 interface FriendsState extends FriendLists {
   isLoading: boolean;
-  error: string | null;
+  error: unknown;
   setLists: (lists: FriendLists) => void;
   setLoading: (isLoading: boolean) => void;
-  setError: (error: string | null) => void;
+  setError: (error: unknown) => void;
   reset: () => void;
 }
 
