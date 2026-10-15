@@ -1,3 +1,7 @@
+const lobbyCases = ['list', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].map(
+  (fixture) => `lobby-${fixture}`
+);
+
 export const UI_VIEWPORTS = [
   { name: 'portrait', width: 390, height: 844 },
   { name: 'compact-portrait', width: 360, height: 640, cases: ['welcome', 'welcome-guest'] },
@@ -19,6 +23,7 @@ export const UI_VIEWPORTS = [
     name: 'home-tablet-portrait',
     width: 820,
     height: 1180,
+    lobbyViewport: { name: 'lobby-tablet-portrait', width: 834, height: 1194 },
     cases: [
       'welcome',
       'home',
@@ -29,7 +34,7 @@ export const UI_VIEWPORTS = [
       'classic-forgot',
       'classic-link-sent',
       'classic-help',
-      'lobby-empty',
+      ...lobbyCases,
       'create-table',
     ],
   },
@@ -37,7 +42,8 @@ export const UI_VIEWPORTS = [
     name: 'tablet-landscape',
     width: 1024,
     height: 768,
-    cases: ['table-bidding', 'welcome', 'home', 'home-guest', 'lobby-empty', 'create-table'],
+    lobbyViewport: { name: 'lobby-tablet-landscape', width: 1194, height: 834 },
+    cases: ['table-bidding', 'welcome', 'home', 'home-guest', ...lobbyCases, 'create-table'],
   },
 ];
 

@@ -16,6 +16,7 @@ export type IconName =
   | 'play'
   | 'friends'
   | 'plus'
+  | 'search'
   | 'arrow-left'
   | 'settings'
   | 'close'
@@ -70,6 +71,7 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     mode: 'stroke',
   },
   plus: { path: 'M12 5v14M5 12h14', mode: 'stroke' },
+  search: { path: 'M18 11a7 7 0 1 1-14 0 7 7 0 0 1 14 0M16 16l4.5 4.5', mode: 'stroke' },
   link: {
     path: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
     mode: 'stroke',

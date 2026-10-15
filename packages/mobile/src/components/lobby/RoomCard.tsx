@@ -1,95 +1,170 @@
+import { Fragment, memo } from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Room, Position } from '@/types/lobby';
-import { RoomTeamDisplay } from './RoomTeamDisplay';
+import type { LobbyCategoryKey, Position, Room } from '@pidro/shared';
+import { tableRow } from '@/features/lobby/tableRow';
 import { PidroText } from '@/components/ui/PidroText';
+import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { BevelPressable } from '@/components/ui/Bevel';
 import { Surface } from '@/components/ui/Surface';
 import { RuleSetChip } from '@/components/rules/RuleSet';
-import { PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
+import { OpenChair } from './TableTop';
+import { SeatRequirementBadge } from './SeatRequirementBadge';
 
-interface RoomCardProps {
-  room: Room;
-  onJoin: (code: string, position?: Position) => void;
-  currentUserId?: string | null;
-  currentUsername?: string | null;
-  compact?: boolean;
-  minimumGames?: Partial<Record<Position, number>>;
-}
-
-export function RoomCard({
+export const RoomCard = memo(function RoomCard({
   room,
+  category = 'open_tables',
   onJoin,
-  currentUserId,
-  currentUsername,
-  compact = false,
+  onAction,
+  error,
+  pending,
   minimumGames,
-}: RoomCardProps) {
-  const playersCount =
-    room.player_count ??
-    room.players_count ??
-    room.player_ids?.length ??
-    room.seats?.filter((s) => !!s.player).length ??
-    0;
-
-  const maxPlayers = room.max_players ?? 4;
-  const isFull = playersCount >= maxPlayers;
-  const isPlaying = ['playing', 'ready', 'finished'].includes(room.status);
-  const roomName = room.name || `Room ${room.code}`;
-
+}: {
+  room: Room;
+  category?: LobbyCategoryKey;
+  onJoin: (code: string, position: Position) => void;
+  onAction?: (code: string, category: LobbyCategoryKey) => void;
+  error?: string;
+  pending?: boolean;
+  minimumGames?: Partial<Record<Position, number>>;
+}) {
+  const row = tableRow(room, category);
+  const mine = category === 'my_rejoinable';
   return (
     <Surface
       testID={`lobby-table-${room.code}`}
-      variant="card"
-      style={[styles.card, compact && styles.cardCompact]}>
-      <View style={[styles.titleCopy, compact && styles.titleCompact]}>
-        <PidroText role="label" numberOfLines={1}>
-          {roomName}
+      variant="subtle"
+      style={[styles.card, mine && styles.mine]}>
+      <View style={styles.top}>
+        <View style={styles.side}>
+          <RuleSetChip
+            ruleSet={room.config?.rule_set ?? 'finnish'}
+            compact
+            testID={`room-rules-${room.code}`}
+          />
+        </View>
+        <PidroText
+          role="label"
+          style={[
+            styles.status,
+            category === 'spectatable'
+              ? styles.playing
+              : category === 'substitute_needed'
+                ? styles.amber
+                : styles.gold,
+          ]}>
+          {row.status}
         </PidroText>
-        <RuleSetChip
-          ruleSet={room.config?.rule_set ?? 'finnish'}
-          testID={`room-rules-${room.code}`}
-        />
+        <View style={[styles.side, styles.action]}>
+          {row.button ? (
+            <BevelPressable
+              material="glass"
+              accessibilityRole="button"
+              accessibilityLabel={row.button}
+              onPress={() => onAction?.(room.code, category)}
+              style={styles.button}
+              contentStyle={styles.buttonFace}>
+              <PidroText role="label" style={[styles.buttonText, mine && styles.gold]}>
+                {row.button}
+              </PidroText>
+            </BevelPressable>
+          ) : null}
+        </View>
       </View>
-
-      <View style={compact && styles.teamsCompact}>
-        <RoomTeamDisplay
-          seats={room.seats}
-          positions={room.positions}
-          availablePositions={room.available_positions}
-          onJoinSeat={(pos) => onJoin(room.code, pos)}
-          isFull={isFull}
-          isPlaying={isPlaying}
-          currentUserId={currentUserId}
-          currentUsername={currentUsername}
-          tableName={roomName}
-          minimumGames={minimumGames}
-        />
+      <View style={styles.seats}>
+        {row.seats.map((seat, index) => {
+          const content = (
+            <>
+              <View>
+                {seat.kind === 'open' || seat.kind === 'sub' ? (
+                  <OpenChair size={44} substitute={seat.kind === 'sub'} />
+                ) : (
+                  <PlayerAvatar
+                    size={44}
+                    uri={seat.avatarUrl}
+                    kind={seat.kind === 'bot' ? 'bot' : 'player'}
+                  />
+                )}
+                {minimumGames?.[seat.position] ? (
+                  <SeatRequirementBadge games={minimumGames[seat.position]!} />
+                ) : null}
+              </View>
+              <PidroText
+                role="metadata"
+                numberOfLines={1}
+                style={[
+                  styles.name,
+                  seat.kind === 'open' && styles.open,
+                  seat.kind === 'sub' && styles.amber,
+                ]}>
+                {seat.name}
+              </PidroText>
+            </>
+          );
+          return (
+            <Fragment key={seat.position}>
+              {index === 2 ? (
+                <PidroText role="metadata" style={styles.vs}>
+                  vs
+                </PidroText>
+              ) : null}
+              {seat.canJoin ? (
+                <PressableFX
+                  accessibilityRole="button"
+                  accessibilityLabel={`${seat.kind === 'sub' ? 'Sit in' : 'Join'} ${seat.position} seat`}
+                  disabled={pending}
+                  onPress={() => onJoin(room.code, seat.position)}
+                  style={styles.seat}>
+                  {content}
+                </PressableFX>
+              ) : (
+                <View style={styles.seat}>{content}</View>
+              )}
+            </Fragment>
+          );
+        })}
       </View>
+      {error ? (
+        <PidroText role="metadata" tone="danger" accessibilityRole="alert">
+          {error}
+        </PidroText>
+      ) : null}
     </Surface>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
     width: '100%',
-    gap: PidroSpacing.sm,
-    padding: PidroSpacing.md,
+    gap: 8,
+    paddingTop: 8,
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+    borderRadius: PidroRadii.lg,
+    backgroundColor: PidroColors.panelSoft,
+    borderColor: PidroColors.border,
   },
-  cardCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: PidroSpacing.md,
-    padding: PidroSpacing.sm,
-  },
-  titleCopy: {
-    minWidth: 0,
-    gap: PidroSpacing.xxs,
-  },
-  titleCompact: {
-    width: '26%',
-    justifyContent: 'center',
-  },
-  teamsCompact: {
-    flex: 1,
-    minWidth: 0,
+  mine: { backgroundColor: PidroColors.choiceOn, borderColor: PidroBevel.rim, borderWidth: 1.5 },
+  top: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
+  side: { flex: 1, minWidth: 0 },
+  action: { alignItems: 'flex-end' },
+  status: { textAlign: 'center', flexShrink: 1 },
+  gold: { color: PidroBevel.textGold },
+  amber: { color: PidroColors.rulesLouisianaText },
+  playing: { color: PidroColors.textSoft },
+  open: { color: PidroColors.cyanText },
+  button: { minHeight: 44, borderRadius: PidroRadii.lg },
+  buttonFace: { paddingHorizontal: 12, minHeight: 40, justifyContent: 'center' },
+  buttonText: { fontSize: 13 },
+  seats: { flexDirection: 'row', justifyContent: 'center', alignItems: 'flex-start', gap: 2 },
+  seat: { width: 58, gap: 9, alignItems: 'center' },
+  name: { width: '100%', textAlign: 'center', fontSize: 12, lineHeight: 15, fontWeight: '800' },
+  vs: {
+    fontFamily: PidroFonts.display,
+    fontSize: 14,
+    lineHeight: 44,
+    color: PidroColors.textMuted,
+    paddingHorizontal: 2,
   },
 });

@@ -11,7 +11,7 @@ test('a new table with a bot, an open seat and an invite opens with the invite s
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
 
-  await page.getByRole('button', { name: 'Create table', exact: true }).click();
+  await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
   const form = page.getByTestId('create-room-window');
   await expect(form.getByRole('textbox', { name: 'Table name' })).toHaveValue(
     `${player.name}'s table`

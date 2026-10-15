@@ -13,6 +13,7 @@ export interface InputProps extends TextInputProps {
   error?: string;
   containerClassName?: string;
   revealPassword?: boolean;
+  compact?: boolean;
 }
 
 export const Input = forwardRef<TextInput, InputProps>(
@@ -23,6 +24,7 @@ export const Input = forwardRef<TextInput, InputProps>(
       label,
       error,
       revealPassword = false,
+      compact = false,
       secureTextEntry,
       style,
       accessibilityLabel,
@@ -64,6 +66,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           className="flex-row items-stretch overflow-hidden"
           style={[
             styles.inputFrame,
+            compact && { minHeight: 44, borderWidth: 0 },
             gradientBg('linear-gradient(180deg, #0A2340 0%, #10365D 100%)'),
             focused && styles.inputFocused,
             error && styles.inputError,
@@ -71,7 +74,7 @@ export const Input = forwardRef<TextInput, InputProps>(
           <TextInput
             ref={ref}
             className={cn('min-w-0 flex-1', className)}
-            style={[styles.input, style]}
+            style={[styles.input, compact && { minHeight: 44, paddingVertical: 8 }, style]}
             placeholderTextColor="rgba(148, 211, 255, 0.7)"
             selectionColor={PidroColors.cyan}
             accessibilityLabel={accessibilityLabel ?? label}

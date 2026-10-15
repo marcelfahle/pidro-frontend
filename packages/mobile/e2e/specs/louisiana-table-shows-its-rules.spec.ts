@@ -8,7 +8,8 @@ async function createLouisianaTable(page: Page, token: string) {
   await page
     .getByTestId('lobby-screen')
     .last()
-    .getByRole('button', { name: 'Create table', exact: true })
+    .getByRole('button', { name: 'Start a table', exact: true })
+    .first()
     .click();
   const create = page.getByTestId('create-room-window');
   await create.getByRole('button', { name: 'Louisiana', exact: true }).click();
@@ -47,9 +48,6 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   ).toHaveAttribute('aria-selected', 'true');
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
-  await expect(
-    page.getByTestId('lobby-rule-filter').getByRole('button', { name: 'Finnish', exact: true })
-  ).toHaveAttribute('aria-selected', 'true');
 
   const first = await createLouisianaTable(page, token);
   // Creation lands at the waiting table, where the first explanation appears.
@@ -62,18 +60,10 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   page = await page.context().newPage();
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });
-  await page
-    .getByTestId('lobby-rule-filter')
-    .getByRole('button', { name: 'Louisiana', exact: true })
-    .click();
   await expect(page.getByTestId(`room-rules-${first}`)).toContainText('Louisiana');
-  await page
-    .getByTestId('lobby-screen')
-    .getByRole('button', { name: 'Rejoin', exact: true })
-    .click();
-  await page.waitForURL(`**/game/${first}`);
+  await page.close();
+  page = seatedPage;
   await expect(page.getByTestId('waiting-rule-set').last()).toContainText('Louisiana');
-  await seatedPage.close();
   await expect(page.getByTestId('rules-explainer')).toBeVisible();
   await page.getByTestId('rules-done').click();
   await expect(page.getByTestId('rules-explainer')).not.toBeVisible();
@@ -110,7 +100,6 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
     await page.evaluate(() => JSON.parse(localStorage.getItem('settings-storage') ?? '{}').state)
   ).toMatchObject({
     preferredRuleSet: 'finnish',
-    lobbyRuleSetFilter: 'louisiana',
     hasSeenLouisianaRules: true,
   });
 });

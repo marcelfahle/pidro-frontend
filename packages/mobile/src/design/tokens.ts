@@ -51,6 +51,10 @@ export const PidroColors = {
   turnUrgentGlow: 'rgba(255, 184, 107, 0.4)',
   // The table seen from above on Tables and New table: an open chair, a chosen seat.
   chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
+  chairSubBorder: 'rgba(255, 184, 107, 0.85)',
+  rulesFinnishBorder: 'rgba(139, 234, 255, 0.5)',
+  rulesLouisianaBorder: 'rgba(255, 184, 107, 0.6)',
+  rulesLouisianaText: '#ffcf8a',
   tabletopMark: 'rgba(190, 230, 255, 0.16)',
   choiceOn: 'rgba(107, 73, 11, 0.45)',
   radioOff: 'rgba(184, 225, 246, 0.6)',

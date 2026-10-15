@@ -8,31 +8,29 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import type { RuleSet } from '@pidro/shared';
-import { RuleSetChip, RuleSetSelector, ruleSetLabel } from '@/components/rules/RuleSet';
-import { filterRuleSet, lobbyRuleSetFilter } from '@/features/rules/ruleSets';
-import { lobbyFixture } from '@/features/rules/fixtures';
-import { useSettingsStore } from '@/stores/settings';
-import { t } from '@/i18n';
+import type { LobbyCategoryKey } from '@pidro/shared';
+import { lobbyFixture } from '@/features/lobby/fixtures';
+import { filterPlayers, lobbyCounts } from '@/features/lobby/tableRow';
+import { pickProfile } from '@/game/canvas/layout';
 import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
-import { OpenChair, TableTop } from '@/components/lobby/TableTop';
+import { OpenChair } from '@/components/lobby/TableTop';
 import { AuthFlowButton, AuthFlowHeading } from '@/components/auth/AuthFlow';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { BevelButton } from '@/components/ui/BevelButton';
+import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { TextLink } from '@/components/ui/TextLink';
-import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { useQuickGame } from '@/hooks/useQuickGame';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -57,15 +55,6 @@ function uniqueRooms(rooms: Room[]): Room[] {
   });
 }
 
-function filterByQuery(rooms: Room[], query: string): Room[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return rooms;
-  return rooms.filter((room) => {
-    const haystack = `${room.name ?? ''} ${room.code}`.toLowerCase();
-    return haystack.includes(normalized);
-  });
-}
-
 export default function LobbyScreen() {
   const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
   return <LobbyContent key={fixtureParam ?? 'live'} fixture={lobbyFixture(fixtureParam)} />;
@@ -78,14 +67,11 @@ function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
 
 function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
   const router = useRouter();
-  const preferred = useSettingsStore((state) => state.preferredRuleSet);
-  const savedFilter = useSettingsStore((state) => state.lobbyRuleSetFilter);
-  const saveFilter = useSettingsStore((state) => state.setLobbyRuleSetFilter);
-  const [fixtureFilter, setFixtureFilter] = useState<RuleSet | 'all'>(fixture?.filter ?? 'all');
-  const filter = fixture ? fixtureFilter : lobbyRuleSetFilter(preferred, savedFilter);
-  const changeFilter = fixture ? setFixtureFilter : saveFilter;
   const { width, height } = useWindowDimensions();
-  const landscape = width > height;
+  const profile = pickProfile(width, height);
+  const portraitPhone = profile === 'phone-portrait';
+  const columns = portraitPhone ? 1 : profile === 'tablet-landscape' ? 3 : 2;
+  const tablet = profile.startsWith('tablet');
   const user = useAuthStore((state) => state.user);
   const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
   const {
@@ -106,6 +92,8 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const isLoading = fixture ? false : storedLoading;
   const error = fixture ? null : storedError;
   const [query, setQuery] = useState(fixture?.query ?? '');
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [joining, setJoining] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -114,11 +102,11 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const realtimeRevisionRef = useRef(0);
   const quickGame = useQuickGame(playerName);
 
-  const requestAccount = (retry: () => Promise<void>) => {
+  const requestAccount = useCallback((retry: () => Promise<void>) => {
     pendingAccountActionRef.current = retry;
     setIsCreateModalOpen(false);
     setAccountSheetOpen(true);
-  };
+  }, []);
 
   const markRealtimeUpdate = useCallback(() => {
     realtimeRevisionRef.current += 1;
@@ -135,27 +123,20 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   );
   const activeRoom = activeRooms[0] ?? null;
   const openTables = useMemo(
-    () =>
-      filterByQuery(
-        filterRuleSet(
-          lobby.open_tables.filter((room) => !roomHasUser(room, user?.id)),
-          filter
-        ),
-        query
-      ),
-    [lobby.open_tables, query, user?.id, filter]
+    () => filterPlayers(lobby.open_tables, query),
+    [lobby.open_tables, query]
   );
   const rejoinableTables = useMemo(
-    () => filterByQuery(filterRuleSet(activeRooms, filter), query),
-    [activeRooms, query, filter]
+    () => filterPlayers(lobby.my_rejoinable, query),
+    [lobby.my_rejoinable, query]
   );
   const substituteTables = useMemo(
-    () => filterByQuery(filterRuleSet(lobby.substitute_needed, filter), query),
-    [lobby.substitute_needed, query, filter]
+    () => filterPlayers(lobby.substitute_needed, query),
+    [lobby.substitute_needed, query]
   );
   const watchTables = useMemo(
-    () => filterByQuery(filterRuleSet(lobby.spectatable, filter), query),
-    [lobby.spectatable, query, filter]
+    () => filterPlayers(lobby.spectatable, query),
+    [lobby.spectatable, query]
   );
   const visibleTableCount =
     rejoinableTables.length + openTables.length + substituteTables.length + watchTables.length;
@@ -201,57 +182,73 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     loadLobby();
   }, [loadLobby]);
 
-  const handleJoinRoom = async (code: string, position?: Position, mayRequestAccount = true) => {
-    if (fixture) return;
-    try {
-      const response = await lobbyApi.joinRoom(code, position);
-      captureAnalytics('room_joined', { join_source: 'lobby' });
-      upsertLobbyRoom(response.room, 'my_rejoinable');
-      router.push(`/game/${code}`);
-    } catch (joinError: unknown) {
-      const { code: errorCode, detail } = apiErrorInfo(joinError);
-      if (errorCode === 'ACCOUNT_REQUIRED') {
-        if (mayRequestAccount) {
-          requestAccount(() => handleJoinRoom(code, position, false));
-        } else {
-          Alert.alert(
-            'Could not join',
-            detail || 'Your account could not be confirmed. Please try again.'
-          );
-        }
-        return;
-      }
-      if (errorCode === 'ALREADY_IN_ROOM') {
-        if (activeRoom?.code === code) {
-          router.push(`/game/${code}`);
+  const handleJoinRoom = useCallback(
+    async function joinRoom(code: string, position?: Position, mayRequestAccount = true) {
+      if (fixture || joining) return;
+      setJoining(code);
+      setRowErrors((errors) => ({ ...errors, [code]: '' }));
+      try {
+        const response = await lobbyApi.joinRoom(code, position);
+        captureAnalytics('room_joined', { join_source: 'lobby' });
+        upsertLobbyRoom(response.room, 'my_rejoinable');
+        router.push(`/game/${code}`);
+      } catch (joinError: unknown) {
+        const { code: errorCode, detail } = apiErrorInfo(joinError);
+        if (errorCode === 'ACCOUNT_REQUIRED') {
+          if (mayRequestAccount) {
+            requestAccount(() => joinRoom(code, position, false));
+          } else {
+            Alert.alert(
+              'Could not join',
+              detail || 'Your account could not be confirmed. Please try again.'
+            );
+          }
           return;
         }
-        Alert.alert(
-          'You are already playing',
-          activeRoom
-            ? `You are already at table ${activeRoom.code}. Rejoin it or leave before joining another table.`
-            : 'You are already at another table. Refresh the lobby to rejoin or leave it first.'
-        );
-        return;
+        if (errorCode === 'ALREADY_IN_ROOM') {
+          if (activeRoom?.code === code) {
+            router.push(`/game/${code}`);
+            return;
+          }
+        }
+        setRowErrors((errors) => ({
+          ...errors,
+          [code]: detail || 'That seat may no longer be available.',
+        }));
+        await loadLobby();
+      } finally {
+        setJoining(null);
       }
-      Alert.alert('Could not join', detail || 'That table may be full or no longer available.');
-    }
-  };
+    },
+    [fixture, joining, upsertLobbyRoom, router, requestAccount, activeRoom?.code, loadLobby]
+  );
 
-  const handleWatchRoom = async (code: string, mayRequestAccount = true) => {
-    if (fixture) return;
-    try {
-      await lobbyApi.watchRoom(code);
-      router.push(`/game/${code}`);
-    } catch (watchError: unknown) {
-      const { code: errorCode, detail } = apiErrorInfo(watchError);
-      if (errorCode === 'ACCOUNT_REQUIRED' && mayRequestAccount) {
-        requestAccount(() => handleWatchRoom(code, false));
-        return;
+  const handleWatchRoom = useCallback(
+    async function watchRoom(code: string, mayRequestAccount = true) {
+      if (fixture) return;
+      try {
+        await lobbyApi.watchRoom(code);
+        router.push(`/game/${code}`);
+      } catch (watchError: unknown) {
+        const { code: errorCode, detail } = apiErrorInfo(watchError);
+        if (errorCode === 'ACCOUNT_REQUIRED' && mayRequestAccount) {
+          requestAccount(() => watchRoom(code, false));
+          return;
+        }
+        Alert.alert('Could not watch', detail || 'That table may no longer be available.');
       }
-      Alert.alert('Could not watch', detail || 'That table may no longer be available.');
-    }
-  };
+    },
+    [fixture, router, requestAccount]
+  );
+
+  const handleRowAction = useCallback(
+    (code: string, category: LobbyCategoryKey) => {
+      if (fixture) return;
+      if (category === 'my_rejoinable') router.push(`/game/${code}`);
+      else void handleWatchRoom(code);
+    },
+    [fixture, router, handleWatchRoom]
+  );
 
   const handleCreateRoom = async (
     data: CreateRoomRequest,
@@ -292,7 +289,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       if (code === 'ALREADY_IN_ROOM') {
         if (activeRoom) {
           reportFailure(
-            `You are already at table ${activeRoom.code}. Rejoin it or leave before creating another table.`
+            'You are already at a table. Rejoin it or leave before creating another table.'
           );
         } else {
           try {
@@ -345,7 +342,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const handleNewTable = () => {
     if (fixture) return;
     if (activeRoom) {
-      Alert.alert('Current table', `You are already at table ${activeRoom.code}.`, [
+      Alert.alert('Current table', 'You are already at a table.', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Rejoin', onPress: () => router.push(`/game/${activeRoom.code}`) },
       ]);
@@ -356,19 +353,24 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   };
 
   const search = (
-    <View style={landscape && styles.search}>
+    <View style={!portraitPhone && styles.search}>
       <Input
+        compact
         value={query}
         onChangeText={setQuery}
-        placeholder="Search tables"
+        placeholder="Find a player"
         returnKeyType="search"
-        accessibilityLabel="Search tables"
+        accessibilityLabel="Find a player"
+        style={{ paddingLeft: 40 }}
       />
+      <View pointerEvents="none" style={styles.searchIcon}>
+        <Icon name="search" size={18} color={PidroColors.textMuted} />
+      </View>
     </View>
   );
 
   return (
-    <ScreenShell testID="lobby-screen" contentStyle={styles.shell}>
+    <ScreenShell testID="lobby-screen" contentStyle={[styles.shell, tablet && styles.tabletShell]}>
       {!fixture ? <LobbyRealtime onUpdate={markRealtimeUpdate} /> : null}
       <View style={styles.header}>
         <BevelButton
@@ -381,36 +383,26 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           }}>
           <Icon name="arrow-left" size={22} />
         </BevelButton>
-        <View style={!landscape && styles.headerTitle}>
+        <View style={portraitPhone ? styles.headerTitle : styles.headerCounts}>
           <PidroText role="label" numberOfLines={1}>
-            Tables
+            {fixture ? 104 : stats.online_players} playing now
+          </PidroText>
+          <PidroText role="metadata" tone="soft">
+            {lobbyCounts(lobby)}
           </PidroText>
         </View>
-        {landscape && !isEmptyLobby ? search : null}
-        {landscape && isEmptyLobby ? <View style={styles.headerTitle} /> : null}
-        {(fixture ? 8 : stats.online_players) > 1 ? (
-          <PidroText
-            role="metadata"
-            tone="soft"
-            accessibilityLabel={`${fixture ? 8 : stats.online_players} players online`}>
-            <PidroText role="metadata" style={styles.onlineDot}>
-              ●{' '}
-            </PidroText>
-            {fixture ? 8 : stats.online_players} online
-          </PidroText>
-        ) : null}
+        {!portraitPhone && !isEmptyLobby ? search : null}
+        {!portraitPhone && isEmptyLobby ? <View style={styles.headerTitle} /> : null}
         <BevelButton
-          material="glass"
-          size="icon"
-          accessibilityLabel="Create table"
+          material={portraitPhone ? 'glass' : 'wood'}
+          size={portraitPhone ? 'icon' : 'sm'}
+          label={portraitPhone ? undefined : 'Start a table'}
+          accessibilityLabel="Start a table"
           onPress={handleNewTable}>
           <Icon name="plus" size={22} />
         </BevelButton>
       </View>
-      {!landscape && !isEmptyLobby ? search : null}
-      <View testID="lobby-rule-filter">
-        <RuleSetSelector value={filter} onChange={changeFilter} includeAll />
-      </View>
+      {portraitPhone && !isEmptyLobby ? search : null}
 
       <View style={styles.content}>
         {quickGame.error ? (
@@ -443,15 +435,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
             actionLabel="Try again"
             onAction={loadLobby}
           />
-        ) : !isLoading && !isEmptyLobby && visibleTableCount === 0 && filter !== 'all' ? (
-          <LobbyEmptyState
-            title={t(hasQuery ? 'rules.emptySearch' : 'rules.empty', {
-              rules: ruleSetLabel(filter),
-            })}
-            description={hasQuery ? t('rules.searchHint') : ''}
-            actionLabel={t('rules.showAll')}
-            onAction={() => changeFilter('all')}
-          />
         ) : isEmptyLobby ? (
           <EmptyLobby
             onStart={handleNewTable}
@@ -462,14 +445,17 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         ) : hasNoResults ? (
           <LobbyEmptyState
             title="No matching tables"
-            description="Try a table name or code, or clear your search."
+            description="Try a player’s name, or clear your search."
             actionLabel="Clear search"
             onAction={() => setQuery('')}
           />
         ) : (
           <ScrollView
             style={styles.roomScroll}
-            contentContainerStyle={styles.roomScrollContent}
+            contentContainerStyle={[
+              styles.roomScrollContent,
+              portraitPhone && { paddingBottom: 100 },
+            ]}
             keyboardShouldPersistTaps="handled"
             refreshControl={
               <RefreshControl
@@ -479,69 +465,55 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
               />
             }
             showsVerticalScrollIndicator={false}>
-            {rejoinableTables.length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader title="Your tables" count={rejoinableTables.length} />
-                {rejoinableTables.map((room) => (
-                  <ActionRoomRow
-                    key={`mine-${room.code}`}
-                    room={room}
-                    label="Rejoin"
-                    primary
-                    onPress={() => {
-                      if (!fixture) router.push(`/game/${room.code}`);
-                    }}
-                  />
-                ))}
-              </View>
-            ) : null}
-
-            {openTables.length > 0 ? (
-              <View style={styles.section}>
-                <View style={styles.roomGrid}>
-                  {openTables.map((room) => (
-                    <RoomCard
-                      key={room.code}
-                      room={room}
-                      onJoin={handleJoinRoom}
-                      currentUserId={user?.id}
-                      currentUsername={playerName}
-                      compact={landscape}
-                    />
-                  ))}
+            {(
+              [
+                ['my_rejoinable', 'Your table', rejoinableTables],
+                ['open_tables', 'Open tables', openTables],
+                ['substitute_needed', 'Needs a substitute', substituteTables],
+                ['spectatable', 'Watch', watchTables],
+              ] as [LobbyCategoryKey, string, Room[]][]
+            ).map(([category, title, tables]) =>
+              tables.length ? (
+                <View key={category} style={styles.section}>
+                  <View style={styles.sectionHeader}>
+                    <PidroText role="metadata" tone="cyan" style={styles.eyebrow}>
+                      {title}
+                    </PidroText>
+                    {category === 'open_tables' ? (
+                      <PidroText role="metadata" style={styles.goldHint}>
+                        Tap an open seat to sit down.
+                      </PidroText>
+                    ) : null}
+                  </View>
+                  <View style={styles.roomGrid}>
+                    {tables.map((room) => (
+                      <View key={room.code} style={{ width: `${100 / columns}%`, padding: 5 }}>
+                        <RoomCard
+                          room={room}
+                          category={category}
+                          onJoin={handleJoinRoom}
+                          pending={joining === room.code}
+                          error={rowErrors[room.code]}
+                          onAction={handleRowAction}
+                        />
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-            ) : null}
-
-            {substituteTables.length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader title="Needs a player" count={substituteTables.length} />
-                {substituteTables.map((room) => (
-                  <ActionRoomRow
-                    key={`sub-${room.code}`}
-                    room={room}
-                    label="Join as substitute"
-                    onPress={() => handleJoinRoom(room.code)}
-                  />
-                ))}
-              </View>
-            ) : null}
-
-            {watchTables.length > 0 ? (
-              <View style={styles.section}>
-                <SectionHeader title="Watch" count={watchTables.length} />
-                {watchTables.map((room) => (
-                  <ActionRoomRow
-                    key={`watch-${room.code}`}
-                    room={room}
-                    label="Watch"
-                    onPress={() => handleWatchRoom(room.code)}
-                  />
-                ))}
-              </View>
-            ) : null}
+              ) : null
+            )}
           </ScrollView>
         )}
+        {portraitPhone && !isEmptyLobby ? (
+          <View
+            pointerEvents="box-none"
+            style={[
+              styles.pinned,
+              gradientBg(`linear-gradient(180deg, transparent 0%, ${PidroColors.feltBottom} 45%)`),
+            ]}>
+            <BevelButton label="Start a table" size="lg" fullWidth onPress={handleNewTable} />
+          </View>
+        ) : null}
       </View>
 
       <CreateRoomModal
@@ -613,7 +585,7 @@ function LobbyEmptyState({
   );
 }
 
-/** Nobody is playing: the table from above and the three ways to start. */
+/** Nobody is playing: four chairs and the three ways to start. */
 function EmptyLobby({
   onStart,
   onJoinCode,
@@ -626,20 +598,9 @@ function EmptyLobby({
   quickGameLoading: boolean;
 }) {
   const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const landscape = width > height;
-  const tablet = Math.min(width, height) >= 700;
-  // The drawing is 340×270; it shrinks to fit a narrow phone or a short landscape screen.
-  const scale = Math.min(
-    1,
-    landscape
-      ? (height - insets.top - insets.bottom - 92 - PidroLayout.touchTarget - PidroSpacing.sm) / 270
-      : (width - insets.left - insets.right - 2 * PidroSpacing.md) / 340
-  );
-  const at = (value: number) => value * scale;
-  const chair = (left: number, top: number) => (
-    <OpenChair size={at(52)} style={[styles.emptyChair, { left: at(left), top: at(top) }]} />
-  );
+  const tablet = pickProfile(width, height).startsWith('tablet');
+  const chairSize = width < 360 ? 44 : 56;
 
   return (
     <ScrollView
@@ -654,15 +615,17 @@ function EmptyLobby({
         testID="lobby-empty"
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
-        style={{ width: at(340), height: at(270), alignSelf: landscape ? 'flex-start' : 'center' }}>
-        <TableTop
-          mark={at(40)}
-          style={{ left: at(60), top: at(55), width: at(220), height: at(160) }}
-        />
-        {chair(144, 2)}
-        {chair(4, 109)}
-        {chair(284, 109)}
-        {chair(144, 216)}
+        style={[
+          styles.emptyChairs,
+          !landscape && !tablet && { marginTop: Math.min(120, height * 0.14) },
+        ]}>
+        <OpenChair size={chairSize} />
+        <OpenChair size={chairSize} />
+        <PidroText role="label" tone="muted">
+          vs
+        </PidroText>
+        <OpenChair size={chairSize} />
+        <OpenChair size={chairSize} />
       </View>
       <View
         style={
@@ -699,65 +662,20 @@ function EmptyLobby({
   );
 }
 
-function SectionHeader({ title, count }: { title: string; count: number }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <PidroText role="label">{title}</PidroText>
-      <PidroText role="metadata" tone="muted">
-        {count}
-      </PidroText>
-    </View>
-  );
-}
-
-function ActionRoomRow({
-  room,
-  label,
-  onPress,
-  primary = false,
-}: {
-  room: Room;
-  label: string;
-  onPress: () => void;
-  primary?: boolean;
-}) {
-  const roomName = room.name || `Table ${room.code}`;
-  const players =
-    room.player_count ??
-    room.players_count ??
-    room.seats?.filter((seat) => seat.status === 'occupied' || seat.player).length ??
-    0;
-
-  return (
-    <Surface variant="subtle" style={[styles.actionRoom, primary && styles.actionRoomPrimary]}>
-      <View style={styles.actionRoomCopy}>
-        <PidroText role="label" numberOfLines={1}>
-          {roomName}
-        </PidroText>
-        <RuleSetChip
-          ruleSet={room.config?.rule_set ?? 'finnish'}
-          testID={`room-rules-${room.code}`}
-        />
-        <PidroText role="metadata" tone="muted" numberOfLines={1}>
-          Table {room.code} · {room.status} · {players}/4
-        </PidroText>
-      </View>
-      <BevelButton
-        label={label}
-        material={primary ? 'wood' : 'glass'}
-        size="sm"
-        onPress={onPress}
-      />
-    </Surface>
-  );
-}
-
 const styles = StyleSheet.create({
   shell: {
     flex: 1,
     minHeight: 0,
     gap: PidroSpacing.sm,
+    maxWidth: 1194,
+    paddingHorizontal: 20,
   },
+  tabletShell: { paddingHorizontal: 48, paddingTop: 32 },
+  headerCounts: { width: 170 },
+  searchIcon: { position: 'absolute', left: 13, top: 13 },
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900', fontSize: 11 },
+  goldHint: { color: PidroBevel.textGold, flexShrink: 1 },
+  pinned: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 28 },
   content: {
     minHeight: 0,
     flex: 1,
@@ -771,7 +689,6 @@ const styles = StyleSheet.create({
   },
   headerTitle: { flex: 1, minWidth: 0 },
   search: { flex: 1, minWidth: 0 },
-  onlineDot: { color: PidroColors.cyan },
   error: {
     borderColor: PidroColors.dangerBorder,
     padding: PidroSpacing.sm,
@@ -788,21 +705,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   roomScrollContent: {
-    gap: PidroSpacing.lg,
+    gap: 16,
     paddingBottom: PidroSpacing.md,
   },
   section: {
-    gap: PidroSpacing.sm,
+    gap: 3,
   },
   sectionHeader: {
     minHeight: 24,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: PidroSpacing.sm,
   },
   roomGrid: {
-    gap: PidroSpacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginHorizontal: -5,
   },
   emptyState: {
     width: '100%',
@@ -832,7 +751,7 @@ const styles = StyleSheet.create({
   },
   // A tablet has room to spare: the whole stack sits together in the middle.
   emptyLobbyTablet: { justifyContent: 'center', paddingBottom: PidroSpacing.xxl },
-  emptyChair: { position: 'absolute' },
+  emptyChairs: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   emptyLobbyCopy: { gap: PidroSpacing.xs },
   emptyColumn: {
     width: '100%',
@@ -851,21 +770,5 @@ const styles = StyleSheet.create({
   emptyActions: {
     alignItems: 'stretch',
     gap: PidroSpacing.sm,
-  },
-  actionRoom: {
-    minHeight: 68,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: PidroSpacing.sm,
-    padding: PidroSpacing.sm,
-  },
-  actionRoomPrimary: {
-    borderColor: PidroColors.goldDark,
-    backgroundColor: PidroColors.goldSoft,
-  },
-  actionRoomCopy: {
-    minWidth: 0,
-    flex: 1,
-    gap: PidroSpacing.xxs,
   },
 });

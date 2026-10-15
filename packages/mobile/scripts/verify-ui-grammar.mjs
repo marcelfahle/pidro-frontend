@@ -92,14 +92,12 @@ const allCases = [
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
   { name: 'league', path: '/league', testId: 'league-screen', authenticated: true },
   { name: 'device-settings', path: '/device-settings', testId: 'settings-screen' },
-  { name: 'lobby', path: '/lobby', testId: 'lobby-screen', authenticated: true },
-  { name: 'lobby-empty', path: '/lobby', testId: 'lobby-empty', authenticated: true },
-  ...['mixed', 'louisiana', 'rules-empty', 'rules-search-empty'].map((fixture) => ({
+  ...['list', 'empty', 'rejoin', 'open', 'substitute', 'watch', 'search-empty'].map((fixture) => ({
     name: `lobby-${fixture}`,
     path: `/lobby?fixture=${fixture}`,
-    testId: 'lobby-screen',
+    testId: fixture === 'empty' ? 'lobby-empty' : 'lobby-screen',
     authenticated: true,
-    rulesLobby: fixture,
+    lobbyFixture: fixture,
   })),
   ...['finnish', 'louisiana'].flatMap((ruleSet) => [
     {
@@ -604,47 +602,75 @@ async function assertRulePresentation(page, testCase) {
       false
     );
   }
-  if (testCase.rulesLobby) {
-    if (testCase.rulesLobby === 'rules-search-empty') {
-      await page.getByText('No Louisiana tables match your search.', { exact: true }).waitFor();
-      return;
-    }
-    const filter = page.getByTestId('lobby-rule-filter');
-    const choice = testCase.rulesLobby === 'mixed' ? 'All' : 'Louisiana';
-    assert.equal(
-      await filter.getByRole('button', { name: new RegExp(choice) }).getAttribute('aria-selected'),
-      'true'
-    );
-    for (const prefix of ['MY', 'OPEN', 'SUB', 'WATCH']) {
-      assert.equal(
-        await page.getByTestId(`room-rules-${prefix}FI`).count(),
-        testCase.rulesLobby === 'mixed' ? 1 : 0
-      );
-      assert.equal(
-        await page.getByTestId(`room-rules-${prefix}LA`).count(),
-        testCase.rulesLobby === 'rules-empty' ? 0 : 1
-      );
-      if (testCase.rulesLobby !== 'rules-empty') {
-        assert.ok(
-          (await page.getByTestId(`room-rules-${prefix}LA`).innerText()).includes('Louisiana')
-        );
-      }
-    }
-    if (testCase.rulesLobby === 'rules-empty')
-      await page.getByText('No Louisiana tables match this filter.', { exact: true }).waitFor();
+}
+
+async function assertLobbyPresentation(page, testCase) {
+  const fixture = testCase.lobbyFixture;
+  if (!fixture) return;
+  assert.equal(await page.getByTestId('lobby-rule-filter').count(), 0);
+  if (fixture === 'empty') {
+    await page.getByText('No one is at a table yet', { exact: true }).waitFor();
+    return;
   }
+  const search = page.getByRole('textbox', { name: 'Find a player', exact: true });
+  await search.waitFor();
+  if (fixture === 'search-empty') {
+    assert.equal(await search.inputValue(), 'Nobody named this');
+    await page.getByText('No matching tables', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+    assert.equal(await search.inputValue(), '');
+  }
+  const row = (code) => page.getByTestId(`lobby-table-${code}`);
+  if (['list', 'search-empty', 'rejoin'].includes(fixture)) {
+    await row('MY').getByText('Your seat is waiting', { exact: true }).waitFor();
+    assert.equal(await row('MY').getByRole('button', { name: 'Rejoin', exact: true }).count(), 1);
+  }
+  if (['list', 'search-empty', 'open'].includes(fixture)) {
+    await row('OPEN1').getByText('Claas', { exact: true }).waitFor();
+    assert.equal(await row('OPEN1').getByText('Open', { exact: true }).count(), 3);
+    await row('OPEN1').getByText('3 seats open', { exact: true }).waitFor();
+    await row('OPEN2').getByText('Yaya', { exact: true }).waitFor();
+    assert.equal(await row('OPEN2').getByText('Bot', { exact: true }).count(), 1);
+    assert.equal(await row('OPEN2').getByText('Open', { exact: true }).count(), 2);
+    await row('OPEN2').getByText('2 seats open', { exact: true }).waitFor();
+  }
+  if (['list', 'search-empty', 'substitute'].includes(fixture)) {
+    for (const name of ['Anna', 'Pekka', 'Liisa', 'Needs a substitute'])
+      await row('SUB').getByText(name, { exact: true }).waitFor();
+    assert.equal(
+      await row('SUB')
+        .getByRole('button', { name: /^Sit in .* seat$/ })
+        .count(),
+      1
+    );
+  }
+  if (['list', 'search-empty', 'watch'].includes(fixture)) {
+    await row('WATCH1').getByText('Playing', { exact: true }).waitFor();
+    assert.equal(
+      await row('WATCH1').getByRole('button', { name: 'Watch', exact: true }).count(),
+      1
+    );
+  }
+  for (const card of await page.getByTestId(/^lobby-table-/).all()) {
+    assert.doesNotMatch(
+      await card.innerText(),
+      /Never show this table name|\b(?:MY|OPEN\d|SUB|WATCH\d)\b|Level \d/
+    );
+  }
+  if (fixture !== 'list') return;
+  await search.fill('  cLaAs  ');
+  await row('OPEN1').waitFor();
+  assert.equal(await page.getByTestId(/^lobby-table-/).count(), 1);
+  for (const query of ['OPEN1', 'Never show this table name', 'Bot']) {
+    await search.fill(query);
+    await page.getByText('No matching tables', { exact: true }).waitFor();
+    assert.equal(await page.getByTestId(/^lobby-table-/).count(), 0);
+  }
+  await search.fill('');
+  await row('OPEN1').waitFor();
 }
 
 async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
-  if (testCase.rulesLobby === 'rules-search-empty') {
-    await page.getByRole('button', { name: 'Show all rules', exact: true }).click();
-    assert.equal(
-      await page.getByRole('textbox', { name: 'Search tables', exact: true }).inputValue(),
-      'No such table'
-    );
-    await page.getByText('No matching tables', { exact: true }).waitFor();
-    return;
-  }
   if (testCase.rulesSelector) {
     const other = testCase.ruleSet === 'finnish' ? 'louisiana' : 'finnish';
     const button = page
@@ -657,30 +683,6 @@ async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
         await page.getByTestId('create-rule-description').innerText(),
         ruleDescriptions[other]
       );
-  }
-  if (testCase.rulesLobby) {
-    if (testCase.rulesLobby === 'rules-empty') {
-      await page.getByRole('button', { name: 'Show all rules', exact: true }).click();
-      assert.equal(
-        await page
-          .getByTestId('lobby-rule-filter')
-          .getByRole('button', { name: 'All', exact: true })
-          .getAttribute('aria-selected'),
-        'true'
-      );
-      assert.equal(
-        await page.getByText('No Louisiana tables match this filter.', { exact: true }).count(),
-        0
-      );
-    }
-    await page
-      .getByTestId('lobby-rule-filter')
-      .getByRole('button', { name: /Finnish/ })
-      .click();
-    for (const prefix of ['MY', 'OPEN', 'SUB', 'WATCH']) {
-      assert.equal(await page.getByTestId(`room-rules-${prefix}LA`).count(), 0);
-      assert.ok((await page.getByTestId(`room-rules-${prefix}FI`).innerText()).includes('Finnish'));
-    }
   }
   const waiting =
     testCase.name === 'table-waiting' ||
@@ -1375,12 +1377,17 @@ async function main() {
           viewport.tableOnly &&
           !testCase.path.startsWith('/table-dev') &&
           !testCase.ruleSet &&
-          !testCase.rulesLobby &&
+          !testCase.lobbyFixture &&
           testCase.name !== 'join-invite' &&
           !viewport.entryCases?.includes(testCase.name)
         )
           continue;
         const page = await context.newPage();
+        // Reuse CI's existing tablet shards without resizing any other screen.
+        const caseViewport = testCase.lobbyFixture
+          ? (viewport.lobbyViewport ?? viewport)
+          : viewport;
+        await page.setViewportSize({ width: caseViewport.width, height: caseViewport.height });
         await page.addInitScript(
           ({ ageGate, authenticated, fixture, pendingInvite }) => {
             globalThis.localStorage.setItem('age-gate-storage', ageGate);
@@ -1432,20 +1439,6 @@ async function main() {
               }),
             });
           });
-        }
-        if (testCase.name === 'lobby-empty') {
-          await page.route('**/api/v1/lobby', (route) =>
-            route.fulfill({
-              json: {
-                data: {
-                  my_rejoinable: [],
-                  open_tables: [],
-                  substitute_needed: [],
-                  spectatable: [],
-                },
-              },
-            })
-          );
         }
         if (testCase.manualCode) {
           await page.route('**/api/v1/invites/7KQ4M2XB', (route) =>
@@ -1581,7 +1574,7 @@ async function main() {
             await page.waitForTimeout(600);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
-          await assertTargetGeometry(page, testCase, viewport);
+          await assertTargetGeometry(page, testCase, caseViewport);
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();
@@ -1622,6 +1615,7 @@ async function main() {
             path: resolve(screenshotDir, `${testCase.name}.png`),
             fullPage: false,
           });
+          await assertLobbyPresentation(page, testCase);
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);
