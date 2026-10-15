@@ -109,7 +109,10 @@ portrait trump and landscape Louisiana results, plus 145 new EN/SV fixture
 captures. The five wrapped-toolbar drifts were rejected; the compact visible
 Leave/Lämna label restores the earlier layout while the accessible name stays
 Leave table/Lämna bordet. Main's existing waiting/table baselines are preserved.
-New waiting-label and PID-214 Swedish bid captures require the subsequent CI run.
+Run `38805952817` passed all 493 visual cases exactly once and compared 489
+baselines with zero drift after integration of PID-214 and PID-212. Its ten
+EN/SV waiting and ten Swedish bid-round/high captures were then inspected and
+added as baselines; no unrelated captures or thresholds changed.
 
 ## Validation commands
 
