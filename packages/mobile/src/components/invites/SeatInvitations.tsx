@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import type { SeatInvitation } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
@@ -13,7 +13,13 @@ import { PidroSpacing } from '@/design/tokens';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import { useTranslation } from '@/i18n';
 
-export function SeatInvitations({ fixture }: { fixture?: SeatInvitation[] }) {
+export function SeatInvitations({
+  fixture,
+  scrollable = false,
+}: {
+  fixture?: SeatInvitation[];
+  scrollable?: boolean;
+}) {
   const { t } = useTranslation();
   const router = useRouter();
   const stored = useAuthStore((state) => state.seatInvitations);
@@ -50,7 +56,7 @@ export function SeatInvitations({ fixture }: { fixture?: SeatInvitation[] }) {
   };
 
   if (!invitations.length && !error && !gone) return null;
-  return (
+  const content = (
     <View testID="seat-invitations" style={styles.list}>
       {invitations.map((invitation) => {
         const key = `${invitation.code}-${invitation.position}`;
@@ -84,9 +90,11 @@ export function SeatInvitations({ fixture }: { fixture?: SeatInvitation[] }) {
       ) : null}
     </View>
   );
+  return scrollable ? <ScrollView style={styles.scroll}>{content}</ScrollView> : content;
 }
 
 const styles = StyleSheet.create({
+  scroll: { maxHeight: 220, flexGrow: 0 },
   list: { width: '100%', gap: PidroSpacing.sm },
   row: {
     flexDirection: 'row',

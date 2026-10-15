@@ -36,7 +36,10 @@ test('two seats can share distinct bound links after opening the table, without 
     (response) => response.url().endsWith('/invites') && response.request().method() === 'POST'
   );
   await form.getByRole('button', { name: 'Open the table', exact: true }).click();
-  await page.waitForURL(/\/game\/[A-Z0-9]+\?invite=south,west$/);
+  await page.waitForURL(
+    (url) =>
+      /^\/game\/[A-Z0-9]+$/.test(url.pathname) && url.searchParams.get('invite') === 'south,west'
+  );
   await expect(page.getByTestId('invite-window')).toBeVisible();
   await expect(page.getByRole('textbox')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Copy link', exact: true })).toBeVisible();
@@ -167,7 +170,7 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     await sheet.getByRole('radio', { name: new RegExp(`^${friendPlayer.name},`) }).click();
     await sheet.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true }).click();
     await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');
-    await receiver.getByRole('button', { name: 'Table', exact: true }).click();
+    await receiver.getByRole('button', { name: 'Home', exact: true }).click();
     await expect(receiver).toHaveURL(/\/home$/);
     await receiver.reload();
     await expect(inbox).toBeVisible();

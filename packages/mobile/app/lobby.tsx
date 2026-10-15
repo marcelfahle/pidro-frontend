@@ -444,9 +444,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       {portraitPhone && !isEmptyLobby ? search : null}
 
       <View style={styles.content}>
-        <ScrollView style={{ maxHeight: 220, flexGrow: 0 }}>
-          <SeatInvitations fixture={seatInvitationsFixture(fixtureParam)} />
-        </ScrollView>
+        <SeatInvitations fixture={seatInvitationsFixture(fixtureParam)} scrollable />
         {quickGame.error ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger">
