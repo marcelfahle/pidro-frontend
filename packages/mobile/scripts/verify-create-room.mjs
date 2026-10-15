@@ -11,12 +11,18 @@ const ids = ['seat_3', 'seat_2', 'seat_4'];
 const group = (form, name) => form.getByRole('radiogroup', { name, exact: true });
 const radio = (form, name, choice) =>
   group(form, name).getByRole('radio', { name: choice, exact: true });
+const requirement = (form, name, choice) =>
+  group(form, `${name}, games played`).getByRole('radio', { name: choice, exact: true });
 const checked = async (control) => assert.equal(await control.getAttribute('aria-checked'), 'true');
 
+// An open seat is its 44 pt row plus its 48 pt games-played line; any other seat is the row.
 async function rowsAndTargets(form) {
-  for (const id of ids) {
+  await form.page().waitForTimeout(300); // let a fold settle
+  for (const [i, id] of ids.entries()) {
+    const open = (await radio(form, seats[i], 'Open').getAttribute('aria-checked')) === 'true';
     const box = await form.getByTestId(`create-${id}`).boundingBox();
-    assert.ok(box && Math.abs(box.height - 44) < 1, `${id} stays 44px high`);
+    const height = open ? 92 : 44;
+    assert.ok(box && Math.abs(box.height - height) < 1, `${id} is ${height}px high`);
   }
   for (const control of await form.getByRole('radio').all()) {
     const box = await control.boundingBox();
@@ -110,20 +116,18 @@ try {
       { rule_set: preferred, seats: { seat_2: 'open', seat_3: 'open', seat_4: 'ai' } },
     ]);
 
-    // Open replaces the choices inline; neither the row nor its neighbours grow.
-    await radio(form, 'Partner seat', 'Open').click();
-    assert.deepEqual(await group(form, 'Partner seat').getByRole('radio').allTextContents(), [
-      'Anyone',
-      '100+',
-      '1000+',
-    ]);
-    await rowsAndTargets(form);
+    // An open seat shows its games-played choice in place; no second tap, no sheet.
+    assert.deepEqual(
+      await group(form, 'Partner seat, games played').getByRole('radio').allTextContents(),
+      ['Anyone', '100+', '1000+']
+    );
+    await checked(requirement(form, 'Partner seat', 'Anyone'));
     assert.equal(await page.getByTestId('create-seat-sheet').count(), 0);
-    await radio(form, 'Partner seat', '1000+').click();
+    await requirement(form, 'Partner seat', '1000+').click();
     await checked(radio(form, 'Partner seat', 'Open'));
-    await radio(form, 'Partner seat', 'Open').click();
-    await checked(radio(form, 'Partner seat', '1000+'));
-    await radio(form, 'Partner seat', '100+').click();
+    await checked(requirement(form, 'Partner seat', '1000+'));
+    await requirement(form, 'Partner seat', '100+').click();
+    await rowsAndTargets(form);
     await radio(form, 'Left opponent seat', 'Friend').click();
     await checked(radio(form, 'Left opponent seat', 'Friend'));
     assert.equal(
@@ -154,10 +158,9 @@ try {
     await form.getByRole('button', { name: 'Cancel creation', exact: true }).click();
     await start.click();
     await defaults(form, preferred === 'finnish' ? 'Finnish' : 'Louisiana');
-    await radio(form, 'Partner seat', 'Open').click();
-    await checked(radio(form, 'Partner seat', 'Anyone'));
+    await checked(requirement(form, 'Partner seat', 'Anyone'));
     console.log(
-      `creation ok: ${viewport.name} — inline radios, 44px rows/targets, seat requirements, no name, preferred rules, footer, reset`
+      `creation ok: ${viewport.name} — folding requirements, row heights, 44px targets, seat requirements, no name, preferred rules, footer, reset`
     );
     await context.close();
   }
@@ -203,9 +206,10 @@ try {
       await control.scrollIntoViewIfNeeded();
       await inside(control);
     }
-    await radio(form, 'Partner seat', 'Open').click();
     await rowsAndTargets(form);
-    for (const control of await group(form, 'Partner seat').getByRole('radio').all()) {
+    for (const control of await group(form, 'Partner seat, games played')
+      .getByRole('radio')
+      .all()) {
       await control.scrollIntoViewIfNeeded();
       await inside(control);
     }

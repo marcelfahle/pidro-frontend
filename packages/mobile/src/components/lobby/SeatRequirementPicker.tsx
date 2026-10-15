@@ -18,14 +18,14 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroRadii } from '@/design/tokens';
 import type { SeatRequirement } from '@/features/lobby/newTable';
 
-const OPTIONS: { value: SeatRequirement; label: string; spoken: string }[] = [
-  { value: 0, label: 'Anyone', spoken: 'Anyone' },
-  { value: 100, label: '100+', spoken: '100+ games played' },
-  { value: 1000, label: '1000+', spoken: '1000+ games played' },
+const OPTIONS: { value: SeatRequirement; label: string }[] = [
+  { value: 0, label: 'Anyone' },
+  { value: 100, label: '100+' },
+  { value: 1000, label: '1000+' },
 ];
 
-/** The folded line: a 4 pt gap above a 40 pt track. */
-const LINE_HEIGHT = 44;
+/** The folded line: a 4 pt gap above a 44 pt track of full touch targets. */
+const LINE_HEIGHT = 48;
 const FOLD_MS = 220;
 const EASE_OUT = Easing.out(Easing.cubic);
 
@@ -72,7 +72,7 @@ export function SeatRequirementPicker({
   return (
     <View style={styles.line}>
       <View style={{ width: indent }} />
-      <PidroText role="metadata" tone="soft" style={styles.caption} numberOfLines={1}>
+      <PidroText role="metadata" tone="soft" style={styles.caption} numberOfLines={2}>
         games played
       </PidroText>
       <View
@@ -85,13 +85,14 @@ export function SeatRequirementPicker({
             <PressableFX
               key={option.value}
               accessibilityRole="radio"
-              accessibilityLabel={option.spoken}
+              accessibilityLabel={option.label}
               accessibilityState={{ checked, disabled }}
               aria-checked={checked}
               disabled={disabled}
-              hitSlop={{ top: 2, bottom: 2 }}
               onPress={() => onChange(option.value)}
-              style={[styles.segment, checked && styles.segmentOn]}>
+              style={styles.segment}>
+              {/* The selection sits inset in the track; the whole segment stays a 44 pt target. */}
+              {checked ? <View style={styles.segmentOn} /> : null}
               <PidroText
                 role="label"
                 style={[styles.segmentLabel, checked && styles.segmentLabelOn]}>
@@ -114,14 +115,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
   },
-  caption: { width: 76, fontSize: 11, lineHeight: 14, textAlign: 'right' },
+  caption: { width: 76, flexShrink: 1, fontSize: 11, lineHeight: 14, textAlign: 'right' },
   track: {
     flex: 1,
-    minWidth: 140,
-    height: 40,
+    minWidth: 132,
+    height: 44,
     flexDirection: 'row',
-    padding: 3,
-    gap: 3,
     borderRadius: PidroRadii.panel,
     backgroundColor: PidroBevel.panelDeep,
     borderWidth: 1,
@@ -129,11 +128,18 @@ const styles = StyleSheet.create({
   },
   segment: {
     flex: 1,
+    height: 44,
+    minWidth: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: PidroRadii.panel - 3,
   },
   segmentOn: {
+    position: 'absolute',
+    top: 3,
+    bottom: 3,
+    left: 3,
+    right: 3,
+    borderRadius: PidroRadii.panel - 3,
     backgroundColor: PidroColors.choiceOn,
     borderWidth: 1.5,
     borderColor: PidroBevel.rim,

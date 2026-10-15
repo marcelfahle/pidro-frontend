@@ -722,8 +722,8 @@ async function assertCreationPresentation(page, testCase) {
   const partner = form.getByTestId('create-seat_3');
   const radio = (name) => partner.getByRole('radio', { name, exact: true });
   const height = async () => Math.round((await partner.boundingBox()).height);
-  // An open seat shows its games-played line under it: a 44 pt row plus a 44 pt line.
-  const seatHeight = fixture === 'bots' || fixture === 'friend' ? 44 : 88;
+  // An open seat shows its games-played line under it: a 44 pt row plus a 48 pt line.
+  const seatHeight = fixture === 'bots' || fixture === 'friend' ? 44 : 92;
   assert.equal(await height(), seatHeight);
   const selected = fixture === 'bots' ? 'Bot' : fixture === 'friend' ? 'Friend' : 'Open';
   assert.equal(await radio(selected).getAttribute('aria-checked'), 'true');
@@ -756,8 +756,8 @@ async function assertCreationPresentation(page, testCase) {
   );
   if (fixture !== 'default') return;
   // One tap sets the requirement; the seat stays open and the badge lands on the chair.
-  await radio('100+ games played').click();
-  assert.equal(await radio('100+ games played').getAttribute('aria-checked'), 'true');
+  await radio('100+').click();
+  assert.equal(await radio('100+').getAttribute('aria-checked'), 'true');
   assert.equal(await partner.getByTestId('seat-requirement').innerText(), '100+');
   // Leaving Open folds the line away; coming back folds it in at Anyone.
   await radio('Bot').click();
@@ -767,7 +767,7 @@ async function assertCreationPresentation(page, testCase) {
   await radio('Open').click();
   await page.waitForTimeout(400);
   assert.equal(await radio('Anyone').getAttribute('aria-checked'), 'true');
-  assert.equal(await height(), 88);
+  assert.equal(await height(), 92);
   await radio('Friend').click();
   await page.waitForTimeout(400);
   assert.equal(await radio('Anyone').count(), 0);
