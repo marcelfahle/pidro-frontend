@@ -4,6 +4,8 @@ import { api, guest, register } from '../support/api';
 import { newPlayer } from '../support/player';
 import { sessionOf, startSignedIn } from '../support/session';
 
+test.use({ unavailableExpected: true });
+
 test('Friends receives a live add, adds back, removes after confirmation, and searches @responsive', async ({
   page,
   player,
@@ -13,14 +15,22 @@ test('Friends receives a live add, adds back, removes after confirmation, and se
   const other = await register(otherPlayer);
   let lobbyJoined = false;
   let changes = 0;
-  page.on('websocket', (socket) =>
-    socket.on('framereceived', ({ payload }) => {
-      const frame = JSON.parse(String(payload));
+  let disconnected = false;
+  let disconnect = async () => {};
+  await page.routeWebSocket('**/socket/websocket*', (socket) => {
+    if (disconnected) return socket.close();
+    const server = socket.connectToServer();
+    disconnect = async () => {
+      await Promise.all([socket.close(), server.close()]);
+    };
+    server.onMessage((message) => {
+      const frame = JSON.parse(String(message));
       if (frame[2] === 'lobby' && frame[3] === 'phx_reply' && frame[4]?.status === 'ok')
         lobbyJoined = true;
       if (frame[2] === 'lobby' && frame[3] === 'friends_changed') changes++;
-    })
-  );
+      socket.send(message);
+    });
+  });
   await startSignedIn(page, account);
   await page.goto('/friends');
   await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
@@ -80,10 +90,21 @@ test('Friends receives a live add, adds back, removes after confirmation, and se
     0
   );
 
+  // A missed event must be recovered on rejoin without navigating away.
+  disconnected = true;
+  await disconnect();
+  await api(`/api/v1/friends/${account.user.id}`, { method: 'PUT', token: other.token });
+  disconnected = false;
+  await page.getByRole('button', { name: 'Add back', exact: true }).waitFor();
+  await api(`/api/v1/friends/${account.user.id}`, { method: 'DELETE', token: other.token });
+  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+
   await page.getByRole('button', { name: 'Add a friend', exact: true }).click();
   await expect(page.getByText('Recently played with', { exact: true })).toBeVisible();
   await expect(page.getByText('People you play with will appear here.')).toBeVisible();
+  await page.clock.install();
   await page.getByRole('textbox', { name: 'Find a player', exact: true }).fill(' ');
+  await page.clock.runFor(350);
   await expect(page.getByText('People you play with will appear here.')).toBeVisible();
   await page.getByRole('textbox', { name: 'Find a player', exact: true }).fill(otherPlayer.name);
   await page.getByRole('button', { name: `Add ${otherPlayer.name}`, exact: true }).click();
@@ -91,6 +112,7 @@ test('Friends receives a live add, adds back, removes after confirmation, and se
   await page
     .getByRole('textbox', { name: 'Find a player', exact: true })
     .fill(`${otherPlayer.name} `);
+  await page.clock.runFor(350);
   await expect(page.getByText('Added', { exact: true })).toBeVisible();
   expect(
     (await api('/api/v1/friends', { token: other.token })).payload.data.added_you.map(

@@ -52,6 +52,7 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
       channel
         .join()
         .receive('ok', (response: any) => {
+          if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
           onRealtimeUpdateRef.current?.();
           // Batch updates to avoid navigation context issues
           unstable_batchedUpdates(() => {
