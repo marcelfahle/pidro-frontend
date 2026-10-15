@@ -7,7 +7,7 @@
  * Throwaway scaffold.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View } from 'react-native';
+import { View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
@@ -16,16 +16,20 @@ import { TableSignals } from './TableSignals';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
+import { computeLayout, tickerPlacement } from './layout';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
+import { buildHandLog } from '@/game/handLog';
 import { useHandPresentationReady } from './useHandPresentationReady';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
+import { PidroSpacing } from '@/design/tokens';
 import type {
   Card,
   GamePhase,
   LegalAction,
   RelativePlayerView,
   RelativePosition,
+  ServerBid,
   ServerLastHand,
   Suit,
   SeatStatus,
@@ -148,6 +152,14 @@ const FIXTURE_HANDS = {
   },
 } satisfies Record<string, ServerLastHand>;
 
+/** The bidding behind the seats' "Passed" / "Bid 6", in order from the dealer's left. */
+const FIXTURE_BIDS: ServerBid[] = [
+  { position: 'west', amount: 'pass' },
+  { position: 'north', amount: 'pass' },
+  { position: 'east', amount: 6 },
+  { position: 'south', amount: 'pass' },
+];
+
 const DEALER_CUTS: Record<Position, Card> = {
   north: { suit: 'clubs', rank: 9 },
   east: { suit: 'spades', rank: 14 },
@@ -201,6 +213,7 @@ export default function GameCanvasDev({
 }: GameCanvasDevProps) {
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
   const reserves = useTableReserves();
   const { topReserve, bottomReserve } = reserves;
   const [hand, setHand] = useState<Card[]>([]);
@@ -219,6 +232,7 @@ export default function GameCanvasDev({
     timer,
     signals,
     hand: handFixture,
+    ticker,
   } = useLocalSearchParams<{
     scores?: string;
     dealer?: string;
@@ -226,7 +240,17 @@ export default function GameCanvasDev({
     timer?: string;
     signals?: string;
     hand?: string;
+    ticker?: string;
   }>();
+  // `ticker=full`: three bids land after the table opens, so the ticker fills.
+  const [bids, setBids] = useState<ServerBid[]>(
+    ticker === 'full' ? FIXTURE_BIDS.slice(0, 1) : FIXTURE_BIDS
+  );
+  useEffect(() => {
+    if (ticker !== 'full') return;
+    const landed = setTimeout(() => setBids(FIXTURE_BIDS), 300);
+    return () => clearTimeout(landed);
+  }, [ticker]);
   const [lastHand, setLastHand] = useState<ServerLastHand | null>(null);
   useEffect(() => {
     const fixture =
@@ -346,6 +370,21 @@ export default function GameCanvasDev({
     [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay, dealer, lastHand]
   );
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
+  // A `hand=` fixture's result belongs to the hand before this one.
+  const handNumber = handFixture === 'made' || handFixture === 'set' ? 5 : 4;
+  const handLog = useMemo(
+    () =>
+      buildHandLog({
+        handNumber,
+        bids,
+        trump,
+        tricks,
+        currentTrick: trick,
+        lastHand,
+        players,
+      }),
+    [handNumber, bids, trump, tricks, trick, lastHand, players]
+  );
 
   useEffect(() => {
     onHandPresentationReadyChange?.(isHandReady);
@@ -393,8 +432,17 @@ export default function GameCanvasDev({
             roomCode="DEV01"
             top={headerTop(insets.top)}
             left={insets.left}
+            log={handLog}
             // East's "Bid 6" from the fixture's bidding, held through the play.
-            bid={phase === 'playing' ? { name: 'Eli', amount: 6, ours: false } : null}
+            resting={phase === 'playing' ? { who: 'Eli', what: 'bid 6', ours: false } : null}
+            ticker={tickerPlacement(
+              computeLayout(width, height, insets, topReserve, bottomReserve),
+              {
+                tableTop: insets.top + topReserve,
+                plaqueLeft: insets.left + PidroSpacing.sm,
+                plaqueTop: headerTop(insets.top),
+              }
+            )}
           />
           <TableSettings onLeave={() => {}} />
         </>

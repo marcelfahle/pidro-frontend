@@ -5,7 +5,7 @@
  * NOTE: web loads CanvasKit through the platform-specific loader before this
  * module is imported. Native imports this module directly.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -32,24 +32,16 @@ import { useDealPresentation } from './useDealPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatLine, type SeatTurn } from './SeatLayer';
-import { Scoreboard, type ScoreboardBid } from './Scoreboard';
+import { Scoreboard } from './Scoreboard';
+import type { TickerRestingLine } from './ActionTicker';
+import { buildHandLog } from '@/game/handLog';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals } from './TableSignals';
-import { computeLayout } from './layout';
+import { computeLayout, tickerPlacement } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
-
-/** Phases after bidding in which someone holds the bid. */
-const BID_HELD_PHASES = new Set<string>([
-  'declaring',
-  'declaring_trump',
-  'trump_declaration',
-  'discarding',
-  'second_deal',
-  'playing',
-]);
 
 type Props = {
   room: Room;
@@ -288,19 +280,46 @@ export function GameCanvasTable({
     handReady: isHandReady,
   });
 
-  // Classic's "Bet 6": once bidding is over, the plaque says who holds the bid.
+  const handLog = useMemo(
+    () =>
+      buildHandLog({
+        handNumber: serverState?.hand_number ?? serverState?.round_number ?? null,
+        bids: serverState?.bid_order,
+        trump: serverState?.trump ?? null,
+        tricks: controller.completedTricks,
+        currentTrick: controller.currentTrick,
+        lastHand: serverState?.last_hand ?? null,
+        players: viewModel?.players ?? [],
+      }),
+    [
+      serverState?.hand_number,
+      serverState?.round_number,
+      serverState?.bid_order,
+      serverState?.trump,
+      serverState?.last_hand,
+      controller.completedTricks,
+      controller.currentTrick,
+      viewModel?.players,
+    ]
+  );
+
+  // Classic's "Bet 6": from the first bid, the ticker rests on who holds the
+  // bid; between hands, on how the last hand ended.
   const highBid = serverState?.highest_bid;
   const bidder = highBid
     ? viewModel?.players.find((player) => player.absolutePosition === highBid.position)
     : undefined;
-  const bidLine: ScoreboardBid | null =
-    bidder && typeof highBid?.amount === 'number' && BID_HELD_PHASES.has(controller.phase)
+  const lastResult = handLog[0]?.finished ? handLog[0].entries.at(-1) : undefined;
+  const resting: TickerRestingLine | null =
+    bidder && typeof highBid?.amount === 'number'
       ? {
-          name: bidder.isYou ? 'You' : (bidder.username ?? 'Bidder'),
-          amount: highBid.amount,
-          ours: bidder.isYou || bidder.isTeammate,
+          who: bidder.isYou ? 'You' : (bidder.username ?? 'Bidder'),
+          what: `bid ${highBid.amount}`,
+          ours: youPositionAbs ? bidder.isYou || bidder.isTeammate : null,
         }
-      : null;
+      : lastResult
+        ? { who: lastResult.who, what: lastResult.what, ours: lastResult.ours }
+        : null;
 
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
@@ -374,7 +393,17 @@ export function GameCanvasTable({
           roomCode={viewModel?.roomCode ?? room.code}
           top={headerTop(insets.top)}
           left={insets.left}
-          bid={bidLine}
+          log={handLog}
+          resting={resting}
+          stateArrived={serverState != null}
+          ticker={tickerPlacement(layout, {
+            tableTop: insets.top + topReserve,
+            plaqueLeft: insets.left + PidroSpacing.sm,
+            plaqueTop: headerTop(insets.top),
+          })}
+          yourTurn={
+            isYourTurn && (controller.phase === 'bidding' || controller.phase === 'playing')
+          }
         />
       )}
 

@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useMemo } from 'react';
 import type {
   ActiveTurnTimer,
+  ServerBid,
   ServerGameState,
   PlayerMeta,
   PlayerRank,
@@ -333,13 +334,22 @@ export const useGameStore = create<GameState>((set, get) => ({
 
       const bidsRaw = raw.bids;
       let bids: Record<Position, number | 'pass'> | undefined;
+      // The record loses the order bids were made in; the hand log needs it.
+      let bidOrder: ServerBid[] | undefined;
       if (Array.isArray(bidsRaw)) {
-        bids = bidsRaw.reduce(
-          (acc, entry) => {
-            const pos: Position | undefined = entry?.position ?? entry?.pos ?? entry?.[0];
-            const amount: number | 'pass' | undefined =
-              entry?.amount ?? entry?.bid ?? entry?.[1] ?? entry?.value;
-            if (pos) acc[pos] = amount ?? acc[pos] ?? 'pass';
+        const entries = bidsRaw.map((entry) => ({
+          position: (entry?.position ?? entry?.pos ?? entry?.[0]) as Position | undefined,
+          amount: (entry?.amount ?? entry?.bid ?? entry?.[1] ?? entry?.value) as
+            | number
+            | 'pass'
+            | undefined,
+        }));
+        bidOrder = entries.filter(
+          (entry): entry is ServerBid => !!entry.position && entry.amount != null,
+        );
+        bids = entries.reduce(
+          (acc, { position, amount }) => {
+            if (position) acc[position] = amount ?? acc[position] ?? 'pass';
             return acc;
           },
           {} as Record<Position, number | 'pass'>,
@@ -364,6 +374,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           trump,
           dealer: dealer ?? null,
           bids: bids ?? undefined,
+          bid_order: bidOrder,
           current_bid: highestBidAmount ?? null,
           bid_winner: bidWinner,
           highest_bid: raw.highest_bid,

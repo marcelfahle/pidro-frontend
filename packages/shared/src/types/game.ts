@@ -102,6 +102,12 @@ export interface ServerTrickDetails {
   two_of_trump?: ServerTwoOfTrump | null;
 }
 
+/** One bid or pass, in the order the server recorded it. */
+export interface ServerBid {
+  position: Position;
+  amount: number | 'pass';
+}
+
 /** How the last scored hand ended; kept until the next hand's first trick is done. */
 export interface ServerLastHand {
   hand_number: number;
@@ -112,6 +118,10 @@ export interface ServerLastHand {
   made: boolean;
   delta: Record<TeamKey, number>;
   scores: Record<TeamKey, number>;
+  /** The finished hand itself (PID-221), final trick included; absent from older servers. */
+  bids?: ServerBid[];
+  trump?: Suit | null;
+  tricks?: ServerTrick[];
 }
 
 export interface ServerGameState {
@@ -133,6 +143,8 @@ export interface ServerGameState {
   };
 
   bids?: Record<Position, number | 'pass'>;
+  /** `bids` in the order they were made; absent when the server sent a record. */
+  bid_order?: ServerBid[];
   current_bid?: number;
   bid_winner?: Position | null;
   bid_team?: 'north_south' | 'east_west' | null;
