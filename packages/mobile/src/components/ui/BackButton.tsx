@@ -1,4 +1,5 @@
 import { StyleSheet } from 'react-native';
+import { useTranslation } from '@/i18n';
 import { BevelPressable } from './Bevel';
 import { Icon } from './Icon';
 
@@ -15,14 +16,15 @@ export interface BackButtonProps {
 export function BackButton({
   onPress,
   size = 44,
-  accessibilityLabel = 'Go back',
+  accessibilityLabel,
   testID,
   disabled = false,
 }: BackButtonProps) {
+  const { t } = useTranslation();
   return (
     <BevelPressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ?? t('ui.back')}
       material="glass"
       radius={size / 2}
       onPress={onPress}

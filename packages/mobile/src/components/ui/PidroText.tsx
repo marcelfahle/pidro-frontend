@@ -1,5 +1,6 @@
 import { Text, type TextProps, type TextStyle, StyleSheet } from 'react-native';
 import { PidroColors, PidroType } from '@/design/tokens';
+import { useLocale } from '@/i18n';
 
 export type PidroTextRole = 'score' | 'display' | 'title' | 'label' | 'body' | 'metadata';
 export type PidroTextTone = 'default' | 'soft' | 'muted' | 'gold' | 'cyan' | 'danger';
@@ -18,8 +19,10 @@ export function PidroText({
   maxFontSizeMultiplier,
   ...props
 }: PidroTextProps) {
+  const locale = useLocale();
   return (
     <Text
+      accessibilityLanguage={locale}
       maxFontSizeMultiplier={maxFontSizeMultiplier ?? (role === 'body' ? 1.8 : 1.5)}
       style={[styles.base, styles[role], styles[tone], align ? { textAlign: align } : null, style]}
       {...props}

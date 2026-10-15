@@ -10,7 +10,7 @@ import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { shouldExplainLouisiana } from '@/features/rules/ruleSets';
 import { SUPPORT_EMAIL } from '@/features/auth/classicRecovery';
 import { useSettingsStore } from '@/stores/settings';
-import { t } from '@/i18n';
+import { useTranslation } from '@/i18n';
 import { RuleSetChip, ruleSetLabel } from './RuleSet';
 
 export function useRulesExplainer(ruleSet: RuleSet, spectator: boolean, fixtureSeen?: boolean) {
@@ -46,10 +46,13 @@ export function RulesExplainer({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [mailError, setMailError] = useState(false);
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
-  const facts = ['play', 'winner', 'turns', 'bid'].map((fact) => t(`rules.${fact}.${ruleSet}`));
+  const facts = (['play', 'winner', 'turns', 'bid'] as const).map((fact) =>
+    t(`rules.${fact}.${ruleSet}`)
+  );
   return (
     <Modal
       visible={open}

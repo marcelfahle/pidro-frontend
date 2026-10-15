@@ -6,7 +6,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroFlagColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { ruleSets } from '@/features/rules/ruleSets';
-import { t } from '@/i18n';
+import { t, useTranslation } from '@/i18n';
 
 export function ruleSetLabel(ruleSet: RuleSet) {
   return t(ruleSets[ruleSet].labelKey);
@@ -46,6 +46,7 @@ export function RuleSetChip({
   flagOnly?: boolean;
   compact?: boolean;
 }) {
+  useTranslation();
   const color = ruleSet === 'finnish' ? PidroColors.cyanText : PidroColors.rulesLouisianaText;
   return (
     <Surface
@@ -83,6 +84,7 @@ export function RuleSetSelector<T extends RuleSet | 'all'>({
   includeAll?: boolean;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const options: (RuleSet | 'all')[] = includeAll
     ? ['all', ...(Object.keys(ruleSets) as RuleSet[])]
     : (Object.keys(ruleSets) as RuleSet[]);

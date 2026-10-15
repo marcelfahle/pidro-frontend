@@ -6,9 +6,10 @@ import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
-import { t } from '@/i18n';
+import { useTranslation } from '@/i18n';
 
 export default function FriendsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   return (
@@ -25,10 +26,9 @@ export default function FriendsScreen() {
           <Circle cx={9} cy={8} r={3.4} />
           <Path d="M2.5 20a6.5 6.5 0 0 1 13 0M17 5.5a3.4 3.4 0 0 1 0 5.8M21.5 20a6.5 6.5 0 0 0-4.5-6.2" />
         </Svg>
-        <PidroText style={styles.title}>Friends</PidroText>
+        <PidroText style={styles.title}>{t('social.friends')}</PidroText>
         <PidroText role="body" tone="soft" align="center" style={styles.copy}>
-          Friend lists are coming. Until then, invite links take friends straight to your table —
-          and a code gets you to theirs.
+          {t('social.friends_coming')}
         </PidroText>
         <BevelButton
           label={t('invite.manual.entryAction')}

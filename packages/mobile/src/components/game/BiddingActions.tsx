@@ -9,6 +9,8 @@ import { AVATAR_SIZE, computeLayout, handScale } from '@/game/canvas/layout';
 import { playActionHaptic } from '@/game/useGameHaptics';
 import { useGameStore } from '@/stores/game';
 import type { LegalAction } from '@/types/game';
+import { useTranslation } from '@/i18n';
+import { localizedError } from '@pidro/shared';
 
 const ALL_BID_VALUES = [6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
 const GRID_GAP = PidroSpacing.xxs;
@@ -32,13 +34,14 @@ export function BiddingActions({
   topReserve: number;
   bottomReserve: number;
 }) {
+  const { t } = useTranslation();
   const serverState = useGameStore((state) => state.serverState);
   const legalActions = useGameStore((state) => state.legalActions);
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const landscape = width > height;
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const [submissionError, setSubmissionError] = useState<unknown>(null);
 
   const { bidOptions, legalBidSet, canPass } = useMemo(() => {
     const bids: number[] = [];
@@ -67,7 +70,7 @@ export function BiddingActions({
       playActionHaptic();
     } catch (error) {
       console.error(`[Game] ${event} failed:`, error);
-      setSubmissionError('Bid not sent. Check your connection and try again.');
+      setSubmissionError(error);
     } finally {
       setIsSubmitting(false);
     }
@@ -125,7 +128,7 @@ export function BiddingActions({
               <PressableFX
                 key={amount}
                 accessibilityRole="button"
-                accessibilityLabel={`Bid ${amount}`}
+                accessibilityLabel={t('game.bid', { amount })}
                 accessibilityState={{ disabled: !isLegal || isSubmitting }}
                 onPress={() => sendAction('bid', { amount })}
                 disabled={!isLegal || isSubmitting}
@@ -147,7 +150,7 @@ export function BiddingActions({
         </View>
         <PressableFX
           accessibilityRole="button"
-          accessibilityLabel="Pass"
+          accessibilityLabel={t('game.pass')}
           accessibilityState={{ disabled: !canPass || isSubmitting }}
           onPress={() => sendAction('pass', {})}
           disabled={!canPass || isSubmitting}
@@ -158,7 +161,7 @@ export function BiddingActions({
           ]}
           pressedStyle={styles.bidButtonPressed}>
           <PidroText role="title" maxFontSizeMultiplier={1.2}>
-            PASS
+            {t('game.pass').toLocaleUpperCase()}
           </PidroText>
         </PressableFX>
         {submissionError ? (
@@ -168,7 +171,7 @@ export function BiddingActions({
             tone="danger"
             align="center"
             numberOfLines={2}>
-            {submissionError}
+            {localizedError(submissionError, 'game.bid_failed')}
           </PidroText>
         ) : null}
       </View>

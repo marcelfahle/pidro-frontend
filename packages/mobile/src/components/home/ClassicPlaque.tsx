@@ -3,6 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { useTranslation } from '@/i18n';
 
 export function ClassicPlaque({
   onPress,
@@ -11,13 +12,14 @@ export function ClassicPlaque({
   onPress: () => void;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const tablet = Math.min(width, height) >= 700;
 
   return (
     <PressableFX
       accessibilityRole="button"
-      accessibilityLabel="Played Pidro Classic? Bring your name and games."
+      accessibilityLabel={t('social.classic_action')}
       disabled={disabled}
       onPress={onPress}
       style={[styles.plaque, tablet && styles.plaqueTablet, disabled && styles.disabled]}>
@@ -26,10 +28,10 @@ export function ClassicPlaque({
       </View>
       <View style={styles.copy}>
         <PidroText style={[styles.title, tablet && styles.titleTablet]}>
-          Played Pidro Classic?
+          {t('social.classic_question')}
         </PidroText>
         <PidroText style={[styles.subtitle, tablet && styles.subtitleTablet]}>
-          Bring your name and games.
+          {t('social.classic_bring')}
         </PidroText>
       </View>
       <Icon name="chevron-right" size={tablet ? 24 : 22} color={PidroColors.cyanText} />

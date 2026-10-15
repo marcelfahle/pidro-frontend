@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createSettingsStore, normalizeRoom } from '@pidro/shared';
+import { catalogs, createSettingsStore, normalizeRoom } from '@pidro/shared';
 import {
   filterRuleSet,
   lobbyRuleSetFilter,
@@ -7,7 +7,7 @@ import {
   ruleSets,
   shouldExplainLouisiana,
 } from '../src/features/rules/ruleSets.ts';
-import english from '../src/i18n/en.json';
+const english = catalogs.en;
 
 test('rules have one label each', () => {
   expect(Object.values(ruleSets).map(({ labelKey }) => english[labelKey])).toEqual([

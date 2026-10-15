@@ -2,7 +2,6 @@ import { lifecycleFromReply, publicPlayerName } from '@pidro/shared';
 import { useEffect, useRef } from 'react';
 import { Channel, Presence } from 'phoenix';
 import {
-  describeGameAction,
   extractGamePresentation,
   extractGameState,
   normalizeTurnTimer,
@@ -19,6 +18,7 @@ import type { Position } from '@/types/lobby';
 import { waitingRoomEvent, type WaitingRoomEvent } from '../gameRoomEvents';
 import { terminalGameJoinFailure } from '../gameJoinFailure';
 import { reconnectsAfterClose } from '@/features/game/channelReconnect';
+import type { TableNotice } from '@/game/tableNotices';
 
 let globalGameChannel: Channel | null = null;
 let notifySeatEvent: ((event: SeatEvent) => void) | undefined;
@@ -33,10 +33,7 @@ interface UseGameChannelOptions {
   onWaitingRoomEvent?: (event: WaitingRoomEvent) => void;
 }
 
-export interface SeatEvent {
-  message: string;
-  variant: 'warning' | 'success' | 'error';
-}
+export type SeatEvent = TableNotice;
 
 export interface ProgressionSummary {
   rated: boolean;
@@ -59,10 +56,10 @@ export interface ProgressionSummary {
   } | null;
 }
 
-function seatDisplayName(position: Position | null, fallback?: string | null): string {
+function seatDisplayName(position: Position | null, fallback?: string | null): string | undefined {
   if (fallback) return fallback;
-  if (!position) return 'A player';
-  return useGameStore.getState().playerMeta[position].username ?? 'A player';
+  if (!position) return undefined;
+  return useGameStore.getState().playerMeta[position].username ?? undefined;
 }
 
 function applyLifecycle(
@@ -82,16 +79,23 @@ function applyLifecycle(
     const wasBot = previous.status === 'bot_substitute' || previous.status === 'permanent_bot';
     const isBot = next.status === 'bot_substitute' || next.status === 'permanent_bot';
     const name = isBot
-      ? (next.decision?.player_name ?? previous.username ?? 'A player')
-      : publicPlayerName(next.username, 'A player', next.display_name);
+      ? (next.decision?.player_name ?? previous.username)
+      : publicPlayerName(next.username, '', next.display_name);
     if (isBot && !wasBot && previous.status !== 'vacant') {
       onSeatEvent?.({
-        message: `${name} (${position}) disconnected. Bot is filling in.`,
+        key: 'game.notice_disconnected_seat',
+        seat: { name, position },
         variant: 'warning',
       });
     } else if (next.status === 'normal') {
-      const action = previous.player_id === next.player_id ? 'is back!' : 'joined the table.';
-      onSeatEvent?.({ message: `${name} (${position}) ${action}`, variant: 'success' });
+      onSeatEvent?.({
+        key:
+          previous.player_id === next.player_id
+            ? 'game.notice_back_seat'
+            : 'game.notice_joined_seat',
+        seat: { name, position },
+        variant: 'success',
+      });
     }
   }
 }
@@ -317,7 +321,7 @@ export const useGameChannel = ({
 
         if (scope === 'room') {
           onSeatEventRef.current?.({
-            message: `Dealer selection timed out. The server ${describeGameAction(action)}.`,
+            autoTurn: { scope: 'room', action },
             variant: 'warning',
           });
           return;
@@ -325,7 +329,7 @@ export const useGameChannel = ({
 
         if (position && position === youPositionRef.current) {
           onSeatEventRef.current?.({
-            message: `Time expired. The server ${describeGameAction(action)} for you.`,
+            autoTurn: { scope: 'you', action },
             variant: 'warning',
           });
         }
@@ -420,7 +424,8 @@ export const useGameChannel = ({
           setSeatStatus(position, 'bot_substitute', username);
           setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
-            message: `${seatDisplayName(position, username)} disconnected. Bot is filling in.`,
+            key: 'game.notice_disconnected',
+            seat: { name: seatDisplayName(position, username) },
             variant: 'warning',
           });
         }
@@ -437,7 +442,8 @@ export const useGameChannel = ({
           setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
-            message: `${seatDisplayName(position, username)} is back!`,
+            key: 'game.notice_back',
+            seat: { name: seatDisplayName(position, username) },
             variant: 'success',
           });
         }
@@ -484,7 +490,8 @@ export const useGameChannel = ({
           setSeatStatus(position, 'normal', username);
           setPlayerConnected(null, position, true);
           onSeatEventRef.current?.({
-            message: `${username || 'A new player'} joined as substitute`,
+            key: 'game.notice_substitute',
+            seat: { name: username },
             variant: 'success',
           });
         }

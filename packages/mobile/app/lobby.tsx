@@ -36,7 +36,18 @@ import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
-import { apiErrorInfo } from '@/utils/apiErrors';
+import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
+import { useTranslation, formatNumber, type TranslationKey } from '@/i18n';
+
+type LobbyFailure =
+  { error?: unknown; fallback: TranslationKey } | { minimum: number; played: number };
+
+function failureText(failure?: LobbyFailure): string | undefined {
+  if (!failure) return undefined;
+  return 'minimum' in failure
+    ? seatRequirementMessage(failure.minimum, failure.played)
+    : localizedError(failure.error, failure.fallback);
+}
 
 function roomHasUser(room: Room, userId?: string | null): boolean {
   if (!userId) return false;
@@ -67,6 +78,7 @@ function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
 }
 
 function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
+  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const profile = pickProfile(width, height);
@@ -74,7 +86,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const columns = portraitPhone ? 1 : profile === 'tablet-landscape' ? 3 : 2;
   const tablet = profile.startsWith('tablet');
   const user = useAuthStore((state) => state.user);
-  const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
+  const playerName = publicPlayerName(user?.username, t('social.player'), user?.display_name);
   const {
     rooms: storedRooms,
     lobby: storedLobby,
@@ -93,11 +105,11 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const isLoading = fixture ? false : storedLoading;
   const error = fixture ? null : storedError;
   const [query, setQuery] = useState(fixture?.query ?? '');
-  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const [rowErrors, setRowErrors] = useState<Record<string, LobbyFailure | undefined>>({});
   const [joining, setJoining] = useState<string | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<LobbyFailure | null>(null);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const pendingAccountActionRef = useRef<(() => Promise<void>) | null>(null);
   const realtimeRevisionRef = useRef(0);
@@ -134,8 +146,8 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     return () => clearTimeout(timer);
   }, [rowErrors]);
 
-  const showSeatReason = useCallback((code: string, reason: string) => {
-    setRowErrors((errors) => ({ ...errors, [code]: reason }));
+  const showSeatReason = useCallback((code: string, minimum: number, played: number) => {
+    setRowErrors((errors) => ({ ...errors, [code]: { minimum, played } }));
   }, []);
 
   const requestAccount = useCallback((retry: () => Promise<void>) => {
@@ -158,22 +170,11 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     [lobby.my_rejoinable, lobby.open_tables, rooms, user?.id]
   );
   const activeRoom = activeRooms[0] ?? null;
-  const openTables = useMemo(
-    () => filterPlayers(lobby.open_tables, query),
-    [lobby.open_tables, query]
-  );
-  const rejoinableTables = useMemo(
-    () => filterPlayers(lobby.my_rejoinable, query),
-    [lobby.my_rejoinable, query]
-  );
-  const substituteTables = useMemo(
-    () => filterPlayers(lobby.substitute_needed, query),
-    [lobby.substitute_needed, query]
-  );
-  const watchTables = useMemo(
-    () => filterPlayers(lobby.spectatable, query),
-    [lobby.spectatable, query]
-  );
+  // Fallback player labels depend on the current locale, so do not cache them.
+  const openTables = filterPlayers(lobby.open_tables, query);
+  const rejoinableTables = filterPlayers(lobby.my_rejoinable, query);
+  const substituteTables = filterPlayers(lobby.substitute_needed, query);
+  const watchTables = filterPlayers(lobby.spectatable, query);
   const visibleTableCount =
     rejoinableTables.length + openTables.length + substituteTables.length + watchTables.length;
   const hasQuery = query.trim().length > 0;
@@ -206,7 +207,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           if (response?.meta) setStats(response.meta);
         }
       } catch {
-        setError('We could not load the tables. Please try again.');
+        setError('social.load_error');
         console.error('[Lobby] Failed to load tables from either lobby endpoint.');
       }
     } finally {
@@ -222,19 +223,16 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     async function joinRoom(code: string, position?: Position, mayRequestAccount = true) {
       if (fixture || joining) return;
       setJoining(code);
-      setRowErrors((errors) => ({ ...errors, [code]: '' }));
+      setRowErrors((errors) => ({ ...errors, [code]: undefined }));
       try {
         const response = await lobbyApi.joinRoom(code, position);
         captureAnalytics('room_joined', { join_source: 'lobby' });
         upsertLobbyRoom(response.room, 'my_rejoinable');
         router.push(`/game/${code}`);
       } catch (joinError: unknown) {
-        const { code: errorCode, detail, requirement } = apiErrorInfo(joinError);
+        const { code: errorCode, requirement } = apiErrorInfo(joinError);
         if (requirement) {
-          showSeatReason(
-            code,
-            seatRequirementMessage(requirement.min_games, requirement.games_played)
-          );
+          showSeatReason(code, requirement.min_games, requirement.games_played);
           await loadLobby();
           return;
         }
@@ -242,10 +240,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           if (mayRequestAccount) {
             requestAccount(() => joinRoom(code, position, false));
           } else {
-            Alert.alert(
-              'Could not join',
-              detail || 'Your account could not be confirmed. Please try again.'
-            );
+            Alert.alert(t('social.join_failed'), localizedError(joinError, 'social.account_error'));
           }
           return;
         }
@@ -257,7 +252,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         }
         setRowErrors((errors) => ({
           ...errors,
-          [code]: detail || 'That seat may no longer be available.',
+          [code]: { error: joinError, fallback: 'social.seat_error' },
         }));
         await loadLobby();
       } finally {
@@ -273,6 +268,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       activeRoom?.code,
       loadLobby,
       showSeatReason,
+      t,
     ]
   );
 
@@ -283,15 +279,15 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         await lobbyApi.watchRoom(code);
         router.push(`/game/${code}`);
       } catch (watchError: unknown) {
-        const { code: errorCode, detail } = apiErrorInfo(watchError);
+        const { code: errorCode } = apiErrorInfo(watchError);
         if (errorCode === 'ACCOUNT_REQUIRED' && mayRequestAccount) {
           requestAccount(() => watchRoom(code, false));
           return;
         }
-        Alert.alert('Could not watch', detail || 'That table may no longer be available.');
+        Alert.alert(t('social.watch_failed'), localizedError(watchError, 'social.watch_error'));
       }
     },
-    [fixture, router, requestAccount]
+    [fixture, router, requestAccount, t]
   );
 
   const handleRowAction = useCallback(
@@ -313,9 +309,9 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     // An invite seat is an open seat; the waiting table opens with its invite sheet up.
     const openTable = (code: string) =>
       router.replace(invite ? `/game/${code}?invite=true` : `/game/${code}`);
-    const reportFailure = (message: string) => {
-      if (showFailureAlert) Alert.alert('Could not create table', message);
-      else setCreateError(message);
+    const reportFailure = (fallback: TranslationKey, error?: unknown) => {
+      if (showFailureAlert) Alert.alert(t('social.create_failed'), localizedError(error, fallback));
+      else setCreateError({ error, fallback });
     };
     setIsCreating(true);
     setCreateError(null);
@@ -330,20 +326,18 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       setIsCreateModalOpen(false);
       openTable(response.code);
     } catch (createRoomError: unknown) {
-      const { code, detail } = apiErrorInfo(createRoomError);
+      const { code } = apiErrorInfo(createRoomError);
       if (code === 'ACCOUNT_REQUIRED') {
         if (mayRequestAccount) {
           requestAccount(() => handleCreateRoom(data, invite, false, true));
         } else {
-          reportFailure(detail || 'Your account could not be confirmed. Please try again.');
+          reportFailure('social.account_error', createRoomError);
         }
         return;
       }
       if (code === 'ALREADY_IN_ROOM') {
         if (activeRoom) {
-          reportFailure(
-            'You are already at a table. Rejoin it or leave before creating another table.'
-          );
+          reportFailure('social.already_table');
         } else {
           try {
             // No table left to leave is the state the lobby wanted.
@@ -366,26 +360,15 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
               if (mayRequestAccount) {
                 requestAccount(() => handleCreateRoom(data, invite, false, true));
               } else {
-                reportFailure(
-                  retryInfo.detail || 'Your account could not be confirmed. Please try again.'
-                );
+                reportFailure('social.account_error', retryError);
               }
               return;
             }
-            const retryDetail = retryInfo.detail;
-            reportFailure(
-              retryDetail
-                ? `We could not clear your previous table: ${retryDetail}`
-                : 'The server still has you at another table. Refresh the lobby, then rejoin or leave it before creating a new table.'
-            );
+            reportFailure('social.previous_table', retryError);
           }
         }
       } else {
-        reportFailure(
-          detail
-            ? `We could not create the table: ${detail}`
-            : 'We could not create the table. Please try again.'
-        );
+        reportFailure('social.create_error', createRoomError);
       }
     } finally {
       setIsCreating(false);
@@ -395,9 +378,9 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const handleNewTable = () => {
     if (fixture) return;
     if (activeRoom) {
-      Alert.alert('Current table', 'You are already at a table.', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Rejoin', onPress: () => router.push(`/game/${activeRoom.code}`) },
+      Alert.alert(t('social.current_table'), t('social.at_table'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
       ]);
       return;
     }
@@ -411,9 +394,9 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         compact
         value={query}
         onChangeText={setQuery}
-        placeholder="Find a player"
+        placeholder={t('social.find_player')}
         returnKeyType="search"
-        accessibilityLabel="Find a player"
+        accessibilityLabel={t('social.find_player')}
         style={{ paddingLeft: 40 }}
       />
       <View pointerEvents="none" style={styles.searchIcon}>
@@ -429,7 +412,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         <BevelButton
           material="glass"
           size="icon"
-          accessibilityLabel="Go back"
+          accessibilityLabel={t('social.back')}
           onPress={() => {
             if (router.canGoBack()) router.back();
             else router.replace('/home');
@@ -438,7 +421,9 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         </BevelButton>
         <View style={portraitPhone ? styles.headerTitle : styles.headerCounts}>
           <PidroText role="label" numberOfLines={1}>
-            {fixture ? 104 : stats.online_players} playing now
+            {t('social.playing_now', {
+              number: formatNumber(fixture ? 104 : stats.online_players),
+            })}
           </PidroText>
           <PidroText role="metadata" tone="soft">
             {lobbyCounts(lobby)}
@@ -449,8 +434,8 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         <BevelButton
           material={portraitPhone ? 'glass' : 'wood'}
           size={portraitPhone ? 'icon' : 'sm'}
-          label={portraitPhone ? undefined : 'Start a table'}
-          accessibilityLabel="Start a table"
+          label={portraitPhone ? undefined : t('social.start')}
+          accessibilityLabel={t('social.start')}
           onPress={handleNewTable}>
           <Icon name="plus" size={22} />
         </BevelButton>
@@ -469,7 +454,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         {error && !isUnavailable ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger">
-              {error}
+              {t('social.load_error')}
             </PidroText>
           </Surface>
         ) : null}
@@ -478,14 +463,14 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           <View style={styles.loading}>
             <ActivityIndicator size="large" color={PidroColors.cyan} />
             <PidroText role="body" tone="soft">
-              Loading tables…
+              {t('social.loading_tables')}
             </PidroText>
           </View>
         ) : isUnavailable ? (
           <LobbyEmptyState
-            title="Couldn’t load tables"
-            description="We couldn’t load the tables. Please try again."
-            actionLabel="Try again"
+            title={t('social.load_title')}
+            description={t('social.load_error')}
+            actionLabel={t('common.tryAgain')}
             onAction={loadLobby}
           />
         ) : isEmptyLobby ? (
@@ -497,9 +482,9 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           />
         ) : hasNoResults ? (
           <LobbyEmptyState
-            title="No matching tables"
-            description="Try a player’s name, or clear your search."
-            actionLabel="Clear search"
+            title={t('social.no_matches')}
+            description={t('social.search_help')}
+            actionLabel={t('social.clear_search')}
             onAction={() => setQuery('')}
           />
         ) : (
@@ -520,10 +505,10 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
             showsVerticalScrollIndicator={false}>
             {(
               [
-                ['my_rejoinable', 'Your table', rejoinableTables],
-                ['open_tables', 'Open tables', openTables],
-                ['substitute_needed', 'Needs a substitute', substituteTables],
-                ['spectatable', 'Watch', watchTables],
+                ['my_rejoinable', t('social.your_table'), rejoinableTables],
+                ['open_tables', t('social.open_tables'), openTables],
+                ['substitute_needed', t('social.needs_sub'), substituteTables],
+                ['spectatable', t('social.watch'), watchTables],
               ] as [LobbyCategoryKey, string, Room[]][]
             ).map(([category, title, tables]) =>
               tables.length ? (
@@ -534,7 +519,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
                     </PidroText>
                     {category === 'open_tables' ? (
                       <PidroText role="metadata" style={styles.goldHint}>
-                        Tap an open seat to sit down.
+                        {t('social.tap_seat')}
                       </PidroText>
                     ) : null}
                   </View>
@@ -548,7 +533,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
                           gamesPlayed={gamesPlayed}
                           onLocked={showSeatReason}
                           pending={joining === room.code}
-                          error={rowErrors[room.code]}
+                          error={failureText(rowErrors[room.code])}
                           onAction={handleRowAction}
                         />
                       </View>
@@ -566,7 +551,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
               styles.pinned,
               gradientBg(`linear-gradient(180deg, transparent 0%, ${PidroColors.feltBottom} 45%)`),
             ]}>
-            <BevelButton label="Start a table" size="lg" fullWidth onPress={handleNewTable} />
+            <BevelButton label={t('social.start')} size="lg" fullWidth onPress={handleNewTable} />
           </View>
         ) : null}
       </View>
@@ -581,7 +566,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         isLoading={isCreating}
         username={playerName}
         avatarUrl={user?.avatar_url}
-        error={createError}
+        error={failureText(createError ?? undefined)}
       />
       <AuthSheet
         isOpen={accountSheetOpen}
@@ -652,6 +637,7 @@ function EmptyLobby({
   onQuickGame: () => void;
   quickGameLoading: boolean;
 }) {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const tablet = pickProfile(width, height).startsWith('tablet');
@@ -677,7 +663,7 @@ function EmptyLobby({
         <OpenChair size={chairSize} />
         <OpenChair size={chairSize} />
         <PidroText role="label" tone="muted">
-          vs
+          {t('social.vs')}
         </PidroText>
         <OpenChair size={chairSize} />
         <OpenChair size={chairSize} />
@@ -688,29 +674,24 @@ function EmptyLobby({
         }>
         <View style={styles.emptyLobbyCopy}>
           <AuthFlowHeading align="center" hero>
-            No one is at a table yet
+            {t('social.empty_title')}
           </AuthFlowHeading>
           <PidroText role="body" tone="soft" align="center">
-            Start one and it shows up here for everyone. Open seats wait for players, and any seat
-            can be a bot.
+            {t('social.empty_help')}
           </PidroText>
         </View>
         {landscape || tablet ? null : <View style={styles.emptySpacer} />}
         <View style={styles.emptyActions}>
-          <AuthFlowButton label="Start a table" onPress={onStart} />
+          <AuthFlowButton label={t('social.start')} onPress={onStart} />
           <BevelButton
-            label="Join with a table code"
+            label={t('social.join_code')}
             material="glass"
             size="md"
             fullWidth
             leadingIcon={<Icon name="hash" size={18} />}
             onPress={onJoinCode}
           />
-          <TextLink
-            label="Or play a quick game with bots"
-            disabled={quickGameLoading}
-            onPress={onQuickGame}
-          />
+          <TextLink label={t('social.or_bots')} disabled={quickGameLoading} onPress={onQuickGame} />
         </View>
       </View>
     </ScrollView>

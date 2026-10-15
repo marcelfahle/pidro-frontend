@@ -19,6 +19,7 @@ import { PidroBevel, PidroColors } from '@/design/tokens';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { gradientBg } from '@/components/ui/Bevel';
+import { useTranslation } from '@/i18n';
 
 export type ShellTab = 'league' | 'stats' | 'table' | 'friends' | 'settings';
 
@@ -72,14 +73,6 @@ const TAB_ICONS: Record<Exclude<ShellTab, 'table'>, keyof typeof Feather.glyphMa
   settings: 'settings',
 };
 
-const TAB_LABELS: Record<ShellTab, string> = {
-  league: 'League',
-  stats: 'Stats',
-  table: 'Home',
-  friends: 'Friends',
-  settings: 'Settings',
-};
-
 function TabItem({
   tab,
   active,
@@ -89,10 +82,11 @@ function TabItem({
   active: boolean;
   onSelect: (tab: ShellTab) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <PressableFX
       accessibilityRole="button"
-      accessibilityLabel={TAB_LABELS[tab]}
+      accessibilityLabel={t(`shell.${tab}`)}
       accessibilityState={{ selected: active }}
       onPress={() => onSelect(tab)}
       style={[styles.item, active && styles.itemActive]}>
@@ -102,13 +96,14 @@ function TabItem({
         color={active ? '#ffffff' : 'rgba(207, 239, 255, 0.78)'}
       />
       <PidroText style={[styles.itemLabel, active && styles.itemLabelActive]}>
-        {TAB_LABELS[tab]}
+        {t(`shell.${tab}`)}
       </PidroText>
     </PressableFX>
   );
 }
 
 export function TabPill({ orientation, active, tableBadge, onSelect, style }: TabPillProps) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const rail = orientation === 'rail';
 
@@ -133,7 +128,7 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
 
           <PressableFX
             accessibilityRole="button"
-            accessibilityLabel={tableBadge ? 'Rejoin your game' : 'Home'}
+            accessibilityLabel={t(tableBadge ? 'shell.rejoinGame' : 'shell.table')}
             accessibilityState={{ selected: active === 'table' }}
             onPress={() => onSelect('table')}
             style={styles.item}>
@@ -148,7 +143,9 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
               {tableBadge ? <View style={styles.badge} /> : null}
             </View>
             {tableBadge ? (
-              <PidroText style={[styles.itemLabel, styles.tableLabel]}>Rejoin</PidroText>
+              <PidroText style={[styles.itemLabel, styles.tableLabel]}>
+                {t('shell.rejoin')}
+              </PidroText>
             ) : null}
           </PressableFX>
 

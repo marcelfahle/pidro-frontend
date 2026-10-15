@@ -35,6 +35,7 @@ import type {
   SeatStatus,
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
+import { t, useTranslation } from '@/i18n';
 
 const seat = (
   abs: Position,
@@ -166,12 +167,13 @@ const DEALER_CUTS: Record<Position, Card> = {
   south: { suit: 'hearts', rank: 5 },
   west: { suit: 'diamonds', rank: 7 },
 };
-const DEALER_CUT_STATUS = Object.fromEntries(
-  Object.entries(DEALER_CUTS).map(([position, card]) => [
-    position,
-    { text: `Draws ${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}` },
-  ])
-) as Record<RelativePosition, SeatLine>;
+const dealerCutStatus = () =>
+  Object.fromEntries(
+    Object.entries(DEALER_CUTS).map(([position, card]) => [
+      position,
+      { text: t('game.draws', { card: `${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}` }) },
+    ])
+  ) as Record<RelativePosition, SeatLine>;
 
 const COUNTS: Record<string, number> = { south: 6, north: 8, east: 8, west: 7 };
 type Play = { player: Position; card: Card };
@@ -211,6 +213,7 @@ export default function GameCanvasDev({
   phase = 'playing',
   lifecycle,
 }: GameCanvasDevProps) {
+  const { locale } = useTranslation();
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
@@ -337,14 +340,15 @@ export default function GameCanvasDev({
                 seatStatus: lifecycle,
                 username:
                   lifecycle === 'permanent_bot'
-                    ? 'Bot'
+                    ? t('game.bot')
                     : lifecycle === 'vacant'
-                      ? 'Open seat'
+                      ? t('game.open_seat')
                       : player.username,
               }
             : player
         ),
-    [turn, lifecycle, names]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- locale invalidates synthetic seat names
+    [turn, lifecycle, names, locale]
   );
   const canPlay = turn === 'south' && hand.length > 0 && !trick.some((p) => p.player === 'south');
 
@@ -383,7 +387,8 @@ export default function GameCanvasDev({
         lastHand,
         players,
       }),
-    [handNumber, bids, trump, tricks, trick, lastHand, players]
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- buildHandLog translates through the stable global t
+    [handNumber, bids, trump, tricks, trick, lastHand, players, locale]
   );
 
   useEffect(() => {
@@ -413,12 +418,12 @@ export default function GameCanvasDev({
         bottomReserve={bottomReserve}
         statusByRel={
           phase === 'dealer_selection'
-            ? DEALER_CUT_STATUS
+            ? dealerCutStatus()
             : {
-                north: { text: 'Passed', tone: 'quiet' },
-                east: { text: 'Bid 6' },
-                west: { text: 'Passed', tone: 'quiet' },
-                [turn]: { text: 'Playing…', tone: 'now' },
+                north: { text: t('game.passed'), tone: 'quiet' },
+                east: { text: t('game.bid', { amount: 6 }) },
+                west: { text: t('game.passed'), tone: 'quiet' },
+                [turn]: { text: t('game.playing'), tone: 'now' },
               }
         }
       />
@@ -434,7 +439,11 @@ export default function GameCanvasDev({
             left={insets.left}
             log={handLog}
             // East's "Bid 6" from the fixture's bidding, held through the play.
-            resting={phase === 'playing' ? { who: 'Eli', what: 'bid 6', ours: false } : null}
+            resting={
+              phase === 'playing'
+                ? { who: 'Eli', what: t('game.bid', { amount: 6 }), ours: false }
+                : null
+            }
             ticker={tickerPlacement(
               computeLayout(width, height, insets, topReserve, bottomReserve),
               {

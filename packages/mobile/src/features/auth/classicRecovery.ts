@@ -1,4 +1,9 @@
-import type { ClassicHelpRequest, ClassicSignInLink } from '@pidro/shared';
+import {
+  t,
+  type ClassicHelpRequest,
+  type ClassicSignInLink,
+  type TranslationKey,
+} from '@pidro/shared';
 import { apiErrorInfo } from '../../utils/apiErrors';
 
 export const SUPPORT_EMAIL = 'support@pidro.net';
@@ -40,14 +45,14 @@ export async function requestClassicSignInLink(
 export type ClassicHelpResult =
   | { status: 'sent' }
   | { status: 'mail' }
-  | { status: 'rejected'; message: string; field?: 'email' }
+  | { status: 'rejected'; message: string; messageKey: TranslationKey; field?: 'email' }
   | { status: 'failed' };
 
 export function classicHelpMailto({ name, email, details }: ClassicHelpRequest): string {
-  const body = [`Name I played as: ${name}`, `Email to reach me: ${email}`, '', details ?? '']
+  const body = [t('auth.mail_name', { name }), t('auth.mail_email', { email }), '', details ?? '']
     .join('\n')
     .trim();
-  const subject = 'Help finding my Pidro Classic account';
+  const subject = t('auth.mail_subject');
   return `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
@@ -69,14 +74,11 @@ export async function sendClassicHelp(
   } catch (error) {
     const status = responseStatus(error);
     if (status === 422 || status === 429) {
-      const { code, detail } = apiErrorInfo(error);
+      const { code } = apiErrorInfo(error);
       return {
         status: 'rejected',
-        message:
-          detail ??
-          (status === 429
-            ? 'Too many messages. Wait a minute and try again.'
-            : 'Check your details and try again.'),
+        messageKey: status === 429 ? 'auth.messages_limited' : 'auth.check_details',
+        message: status === 429 ? t('auth.messages_limited') : t('auth.check_details'),
         // An address the server cannot mail is the email field's error.
         ...(code === 'email' ? { field: 'email' as const } : {}),
       };

@@ -9,7 +9,7 @@ import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useSettingsStore } from '@/stores/settings';
 import { headerTop } from './TableChrome';
 import { TableUtilityWindow } from './TableUtilityWindow';
-import { t } from '@/i18n';
+import { useTranslation } from '@/i18n';
 
 export function TableSettings({
   onLeave,
@@ -22,6 +22,7 @@ export function TableSettings({
   isGameOver?: boolean;
   onRules?: () => void;
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const [panel, setPanel] = useState<'settings' | 'leave' | null>(null);
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
@@ -41,23 +42,23 @@ export function TableSettings({
         <BevelButton
           material="glass"
           size="icon"
-          accessibilityLabel="Table settings"
+          accessibilityLabel={t('game.settings')}
           onPress={() => setPanel('settings')}>
           <Icon name="settings" size={22} />
         </BevelButton>
       </View>
       <TableUtilityWindow
-        title={panel === 'leave' ? 'Leave table?' : 'Table settings'}
+        title={t(panel === 'leave' ? 'game.leave_question' : 'game.settings')}
         open={panel !== null}
         onClose={close}>
         {panel === 'leave' ? (
           <>
-            <PidroText tone="soft">You’ll leave your seat at this table.</PidroText>
-            <BevelButton material="glass" label="Stay at table" fullWidth onPress={close} />
+            <PidroText tone="soft">{t('game.leave_description')}</PidroText>
+            <BevelButton material="glass" label={t('game.stay')} fullWidth onPress={close} />
             <BevelButton
               material="glass"
               tone="danger"
-              label="Leave table"
+              label={t('game.leave')}
               fullWidth
               onPress={leave}
             />
@@ -77,13 +78,13 @@ export function TableSettings({
             )}
             <View style={styles.row}>
               <View style={styles.copy}>
-                <PidroText role="label">Sound</PidroText>
+                <PidroText role="label">{t('game.sound')}</PidroText>
                 <PidroText role="metadata" tone="muted">
-                  Coming soon
+                  {t('game.soon')}
                 </PidroText>
               </View>
               <PidroSwitch
-                accessibilityLabel="Sound"
+                accessibilityLabel={t('game.sound')}
                 value={false}
                 disabled
                 onValueChange={() => {}}
@@ -91,13 +92,13 @@ export function TableSettings({
             </View>
             <View style={styles.row}>
               <View style={styles.copy}>
-                <PidroText role="label">Haptics</PidroText>
+                <PidroText role="label">{t('game.haptics')}</PidroText>
                 <PidroText role="metadata" tone="muted">
-                  Subtle game feedback
+                  {t('game.haptics_description')}
                 </PidroText>
               </View>
               <PidroSwitch
-                accessibilityLabel="Haptics"
+                accessibilityLabel={t('game.haptics')}
                 value={hapticEnabled}
                 onValueChange={toggleHaptic}
               />
@@ -108,8 +109,8 @@ export function TableSettings({
                 tone={isSpectator ? 'default' : 'danger'}
                 size="sm"
                 fullWidth
-                accessibilityLabel={isSpectator ? 'Back to lobby' : 'Leave table'}
-                label={isSpectator ? 'Back to lobby' : 'Leave table'}
+                accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
+                label={t(isSpectator ? 'game.lobby' : 'game.leave')}
                 onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}
               />
             </View>

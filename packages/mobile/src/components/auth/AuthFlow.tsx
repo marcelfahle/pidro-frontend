@@ -24,6 +24,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
+import { t } from '@/i18n';
 import {
   PidroBevel,
   PidroColors,
@@ -139,9 +140,9 @@ export function useAuthFlow() {
 
 /** What a player calls the device in their hand. */
 export function deviceNoun(layout: AuthFlowLayout): string {
-  if (Platform.OS === 'web') return 'device';
-  if (layout !== 'tablet') return 'phone';
-  return Platform.OS === 'ios' ? 'iPad' : 'tablet';
+  if (Platform.OS === 'web') return t('auth.device');
+  if (layout !== 'tablet') return t('auth.phone');
+  return Platform.OS === 'ios' ? t('auth.ipad') : t('auth.tablet');
 }
 
 export interface AuthFlowScreenProps {

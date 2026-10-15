@@ -24,6 +24,7 @@ import type { ServerLastHand, TeamKey } from '@/types/game';
 import { isStillCapture } from '@/utils/stillCapture';
 import { computeLayout, playedCardTarget, type TableLayout } from './layout';
 import type { TableModel, TrickResult } from './tableModel';
+import { useTranslation } from '@/i18n';
 
 /** A trick worth this much holds a five: the big moment. */
 const PIDRO_POINTS = 5;
@@ -163,6 +164,7 @@ function HandResult({
   yourTeam: TeamKey | null;
   L: TableLayout;
 }) {
+  const { t } = useTranslation();
   const reduceMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const handNumber = hand?.hand_number ?? null;
@@ -209,13 +211,17 @@ function HandResult({
   const them: TeamKey = yourTeam === 'east_west' ? 'north_south' : 'east_west';
   const us: TeamKey = yourTeam ?? 'north_south';
   const ours = hand.bidding_team === us;
-  const headline = hand.made
-    ? ours
-      ? 'We made it!'
-      : 'They made it'
-    : ours
-      ? 'We were set'
-      : 'They were set';
+  const headline = !yourTeam
+    ? t(hand.made ? 'game.team_made' : 'game.team_set', {
+        team: t(hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew'),
+      })
+    : hand.made
+      ? ours
+        ? t('game.we_made')
+        : t('game.they_made')
+      : ours
+        ? t('game.we_set')
+        : t('game.they_set');
   const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const cardWidth = Math.min(300, width - PidroSpacing.xl * 2);
 
@@ -237,18 +243,34 @@ function HandResult({
       ]}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${headline}. Bid ${hand.bid}, took ${hand.captured[hand.bidding_team]}. Us ${signed(hand.delta[us])}, them ${signed(hand.delta[them])}. Tap to close.`}
+        accessibilityLabel={t('game.result_accessibility', {
+          headline,
+          bid: hand.bid,
+          captured: hand.captured[hand.bidding_team],
+          usLabel: t(yourTeam ? 'game.us' : 'game.ns'),
+          themLabel: t(yourTeam ? 'game.them' : 'game.ew'),
+          us: signed(hand.delta[us]),
+          them: signed(hand.delta[them]),
+        })}
         onPress={() => setShown(null)}
         style={styles.resultBody}>
         <PidroText role="title" tone={hand.made ? 'gold' : 'danger'} align="center">
           {headline}
         </PidroText>
         <PidroText role="metadata" tone="soft" align="center">
-          Bid {hand.bid} · took {hand.captured[hand.bidding_team]}
+          {t('game.bid_took', { bid: hand.bid, captured: hand.captured[hand.bidding_team] })}
         </PidroText>
         <View style={styles.deltas}>
-          <Delta label="Us" value={signed(hand.delta[us])} good={hand.delta[us] >= 0} />
-          <Delta label="Them" value={signed(hand.delta[them])} good={hand.delta[them] >= 0} />
+          <Delta
+            label={t(yourTeam ? 'game.us' : 'game.ns')}
+            value={signed(hand.delta[us])}
+            good={hand.delta[us] >= 0}
+          />
+          <Delta
+            label={t(yourTeam ? 'game.them' : 'game.ew')}
+            value={signed(hand.delta[them])}
+            good={hand.delta[them] >= 0}
+          />
         </View>
       </Pressable>
     </Animated.View>

@@ -148,7 +148,9 @@ describe('social credential helper', () => {
         'facebook',
         dependencies({
           facebookSignIn: async () => {
-            throw new Error('Facebook sign-in is unavailable in this build.');
+            throw Object.assign(new Error('FACEBOOK_UNAVAILABLE'), {
+              code: 'FACEBOOK_UNAVAILABLE',
+            });
           },
         })
       )
@@ -156,6 +158,7 @@ describe('social credential helper', () => {
       status: 'failure',
       provider: 'facebook',
       message: 'Facebook sign-in is unavailable in this build.',
+      messageKey: 'auth.facebook_unavailable',
     });
   });
 });

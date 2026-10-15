@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useTranslation } from '@/i18n';
 import { forwardRef, useCallback, useState } from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { cn } from '@/utils/cn';
@@ -34,6 +35,7 @@ export const Input = forwardRef<TextInput, InputProps>(
     },
     ref
   ) => {
+    const { t } = useTranslation();
     const [focused, setFocused] = useState(false);
     const [passwordVisible, setPasswordVisible] = useState(false);
     const canRevealPassword = revealPassword && secureTextEntry;
@@ -87,9 +89,9 @@ export const Input = forwardRef<TextInput, InputProps>(
           {canRevealPassword ? (
             <PressableFX
               accessibilityRole="button"
-              accessibilityLabel={passwordVisible ? 'Hide password' : 'Show password'}
+              accessibilityLabel={t(passwordVisible ? 'ui.hidePassword' : 'ui.showPassword')}
               accessibilityValue={{
-                text: passwordVisible ? 'Password visible' : 'Password hidden',
+                text: t(passwordVisible ? 'ui.passwordVisible' : 'ui.passwordHidden'),
               }}
               onPress={togglePasswordVisibility}
               className="items-center justify-center"

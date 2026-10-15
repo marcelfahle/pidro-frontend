@@ -19,13 +19,8 @@ import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroFonts } from '@/design/tokens';
 import { isStillCapture } from '@/utils/stillCapture';
-import {
-  avatarLabel,
-  avatarParts,
-  type AvatarAway,
-  type AvatarKind,
-  type AvatarPin,
-} from '@/features/avatar';
+import { useTranslation } from '@/i18n';
+import { avatarParts, type AvatarAway, type AvatarKind, type AvatarPin } from '@/features/avatar';
 
 /**
  * A player, drawn the same way everywhere: the photo in a ring, with up to
@@ -92,6 +87,7 @@ export function PlayerAvatar({
   style,
   testID,
 }: PlayerAvatarProps) {
+  const { t } = useTranslation();
   const parts = avatarParts(size, { beside: label !== 'below' });
   const seated = kind !== 'open';
   const gold = ring !== 'glass' && kind === 'player';
@@ -100,7 +96,17 @@ export function PlayerAvatar({
   const spoken =
     accessibilityLabel ??
     (name || kind !== 'player'
-      ? avatarLabel({ name, status, level, pin, dealer, turn, away, kind })
+      ? [
+          name || t(kind === 'open' ? 'ui.openSeat' : kind === 'bot' ? 'ui.bot' : 'ui.player'),
+          dealer ? t('ui.dealer') : null,
+          level != null ? t('ui.level', { level }) : null,
+          pin ? (pin === 'classic' ? 'Pidro Classic' : t('ui.foundingTester')) : null,
+          turn ? t(turn.urgent ? 'ui.urgentTurn' : 'ui.theirTurn') : null,
+          status?.trim() ||
+            (away ? t(away === 'reconnecting' ? 'ui.reconnecting' : 'ui.botPlaying') : null),
+        ]
+          .filter(Boolean)
+          .join(', ')
       : undefined);
 
   const hasLabel = !!(name || status);
@@ -255,7 +261,7 @@ export function PlayerAvatar({
                 { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
                 away ? styles.awayName : null,
               ]}>
-              {name || (kind === 'open' ? 'Open seat' : '')}
+              {name || (kind === 'open' ? t('ui.openSeat') : '')}
             </PidroText>
             <PidroText
               numberOfLines={1}

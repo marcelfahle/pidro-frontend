@@ -6,13 +6,14 @@
  * render unstyled. This wrapper tracks pressed state itself so callers can
  * pass plain styles: `<PressableFX style={s.btn} pressedStyle={s.btnDown}>`.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type Ref } from 'react';
 import {
   Pressable,
   type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
   type ViewStyle,
+  type View,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -38,6 +39,7 @@ const PRESS_OUT = {
 } as const;
 
 type Props = Omit<PressableProps, 'style'> & {
+  ref?: Ref<View>;
   style?: StyleProp<ViewStyle>;
   pressedStyle?: StyleProp<ViewStyle>;
 };

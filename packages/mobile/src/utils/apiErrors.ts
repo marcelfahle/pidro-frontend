@@ -1,6 +1,12 @@
-import type { SeatRequiresGamesError } from '@pidro/shared';
+import { errorPayload, type SeatRequiresGamesError } from '@pidro/shared';
+
+export { localizedError, localizedFieldErrors } from '@pidro/shared';
 
 type ApiErrorBody = {
+  code?: string;
+  params?: Record<string, unknown>;
+  error_code?: string;
+  error_params?: Record<string, unknown>;
   errors?: {
     code?: string;
     detail?: string;
@@ -15,13 +21,12 @@ export function apiErrorInfo(error: unknown): {
   action?: { type: string; method?: string; endpoint?: string };
   requirement?: SeatRequiresGamesError;
 } {
-  const data =
-    typeof error === 'object' && error !== null && 'response' in error
-      ? (error as { response?: { data?: ApiErrorBody } }).response?.data
-      : undefined;
-  const firstError = data?.errors?.[0];
+  const data = errorPayload(error) as ApiErrorBody;
+  const firstError = Array.isArray(data.errors) ? data.errors[0] : undefined;
+  const code = firstError?.code ?? data.error ?? data.code ?? data.error_code;
   return {
-    code: firstError?.code ?? data?.error,
+    // Preserve legacy code casing for existing control-flow consumers.
+    code,
     detail: firstError?.detail ?? data?.message,
     action: firstError?.action,
     requirement:

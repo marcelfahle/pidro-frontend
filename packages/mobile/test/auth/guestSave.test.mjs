@@ -166,10 +166,10 @@ describe('guest account saving', () => {
       },
     });
     expect(loginCalled).toBe(false);
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       ok: false,
       error: {
-        message: 'Reserved',
+        message: 'This name belongs to a Classic account. Verify ownership to use it.',
         fields: { displayName: 'That name is taken.' },
         classicNameReserved: true,
       },

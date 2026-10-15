@@ -16,8 +16,10 @@ import { TextLink } from '@/components/ui/TextLink';
 import { PidroSpacing } from '@/design/tokens';
 import { useAuth } from '@/hooks/useAuth';
 import { useFlowBack, useHardwareBack } from '@/hooks/useFlowBack';
+import { useTranslation } from '@/i18n';
 
 export default function ForgotPasswordScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const goBack = useFlowBack();
   const params = useLocalSearchParams<{ identifier?: string; fixture?: string }>();
@@ -33,7 +35,7 @@ export default function ForgotPasswordScreen() {
   const submit = useCallback(async () => {
     const value = identifier.trim();
     if (!value) {
-      setValidationError('Enter your email or username.');
+      setValidationError('auth.enter_identifier');
       inputRef.current?.focus();
       return;
     }
@@ -47,14 +49,16 @@ export default function ForgotPasswordScreen() {
   if (sent) {
     // The server answers the same whether or not an account matched, so this
     // never says a link was sent to a particular address.
-    const body = 'If that matches a Pidro account, a link to choose a new password is on its way.';
-    const done = <AuthFlowButton label="Back to sign in" material="glass" onPress={goBack} />;
+    const body = t('auth.reset_sent');
+    const done = (
+      <AuthFlowButton label={t('auth.back_sign_in')} material="glass" onPress={goBack} />
+    );
     return (
       <AuthFlowScreen
         testID="forgot-password-screen"
-        headerTitle="Sign in"
+        headerTitle={t('auth.sign_in')}
         onBack={backToForm}
-        title="Check your email"
+        title={t('auth.check_inbox')}
         body={body}
         inlineIntro
         fill>
@@ -63,7 +67,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.sentRow}>
               <AuthFlowIconTile icon="mail" quiet />
               <PidroText role="body" tone="soft" style={[styles.sentRowCopy, metrics.body]}>
-                The link works for one hour.
+                {t('auth.reset_lifetime')}
               </PidroText>
             </View>
             {done}
@@ -77,13 +81,13 @@ export default function ForgotPasswordScreen() {
               <AuthFlowIconTile icon="mail" />
               <View style={styles.sentCopy}>
                 <AuthFlowHeading align="center" hero>
-                  Check your email
+                  {t('auth.check_inbox')}
                 </AuthFlowHeading>
                 <PidroText role="body" tone="soft" align="center" style={metrics.body}>
                   {body}
                 </PidroText>
                 <PidroText role="body" tone="soft" align="center" style={metrics.body}>
-                  The link works for one hour.
+                  {t('auth.reset_lifetime')}
                 </PidroText>
               </View>
             </View>
@@ -97,23 +101,23 @@ export default function ForgotPasswordScreen() {
   return (
     <AuthFlowScreen
       testID="forgot-password-screen"
-      headerTitle="Sign in"
+      headerTitle={t('auth.sign_in')}
       onBack={goBack}
-      title="Forgot your password?"
-      body="We email you a link to choose a new one.">
+      title={t('auth.forgot_title')}
+      body={t('auth.reset_intro')}>
       <AuthFlowWindow testID="auth-window">
         {error ? <AuthFlowNotice>{error}</AuthFlowNotice> : null}
         <Input
           ref={inputRef}
-          label="Email or username"
-          placeholder="you@example.com"
+          label={t('auth.identifier')}
+          placeholder={t('auth.email_placeholder')}
           value={identifier}
           onChangeText={(value) => {
             setIdentifier(value);
             setValidationError(null);
             clearError();
           }}
-          error={validationError ?? undefined}
+          error={validationError ? t('auth.enter_identifier') : undefined}
           style={inputStyle}
           editable={!isLoading}
           autoCapitalize="none"
@@ -126,10 +130,10 @@ export default function ForgotPasswordScreen() {
           submitBehavior="blurAndSubmit"
           onSubmitEditing={submit}
         />
-        <AuthFlowButton label="Email me a link" loading={isLoading} onPress={submit} />
+        <AuthFlowButton label={t('auth.email_link')} loading={isLoading} onPress={submit} />
       </AuthFlowWindow>
       <TextLink
-        label="Played Pidro Classic? Recover that account"
+        label={t('auth.recover_classic')}
         size={metrics.link}
         style={styles.centerLink}
         onPress={() => router.push('/(auth)/classic-forgot')}

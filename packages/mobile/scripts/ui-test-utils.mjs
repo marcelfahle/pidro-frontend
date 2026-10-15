@@ -150,7 +150,7 @@ export async function assertMinimumTouchTargets(
   viewport,
   { checkInputs = false } = {}
 ) {
-  for (const role of ['button', 'link', 'switch']) {
+  for (const role of ['button', 'link', 'switch', 'radio']) {
     const controls = await page.getByRole(role).all();
     for (let index = 0; index < controls.length; index += 1) {
       if (!(await controls[index].isVisible())) continue;

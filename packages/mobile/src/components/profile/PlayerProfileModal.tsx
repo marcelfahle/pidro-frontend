@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
+import { useTranslation } from '@/i18n';
 
 export function PlayerProfileModal({
   playerId,
@@ -20,6 +21,7 @@ export function PlayerProfileModal({
 }
 
 function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose: () => void }) {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<ProfileIdentity | null>(null);
   const [error, setError] = useState(false);
   const [attempt, setAttempt] = useState(0);
@@ -41,15 +43,15 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
   }, [playerId, attempt]);
 
   return (
-    <Modal isOpen={!!playerId} title="Player profile" onClose={onClose}>
+    <Modal isOpen={!!playerId} title={t('profile.player_title')} onClose={onClose}>
       <ScrollView className="max-h-80" contentContainerClassName="gap-4">
         {error ? (
           <View className="gap-3">
             <PidroText role="body" tone="danger">
-              Could not load this player. Check your connection and try again.
+              {t('profile.player_error')}
             </PidroText>
             <Button
-              label="Retry"
+              label={t('profile.retry')}
               onPress={() => {
                 setError(false);
                 setAttempt(attempt + 1);
@@ -58,7 +60,7 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
           </View>
         ) : !profile || profile.user_id !== playerId ? (
           <PidroText role="body" tone="soft" align="center">
-            Loading…
+            {t('profile.loading')}
           </PidroText>
         ) : (
           <View className="gap-3">
@@ -70,16 +72,16 @@ function PlayerProfileContent({ playerId, onClose }: { playerId: string; onClose
               resizeMode="cover"
             />
             <PidroText role="label" align="center">
-              {publicPlayerName(profile.username, 'Player', profile.display_name)}
+              {publicPlayerName(profile.username, t('social.player'), profile.display_name)}
             </PidroText>
-            <PidroText role="label">About me</PidroText>
+            <PidroText role="label">{t('profile.about')}</PidroText>
             <PidroText role="body" className="break-words" tone={profile.bio ? 'default' : 'muted'}>
-              {profile.bio || 'No bio yet.'}
+              {profile.bio || t('profile.no_bio')}
             </PidroText>
           </View>
         )}
       </ScrollView>
-      <Button label="Close" variant="outline" onPress={onClose} />
+      <Button label={t('profile.close')} variant="outline" onPress={onClose} />
     </Modal>
   );
 }

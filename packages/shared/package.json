@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "watch": "tsc -p tsconfig.build.json -w",
@@ -15,6 +17,7 @@
     "zustand": "^5"
   },
   "dependencies": {
+    "i18n-js": "^4.5.3",
     "axios": "^1.13.2",
     "phoenix": "^1.8.2",
     "zod": "^4.1.13",

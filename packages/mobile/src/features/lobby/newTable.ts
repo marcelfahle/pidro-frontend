@@ -1,4 +1,5 @@
 import type { RuleSet } from '@pidro/shared';
+import { t, formatNumber } from '@pidro/shared';
 import type { CreateRoomRequest } from '@/types/lobby';
 
 /** The three seats a host fills on New table: left opponent, partner, right opponent. */
@@ -44,10 +45,8 @@ export function chooseRequirement(
 export function tableFooter(seats: Record<SeatKey, SeatChoice>): string {
   const open = Object.values(seats).filter((seat) => seat === 'open').length;
   return open === 0
-    ? 'The game starts when your friends sit down.'
-    : open === 1
-      ? 'One open seat is listed for everyone.'
-      : `${open} open seats are listed for everyone.`;
+    ? t('social.footer_friends')
+    : t('social.footer_open', { count: open, number: formatNumber(open) });
 }
 
 export function newTableRequest(

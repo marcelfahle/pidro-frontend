@@ -23,10 +23,12 @@ import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { TABLE_UNKNOWN_ERROR, useQuickGame } from '@/hooks/useQuickGame';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
+import { formatNumber, useTranslation } from '@/i18n';
 
 type LobbyCountState = 'loading' | 'ready' | 'failed';
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const compactLandscape = landscape && height < PidroLayout.compactHeight;
@@ -46,7 +48,7 @@ export default function HomeScreen() {
   const refreshIdentity = useProfileIdentity();
   const rawPillClearance = usePillClearance();
   const pillClearance = guest ? { bottom: 0, right: 0 } : rawPillClearance;
-  const playerName = publicPlayerName(user?.username, 'Player', user?.display_name);
+  const playerName = publicPlayerName(user?.username, t('social.player'), user?.display_name);
   const quickGame = useQuickGame(fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null);
 
   useLobbyChannel(
@@ -87,33 +89,36 @@ export default function HomeScreen() {
 
   const games = identity?.games_played;
   const level = identity?.veteran?.level;
-  const gamesLabel = games === 1 ? '1 game' : `${games?.toLocaleString()} games`;
+  const gamesLabel = t('social.games', { count: games ?? 0, number: formatNumber(games ?? 0) });
   const identityMeta = guest
     ? games != null
-      ? `Guest · ${gamesLabel}`
-      : 'Guest'
+      ? t('social.guest_games', { games: gamesLabel })
+      : t('social.guest')
     : games != null && level != null
-      ? `${gamesLabel} · Level ${level}`
+      ? t('social.games_level', { games: gamesLabel, level: formatNumber(level) })
       : null;
   const onlineStatus =
     lobbyCountState !== 'ready'
       ? undefined
       : lobby.open_tables.length > 0
-        ? `${lobby.open_tables.length} ${lobby.open_tables.length === 1 ? 'table' : 'tables'} open`
-        : 'Start a table';
+        ? t('social.tables_open', {
+            count: lobby.open_tables.length,
+            number: formatNumber(lobby.open_tables.length),
+          })
+        : t('social.start');
 
   const topBar = (
     <View style={[styles.topBar, tablet && styles.topBarTablet]}>
       <PressableFX
         accessibilityRole="button"
-        accessibilityLabel="Open your profile"
+        accessibilityLabel={t('social.open_profile')}
         onPress={() => router.push('/profile')}
         style={styles.identity}>
         <PlayerAvatar
           uri={user?.avatar_url}
           size={tablet ? 56 : compactLandscape ? 44 : 48}
           level={level}
-          accessibilityLabel="Your profile picture"
+          accessibilityLabel={t('social.profile_picture')}
         />
         <View style={styles.identityCopy}>
           <PidroText
@@ -133,7 +138,7 @@ export default function HomeScreen() {
       </PressableFX>
       {guest ? (
         <BevelButton
-          accessibilityLabel="Settings"
+          accessibilityLabel={t('social.settings')}
           material="glass"
           size="icon"
           onPress={() => router.push('/settings')}
@@ -178,9 +183,9 @@ export default function HomeScreen() {
               color={guest ? PidroBevel.textGold : PidroColors.iconOnGlass}
             />
           }
-          title="Quick game"
-          subtitle="You and three bots"
-          status={guest ? 'No sign-up' : undefined}
+          title={t('social.quick_game')}
+          subtitle={t('social.three_bots')}
+          status={guest ? t('social.no_signup') : undefined}
           size={tileSize}
           loading={quickGame.loading}
           onPress={quickGame.start}
@@ -196,9 +201,9 @@ export default function HomeScreen() {
               color={guest ? PidroColors.iconOnGlass : PidroBevel.textGold}
             />
           }
-          title="Play online"
-          subtitle="Real players"
-          status={guest ? 'Needs a free account' : onlineStatus}
+          title={t('social.play_online')}
+          subtitle={t('social.real_players')}
+          status={guest ? t('social.free_account') : onlineStatus}
           size={tileSize}
           onPress={() => {
             if (guest) setAccountSheetReason('multiplayer');
@@ -214,7 +219,7 @@ export default function HomeScreen() {
           <ClassicPlaque onPress={() => router.push('/(auth)/claim-classic')} />
           <View style={styles.accountLinks}>
             <PidroText role="metadata" tone="soft" style={tablet && styles.accountTextTablet}>
-              Have an account?
+              {t('social.have_account')}
             </PidroText>
             <Pressable
               accessibilityRole="link"
@@ -224,7 +229,7 @@ export default function HomeScreen() {
                 role="metadata"
                 tone="cyan"
                 style={[styles.signIn, tablet && styles.accountTextTablet]}>
-                Sign in
+                {t('social.sign_in')}
               </PidroText>
             </Pressable>
           </View>
