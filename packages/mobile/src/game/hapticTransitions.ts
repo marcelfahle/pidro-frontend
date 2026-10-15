@@ -20,7 +20,7 @@ function playedCards(model: TableModel): { key: string; seat: RelativePosition }
 }
 
 /** Your turn counts once your cards are in hand, not while they are still being dealt. */
-function isYourTurn(model: TableModel): boolean {
+export function isYourTurn(model: TableModel): boolean {
   return (
     !model.dealStage && Object.values(model.seats).some((seat) => seat?.isYou && seat.isCurrentTurn)
   );
