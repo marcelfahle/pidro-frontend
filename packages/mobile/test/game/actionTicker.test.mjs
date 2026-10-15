@@ -38,6 +38,18 @@ describe('action ticker schedule', () => {
     expect(isTickerIdle(state, 1000 + SHOW_MS + FADE_MS)).toBe(true);
   });
 
+  it('keeps a line that needs longer to read up for longer', () => {
+    const readMs = (id) => (id === 'long' ? SHOW_MS + 2000 : 1000);
+    let state = stepTicker(initialTickerState(), [], 0);
+    state = stepTicker(state, ['short', 'long'], 0, true, readMs);
+    // The short line still gets the ticker's usual time; the long one its own.
+    expect(visibleLines(state, SHOW_MS + 1)).toEqual([
+      { id: 'short', fading: true },
+      { id: 'long', fading: false },
+    ]);
+    expect(visibleLines(state, SHOW_MS + 2001)).toEqual([{ id: 'long', fading: true }]);
+  });
+
   it('never cuts a line short when a burst arrives', () => {
     let state = stepTicker(initialTickerState(), ['x'], 0);
     state = stepTicker(state, ['x', 'p1'], 0);

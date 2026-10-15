@@ -471,8 +471,6 @@ const allCases = [
     name: 'table-automatic-dealer-rob',
     path: '/table-dev?phase=auto_rob&role=player&dealer=south',
     testId: 'automatic-dealer-rob',
-    widths: [390],
-    heights: [844],
   },
   { name: 'table-game-over', path: '/table-dev?phase=game_over', testId: 'game-over-window' },
   {
@@ -767,6 +765,41 @@ async function assertNorthClear(page, testCase, viewport, windowBox) {
       }
     }
   }
+}
+
+// PID-216: a table message shows whole, never cut off, so a slow reader can
+// finish it; the ones that time out also close on a tap.
+const TABLE_MESSAGES = {
+  'table-notice': {
+    testId: 'table-feedback',
+    text: 'Nora lost connection. A bot is playing for now.',
+    tapCloses: true,
+  },
+  'table-hand-made': { testId: 'hand-result', text: 'We made our bid', tapCloses: true },
+  'table-hand-set': { testId: 'hand-result', text: 'We missed our bid', tapCloses: true },
+  'table-dealer-waiting': {
+    testId: 'dealer-second-deal-status',
+    text: 'The dealer picks up the rest of the deck',
+  },
+  'table-automatic-dealer-rob': {
+    testId: 'automatic-dealer-rob',
+    text: 'Your cards and the rest of the deck. Keeping the best six.',
+  },
+};
+
+async function assertTableMessageReadable(page, name, viewport) {
+  const message = TABLE_MESSAGES[name];
+  if (!message) return;
+  const container = page.getByTestId(message.testId).first();
+  const clipped = await container
+    .getByText(message.text, { exact: true })
+    .evaluate(
+      (text) => text.scrollWidth > text.clientWidth + 1 || text.scrollHeight > text.clientHeight + 1
+    );
+  assert.equal(clipped, false, `${name}: "${message.text}" is cut off in ${viewport.name}`);
+  if (!message.tapCloses) return;
+  await container.click();
+  await container.waitFor({ state: 'detached', timeout: 5_000 });
 }
 
 // The update notice takes the top of the shell (faked island insets: 59 top, 34 bottom).
@@ -2195,6 +2228,7 @@ async function main() {
           await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
           await assertUpdateNotice(page, testCase.name, caseViewport);
+          await assertTableMessageReadable(page, testCase.name, caseViewport);
           await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);

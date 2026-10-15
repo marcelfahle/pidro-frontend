@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Card, DealerRobPresentation, GameViewModel, Suit } from '@/types/game';
 import { getCardImage } from '@/utils/cardImages';
 import { HandSelector } from './HandSelector';
@@ -148,14 +148,12 @@ function AutomaticDealerRob({ presentation }: { presentation: DealerRobPresentat
     <View
       testID="automatic-dealer-rob"
       accessibilityRole="summary"
-      accessibilityLabel={t('game.pool_accessibility')}
+      accessibilityLabel={t('game.combined_pool')}
       style={styles.automaticStage}>
-      <PidroText role="metadata" tone="gold" align="center">
+      <PidroText role="label" tone="gold" align="center" style={styles.automaticCopy}>
         {t('game.combined_pool')}
       </PidroText>
-      <View
-        style={[styles.automaticRow, { width: availableWidth }]}
-        accessibilityLabel={t('game.pool_accessibility')}>
+      <View style={[styles.automaticRow, { width: availableWidth }]}>
         {pool.map((card, index) => (
           <AutomaticCard
             key={`${card.suit}-${card.rank}-${index}`}
@@ -201,6 +199,14 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     gap: PidroSpacing.xs,
+  },
+  // A dark backing keeps the words readable over a played card or the trump pip.
+  automaticCopy: {
+    maxWidth: 520,
+    paddingHorizontal: PidroSpacing.sm,
+    paddingVertical: PidroSpacing.xxs,
+    borderRadius: PidroRadii.lg,
+    backgroundColor: PidroBevel.panelDeep,
   },
   automaticRow: {
     minHeight: 82,

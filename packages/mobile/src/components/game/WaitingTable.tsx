@@ -159,6 +159,7 @@ interface Props {
   onSeatBot?: (position: Position) => void;
   /** Join, leave or reconnect notice; floats below the toolbar. */
   notice?: TableNotice | null;
+  onDismissNotice?: () => void;
 }
 
 export function WaitingTable({
@@ -179,6 +180,7 @@ export function WaitingTable({
   onKickPlayer,
   onSeatBot,
   notice = null,
+  onDismissNotice,
 }: Props) {
   useTranslation();
   const insets = useSafeAreaInsets();
@@ -410,7 +412,7 @@ export function WaitingTable({
         </ScrollView>
       </View>
       {isSpectator && <WatchingBadge />}
-      <TableFeedback notice={notice} top={insets.top + toolbarHeight} />
+      <TableFeedback notice={notice} top={insets.top + toolbarHeight} onDismiss={onDismissNotice} />
       <Modal
         isOpen={canManageTable && (tableMenuOpen || selectedSeatIsCurrent)}
         title={

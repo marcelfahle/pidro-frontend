@@ -61,7 +61,7 @@ describe('buildHandLog', () => {
       trump: 'spades',
       tricks: [trickTo('east', 5, { position: 'south', points: 1 })],
     });
-    expect(texts(groups).slice(-2)).toEqual(['They took it +5', 'Your 2 +1']);
+    expect(texts(groups).slice(-2)).toEqual(['They won the trick +5', 'Your 2 of trump +1']);
   });
 
   it('marks your side’s lines as ours', () => {
@@ -70,12 +70,12 @@ describe('buildHandLog', () => {
     );
     const taken = entries.find((entry) => entry.kind === 'trick');
     const two = entries.find((entry) => entry.kind === 'two');
-    expect(taken).toMatchObject({ text: 'We took it +3', ours: true });
-    expect(two).toMatchObject({ text: "Nora's 2 +1", ours: false });
+    expect(taken).toMatchObject({ text: 'We won the trick +3', ours: true });
+    expect(two).toMatchObject({ text: "Nora's 2 of trump +1", ours: false });
   });
 
   it('leaves out "+0" when a trick holds nothing', () => {
-    expect(texts(build({ tricks: [trickTo('east', 0)] })).at(-1)).toBe('They took it');
+    expect(texts(build({ tricks: [trickTo('east', 0)] })).at(-1)).toBe('They won the trick');
   });
 
   it('keeps a short trick short once seats have gone cold', () => {
@@ -114,7 +114,7 @@ describe('buildHandLog', () => {
 
   it('uses table sides for spectators', () => {
     const groups = build({ players: players(null), tricks: [trickTo('east', 2)] });
-    expect(texts(groups).at(-1)).toBe('E/W took it +2');
+    expect(texts(groups).at(-1)).toBe('E/W won the trick +2');
   });
 
   it('puts the whole last hand first between hands, final trick included', () => {
@@ -141,12 +141,12 @@ describe('buildHandLog', () => {
       'Eli plays 5♠',
       'You play 9♠',
       'Nora plays 4♠',
-      'We took it +9',
+      'We won the trick +9',
       'Kai plays K♠',
       'Eli plays 5♠',
       'You play 9♠',
       'Nora plays 4♠',
-      'They took it +5',
+      'They won the trick +5',
       'We made it +9',
     ]);
     expect(texts([groups[1]])).toEqual(['Eli bid 6']);
@@ -173,7 +173,7 @@ describe('buildHandLog', () => {
       })
     );
     expect(after.map((entry) => entry.id)).toContain(live[0].id);
-    expect(after.at(-1).text).toBe('They were set -6');
+    expect(after.at(-1).text).toBe('They missed it -6');
   });
 
   it('shows only the result for a last hand from an older server', () => {
@@ -190,7 +190,7 @@ describe('buildHandLog', () => {
         scores: { north_south: 0, east_west: 30 },
       },
     });
-    expect(texts([groups[0]])).toEqual(['We were set -6']);
+    expect(texts([groups[0]])).toEqual(['We missed it -6']);
   });
 
   it('adds the result to the same hand when the game ends without a reset', () => {
@@ -211,7 +211,7 @@ describe('buildHandLog', () => {
     });
     expect(groups).toHaveLength(1);
     expect(texts(groups).at(-1)).toBe('We made it +8');
-    expect(texts(groups).filter((text) => text === 'We took it +8')).toHaveLength(1);
+    expect(texts(groups).filter((text) => text === 'We won the trick +8')).toHaveLength(1);
   });
 
   it('skips malformed pieces instead of throwing', () => {
@@ -227,7 +227,7 @@ describe('buildHandLog', () => {
       ],
       currentTrick: 'oops',
     });
-    expect(texts(groups)).toEqual(['Eli bid 6', 'Nora plays 2♣', 'They took it +1']);
+    expect(texts(groups)).toEqual(['Eli bid 6', 'Nora plays 2♣', 'They won the trick +1']);
   });
 
   it('builds the same ids and order from the same snapshot', () => {

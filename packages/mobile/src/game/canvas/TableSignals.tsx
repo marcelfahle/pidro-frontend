@@ -19,6 +19,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
+import { readingTimeMs } from '@/features/game/readingTime';
 import { playBigTrickHaptic } from '@/game/useGameHaptics';
 import type { ServerLastHand, TeamKey } from '@/types/game';
 import { isStillCapture } from '@/utils/stillCapture';
@@ -29,7 +30,7 @@ import { useTranslation } from '@/i18n';
 /** A trick worth this much holds a five: the big moment. */
 const PIDRO_POINTS = 5;
 const POP_MS = 1500;
-/** How long a hand's result stays unless tapped away. */
+/** The least a hand's result stays unless tapped away; longer if its words need it. */
 const HAND_RESULT_MS = 4500;
 const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const easeOutCubic = (t: number) => {
@@ -150,10 +151,11 @@ function Pop({ x, y, big, label }: { x: number; y: number; big: boolean; label: 
 }
 
 /**
- * The hand's result, before the next deal: "We made it!" or "They were set",
- * the bid and what the bidders took, and what each side's score moved by.
- * Stays until tapped or HAND_RESULT_MS. A made bid glows gold; a set shakes
- * once in muted red, with no fanfare.
+ * The hand's result, before the next deal: "We made our bid" or "They missed
+ * their bid", the bid and the points the bidders won, and what each side's
+ * score moved by. Stays until tapped, or for its reading time and at least
+ * HAND_RESULT_MS. A made bid glows gold; a missed one shakes once in muted
+ * red, with no fanfare.
  */
 function HandResult({
   hand,
@@ -168,7 +170,7 @@ function HandResult({
   const reduceMotion = useReducedMotion();
   const { width } = useWindowDimensions();
   const handNumber = hand?.hand_number ?? null;
-  // A new hand number is a new result; it shows until tapped or HAND_RESULT_MS.
+  // A new hand number is a new result; it shows until tapped or read.
   const [seen, setSeen] = useState(handNumber);
   const [shown, setShown] = useState(handNumber);
   if (handNumber !== seen) {
@@ -178,6 +180,34 @@ function HandResult({
   const appear = useSharedValue(0);
   const shake = useSharedValue(0);
   const set = hand ? !hand.made : false;
+
+  const them: TeamKey = yourTeam === 'east_west' ? 'north_south' : 'east_west';
+  const us: TeamKey = yourTeam ?? 'north_south';
+  const ours = hand?.bidding_team === us;
+  const headline = !hand
+    ? ''
+    : !yourTeam
+      ? t(hand.made ? 'game.team_made' : 'game.team_set', {
+          team: t(hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew'),
+        })
+      : hand.made
+        ? ours
+          ? t('game.we_made')
+          : t('game.they_made')
+        : ours
+          ? t('game.we_set')
+          : t('game.they_set');
+  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+  const captured = t('game.points', { count: hand?.captured[hand.bidding_team] ?? 0 });
+  const bidLine = hand ? t('game.bid_took', { bid: hand.bid, captured }) : '';
+  const usLabel = t(yourTeam ? 'game.us' : 'game.ns');
+  const themLabel = t(yourTeam ? 'game.them' : 'game.ew');
+  const usDelta = hand ? signed(hand.delta[us]) : '';
+  const themDelta = hand ? signed(hand.delta[them]) : '';
+  const holdMs = Math.max(
+    HAND_RESULT_MS,
+    readingTimeMs(`${headline} ${bidLine} ${usLabel} ${usDelta} ${themLabel} ${themDelta}`)
+  );
 
   useEffect(() => {
     if (shown == null) return;
@@ -195,9 +225,9 @@ function HandResult({
       );
     }
     if (isStillCapture()) return;
-    const timer = setTimeout(() => setShown(null), HAND_RESULT_MS);
+    const timer = setTimeout(() => setShown(null), holdMs);
     return () => clearTimeout(timer);
-  }, [shown, set, reduceMotion, appear, shake]);
+  }, [shown, set, reduceMotion, appear, shake, holdMs]);
 
   const motion = useAnimatedStyle(() => ({
     opacity: appear.value,
@@ -208,21 +238,6 @@ function HandResult({
   }));
 
   if (!hand || shown !== handNumber) return null;
-  const them: TeamKey = yourTeam === 'east_west' ? 'north_south' : 'east_west';
-  const us: TeamKey = yourTeam ?? 'north_south';
-  const ours = hand.bidding_team === us;
-  const headline = !yourTeam
-    ? t(hand.made ? 'game.team_made' : 'game.team_set', {
-        team: t(hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew'),
-      })
-    : hand.made
-      ? ours
-        ? t('game.we_made')
-        : t('game.they_made')
-      : ours
-        ? t('game.we_set')
-        : t('game.they_set');
-  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
   const cardWidth = Math.min(300, width - PidroSpacing.xl * 2);
 
   return (
@@ -246,11 +261,11 @@ function HandResult({
         accessibilityLabel={t('game.result_accessibility', {
           headline,
           bid: hand.bid,
-          captured: hand.captured[hand.bidding_team],
-          usLabel: t(yourTeam ? 'game.us' : 'game.ns'),
-          themLabel: t(yourTeam ? 'game.them' : 'game.ew'),
-          us: signed(hand.delta[us]),
-          them: signed(hand.delta[them]),
+          captured,
+          usLabel,
+          themLabel,
+          us: usDelta,
+          them: themDelta,
         })}
         onPress={() => setShown(null)}
         style={styles.resultBody}>
@@ -258,19 +273,11 @@ function HandResult({
           {headline}
         </PidroText>
         <PidroText role="metadata" tone="soft" align="center">
-          {t('game.bid_took', { bid: hand.bid, captured: hand.captured[hand.bidding_team] })}
+          {bidLine}
         </PidroText>
         <View style={styles.deltas}>
-          <Delta
-            label={t(yourTeam ? 'game.us' : 'game.ns')}
-            value={signed(hand.delta[us])}
-            good={hand.delta[us] >= 0}
-          />
-          <Delta
-            label={t(yourTeam ? 'game.them' : 'game.ew')}
-            value={signed(hand.delta[them])}
-            good={hand.delta[them] >= 0}
-          />
+          <Delta label={usLabel} value={usDelta} good={hand.delta[us] >= 0} />
+          <Delta label={themLabel} value={themDelta} good={hand.delta[them] >= 0} />
         </View>
       </Pressable>
     </Animated.View>
