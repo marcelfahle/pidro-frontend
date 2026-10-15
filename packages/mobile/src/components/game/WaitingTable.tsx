@@ -250,7 +250,8 @@ export function WaitingTable({
           style={styles.toolbar}
           onLayout={(event) => setToolbarHeight(event.nativeEvent.layout.height)}>
           <BevelButton
-            label={t(isSpectator ? 'game.lobby' : 'game.leave')}
+            label={t(isSpectator ? 'game.lobby' : 'game.leave_short')}
+            accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
             material="glass"
             size="sm"
             onPress={onLeave}

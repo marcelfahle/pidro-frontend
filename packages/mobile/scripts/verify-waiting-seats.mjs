@@ -59,6 +59,17 @@ try {
             viewport
           );
         }
+        const leave = page.getByRole('button', { name: 'Leave table', exact: true });
+        assert.equal(await leave.innerText(), 'Leave', 'Keep the waiting toolbar label compact');
+        if (viewport.name === 'android' && phase === 'ready-host' && scale === 1) {
+          const table = await page
+            .getByRole('button', { name: 'Table', exact: true })
+            .boundingBox();
+          assert.ok(
+            Math.abs(table.y - (await leave.boundingBox()).y) < 1,
+            'Host controls must fit one toolbar row at normal text size'
+          );
+        }
         const boxes = [];
         for (const position of positions) {
           const seat = page.getByTestId(`waiting-seat-${position}`);
