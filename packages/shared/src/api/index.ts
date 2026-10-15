@@ -31,6 +31,7 @@ export {
   type FriendLists,
   type FriendPlayer,
   type FriendResult,
+  type BlockedPlayers,
 } from './friends';
 export {
   type ClassicApi,

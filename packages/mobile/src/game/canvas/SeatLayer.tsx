@@ -5,8 +5,8 @@
  * card-backs in the right orientation (North = upright fan, East/West =
  * landscape stacks along the edge). Positioned at the pure computeLayout()
  * seat coords so it lines up with the canvas cards/fly origins.
- * pointerEvents="none" so it never blocks gestures. Skia-free (only the pure
- * layout module), safe to import anywhere.
+ * Only player identities handle presses; card backs leave gestures to the canvas.
+ * Skia-free (only the pure layout module), safe to import anywhere.
  */
 import { useEffect, useMemo, useRef } from 'react';
 import Animated, {
@@ -26,7 +26,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
-import { PidroSpacing } from '@/design/tokens';
+import { PressableFX } from '@/components/ui/PressableFX';
+import { PidroLayout, PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts } from '@/features/avatar';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import {
@@ -131,6 +132,7 @@ type Props = {
   bottomReserve?: number;
   statusByRel?: Partial<Record<RelativePosition, SeatLine | null>>;
   turnByRel?: Partial<Record<RelativePosition, SeatTurn>>;
+  onProfile?: Partial<Record<RelativePosition, () => void>>;
 };
 
 export function SeatLayer({
@@ -141,6 +143,7 @@ export function SeatLayer({
   bottomReserve = 0,
   statusByRel,
   turnByRel,
+  onProfile,
 }: Props) {
   useTranslation();
   const { width, height } = useWindowDimensions();
@@ -258,22 +261,45 @@ export function SeatLayer({
   const sideInset = tight ? PidroSpacing.xs : portrait ? 0 : 12;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
         const line = lineFor(data, statusByRel?.[rel]);
         const seat = avatarFor(data, dealerRel === rel, line, turnByRel?.[rel]);
-        const avatar = (
+        const identity = (
           <PlayerAvatar
             testID={`seat-${rel}`}
             size={size}
             label={besideName ? (rel === 'east' ? 'left' : 'right') : 'below'}
             dealerSide={dealerSide(rel)}
-            style={seatWidth(rel)}
+            style={
+              tight && rel === 'south' ? { width: size + PidroSpacing.xs * 2 } : seatWidth(rel)
+            }
             {...seat}
             {...(tight && { level: null, pin: null })}
+            {...(tight &&
+              rel === 'south' && {
+                label: 'below' as const,
+                dealerSide: 'left' as const,
+                name: null,
+                status: line?.short ?? null,
+                accessibilityLabel: avatarLabel({ ...seat, level: null, pin: null }),
+              })}
           />
+        );
+        const avatar = onProfile?.[rel] ? (
+          <PressableFX
+            accessibilityRole="button"
+            accessibilityLabel={`${t('friends.view_profile', {
+              name: data.username ?? t('social.player'),
+            })}, ${avatarLabel({ ...seat, ...(tight && { level: null, pin: null }) })}`}
+            onPress={onProfile[rel]}
+            style={{ minHeight: PidroLayout.touchTarget, minWidth: PidroLayout.touchTarget }}>
+            {identity}
+          </PressableFX>
+        ) : (
+          <View pointerEvents="none">{identity}</View>
         );
 
         if (rel === 'south' && tight) {
@@ -282,23 +308,13 @@ export function SeatLayer({
           return (
             <View
               key={rel}
+              pointerEvents="box-none"
               style={{
                 position: 'absolute',
                 left: L.hand.cx - L.hand.maxWidth / 2 - TIGHT_SOUTH_SLOT - PidroSpacing.xs,
                 top: L.hand.cy - size / 2,
               }}>
-              <PlayerAvatar
-                testID="seat-south"
-                size={size}
-                dealerSide="left"
-                style={{ width: size + PidroSpacing.xs * 2 }}
-                {...seat}
-                level={null}
-                pin={null}
-                name={null}
-                status={line?.short ?? null}
-                accessibilityLabel={avatarLabel({ ...seat, level: null, pin: null })}
-              />
+              {avatar}
             </View>
           );
         }
@@ -307,6 +323,7 @@ export function SeatLayer({
           return (
             <View
               key={rel}
+              pointerEvents="box-none"
               style={
                 portrait
                   ? {
@@ -330,9 +347,10 @@ export function SeatLayer({
           const northBackCount = clamp(data.cardCount ?? 0, 0, 9);
           const northFan = northFanWidth(L.cardW, northBackCount);
           return (
-            <View key={rel} style={StyleSheet.absoluteFill}>
+            <View key={rel} style={StyleSheet.absoluteFill} pointerEvents="box-none">
               <View
                 testID="seat-north-cards"
+                pointerEvents="none"
                 style={{
                   position: 'absolute',
                   top: northBackTop,
@@ -349,6 +367,7 @@ export function SeatLayer({
                 />
               </View>
               <View
+                pointerEvents="box-none"
                 style={
                   tight
                     ? { position: 'absolute', top: northSeatTop, left: tightNorthLeft }
@@ -383,10 +402,13 @@ export function SeatLayer({
             : { ...sideSeatPos, left: insets.left + sideInset };
         const backsEdge = rel === 'east' ? { right: backsInset } : { left: backsInset };
         return (
-          <View key={rel} style={StyleSheet.absoluteFill}>
-            <View style={[{ position: 'absolute' }, seatPos]}>{avatar}</View>
+          <View key={rel} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+            <View style={[{ position: 'absolute' }, seatPos]} pointerEvents="box-none">
+              {avatar}
+            </View>
             <View
               testID={`seat-${rel}-cards`}
+              pointerEvents="none"
               style={[
                 {
                   position: 'absolute',

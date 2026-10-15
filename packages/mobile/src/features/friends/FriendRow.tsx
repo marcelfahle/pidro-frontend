@@ -13,7 +13,7 @@ export function FriendRow({
   onPress,
   action,
 }: {
-  player: FriendPlayer;
+  player: Omit<FriendPlayer, 'presence'> & { presence?: FriendPlayer['presence'] };
   onPress?: () => void;
   action?: ReactNode;
 }) {
@@ -25,12 +25,14 @@ export function FriendRow({
         <PidroText role="label" numberOfLines={2}>
           {player.display_name}
         </PidroText>
-        <View style={styles.presence}>
-          {player.presence !== 'offline' ? <View style={styles.dot} /> : null}
-          <PidroText role="metadata" tone="soft">
-            {presenceLabel(player.presence)}
-          </PidroText>
-        </View>
+        {player.presence ? (
+          <View style={styles.presence}>
+            {player.presence !== 'offline' ? <View style={styles.dot} /> : null}
+            <PidroText role="metadata" tone="soft">
+              {presenceLabel(player.presence)}
+            </PidroText>
+          </View>
+        ) : null}
       </View>
     </>
   );

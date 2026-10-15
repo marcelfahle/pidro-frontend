@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { localizedError, setLocale, useFriendsStore } from '@pidro/shared';
 import {
   canSearch,
+  canViewPlayer,
   friendSections,
   presenceLabel,
   relationLabel,
@@ -13,6 +14,17 @@ afterEach(() => {
 });
 
 describe('Friends presentation', () => {
+  test('human seats open profiles, but empty and bot seats do not', () => {
+    for (const seatStatus of ['normal', 'reconnecting', 'bot_substitute']) {
+      expect(canViewPlayer({ playerId: 'nora', seatStatus })).toBe(true);
+      expect(canViewPlayer({ playerId: 'bot_ROOM_north', seatStatus })).toBe(false);
+    }
+    for (const seatStatus of ['vacant', 'permanent_bot']) {
+      expect(canViewPlayer({ playerId: 'nora', seatStatus })).toBe(false);
+    }
+    expect(canViewPlayer({ playerId: null, seatStatus: 'normal' })).toBe(false);
+  });
+
   test('Added you comes first; server player order and presence stay untouched', () => {
     const lists = {
       friends: [

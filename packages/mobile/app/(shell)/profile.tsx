@@ -350,6 +350,9 @@ function ProfileContent() {
           }
         />
         <TextLink label={t('social.friends')} onPress={() => router.push('/friends')} />
+        {!user?.guest ? (
+          <TextLink label={t('blocks.title')} onPress={() => router.push('/blocked-players')} />
+        ) : null}
         {refreshError && (
           <PidroText role="metadata" tone="danger" accessibilityRole="alert">
             {t('profile.refresh_error')}

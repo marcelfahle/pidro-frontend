@@ -1,4 +1,4 @@
-import { useFriendsStore, type FriendLists } from '@pidro/shared';
+import { useFriendsStore, type BlockedPlayers, type FriendLists } from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
 import { authStore } from './auth';
 
@@ -14,7 +14,7 @@ authStore.subscribe((state, previous) => {
   }
 });
 
-function updateLists(request: () => Promise<FriendLists>) {
+function updateLists(request: () => Promise<FriendLists | BlockedPlayers>) {
   const current = revision;
   // A mutation's full answer lands before its friends_changed refetch.
   const result = requests.then(async () => {
@@ -38,3 +38,10 @@ function updateLists(request: () => Promise<FriendLists>) {
 export const refreshFriends = () => updateLists(friendsApi.list);
 export const addFriend = (id: string) => updateLists(() => friendsApi.add(id));
 export const removeFriend = (id: string) => updateLists(() => friendsApi.remove(id));
+
+export const refreshBlockedPlayers = () => updateLists(friendsApi.blocks);
+export const unblockPlayer = (id: string) => updateLists(() => friendsApi.unblock(id));
+export async function blockPlayer(id: string) {
+  await updateLists(() => friendsApi.block(id));
+  void refreshFriends().catch(() => undefined);
+}

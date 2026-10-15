@@ -27,7 +27,7 @@ const TAB_ROUTES: Record<ShellTab, string> = {
 
 function activeTabForPath(pathname: string): ShellTab {
   if (pathname.startsWith('/league')) return 'league';
-  if (pathname.startsWith('/profile')) return 'stats';
+  if (pathname.startsWith('/profile') || pathname.startsWith('/blocked-players')) return 'stats';
   if (pathname.startsWith('/friends')) return 'friends';
   if (pathname.startsWith('/settings')) return 'settings';
   return 'table';
