@@ -9,7 +9,7 @@ import {
   CUT_WINNER_PAUSE_MS,
 } from './canvas/animationTiming';
 import type { TableModel } from './canvas/tableModel';
-import { getTableHapticEvents } from './hapticTransitions';
+import { getTableHapticEvents, isYourTurn } from './hapticTransitions';
 
 function runHaptic(effect: () => Promise<void>) {
   if (Platform.OS === 'web' || !useSettingsStore.getState().hapticEnabled) return;
@@ -72,11 +72,17 @@ export function useTableHaptics(model: TableModel) {
       timers.current.add(timer);
     };
 
+    // A delayed turn tap only lands if the turn is still yours by then.
+    const turnHapticIfStillYours = () => {
+      if (previousModel.current && isYourTurn(previousModel.current)) playTurnHaptic();
+    };
     const events = getTableHapticEvents(previousModel.current, model);
     for (const event of events) {
       if (event === 'your_turn') {
-        if (events.includes('trick_complete')) schedule(playTurnHaptic, TURN_AFTER_TRICK_MS);
-        else if (events.includes('card_landed')) schedule(playTurnHaptic, TURN_AFTER_CARD_MS);
+        if (events.includes('trick_complete'))
+          schedule(turnHapticIfStillYours, TURN_AFTER_TRICK_MS);
+        else if (events.includes('card_landed'))
+          schedule(turnHapticIfStillYours, TURN_AFTER_CARD_MS);
         else playTurnHaptic();
       }
       if (event === 'deal_packet' || event === 'card_landed') playDealPacketHaptic();
