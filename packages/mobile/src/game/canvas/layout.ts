@@ -199,6 +199,37 @@ export const LANDSCAPE_SOUTH_LEFT = 70;
 export const SOUTH_NAME_MIN = 56;
 /** A full hand, as dealt. */
 const FULL_HAND = 9;
+/** The table menu at the right end of the header row: its inset and touch target. */
+export const MENU_SLOT = 12 + 44;
+/** Where landscape North's seat starts: right of its fan of backs. */
+export const landscapeNorthLeft = (L: TableLayout, backs: number) =>
+  L.width / 2 + northFanWidth(L.cardW, backs) / 2 + 16;
+/**
+ * How far a landscape name runs before it truncates. South's runs toward
+ * your hand, North's (and the dealer chip after it, `chip`) toward the menu:
+ * each takes what those leave. South never gets less than SOUTH_NAME_MIN (the
+ * hand makes way for it); North never runs into the menu, however little is left.
+ */
+export function landscapeNameReach(
+  L: TableLayout,
+  rel: RelativePosition,
+  {
+    insets,
+    southCards = FULL_HAND,
+    northBacks = 6,
+    chip = 0,
+  }: { insets: Insets; southCards?: number; northBacks?: number; chip?: number }
+): number {
+  const most = L.profile.startsWith('tablet') ? 160 : 104;
+  const seat = AVATAR_SIZE[L.profile] + seatNameGap(L.profile);
+  const room =
+    rel === 'south'
+      ? handLeft(L, southCards) - (insets.left + LANDSCAPE_SOUTH_LEFT + seat) - 12
+      : rel === 'north'
+        ? L.width - insets.right - MENU_SLOT - 8 - landscapeNorthLeft(L, northBacks) - seat - chip
+        : most;
+  return clamp(room, rel === 'north' ? 0 : SOUTH_NAME_MIN, most);
+}
 /** A tight seat: the avatar alone, its name beside it, no level chip. */
 export const TIGHT_AVATAR = 44;
 /** Your tight seat sits left of the hand: the avatar and a gap. */

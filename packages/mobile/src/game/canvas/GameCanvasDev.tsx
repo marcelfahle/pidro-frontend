@@ -63,6 +63,8 @@ const LONG_NAMES: Record<Position, string> = {
   east: 'MaijaLiisa_K',
   west: 'KaleviVirtanen',
 };
+/** `names=max`: a 32-character name in every seat, past what any label can carry. */
+const MAX_NAME = 'Alexandria the Long-Named Player';
 const SEATS: RelativePosition[] = ['north', 'east', 'south', 'west'];
 
 const basePlayers = (turn: RelativePosition): RelativePlayerView[] => [
@@ -374,7 +376,11 @@ export default function GameCanvasDev({
     () =>
       basePlayers(turn)
         .map((player) =>
-          names === 'long' ? { ...player, username: LONG_NAMES[player.absolutePosition] } : player
+          names === 'long'
+            ? { ...player, username: LONG_NAMES[player.absolutePosition] }
+            : names === 'max'
+              ? { ...player, username: MAX_NAME }
+              : player
         )
         .map((player) =>
           lifecycle && !player.isYou

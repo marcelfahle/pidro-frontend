@@ -23,6 +23,7 @@ import { useTranslation } from '@/i18n';
 import {
   avatarLabel,
   avatarParts,
+  nameType,
   type AvatarAway,
   type AvatarKind,
   type AvatarPin,
@@ -59,6 +60,8 @@ export interface PlayerAvatarProps {
   away?: AvatarAway | null;
   kind?: AvatarKind;
   name?: string | null;
+  /** The width the name may take: a longer one drops a type step, then truncates. */
+  nameRoom?: number;
   status?: string | null;
   /**
    * Names what the player just did (a bid). When it changes, the ring lights
@@ -90,6 +93,7 @@ export function PlayerAvatar({
   away = null,
   kind = 'player',
   name,
+  nameRoom,
   status,
   pulse = null,
   label = 'below',
@@ -258,13 +262,14 @@ export function PlayerAvatar({
               ? { marginTop: levelClearance, alignItems: 'center', maxWidth: '100%' }
               : { alignItems: label === 'right' ? 'flex-start' : 'flex-end' },
           ]}>
-          <View style={below ? styles.copyBlock : null}>
+          {/* Capped to the copy's width beside the avatar too, or a long name runs on unclipped. */}
+          <View style={below ? styles.copyBlock : styles.copyLine}>
             {named ? (
               <PidroText
                 numberOfLines={1}
                 style={[
                   styles.name,
-                  parts.name,
+                  nameType(parts.name, name, nameRoom),
                   { color: kind === 'open' ? PidroColors.cyanText : NAME_TONES[nameTone] },
                   away ? styles.awayName : null,
                 ]}>
@@ -721,6 +726,9 @@ const styles = StyleSheet.create({
   },
   copyBlock: {
     alignItems: 'center',
+    maxWidth: '100%',
+  },
+  copyLine: {
     maxWidth: '100%',
   },
   besideName: {

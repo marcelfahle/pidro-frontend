@@ -1,17 +1,24 @@
 import { describe, expect, it } from 'bun:test';
+import { avatarParts } from '../../src/features/avatar';
 import {
+  AVATAR_SIZE,
   cardSize,
   computeLayout,
   handLeft,
   handLift,
   handScale,
   handStep,
+  LANDSCAPE_SOUTH_LEFT,
+  landscapeNameReach,
+  landscapeNorthLeft,
+  MENU_SLOT,
   northBackWidth,
   northFanTop,
   northFanWidth,
   northSeatBottom,
   playedCardTarget,
   sideSeatTop,
+  seatNameGap,
   sideStacks,
   showsTicker,
   TIGHT_AVATAR,
@@ -324,4 +331,152 @@ describe('the trump picker sits in the felt, clear of everything (PID-209)', () 
       }
     });
   }
+});
+
+describe('a 32-character name in every seat stays in its own place (PID-232)', () => {
+  // The header row (TABLE_HEADER) and the gap SeatLayer leaves under it.
+  const HEADER = 61;
+  const overlap = (a, b) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+  const handBox = (L, n) => {
+    const left = handLeft(L, n);
+    const cardW = L.cardW * handScale(L.profile);
+    const cardH = L.cardH * handScale(L.profile);
+    return {
+      left,
+      right: left + (n - 1) * handStep(L, n) + cardW * 1.03,
+      top: L.hand.cy - cardH / 2 - handLift(L),
+      bottom: L.hand.cy + cardH / 2,
+    };
+  };
+  // Every pile, up to three cards each, as played around the trick circle.
+  const playedCards = (L) =>
+    ['north', 'east', 'south', 'west'].flatMap((rel) =>
+      [0, 1, 2].map((i) => {
+        const card = playedCardTarget(L, rel, i, 3);
+        const [w, h] = [L.cardW * card.scale, L.cardH * card.scale];
+        const [x, y] = rel === 'east' || rel === 'west' ? [h / 2, w / 2] : [w / 2, h / 2];
+        return { left: card.x - x, right: card.x + x, top: card.y - y, bottom: card.y + y };
+      })
+    );
+  const expectApart = (seats, others, label) => {
+    const names = Object.keys(seats);
+    for (const [i, a] of names.entries()) {
+      for (const b of names.slice(i + 1)) {
+        expect(overlap(seats[a], seats[b]), `${label}: ${a} and ${b}`).toBe(false);
+      }
+      for (const [other, box] of others) {
+        expect(overlap(seats[a], box), `${label}: ${a} and ${other}`).toBe(false);
+      }
+    }
+  };
+
+  // A name that long fills its whole reach: each seat is drawn at its widest,
+  // the dealer chip after the name included.
+  for (const [width, height, insets] of [
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 0 }],
+    [640, 360, { top: 0, bottom: 0, left: 48, right: 0 }],
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 48 }],
+    [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }],
+    [844, 390, { top: 0, bottom: 0, left: 0, right: 0 }],
+    [932, 430, { top: 0, bottom: 21, left: 59, right: 59 }],
+  ]) {
+    it(`landscape ${width}×${height} ${JSON.stringify(insets)}`, () => {
+      const L = computeLayout(width, height, insets);
+      const size = AVATAR_SIZE[L.profile];
+      const gap = seatNameGap(L.profile);
+      const chipW = avatarParts(size).dealer.size + gap;
+      const headerBottom = insets.top + HEADER + 8;
+      const sideTop = sideSeatTop(L, { tableTop: insets.top, seatHeight: size, headerBottom });
+      const menu = {
+        left: width - insets.right - MENU_SLOT,
+        right: width - insets.right - 12,
+        top: 8,
+        bottom: 8 + 44,
+      };
+      for (const dealer of ['north', 'east', 'south', 'west']) {
+        for (const n of [1, 6, 9]) {
+          const chip = (rel) => (rel === dealer && rel !== 'south' ? chipW : 0);
+          const seatW = (rel) =>
+            size +
+            gap +
+            landscapeNameReach(L, rel, { insets, southCards: n, northBacks: n, chip: chip(rel) }) +
+            chip(rel);
+          const southLeft = insets.left + LANDSCAPE_SOUTH_LEFT;
+          const northLeft = landscapeNorthLeft(L, n);
+          const eastRight = width - insets.right - 12;
+          const seats = {
+            south: {
+              left: southLeft,
+              right: southLeft + seatW('south'),
+              top: L.hand.cy - size / 2,
+              bottom: L.hand.cy + size / 2,
+            },
+            north: {
+              left: northLeft,
+              right: northLeft + seatW('north'),
+              top: insets.top + 8,
+              bottom: insets.top + 8 + size,
+            },
+            east: { left: eastRight - seatW('east'), right: eastRight, top: sideTop },
+            west: { left: insets.left + 12, right: insets.left + 12 + seatW('west'), top: sideTop },
+          };
+          seats.east.bottom = seats.west.bottom = sideTop + size;
+          for (const seat of Object.values(seats)) {
+            expect(seat.left).toBeGreaterThanOrEqual(insets.left);
+            expect(seat.right).toBeLessThanOrEqual(width - insets.right);
+          }
+          expect(seats.east.top).toBeGreaterThanOrEqual(headerBottom);
+          expectApart(
+            seats,
+            [
+              ['hand', handBox(L, n)],
+              ['menu', menu],
+              ...playedCards(L).map((card) => ['a played card', card]),
+            ],
+            `dealer ${dealer}, ${n} cards`
+          );
+        }
+      }
+    });
+  }
+
+  it('portrait 390×844', () => {
+    const [width, height, insets] = [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }];
+    const tableTop = insets.top + HEADER;
+    const dock = utilityDockReserve(height);
+    const L = computeLayout(width, height, insets, HEADER, dock);
+    // Avatar, level chip, name and status, as SeatLayer stacks them.
+    const parts = avatarParts(AVATAR_SIZE[L.profile]);
+    const stack =
+      AVATAR_SIZE[L.profile] +
+      parts.level.height +
+      parts.level.bottom +
+      3 +
+      parts.name.lineHeight +
+      parts.status.lineHeight;
+    const center = { left: width / 2 - 78, right: width / 2 + 78 };
+    const side = Math.min(112, (width - 156) / 2 - 8);
+    const sideTop = sideSeatTop(L, {
+      tableTop,
+      seatHeight: stack,
+      headerBottom: insets.top + HEADER + 8,
+    });
+    const northTop = northSeatBottom(L, tableTop) - stack;
+    const southBottom = height - insets.bottom - dock - 8;
+    const seats = {
+      north: { ...center, top: northTop, bottom: northTop + stack },
+      south: { ...center, top: southBottom - stack, bottom: southBottom },
+      east: { left: width - side, right: width, top: sideTop, bottom: sideTop + stack },
+      west: { left: 0, right: side, top: sideTop, bottom: sideTop + stack },
+    };
+    expect(seats.north.top).toBeGreaterThanOrEqual(tableTop);
+    for (const n of [1, 6, 9]) {
+      expectApart(
+        seats,
+        [['hand', handBox(L, n)], ...playedCards(L).map((card) => ['a played card', card])],
+        `${n} cards`
+      );
+    }
+  });
 });
