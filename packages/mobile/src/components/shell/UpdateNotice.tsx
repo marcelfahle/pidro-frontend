@@ -2,11 +2,12 @@
  * "A new version is ready" — the shell's one notice. A floating card over the
  * screen, anchored just above the tab pill (above the bottom safe area when
  * there is no bottom pill) and short of the landscape tab rail, so showing or
- * hiding it never moves anything.
+ * hiding it never moves anything. A screen whose controls reach the bottom
+ * (Home) places it in a free spot of its own with `UpdateNoticeSlot`.
  */
-import { StyleSheet, View } from 'react-native';
+import { createContext, useContext, useLayoutEffect } from 'react';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, useReducedMotion } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
@@ -14,27 +15,42 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { useTranslation } from '@/i18n';
 
-interface UpdateNoticeProps {
+export interface UpdateNoticeState {
   restarting: boolean;
   onRestart: () => void;
   onDismiss: () => void;
-  /** Distance from the screen bottom: above the bottom pill or the safe area. */
-  bottom: number;
-  /** Space the landscape tab rail needs on the right. */
-  rightClearance: number;
-  onHeight: (height: number) => void;
+}
+
+interface UpdateNoticeProps extends UpdateNoticeState {
+  /** Where the card floats; it is absolutely positioned and spans its parent. */
+  style?: StyleProp<ViewStyle>;
+  onHeight?: (height: number) => void;
+}
+
+/** The shell's notice while it shows, and the claim a screen's slot makes on it. */
+export const UpdateNoticeHost = createContext<{
+  notice: UpdateNoticeState | null;
+  setPlaced: (placed: boolean) => void;
+}>({ notice: null, setPlaced: () => {} });
+
+/** Shows the shell's notice here, at the top of this view, instead of above the pill. */
+export function UpdateNoticeSlot({ style }: { style?: StyleProp<ViewStyle> }) {
+  const { notice, setPlaced } = useContext(UpdateNoticeHost);
+  useLayoutEffect(() => {
+    setPlaced(true);
+    return () => setPlaced(false);
+  }, [setPlaced]);
+  return notice ? <UpdateNotice {...notice} style={[styles.slotTop, style]} /> : null;
 }
 
 export function UpdateNotice({
   restarting,
   onRestart,
   onDismiss,
-  bottom,
-  rightClearance,
+  style,
   onHeight,
 }: UpdateNoticeProps) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const reduceMotion = useReducedMotion();
 
   return (
@@ -42,15 +58,8 @@ export function UpdateNotice({
       entering={reduceMotion ? undefined : FadeInDown.duration(200)}
       exiting={reduceMotion ? undefined : FadeOutDown.duration(160)}
       pointerEvents="box-none"
-      onLayout={(event) => onHeight(event.nativeEvent.layout.height)}
-      style={[
-        styles.slot,
-        {
-          bottom,
-          paddingLeft: insets.left + PidroSpacing.md,
-          paddingRight: Math.max(insets.right + PidroSpacing.md, rightClearance),
-        },
-      ]}>
+      onLayout={onHeight && ((event) => onHeight(event.nativeEvent.layout.height))}
+      style={[styles.slot, style]}>
       <Surface
         testID="update-notice"
         variant="window"
@@ -91,10 +100,12 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
   },
+  slotTop: { top: 0 },
   notice: {
     width: '100%',
     maxWidth: PidroLayout.contentMaxWidth,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: PidroSpacing.sm,
     paddingVertical: PidroSpacing.xs,
@@ -102,8 +113,14 @@ const styles = StyleSheet.create({
     paddingRight: PidroSpacing.xs,
     boxShadow: PidroBevel.heroDropShadow,
   },
-  copy: { flex: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.xs },
+  // In a narrow slot the buttons wrap below the copy rather than squeeze it.
+  copy: { flexGrow: 1, flexShrink: 1, flexBasis: 80 },
+  actions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
+    marginLeft: 'auto',
+  },
   // Holds its width while the label turns into a spinner.
   restart: { minWidth: 96 },
 });

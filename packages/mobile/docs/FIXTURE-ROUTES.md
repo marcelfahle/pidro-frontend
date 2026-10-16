@@ -222,16 +222,20 @@ Add `safeArea=island` (or any `/table-dev` preset) to fake insets for the whole 
 testID `update-notice`.
 
 The notice floats over the screen just above the tab pill (above the bottom safe area
-beside the landscape rail or for guests). Screens learn how far up it reaches through
-`usePillClearance`, so scrolling screens can scroll their last row clear of it; Home's
-fixed layout opts out and is simply overlaid.
+beside the landscape rail or for guests) and never covers a control. Scrolling screens
+learn how far up it reaches through `usePillClearance` (or `useNoticeInset` when they
+already clear the pill or safe area: guest Friends, Home's invitations) and scroll their
+last row clear of it. Home's play tiles reach the bottom and Home does not scroll, so
+Home places it itself with `UpdateNoticeSlot`: at the top of the logo stage, under the
+header, where no control reaches. Nothing moves when it shows or goes.
 
 The UI-grammar case `update-notice` opens `/home?fixture=update-notice&safeArea=island`
-in every viewport and checks that the notice floats in the lower half above the bottom
-inset, clear of the tab pill, has 44pt Restart and Dismiss targets, that Restart goes busy
-and cannot be tapped twice, and that dismissing it moves nothing on Home. It then opens
-`/settings?fixture=update-notice&safeArea=island` and checks the last row scrolls clear of
-the notice.
+in every viewport (375×667 included) and checks that no control sits under the notice,
+that it is clear of the tab pill, has 44pt Restart and Dismiss targets, that Restart goes
+busy and cannot be tapped twice, and that dismissing it moves nothing on Home. It then
+opens `/settings?fixture=update-notice&safeArea=island` and checks the notice floats
+above the bottom inset, the last row scrolls clear of it and no control sits under it.
+`update-notice-friends-guest` does the same for a guest on Friends.
 
 In a release build the notice shows by itself once Expo has downloaded an update, and
 never on the game screen. The real path (check on foreground, download, reload) needs a

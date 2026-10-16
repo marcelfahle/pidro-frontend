@@ -31,10 +31,21 @@ const CONTENT_GAP = 14; // breathing room between content and pill (portrait)
 const CONTENT_GAP_RAIL = 22; // the rail deserves more air beside content
 
 /**
- * How far up from the screen bottom the shell's floating update notice
- * reaches; 0 while it is hidden. The shell provides it to its screens.
+ * The shell's update notice while it floats above the pill: how far up from
+ * the screen bottom it reaches, and its own height. Zeros while it is hidden
+ * or a screen has placed it elsewhere. The shell provides it to its screens.
  */
-export const UpdateNoticeReach = createContext(0);
+export const FloatingNotice = createContext({ reach: 0, height: 0 });
+
+/**
+ * Extra bottom inset for a scroll that already clears the pill or the bottom
+ * safe area (guests, Home's invitations): the floating notice's height, so the
+ * last row can scroll clear of it. 0 while it does not float.
+ */
+export function useNoticeInset() {
+  const { height } = useContext(FloatingNotice);
+  return height > 0 ? height + CONTENT_GAP : 0;
+}
 
 /**
  * How much space screens inside the shell must leave for the floating
@@ -46,7 +57,7 @@ export const UpdateNoticeReach = createContext(0);
 export function usePillClearance({ notice = true }: { notice?: boolean } = {}) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
-  const reach = useContext(UpdateNoticeReach);
+  const { reach } = useContext(FloatingNotice);
   const noticeBottom = notice && reach > 0 ? reach + CONTENT_GAP : 0;
   const landscape = width > height;
   if (landscape) {
