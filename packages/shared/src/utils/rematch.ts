@@ -13,8 +13,8 @@ export interface RematchVote {
   /** Humans who have asked for another game. */
   agreed: number;
   youAgreed: boolean;
-  /** Every occupied seat, north first, and whether it is in. */
-  seats: RematchSeat[];
+  /** Every occupied seat, north first, and whether it is in. Always set by `rematchVote`. */
+  seats?: RematchSeat[];
 }
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
