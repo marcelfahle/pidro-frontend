@@ -376,6 +376,7 @@ describe('a 32-character name in every seat stays in its own place (PID-232)', (
   for (const [width, height, insets] of [
     [640, 360, { top: 0, bottom: 0, left: 0, right: 0 }],
     [640, 360, { top: 0, bottom: 0, left: 48, right: 0 }],
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 48 }],
     [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }],
     [844, 390, { top: 0, bottom: 0, left: 0, right: 0 }],
     [932, 430, { top: 0, bottom: 21, left: 59, right: 59 }],

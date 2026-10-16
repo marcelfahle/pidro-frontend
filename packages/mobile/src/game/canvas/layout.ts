@@ -207,7 +207,8 @@ export const landscapeNorthLeft = (L: TableLayout, backs: number) =>
 /**
  * How far a landscape name runs before it truncates. South's runs toward
  * your hand, North's (and the dealer chip after it, `chip`) toward the menu:
- * each takes what those leave, never less than SOUTH_NAME_MIN.
+ * each takes what those leave. South never gets less than SOUTH_NAME_MIN (the
+ * hand makes way for it); North never runs into the menu, however little is left.
  */
 export function landscapeNameReach(
   L: TableLayout,
@@ -227,7 +228,7 @@ export function landscapeNameReach(
       : rel === 'north'
         ? L.width - insets.right - MENU_SLOT - 8 - landscapeNorthLeft(L, northBacks) - seat - chip
         : most;
-  return clamp(room, SOUTH_NAME_MIN, most);
+  return clamp(room, rel === 'north' ? 0 : SOUTH_NAME_MIN, most);
 }
 /** A tight seat: the avatar alone, its name beside it, no level chip. */
 export const TIGHT_AVATAR = 44;
