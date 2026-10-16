@@ -40,6 +40,9 @@ export const UI_VIEWPORTS = [
       'table-hand-made',
       'table-hand-set',
       'table-hand-they-set',
+      'table-game-over',
+      'table-game-over-loss',
+      'table-game-over-spectator',
     ],
   },
   {
@@ -104,6 +107,8 @@ export const UI_VIEWPORTS = [
       'table-hand-made',
       'table-hand-set',
       'table-hand-they-set',
+      'table-game-over',
+      'table-game-over-loss',
     ],
   },
   {
@@ -134,6 +139,8 @@ export const UI_VIEWPORTS = [
     cases: [
       'table-bidding',
       'table-count-help',
+      'table-game-over',
+      'table-game-over-loss',
       'welcome',
       'home',
       'home-guest',

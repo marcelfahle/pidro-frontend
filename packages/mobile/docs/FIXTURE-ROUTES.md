@@ -99,7 +99,7 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 | `bidding`          | Bidding window                    | `bidding-window`        |
 | `declaring`        | You dealt: trump picker in felt   | `trump-picker`          |
 | `second_deal`      | Dealer's private hand selection   | `hand-selection-window` |
-| `game_over`        | Game-over summary                 | `game-over-window`      |
+| `game_over`        | Game over: win reveal or loss     | `game-over-window`      |
 
 ### Params
 
@@ -125,16 +125,20 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 | `count`      | `on`                                                                                      | turns on "Help me keep count": the plaque's bid line reads "Eli bid 6 · 2 of 6" (small phones too), "Last trick" sits under it, and the card winning the trick glows (mock table too) |
 | `playerName` | any string                                                                                | name in the first seat decision                                                                                                                                           |
 | `viewer`     | `east`                                                                                    | you are east instead of south                                                                                                                                             |
-| `rematch`    | `waiting`, `asked` (with `phase=game_over`)                                               | the rematch vote in the game-over window: you asked first / the others are waiting on you                                                                                 |
+| `rematch`    | `open` · `one` · `two` · `asked` · `waiting` · `missing` · `pending` (with `phase=game_over`) | the rematch row, per seat: nobody asked / Nora has / Nora and Eli have / the other three wait on you / you asked first; `missing` has no vote yet, `pending` is sending yours |
 | `pass`       | `disabled`                                                                                | removes the pass action from legal actions                                                                                                                                |
 | `autoplay`   | `true`                                                                                    | Skia table auto-plays (trick completion / card persistence)                                                                                                               |
 
 ### Recipes
 
 Game-over checks: `phase=game_over` supports `result=loss|east|spectator|tie`,
-`xp=earned|level`, `rematch=waiting|asked|missing|pending`, and `playerName=` for
-the partner's long name. The default is a win with no XP. Rematch records a local
-fixture vote; Home navigates home. Run `node scripts/verify-game-over.mjs` for
+`xp=earned|level`, `rematch=open|one|two|asked|waiting|missing|pending`, and
+`playerName=` for the partner's long name. The default is a win (62–29) with no
+XP. Every result but the tie carries a ten-hand `hand_history` and the final
+`last_hand`: level at 41 after hand 8, and the losing side's best hand is hand 7
+(won 12 of 14, both Pidros). `xp=` also sends the summary's `partner`, three
+wins in a row on a win. Rematch records a local fixture vote; Home navigates
+home. Run `node scripts/verify-game-over.mjs` for
 phone/tablet, simulated insets, outcome, voting, and reduced-motion checks.
 These browser checks do not certify native safe-area measurement.
 

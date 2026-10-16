@@ -15,6 +15,9 @@ export interface LeagueProgressProps {
   width?: number;
   /** How track and caption sit against each other. Home's HUD is right-aligned. */
   align?: FlexAlignType;
+  /** Height of the track; the caption hides when the label is only spoken. */
+  height?: number;
+  showLabel?: boolean;
 }
 
 export function LeagueProgress({
@@ -22,6 +25,8 @@ export function LeagueProgress({
   label,
   width = 172,
   align = 'flex-start',
+  height,
+  showLabel = true,
 }: LeagueProgressProps) {
   const clamped = Math.max(0, Math.min(1, progress));
 
@@ -35,10 +40,10 @@ export function LeagueProgress({
         accessibilityRole="progressbar"
         accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
         accessibilityLabel={label}
-        style={[styles.track, { width }]}>
+        style={[styles.track, { width }, height != null && { height }]}>
         <View style={[styles.fill, { width: `${clamped * 100}%` }]} />
       </View>
-      <PidroText style={styles.label}>{label}</PidroText>
+      {showLabel ? <PidroText style={styles.label}>{label}</PidroText> : null}
     </View>
   );
 }

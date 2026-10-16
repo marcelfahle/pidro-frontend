@@ -47,6 +47,13 @@ export interface ProgressionSummary {
   title_changed: boolean;
   veteran_progress: { into: number; span: number; max: boolean };
   achievements_unlocked: { key: string; name: string; tier: number }[];
+  /** Null for a bot or guest partner (PID-234). */
+  partner?: {
+    user_id: string;
+    display_name: string;
+    games_together: number;
+    wins_in_a_row: number;
+  } | null;
   rating: {
     tier_before: string;
     tier_after: string;
@@ -217,6 +224,9 @@ export const useGameChannel = ({
             }
 
             if (response?.readiness) setReadiness(response.readiness as ReadinessSnapshot);
+            // A rejoin after game over carries the summary the push did (PID-234).
+            const summary = parseProgressionSummary(response?.progression_summary);
+            if (summary) onProgressionSummaryRef.current?.(summary);
 
             const gameState = extractGameState(response);
             if (gameState) {
