@@ -940,6 +940,7 @@ async function assertUpdateNotice(page, name, viewport) {
 
   await page.goto(new URL('/settings?fixture=update-notice&safeArea=island', baseUrl).href);
   const shown = await getStableBox(notice, page);
+  assert.ok(shown, `update notice missing on Settings in ${viewport.name}`);
   const lastRow = await page.getByTestId('settings-screen').evaluate((scroller) => {
     scroller.scrollTop = scroller.scrollHeight;
     return scroller.firstElementChild.lastElementChild.getBoundingClientRect().bottom;
