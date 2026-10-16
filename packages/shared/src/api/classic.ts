@@ -7,7 +7,8 @@ export interface ClassicClaimPreview {
   name: string | null;
   games_played: number;
   level: number;
-  member_since: string;
+  /** Null for Classic accounts created before Classic recorded a date. */
+  member_since: string | null;
   name_allowed: boolean;
 }
 

@@ -535,10 +535,12 @@ export default function ClaimClassicScreen() {
                   label={t('auth.classic_level')}
                   value={formatNumber(verification.classic.level)}
                 />
-                <Stat
-                  label={t('auth.member_since')}
-                  value={memberSince(verification.classic.member_since)}
-                />
+                {verification.classic.member_since ? (
+                  <Stat
+                    label={t('auth.member_since')}
+                    value={memberSince(verification.classic.member_since)}
+                  />
+                ) : null}
               </View>
             </Surface>
 
