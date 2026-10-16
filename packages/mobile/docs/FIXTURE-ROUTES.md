@@ -221,10 +221,17 @@ shell layout, not in a screen; the gallery cannot show it in place. Restart only
 Add `safeArea=island` (or any `/table-dev` preset) to fake insets for the whole shell.
 testID `update-notice`.
 
+The notice floats over the screen just above the tab pill (above the bottom safe area
+beside the landscape rail or for guests). Screens learn how far up it reaches through
+`usePillClearance`, so scrolling screens can scroll their last row clear of it; Home's
+fixed layout opts out and is simply overlaid.
+
 The UI-grammar case `update-notice` opens `/home?fixture=update-notice&safeArea=island`
-in every viewport and checks that the notice sits inside the faked insets, covers no
-other control (the tab pill, Home's header), has 44pt Restart and Dismiss targets, and
-that Restart goes busy and cannot be tapped twice.
+in every viewport and checks that the notice floats in the lower half above the bottom
+inset, clear of the tab pill, has 44pt Restart and Dismiss targets, that Restart goes busy
+and cannot be tapped twice, and that dismissing it moves nothing on Home. It then opens
+`/settings?fixture=update-notice&safeArea=island` and checks the last row scrolls clear of
+the notice.
 
 In a release build the notice shows by itself once Expo has downloaded an update, and
 never on the game screen. The real path (check on foreground, download, reload) needs a

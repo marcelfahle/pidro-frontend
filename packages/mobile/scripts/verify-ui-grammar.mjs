@@ -902,15 +902,18 @@ async function assertTableMessageReadable(page, name, viewport) {
   await container.waitFor({ state: 'detached', timeout: 5_000 });
 }
 
-// The update notice takes the top of the shell (faked island insets: 59 top, 34 bottom).
-// It must sit inside them, cover no other control (tab pill, Home's header), and Restart
-// must go busy on the first tap and stay that way.
+// The update notice floats over the shell (faked island insets: 59 top, 34 bottom). It
+// must sit above the bottom inset, below Home's header, clear of the tab pill, and move
+// nothing when it goes. Restart must go busy on the first tap and stay that way. A
+// scrolling screen behind it must still scroll its last row clear of it.
 async function assertUpdateNotice(page, name, viewport) {
   if (name !== 'update-notice') return;
   const notice = page.getByTestId('update-notice');
   const box = await getStableBox(notice, page);
-  assert.ok(box.y >= 59 - 1, `update notice under the top inset in ${viewport.name}`);
+  assert.ok(box.y >= viewport.height / 2, `update notice floats low in ${viewport.name}`);
   assert.ok(box.y + box.height <= viewport.height - 34, `update notice above the bottom inset`);
+  const pill = await page.getByTestId('tab-pill').boundingBox();
+  assert.ok(pill && !boxesOverlap(box, pill), `update notice covers the tab pill`);
   const restart = page.getByRole('button', { name: 'Restart', exact: true });
   const dismiss = page.getByRole('button', { name: 'Dismiss', exact: true });
   for (const [label, control] of [
@@ -920,23 +923,29 @@ async function assertUpdateNotice(page, name, viewport) {
     const target = await getStableBox(control, page);
     assert.ok(target.width >= 44 && target.height >= 44, `${label} is a 44pt target`);
   }
-  for (const control of await page.getByRole('button').all()) {
-    if (!(await control.isVisible())) continue;
-    const inside = await control.evaluate(
-      (element) => !!element.closest('[data-testid="update-notice"]')
+  const contentBoxes = () =>
+    page.getByTestId('home-screen').evaluate((screen) =>
+      [screen, ...screen.querySelectorAll('[role="button"], [role="img"]')].map((element) => {
+        const { x, y, width, height } = element.getBoundingClientRect();
+        return [x, y, width, height].map(Math.round).join(',');
+      })
     );
-    if (inside) continue;
-    const other = await control.boundingBox();
-    if (other && boxesOverlap(box, other)) {
-      const label = (await control.getAttribute('aria-label')) ?? (await control.textContent());
-      throw new Error(`update notice covers "${label}" in ${viewport.name}`);
-    }
-  }
+  const withNotice = await contentBoxes();
   await restart.click();
   await restart.locator('[role="progressbar"]').waitFor();
   assert.ok(await restart.isDisabled(), 'a busy Restart cannot be tapped again');
   await dismiss.click();
   await notice.waitFor({ state: 'detached' });
+  assert.deepEqual(await contentBoxes(), withNotice, `the notice moved Home in ${viewport.name}`);
+
+  await page.goto(new URL('/settings?fixture=update-notice&safeArea=island', baseUrl).href);
+  const shown = await getStableBox(notice, page);
+  assert.ok(shown, `update notice missing on Settings in ${viewport.name}`);
+  const lastRow = await page.getByTestId('settings-screen').evaluate((scroller) => {
+    scroller.scrollTop = scroller.scrollHeight;
+    return scroller.firstElementChild.lastElementChild.getBoundingClientRect().bottom;
+  });
+  assert.ok(lastRow <= shown.y, `Settings cannot scroll clear of the notice in ${viewport.name}`);
 }
 
 async function assertFocused(locator, message) {

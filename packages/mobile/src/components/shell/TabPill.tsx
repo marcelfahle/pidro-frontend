@@ -5,6 +5,7 @@
  * right edge, under the right thumb. The gold Table anchor is the center
  * tab (home / your table); it wears a badge when a game is waiting.
  */
+import { createContext, useContext } from 'react';
 import {
   StyleSheet,
   useWindowDimensions,
@@ -30,22 +31,35 @@ const CONTENT_GAP = 14; // breathing room between content and pill (portrait)
 const CONTENT_GAP_RAIL = 22; // the rail deserves more air beside content
 
 /**
- * How much space screens inside the shell must leave for the floating
- * pill. Derived from safe-area insets + pill geometry — never hardcode
- * clearances in screens (web has zero insets; devices do not).
+ * How far up from the screen bottom the shell's floating update notice
+ * reaches; 0 while it is hidden. The shell provides it to its screens.
  */
-export function usePillClearance() {
+export const UpdateNoticeReach = createContext(0);
+
+/**
+ * How much space screens inside the shell must leave for the floating
+ * pill — and for the update notice above it while it shows. Derived from
+ * safe-area insets + pill geometry — never hardcode clearances in screens
+ * (web has zero insets; devices do not). A fixed layout that the notice
+ * floats over passes `{ notice: false }` so it never moves.
+ */
+export function usePillClearance({ notice = true }: { notice?: boolean } = {}) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
+  const reach = useContext(UpdateNoticeReach);
+  const noticeBottom = notice && reach > 0 ? reach + CONTENT_GAP : 0;
   const landscape = width > height;
   if (landscape) {
     return {
-      bottom: 0,
+      bottom: noticeBottom,
       right: Math.max(insets.right, 8) + PILL_EDGE_GAP + 2 + PILL_THICKNESS + CONTENT_GAP_RAIL,
     };
   }
   return {
-    bottom: Math.max(insets.bottom, 10) + PILL_EDGE_GAP + PILL_THICKNESS + CONTENT_GAP,
+    bottom: Math.max(
+      Math.max(insets.bottom, 10) + PILL_EDGE_GAP + PILL_THICKNESS + CONTENT_GAP,
+      noticeBottom
+    ),
     right: 0,
   };
 }
@@ -137,7 +151,7 @@ export function TabPill({
           : [styles.bottomAnchor, { bottom: Math.max(insets.bottom, 10) + PILL_EDGE_GAP }],
         style,
       ]}>
-      <View style={[styles.pillRim, gradientBg(PidroBevel.glassRimGradient)]}>
+      <View testID="tab-pill" style={[styles.pillRim, gradientBg(PidroBevel.glassRimGradient)]}>
         <View
           style={[
             styles.pillFace,

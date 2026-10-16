@@ -54,7 +54,8 @@ export default function HomeScreen() {
   const [identity, setIdentity] = useState<ProfileIdentity | null>(null);
   const [lobbyCountState, setLobbyCountState] = useState<LobbyCountState>('loading');
   const refreshIdentity = useProfileIdentity();
-  const rawPillClearance = usePillClearance();
+  // Home's layout is fixed: the update notice floats over it rather than moving it.
+  const rawPillClearance = usePillClearance({ notice: false });
   const pillClearance = guest ? { bottom: 0, right: 0 } : rawPillClearance;
   const playerName = publicPlayerName(user?.username, t('social.player'), user?.display_name);
   const quickGame = useQuickGame(fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null);

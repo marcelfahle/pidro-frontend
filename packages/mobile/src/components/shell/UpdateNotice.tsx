@@ -1,31 +1,37 @@
 /**
- * "A new version is ready" — the shell's one notice. It sits in the flow at
- * the top of the shell, so it pushes the screen down rather than covering its
- * header, and it stops short of the landscape tab rail.
+ * "A new version is ready" — the shell's one notice. A floating card over the
+ * screen, anchored just above the tab pill (above the bottom safe area when
+ * there is no bottom pill) and short of the landscape tab rail, so showing or
+ * hiding it never moves anything.
  */
 import { StyleSheet, View } from 'react-native';
-import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeOutDown, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
-import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { useTranslation } from '@/i18n';
 
 interface UpdateNoticeProps {
   restarting: boolean;
   onRestart: () => void;
   onDismiss: () => void;
+  /** Distance from the screen bottom: above the bottom pill or the safe area. */
+  bottom: number;
   /** Space the landscape tab rail needs on the right. */
   rightClearance: number;
+  onHeight: (height: number) => void;
 }
 
 export function UpdateNotice({
   restarting,
   onRestart,
   onDismiss,
+  bottom,
   rightClearance,
+  onHeight,
 }: UpdateNoticeProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
@@ -33,11 +39,14 @@ export function UpdateNotice({
 
   return (
     <Animated.View
-      entering={reduceMotion ? undefined : FadeIn.duration(200)}
+      entering={reduceMotion ? undefined : FadeInDown.duration(200)}
+      exiting={reduceMotion ? undefined : FadeOutDown.duration(160)}
+      pointerEvents="box-none"
+      onLayout={(event) => onHeight(event.nativeEvent.layout.height)}
       style={[
         styles.slot,
         {
-          paddingTop: insets.top + PidroSpacing.xs,
+          bottom,
           paddingLeft: insets.left + PidroSpacing.md,
           paddingRight: Math.max(insets.right + PidroSpacing.md, rightClearance),
         },
@@ -77,8 +86,10 @@ export function UpdateNotice({
 
 const styles = StyleSheet.create({
   slot: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     alignItems: 'center',
-    paddingBottom: PidroSpacing.xs,
   },
   notice: {
     width: '100%',
@@ -89,6 +100,7 @@ const styles = StyleSheet.create({
     paddingVertical: PidroSpacing.xs,
     paddingLeft: PidroSpacing.md,
     paddingRight: PidroSpacing.xs,
+    boxShadow: PidroBevel.heroDropShadow,
   },
   copy: { flex: 1 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: PidroSpacing.xs },
