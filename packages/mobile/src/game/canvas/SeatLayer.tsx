@@ -48,8 +48,8 @@ import {
   northFanTop,
   packSpot,
   northFanStep,
+  sideStackStep,
   playedCardTarget,
-  SIDE_STACK_STEP,
   seatNameGap,
   sideBackWidth,
   sideSeatTop,
@@ -543,7 +543,7 @@ function BacksFan({
   if (n === 0) return null;
   const w = northBackWidth(cardW, compact);
   const h = w * (110 / 78);
-  const overlap = w * northFanStep(compact) * Math.min(1, 5 / Math.max(1, n - 1));
+  const overlap = northFanStep(cardW, n, compact);
   const total = w + (n - 1) * overlap;
   return (
     <View testID={testID} style={{ width: total, height: h }}>
@@ -596,7 +596,7 @@ function BacksStackV({
   const up = faces.length > 0;
   const visW = up ? cw : ch; // backs: after 90° rotation
   const visH = up ? ch : cw;
-  const overlap = (up ? ch * 0.36 : cw * SIDE_STACK_STEP) * Math.min(1, 5 / Math.max(1, n - 1));
+  const overlap = up ? ch * 0.36 * Math.min(1, 5 / Math.max(1, n - 1)) : sideStackStep(cardW, n);
   return (
     <View testID={testID} style={{ width: visW, height: visH + (n - 1) * overlap }}>
       {Array.from({ length: n }, (_, i) => (

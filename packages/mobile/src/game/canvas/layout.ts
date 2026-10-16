@@ -95,13 +95,26 @@ export function heldPose(
 /** East and West's backs, before they lie sideways. */
 export const sideBackWidth = (cardW: number) => clamp(cardW * 0.7, 31, 62);
 /** North's fan of backs: each back after the first adds half a back, up to six. */
-/** Each back in North's fan shows this much of its width, enough to count. Compact fans stay tighter. */
-export const northFanStep = (compact = false) => (compact ? 0.52 : 0.6);
-/** And each sideways back down East's and West's stacks. */
-export const SIDE_STACK_STEP = 0.56;
+// The backs grew so they can be counted, but a hand's footprint did not:
+// a full fan or stack takes no more room than it did with smaller backs, so
+// nothing else on the table moves. Few cards (right after the second deal)
+// spread out to their full step; a full hand closes up to fit.
+const legacyNorthBack = (cardW: number) => clamp(cardW * 0.66, 31, 58);
+const legacySideBack = (cardW: number) => clamp(cardW * 0.62, 30, 56);
+/** Points between backs in North's fan of `n`. */
+export function northFanStep(cardW: number, n: number, compact = false) {
+  const w = northBackWidth(cardW, compact);
+  const room = legacyNorthBack(cardW) * 0.52 * 5;
+  return n > 1 ? Math.min(w * (compact ? 0.52 : 0.6), room / (n - 1)) : 0;
+}
+/** North's fan of backs, as wide as it draws. */
 export const northFanWidth = (cardW: number, count: number, compact = false) =>
-  northBackWidth(cardW, compact) *
-  (count > 0 ? 1 + (Math.min(6, count) - 1) * northFanStep(compact) : 1);
+  northBackWidth(cardW, compact) + (Math.max(1, count) - 1) * northFanStep(cardW, count, compact);
+/** Points between sideways backs in East's or West's stack of `n`. */
+export function sideStackStep(cardW: number, n: number) {
+  const room = legacySideBack(cardW) * 0.48 * 5;
+  return n > 1 ? Math.min(sideBackWidth(cardW) * 0.56, room / (n - 1)) : 0;
+}
 /**
  * Where North's backs start. Portrait hangs them under the header row;
  * landscape tucks them partly above the table, under the floating scores.
@@ -119,7 +132,7 @@ export const northSeatBottom = (L: TableLayout, tableTop: number) =>
 /** East and west's backs along the edges, up to six, as SeatLayer stacks them. */
 export function sideStacks(L: TableLayout) {
   const backW = sideBackWidth(L.cardW);
-  const maxHeight = backW * (1 + 5 * SIDE_STACK_STEP);
+  const maxHeight = backW + legacySideBack(L.cardW) * 0.48 * 5;
   const top = L.trick.cy - maxHeight / 2;
   const handTop = L.hand.cy - L.cardH / 2;
   return { backW, maxHeight, top, lowestTop: Math.max(top, handTop - 12 - maxHeight) };
