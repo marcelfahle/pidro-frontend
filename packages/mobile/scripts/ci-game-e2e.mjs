@@ -155,8 +155,9 @@ async function captureMilestones(page, seen) {
 }
 
 // The guest asks for a rematch from the game-over window. Two humans sit at
-// this table, so the window must show one of two agreed until the host's
-// protocol client agrees; then the same URL shows a fresh game.
+// this table, so the rematch row must say the guest is in and waits on the
+// host until the host's protocol client agrees; then the same URL shows a
+// fresh game.
 async function rematchThroughUi(page, roomCode, seen) {
   const shot = async (name) => {
     await page.screenshot({ path: resolve(artifactDir, `${name}.png`) });
@@ -171,8 +172,8 @@ async function rematchThroughUi(page, roomCode, seen) {
   const status = page.getByTestId('rematch-status');
   await status.waitFor({ timeout: 15_000 });
   const statusText = (await status.textContent())?.trim();
-  if (statusText !== '1 av 2 vill spela igen') {
-    throw new Error(`rematch vote read "${statusText}", expected "1 av 2 vill spela igen"`);
+  if (!statusText?.startsWith('Du är med. Väntar på ')) {
+    throw new Error(`rematch row read "${statusText}", expected "Du är med. Väntar på …"`);
   }
   if (await playAgain.isEnabled()) {
     throw new Error('Play again stayed enabled after the guest asked for a rematch');

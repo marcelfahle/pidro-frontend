@@ -638,7 +638,41 @@ const allCases = [
     path: '/table-dev?phase=auto_rob&role=player&dealer=south',
     testId: 'automatic-dealer-rob',
   },
-  { name: 'table-game-over', path: '/table-dev?phase=game_over', testId: 'game-over-window' },
+  // PID-237: the win reveal, the loss that opens on your best hand, and the
+  // rematch row in each state, seen from south with Nora as partner.
+  {
+    name: 'table-game-over',
+    path: '/table-dev?phase=game_over&xp=earned&rematch=one',
+    testId: 'game-over-window',
+    gameOver: {
+      headline: 'You and Nora win',
+      title: 'Nora wants a rematch',
+      detail: 'Waiting for Eli and Wynn',
+      parts: ['how-it-went', 'streak-chip', 'xp-chip'],
+    },
+  },
+  {
+    name: 'table-game-over-loss',
+    path: '/table-dev?phase=game_over&result=loss&xp=earned&rematch=two',
+    testId: 'game-over-window',
+    gameOver: {
+      headline: 'Eli and Wynn win',
+      title: 'Nora and Eli want a rematch',
+      detail: 'Waiting for Wynn',
+      parts: ['best-hand', 'how-it-went', 'xp-chip'],
+      absent: ['streak-chip', 'victory-rays'],
+    },
+  },
+  {
+    name: 'table-game-over-spectator',
+    path: '/table-dev?phase=game_over&result=spectator&xp=earned',
+    testId: 'game-over-window',
+    gameOver: {
+      headline: 'Alex and Nora win',
+      parts: ['how-it-went'],
+      absent: ['play-again', 'rematch-status', 'streak-chip', 'xp-chip', 'best-hand'],
+    },
+  },
   {
     name: 'table-game-over-guest',
     path: '/table-dev?phase=game_over&guest=true',
@@ -648,11 +682,13 @@ const allCases = [
     name: 'table-game-over-rematch-waiting',
     path: '/table-dev?phase=game_over&rematch=waiting',
     testId: 'rematch-status',
+    gameOver: { title: null, detail: "You're in. Waiting for Nora, Eli and Wynn", waiting: true },
   },
   {
     name: 'table-game-over-rematch-asked',
     path: '/table-dev?phase=game_over&rematch=asked',
     testId: 'rematch-status',
+    gameOver: { title: 'Nora, Eli and Wynn want a rematch', detail: 'Waiting for you' },
   },
 ];
 
@@ -879,6 +915,76 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
 // A wood button's keyline stays inside its rim and its label inside the face,
 // so nothing is cut where the platform clips (PID-212).
+// Game over never scrolls: every block sits inside the viewport, none
+// overlaps another, and the rematch row says who is in.
+async function assertGameOver(page, testCase, viewport) {
+  const spec = testCase.gameOver;
+  if (!spec) return;
+  const overlay = page.getByTestId('game-over-overlay');
+  await page.getByTestId('victory-confetti').waitFor({ state: 'detached', timeout: 7000 });
+  if (spec.headline) {
+    await overlay.getByRole('heading', { name: spec.headline, exact: true }).waitFor();
+  }
+  for (const id of spec.parts ?? []) await page.getByTestId(id).waitFor();
+  for (const id of spec.absent ?? []) {
+    assert.equal(await page.getByTestId(id).count(), 0, `${testCase.name}: ${id} should be absent`);
+  }
+  if (spec.detail !== undefined) {
+    const status = (await page.getByTestId('rematch-status').innerText()).split('\n');
+    assert.deepEqual(
+      status,
+      [spec.title, spec.detail].filter(Boolean),
+      `${testCase.name}: rematch row in ${viewport.name}`
+    );
+  }
+  if (spec.waiting) {
+    assert.equal(await page.getByTestId('play-again').getAttribute('aria-label'), 'Waiting…');
+  }
+  const blocks = [];
+  for (const id of [
+    'game-over-rule-set',
+    'best-hand',
+    'how-it-went',
+    'streak-chip',
+    'xp-chip',
+    'rematch-status',
+    'play-again',
+    'game-over-home',
+  ]) {
+    const box = (await page.getByTestId(id).count())
+      ? await getStableBox(page.getByTestId(id), page)
+      : null;
+    if (!box) continue;
+    assertInsideViewport(`${testCase.name} ${id}`, box, viewport);
+    blocks.push([id, box]);
+  }
+  for (const [i, [a, boxA]] of blocks.entries()) {
+    for (const [b, boxB] of blocks.slice(i + 1)) {
+      const overlap =
+        boxA.x < boxB.x + boxB.width - 1 &&
+        boxB.x < boxA.x + boxA.width - 1 &&
+        boxA.y < boxB.y + boxB.height - 1 &&
+        boxB.y < boxA.y + boxA.height - 1;
+      assert.ok(!overlap, `${testCase.name}: ${a} overlaps ${b} in ${viewport.name}`);
+    }
+  }
+  const texts = await overlay.locator('[dir="auto"]').evaluateAll((nodes) =>
+    nodes
+      .filter((node) => node.getClientRects().length)
+      .map((node) => {
+        const box = node.getBoundingClientRect();
+        return { text: node.textContent, x: box.x, y: box.y, r: box.right, b: box.bottom };
+      })
+  );
+  for (const text of texts) {
+    assertInsideViewport(
+      `${testCase.name} "${text.text}"`,
+      { x: text.x, y: text.y, width: text.r - text.x, height: text.b - text.y },
+      viewport
+    );
+  }
+}
+
 async function assertWoodButtonsHoldLabels(page, name, viewport) {
   const spills = await page.evaluate(() => {
     const keylineColor = 'rgb(42, 21, 5)';
@@ -2865,6 +2971,7 @@ async function main() {
               .waitFor({ state: 'detached', timeout: 7000 });
           }
           await assertCountHelp(page, testCase, caseViewport);
+          await assertGameOver(page, testCase, caseViewport);
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
             await page.getByText('Bengt', { exact: true }).waitFor();

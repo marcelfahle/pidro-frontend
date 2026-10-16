@@ -166,6 +166,45 @@ export const PidroBevel = {
   },
 } as const;
 
+/**
+ * Game over (PID-237): the win's light and paper, the race line, the chips.
+ * Celebration may go loud, but only from here.
+ */
+export const PidroGameOver = {
+  // Opaque felt: the table is over, nothing of it should compete.
+  backdrop: '#07264c',
+  backdropGradient: 'radial-gradient(ellipse at 50% 30%, #0d5087 0%, #0a3a6a 45%, #041a33 100%)',
+  ray: '#FFD447',
+  rayOpacity: 0.17,
+  spot: '#FFE28C',
+  spotOpacity: 0.5,
+  heroCardShadow:
+    '0px 0px 0px 3px #FFD447, 0px 0px 40px rgba(255,212,71,0.85), 0px 18px 36px rgba(0,0,0,0.55)',
+  bestCardShadow: '0px 0px 0px 2px #FFD447, 0px 4px 10px rgba(0,0,0,0.5)',
+  sideCardShadow: '0px 8px 18px rgba(0,0,0,0.5)',
+  sheenGradient:
+    'linear-gradient(100deg, rgba(255,255,255,0) 0%, rgba(255,250,220,0.85) 45%, rgba(255,215,120,0.5) 55%, rgba(255,255,255,0) 100%)',
+  pidroInk: '#8F5E12',
+  ours: '#FFD447',
+  theirs: '#ffb4b9',
+  theirsScore: '#ffd9dc',
+  oursLabel: '#92e6b2',
+  target: '#E2AF45',
+  markerFill: '#ffffff',
+  markerEdge: '#0A2340',
+  chartFace: 'rgba(5, 30, 58, 0.72)',
+  chipFace: 'rgba(7, 45, 82, 0.9)',
+  chipEdge: 'rgba(226, 175, 69, 0.75)',
+  bestEdge: 'rgba(226, 175, 69, 0.8)',
+  // A seat that has not agreed yet: solid, but greyed under a navy veil.
+  waitingVeil: 'rgba(10, 35, 64, 0.62)',
+  scoreGlow: {
+    textShadowColor: 'rgba(78, 37, 9, 0.9)',
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 6,
+  },
+} as const;
+
 /** Inset switches: quiet glass, never the wood/gold primary-action treatment. */
 export const PidroSwitchTokens = {
   width: 64,

@@ -59,40 +59,49 @@ async function open(page, params = {}, waitForTable = true) {
 }
 
 async function geometry(page, size) {
-  for (const id of ['game-over-window', 'game-over-home', 'play-again']) {
+  const inside = (id, box) => {
+    assertInsideViewport(id, box, size);
+    assert.ok(
+      box.x >= size.left - 1 && box.x + box.width <= size.width - size.right + 1,
+      `${id} clears side insets in ${size.name}`
+    );
+    assert.ok(
+      box.y >= size.top - 1 && box.y + box.height <= size.height - size.bottom + 1,
+      `${id} clears top/bottom insets in ${size.name}`
+    );
+  };
+  const blocks = [];
+  for (const id of [
+    'best-hand',
+    'how-it-went',
+    'streak-chip',
+    'xp-chip',
+    'rematch-status',
+    'play-again',
+    'game-over-home',
+  ]) {
     const target = page.getByTestId(id);
     if (!(await target.count())) continue;
     const box = await target.boundingBox();
     assert.ok(box, `${id} has geometry`);
-    assertInsideViewport(id, box, size);
-    assert.ok(
-      box.x >= size.left && box.x + box.width <= size.width - size.right,
-      `${id} clears side insets`
-    );
-    assert.ok(
-      box.y >= size.top && box.y + box.height <= size.height - size.bottom,
-      `${id} clears top/bottom insets`
-    );
+    inside(id, box);
+    blocks.push([id, box]);
   }
-  const panel = await page.getByTestId('game-over-window').boundingBox();
+  for (const [i, [a, boxA]] of blocks.entries()) {
+    for (const [b, boxB] of blocks.slice(i + 1)) {
+      assert.ok(
+        boxA.x + boxA.width <= boxB.x + 1 ||
+          boxB.x + boxB.width <= boxA.x + 1 ||
+          boxA.y + boxA.height <= boxB.y + 1 ||
+          boxB.y + boxB.height <= boxA.y + 1,
+        `${a} overlaps ${b} in ${size.name}`
+      );
+    }
+  }
+  // Nothing scrolls: every line of text is on screen, inside the safe area.
   for (const text of await page.getByTestId('game-over-window').locator('[dir="auto"]').all()) {
     const box = await text.boundingBox();
-    assert.ok(
-      box && box.y >= panel.y && box.y + box.height <= panel.y + panel.height,
-      'Panel content is not clipped vertically'
-    );
-    assert.ok(
-      box.x >= panel.x && box.x + box.width <= panel.x + panel.width,
-      'Panel content is not clipped horizontally'
-    );
-  }
-  const home = await page.getByTestId('game-over-home').boundingBox();
-  assert.ok(panel.y + panel.height <= home.y, 'Panel never overlaps actions');
-  assert.ok(home.x < size.width / 2, 'Home stays left');
-  if (await page.getByTestId('play-again').count()) {
-    const rematch = await page.getByTestId('play-again').boundingBox();
-    assert.ok(rematch.x + rematch.width / 2 > size.width / 2, 'Rematch stays right');
-    assert.ok(home.x + home.width < rematch.x, 'Actions never overlap');
+    if (box) inside(`"${await text.textContent()}"`, box);
   }
   await assertMinimumTouchTargets(page, 'game-over', size);
 }
@@ -124,23 +133,25 @@ try {
     await page.setViewportSize({ width: size.width, height: size.height });
     const inset = size.safeArea ? { safeArea: size.safeArea } : {};
     await open(page, inset);
-    await page.getByRole('heading', { name: 'You won!', exact: true }).waitFor();
-    assert.equal(await page.getByTestId('result-score-first').textContent(), '64');
-    assert.equal(await page.getByTestId('result-score-second').textContent(), '48');
+    await page.getByRole('heading', { name: 'You and Nora win', exact: true }).waitFor();
+    assert.equal(await page.getByTestId('result-score-first').textContent(), '62');
+    assert.equal(await page.getByTestId('result-score-second').textContent(), '29');
     assert.equal(
       await page.getByTestId('victory-confetti').count(),
       0,
       'Reduced motion omits confetti'
     );
+    assert.equal(await page.getByTestId('victory-rays').count(), 0, 'Reduced motion omits rays');
     assert.equal(await page.getByText(/XP/).count(), 0, 'Absent rewards leave no placeholder');
-    for (const name of ['You', 'Nora'])
-      await page.getByTestId('result-team-first').getByText(name, { exact: true }).waitFor();
-    for (const name of ['Eli', 'Wynn'])
-      await page.getByTestId('result-team-second').getByText(name, { exact: true }).waitFor();
+    await page.getByTestId('how-it-went').waitFor();
+    assert.equal(await page.getByTestId('best-hand').count(), 0, 'A win opens on the win');
     await geometry(page, size);
     await page.screenshot({ path: resolve(shots, `${size.name}.png`) });
     await page.getByRole('button', { name: 'Rematch', exact: true }).click();
-    await page.getByText('1 of 4 want to play again', { exact: true }).waitFor();
+    await page
+      .getByTestId('rematch-status')
+      .getByText("You're in. Waiting for Nora, Eli and Wynn", { exact: true })
+      .waitFor();
     assert.equal(await page.getByTestId('play-again').isDisabled(), true);
     assert.equal(await page.getByTestId('play-again').getAttribute('aria-label'), 'Waiting…');
     await geometry(page, size);
@@ -153,16 +164,13 @@ try {
       rematch: 'asked',
       playerName: 'Alexandria the Long-Named Player',
     });
-    await page.getByRole('heading', { name: 'Opponents win', exact: true }).waitFor();
-    assert.equal(await page.getByTestId('result-score-first').textContent(), '-12');
-    assert.equal(await page.getByTestId('result-score-second').textContent(), '64');
-    assert.equal(
-      await page
-        .getByTestId('result-score-second')
-        .evaluate((node) => getComputedStyle(node).color),
-      'rgb(225, 173, 58)'
-    );
-    await page.getByText('+64 XP · Level 12!', { exact: true }).waitFor();
+    await page.getByRole('heading', { name: 'Eli and Wynn win', exact: true }).waitFor();
+    assert.equal(await page.getByTestId('result-score-first').textContent(), '29');
+    assert.equal(await page.getByTestId('result-score-second').textContent(), '62');
+    await page.getByTestId('best-hand').getByText('Won 12 of 14', { exact: true }).waitFor();
+    await page.getByText('+76 XP · Level 12!', { exact: true }).waitFor();
+    assert.equal(await page.getByTestId('streak-chip').count(), 0, 'A loss has no streak');
+    await page.getByText('Waiting for you', { exact: true }).waitFor();
     assert.equal(await page.getByTestId('play-again').isEnabled(), true);
     await geometry(page, size);
     await page.screenshot({ path: resolve(shots, `${size.name}-loss-xp.png`) });
@@ -170,32 +178,26 @@ try {
   }
 
   await page.setViewportSize({ width: 390, height: 844 });
-  await open(page, { result: 'east' });
-  await page.getByRole('heading', { name: 'You won!', exact: true }).waitFor();
-  assert.equal(await page.getByTestId('result-score-first').textContent(), '64');
-  assert.equal(await page.getByTestId('result-score-second').textContent(), '-12');
-  for (const name of ['You', 'Wynn'])
-    await page.getByTestId('result-team-first').getByText(name, { exact: true }).waitFor();
-  for (const name of ['Alex', 'Nora'])
-    await page.getByTestId('result-team-second').getByText(name, { exact: true }).waitFor();
+  await open(page, { result: 'east', xp: 'earned' });
+  await page.getByRole('heading', { name: 'You and Wynn win', exact: true }).waitFor();
+  assert.equal(await page.getByTestId('result-score-first').textContent(), '62');
+  assert.equal(await page.getByTestId('result-score-second').textContent(), '29');
+  await page.getByText('3 in a row with Nora', { exact: true }).waitFor();
   checks++;
 
   await open(page, { result: 'spectator', xp: 'level', rematch: 'asked' });
-  await page.getByRole('heading', { name: 'North / South win!', exact: true }).waitFor();
+  await page.getByRole('heading', { name: 'Alex and Nora win', exact: true }).waitFor();
   assert.equal(await page.getByTestId('play-again').count(), 0);
   assert.equal(await page.getByTestId('rematch-status').count(), 0);
   assert.equal(await page.getByText(/XP/).count(), 0);
+  await page.getByTestId('how-it-went').waitFor();
   await page.screenshot({ path: resolve(shots, 'spectator.png') });
   checks++;
 
   await open(page, { result: 'tie' });
   await page.getByRole('heading', { name: 'A tie!', exact: true }).waitFor();
   for (const id of ['result-score-first', 'result-score-second']) {
-    assert.equal(await page.getByTestId(id).textContent(), '64');
-    assert.equal(
-      await page.getByTestId(id).evaluate((node) => getComputedStyle(node).color),
-      'rgb(255, 255, 255)'
-    );
+    assert.equal(await page.getByTestId(id).textContent(), '62');
   }
   await page.screenshot({ path: resolve(shots, 'tie.png') });
   checks++;
@@ -224,20 +226,23 @@ try {
   await open(animatedPage, {}, false);
   const confetti = animatedPage.getByTestId('victory-confetti');
   await confetti.waitFor();
+  await animatedPage.getByTestId('victory-rays').waitFor();
   const piece = confetti.locator(':scope > div').first();
   const before = await piece.evaluate((node) => getComputedStyle(node).transform);
-  await animatedPage.waitForTimeout(200);
+  // The suits fall once the score lands, about a second in.
+  await animatedPage.waitForTimeout(1500);
   const after = await piece.evaluate((node) => getComputedStyle(node).transform);
   assert.notEqual(after, before, 'Confetti must actually move');
   assert.equal(await confetti.evaluate((node) => getComputedStyle(node).pointerEvents), 'none');
   await animatedPage.screenshot({ path: resolve(shots, 'confetti.png') });
   // A vote rerender must not restart the celebration.
   await animatedPage.getByRole('button', { name: 'Rematch', exact: true }).click();
-  await confetti.waitFor({ state: 'detached', timeout: 4000 });
+  await confetti.waitFor({ state: 'detached', timeout: 5000 });
   await animatedPage.setViewportSize({ width: 844, height: 390 });
   assert.equal(await confetti.count(), 0, 'Rotation must not replay confetti');
   await open(animatedPage, { result: 'loss' });
   assert.equal(await confetti.count(), 0, 'Loss must not celebrate');
+  assert.equal(await animatedPage.getByTestId('victory-rays').count(), 0, 'A loss has no rays');
   await motion.close();
   checks++;
   console.log(

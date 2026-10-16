@@ -32,7 +32,7 @@ describe('rematchVote', () => {
   });
 
   test('counts the humans who have asked', () => {
-    expect(rematchVote(finished(['east', 'west']), 'north')).toEqual({
+    expect(rematchVote(finished(['east', 'west']), 'north')).toMatchObject({
       needed: 4,
       agreed: 2,
       youAgreed: false,
@@ -42,11 +42,31 @@ describe('rematchVote', () => {
 
   test('bots are ready on the server but are not part of the count', () => {
     const solo = finished(['east', 'south', 'west'], ['east', 'south', 'west']);
-    expect(rematchVote(solo, 'north')).toEqual({ needed: 1, agreed: 0, youAgreed: false });
+    expect(rematchVote(solo, 'north')).toMatchObject({ needed: 1, agreed: 0, youAgreed: false });
+  });
+
+  test('says per seat who is in, bots always', () => {
+    const vote = rematchVote(finished(['east'], ['west']), 'south');
+    expect(vote?.seats).toEqual([
+      { position: 'north', bot: false, agreed: false },
+      { position: 'east', bot: false, agreed: true },
+      { position: 'south', bot: false, agreed: false },
+      { position: 'west', bot: true, agreed: true },
+    ]);
+  });
+
+  test('an empty seat has no say', () => {
+    const snapshot = finished([]);
+    snapshot.seats.west = { occupant_type: 'vacant', status: 'vacant', user_id: null };
+    expect(rematchVote(snapshot, 'north')?.seats.map((seat) => seat.position)).toEqual([
+      'north',
+      'east',
+      'south',
+    ]);
   });
 
   test('a spectator sees the count and has not agreed', () => {
-    expect(rematchVote(finished(['north']), null)).toEqual({
+    expect(rematchVote(finished(['north']), null)).toMatchObject({
       needed: 4,
       agreed: 1,
       youAgreed: false,

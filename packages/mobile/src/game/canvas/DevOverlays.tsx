@@ -14,7 +14,11 @@ import type {
   GameViewModel,
   RelativePlayerView,
   ServerGameState,
+  ServerHandSummary,
+  ServerLastHand,
   ServerPlayerView,
+  Suit,
+  TeamKey,
 } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { useGameStore } from '@/stores/game';
@@ -28,13 +32,145 @@ import { useTranslation } from '@/i18n';
 
 const noop = () => {};
 
-// `?rematch=` on the game-over fixture: the vote as the first to ask sees it
-// (`waiting`), and as somebody the others are waiting on sees it (`asked`).
-const REMATCH_FIXTURES: Record<string, RematchVote> = {
-  open: { needed: 4, agreed: 0, youAgreed: false },
-  waiting: { needed: 4, agreed: 1, youAgreed: true },
-  asked: { needed: 4, agreed: 3, youAgreed: false },
+const vote = (agreed: Position[], you: Position): RematchVote => {
+  const seats = (['north', 'east', 'south', 'west'] as Position[]).map((position) => ({
+    position,
+    bot: false,
+    agreed: agreed.includes(position),
+  }));
+  return {
+    needed: 4,
+    agreed: agreed.length,
+    youAgreed: agreed.includes(you),
+    seats,
+  };
 };
+
+// `?rematch=` on the game-over fixture, seen from south: nobody has asked
+// (`open`), Nora has (`one`), Nora and Eli have (`two`), the other three wait
+// on you (`asked`), or you asked first (`waiting`).
+const REMATCH_FIXTURES: Record<string, Position[]> = {
+  open: [],
+  one: ['north'],
+  two: ['north', 'east'],
+  asked: ['north', 'east', 'west'],
+  waiting: ['south'],
+};
+
+const flip = (team: TeamKey): TeamKey => (team === 'north_south' ? 'east_west' : 'north_south');
+
+// Ten hands, North/South winning 62–29 (Win-Reveal): level at 41 after hand 8,
+// then East/West miss 12 and South bids 14 to finish. Hand 7 is East/West's
+// best: Wynn bids 11 ♠, takes 12 of 14 and both Pidros.
+const HANDS: [Position, number, Suit, number, number, number, number][] = [
+  // bidder, bid, trump, N/S took, E/W took, N/S total, E/W total
+  ['east', 7, 'clubs', 6, 8, 6, 8],
+  ['north', 7, 'hearts', 8, 6, 14, 14],
+  ['west', 8, 'spades', 8, 6, 22, 10],
+  ['south', 8, 'diamonds', 8, 6, 30, 16],
+  ['east', 9, 'hearts', 3, 11, 33, 27],
+  ['north', 9, 'clubs', 12, 2, 45, 29],
+  ['west', 11, 'spades', 2, 12, 47, 41],
+  ['south', 6, 'diamonds', 5, 9, 41, 41],
+  ['west', 12, 'hearts', 7, 7, 48, 29],
+  ['south', 14, 'hearts', 14, 0, 62, 29],
+];
+
+function handHistory(winner: TeamKey): ServerHandSummary[] {
+  let before = { north_south: 0, east_west: 0 };
+  return HANDS.map(([bidder, bid, trump, ns, ew, nsTotal, ewTotal], index) => {
+    const swap = winner === 'east_west';
+    const at = (position: Position): Position =>
+      swap
+        ? ({ north: 'east', east: 'south', south: 'west', west: 'north' } as const)[position]
+        : position;
+    const team = (key: TeamKey) => (swap ? flip(key) : key);
+    const scores = {
+      [team('north_south')]: nsTotal,
+      [team('east_west')]: ewTotal,
+    } as Record<TeamKey, number>;
+    const biddingTeam = team(
+      bidder === 'north' || bidder === 'south' ? 'north_south' : 'east_west'
+    );
+    const hand: ServerHandSummary = {
+      hand_number: index + 1,
+      bidding_team: biddingTeam,
+      bidder: at(bidder),
+      bid,
+      captured: { [team('north_south')]: ns, [team('east_west')]: ew } as Record<TeamKey, number>,
+      made: (biddingTeam === team('north_south') ? ns : ew) >= bid,
+      delta: {
+        north_south: scores.north_south - before.north_south,
+        east_west: scores.east_west - before.east_west,
+      },
+      scores,
+      trump,
+      point_cards:
+        index === 6
+          ? [
+              {
+                card: { rank: 14, suit: 'spades' },
+                points: 1,
+                position: at('east'),
+                team: team('east_west'),
+              },
+              {
+                card: { rank: 5, suit: 'spades' },
+                points: 5,
+                position: at('west'),
+                team: team('east_west'),
+              },
+              {
+                card: { rank: 5, suit: 'clubs' },
+                points: 5,
+                position: at('east'),
+                team: team('east_west'),
+              },
+              {
+                card: { rank: 11, suit: 'spades' },
+                points: 1,
+                position: at('east'),
+                team: team('east_west'),
+              },
+              {
+                card: { rank: 2, suit: 'spades' },
+                points: 1,
+                position: at('north'),
+                team: team('north_south'),
+              },
+              {
+                card: { rank: 10, suit: 'spades' },
+                points: 1,
+                position: at('south'),
+                team: team('north_south'),
+              },
+            ]
+          : [],
+    };
+    before = scores;
+    return hand;
+  });
+}
+
+function lastHand(winner: TeamKey): ServerLastHand {
+  const final = handHistory(winner).at(-1)!;
+  const by = final.bidder;
+  const others = (['north', 'east', 'south', 'west'] as Position[]).filter((p) => p !== by);
+  return {
+    ...final,
+    tricks: [
+      {
+        winner: by,
+        cards: [
+          { player: others[0], card: { rank: 14, suit: 'hearts' } },
+          { player: others[1], card: { rank: 2, suit: 'hearts' } },
+          { player: by, card: { rank: 5, suit: 'hearts' } },
+          { player: others[2], card: { rank: 9, suit: 'clubs' } },
+        ],
+      },
+    ],
+  };
+}
 
 const seat = (
   abs: Position,
@@ -143,7 +279,8 @@ export function DevOverlays({
   const { topReserve, bottomReserve } = useTableReserves();
   const eastViewer = result === 'east';
   const spectator = result === 'spectator';
-  const vote = REMATCH_FIXTURES[rematch ?? 'open'];
+  const viewer: Position = eastViewer ? 'east' : 'south';
+  const asked = REMATCH_FIXTURES[rematch ?? 'open'] ?? null;
   const resultModel: GameViewModel = {
     ...VM,
     viewerPositionAbsolute: eastViewer ? 'east' : 'south',
@@ -158,16 +295,19 @@ export function DevOverlays({
       isYou: !spectator && player.absolutePosition === (eastViewer ? 'east' : 'south'),
     })),
   };
+  const winner: TeamKey = result === 'loss' || eastViewer ? 'east_west' : 'north_south';
+  const history = handHistory(winner);
   const resultState: ServerGameState = {
     ...GAME_OVER_SERVER,
-    winner: result === 'tie' ? null : result === 'loss' || eastViewer ? 'east_west' : 'north_south',
+    winner: result === 'tie' ? null : winner,
     scores:
       result === 'tie'
-        ? { north_south: 64, east_west: 64 }
-        : result === 'loss' || eastViewer
-          ? { north_south: -12, east_west: 64 }
-          : { north_south: 64, east_west: 48 },
+        ? { north_south: 62, east_west: 62 }
+        : (history.at(-1)!.scores as ServerGameState['scores']),
+    hand_history: result === 'tie' ? [] : history,
+    last_hand: result === 'tie' ? null : lastHand(winner),
   };
+  const won = result !== 'tie' && result !== 'loss' && result !== 'spectator';
 
   // Seed the store so the store-driven BiddingActions shows in dev (no Phoenix).
   useEffect(() => {
@@ -220,13 +360,26 @@ export function DevOverlays({
           serverState={resultState}
           onHome={() => router.replace('/home')}
           onPlayAgain={() => setVoted(true)}
-          rematch={voted && vote ? { ...vote, agreed: vote.agreed + 1, youAgreed: true } : vote}
+          rematch={asked && vote(voted ? [...asked, viewer] : asked, viewer)}
           rematchPending={rematch === 'pending'}
           playAgainLabel={guest ? t('game.play_again') : undefined}
           showGuestSave={guest}
           onSaveGuest={() => {}}
           progressionSummary={
-            xp ? { xp_earned: 64, veteran_level: 12, leveled_up: xp === 'level' } : null
+            xp
+              ? {
+                  xp_earned: won ? 126 : 76,
+                  veteran_level: 12,
+                  leveled_up: xp === 'level',
+                  veteran_progress: { into: 52, span: 100, max: false },
+                  partner: {
+                    user_id: 'p-north',
+                    display_name: playerName ?? 'Nora',
+                    games_together: 5,
+                    wins_in_a_row: won ? 3 : 0,
+                  },
+                }
+              : null
           }
         />
       )}
