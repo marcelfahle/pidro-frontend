@@ -32,7 +32,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import type { Card } from '@/types/game';
+import type { Card, Suit } from '@/types/game';
 import { DealerChip } from '@/components/game/DealerChip';
 import { useTranslation } from '@/i18n';
 import { computeLayout, handLeft, handScale } from './layout';
@@ -47,6 +47,8 @@ type Props = {
   onPlayCard: (card: Card) => void;
   topReserve?: number;
   bottomReserve?: number;
+  /** Picking trump: lift the cards this suit would make trump. */
+  previewSuit?: Suit | null;
 };
 
 export default function GameCanvas({
@@ -55,6 +57,7 @@ export default function GameCanvas({
   onPlayCard,
   topReserve = 0,
   bottomReserve = 0,
+  previewSuit = null,
 }: Props) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -77,6 +80,7 @@ export default function GameCanvas({
     L,
     onPlayCard,
     enabled: true,
+    previewSuit,
   });
 
   const canvas = (

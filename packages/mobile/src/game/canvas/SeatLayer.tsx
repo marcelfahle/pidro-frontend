@@ -41,6 +41,8 @@ import {
   northFanTop,
   northFanWidth,
   seatNameGap,
+  sideSeatTop,
+  sideStacks,
   SOUTH_NAME_MIN,
   TIGHT_AVATAR,
   TIGHT_SOUTH_SLOT,
@@ -186,51 +188,34 @@ export function SeatLayer({
   const northSeatTop = portrait
     ? northBackTop + northBackWidth(L.cardW) * (110 / 78) + PidroSpacing.sm
     : tableTop + 8;
-  const sideBackW = clamp(L.cardW * 0.62, 30, 56);
-  const sideStackMaxHeight = sideBackW * (1 + 5 * 0.48);
-  // East and west sit above their side stacks, name and status included, so a
-  // full stack never runs under them. Seats anchor to where the stacks would
-  // sit on the trick's center line; landscape drops the stacks below that
-  // (L.sides), opening a gap under the seat.
-  const sideStackTop = L.trick.cy - sideStackMaxHeight / 2;
+  const stacks = sideStacks(L);
+  const sideBackW = stacks.backW;
   const stackedSeat = tight
     ? size
     : size +
       (parts.level ? parts.level.height + parts.level.bottom + 3 : 4) +
       parts.name.lineHeight +
       parts.status.lineHeight;
-  // Portrait keeps the opponents a triangle where it can: east and west start
-  // a step below North, and their stacks move down under them, as far as the
-  // hand allows. Where even that is not enough (the smallest phones), the
-  // seats rise beside North instead: a seat never sits on its own cards.
-  const handTop = L.hand.cy - L.cardH / 2;
-  const lowestStackTop = Math.max(sideStackTop, handTop - PidroSpacing.sm - sideStackMaxHeight);
-  // Tight West shares its column with the plaque's ticker, and side names run
-  // toward North's: both side seats start below the ticker and North's row.
-  const sideSeatTop = Math.max(
-    tight ? northSeatTop + size + PidroSpacing.xs : tableTop + PidroSpacing.xs,
-    Math.min(
-      Math.max(northSeatTop + PidroSpacing.md, sideStackTop - PidroSpacing.sm - stackedSeat),
-      lowestStackTop - PidroSpacing.sm - stackedSeat
-    )
-  );
+  // East and west sit above their side stacks, name and status included, so a
+  // full stack never runs under them (`sideSeatTop`). Tight West shares its
+  // column with the plaque's ticker, and side names run toward North's: both
+  // side seats start below the ticker and North's row. Landscape drops the
+  // stacks below the trick's center line (L.sides), opening a gap under the
+  // seat; on the shortest phones the seats eat into that drop instead.
+  const sideSeatPos = {
+    top: sideSeatTop(L, {
+      tableTop,
+      seatHeight: portrait ? stackedSeat : size,
+      headerBottom: insets.top + TABLE_HEADER + PidroSpacing.xs,
+    }),
+  };
   const sideStackCy = portrait
     ? Math.max(
         L.sides.cy,
-        Math.min(sideSeatTop + stackedSeat + PidroSpacing.sm, lowestStackTop) +
-          sideStackMaxHeight / 2
+        Math.min(sideSeatPos.top + stackedSeat + PidroSpacing.sm, stacks.lowestTop) +
+          stacks.maxHeight / 2
       )
     : L.sides.cy;
-  // Landscape seats sit above that line, but never rise into the header row:
-  // on the shortest phones they eat into the stacks' drop instead.
-  const sideSeatPos = portrait
-    ? { top: sideSeatTop }
-    : {
-        top: Math.max(
-          insets.top + TABLE_HEADER + PidroSpacing.xs,
-          sideStackTop - PidroSpacing.sm - size
-        ),
-      };
   const sideInset = tight ? PidroSpacing.xs : portrait ? 0 : 12;
 
   return (

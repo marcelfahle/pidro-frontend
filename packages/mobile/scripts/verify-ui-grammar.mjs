@@ -536,10 +536,12 @@ const allCases = [
     testId: 'seat-east',
     playLines: { west: 'Plays 9♥', north: 'Plays K♥', east: 'Plays 4♥' },
   },
+  // PID-209: you dealt and won the bid. The suits sit in the felt, hearts
+  // (with the 5♦) already lifted in the hand; every seat stays in view.
   {
     name: 'table-trump',
     path: '/table-dev?phase=declaring',
-    testId: 'trump-window',
+    testId: 'trump-picker',
     protectNorthSeat: true,
   },
   {
@@ -590,7 +592,7 @@ const localizationCases = ['en', 'sv'].flatMap((locale) => [
   ...[
     ['waiting', 'waiting', 'waiting-table'],
     ['bidding', 'bidding', 'bidding-window'],
-    ['trump', 'declaring', 'trump-window'],
+    ['trump', 'declaring', 'trump-picker'],
     ['hand-selection', 'second_deal&role=player&dealer=south', 'hand-selection-window'],
     ['game-over', 'game_over', 'game-over-window'],
     ['dealer', 'dealer_selection', 'seat-north'],
@@ -767,16 +769,8 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
     await assertNorthClear(page, testCase, viewport, testCase.protectNorthSeat ? box : null);
 
-    if (testCase.testId === 'trump-window') {
-      await assertAbovePlayerHand(page, testCase.name, box, viewport);
-      for (const choice of await target.getByRole('button').all()) {
-        const choiceBox = await choice.boundingBox();
-        assert.ok(choiceBox.height >= 48, 'Trump choice keeps a 48pt touch target');
-        assert.ok(
-          choiceBox.y >= box.y && choiceBox.y + choiceBox.height <= box.y + box.height,
-          'All trump choices must fit within the window without clipping'
-        );
-      }
+    if (testCase.testId === 'trump-picker') {
+      await assertTrumpPicker(page, testCase, box, viewport);
     }
     if (testCase.protectPlayerHand) {
       await assertAbovePlayerHand(page, testCase.name, box, viewport);
@@ -2015,6 +2009,45 @@ async function assertCountHelp(page, testCase, viewport) {
           `${testCase.name}: the ${name} overlaps the ${otherName} in ${viewport.name}`
         );
       }
+    }
+  }
+}
+
+// PID-209: four suit buttons of 64pt or more, a grid in portrait and a row in
+// landscape, clear of every seat and its cards, with the strongest suit's
+// trumps (hearts and the 5♦) counted.
+async function assertTrumpPicker(page, testCase, box, viewport) {
+  await assertAbovePlayerHand(page, testCase.name, box, viewport);
+  const choices = await page.getByTestId('trump-picker').getByRole('button').all();
+  assert.equal(choices.length, 4, `${testCase.name}: four suits in ${viewport.name}`);
+  const boxes = [];
+  for (const choice of choices) {
+    const choiceBox = await getStableBox(choice, page);
+    assert.ok(
+      choiceBox.width >= 64 && choiceBox.height >= 64,
+      `${testCase.name}: a trump button under 64pt in ${viewport.name}`
+    );
+    boxes.push(choiceBox);
+  }
+  const rows = new Set(boxes.map((b) => Math.round(b.y))).size;
+  assert.equal(
+    rows,
+    viewport.height > viewport.width ? 2 : 1,
+    `${testCase.name}: trump buttons in ${rows} rows in ${viewport.name}`
+  );
+  const hearts = testCase.locale === 'sv' ? 'Hjärter, 4 trumf' : 'Hearts, 4 trumps';
+  await page.getByRole('button', { name: hearts, exact: true }).waitFor({ timeout: 10_000 });
+  const others = {};
+  for (const seat of ['north', 'east', 'west', 'south']) {
+    others[`${seat} seat`] = page.getByTestId(`seat-${seat}`);
+    others[`${seat} cards`] = page.getByTestId(`seat-${seat}-cards`).locator(':scope > div');
+  }
+  for (const [name, other] of Object.entries(others)) {
+    const otherBox = await visibleBox(page, other);
+    if (otherBox && boxesOverlap(box, otherBox)) {
+      throw new Error(
+        `${testCase.name}: the trump picker overlaps the ${name} in ${viewport.name}: picker=${JSON.stringify(box)} ${name}=${JSON.stringify(otherBox)}`
+      );
     }
   }
 }

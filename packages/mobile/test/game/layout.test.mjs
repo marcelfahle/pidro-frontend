@@ -3,16 +3,22 @@ import {
   cardSize,
   computeLayout,
   handLeft,
+  handLift,
   handScale,
   handStep,
   northBackWidth,
   northFanTop,
   northFanWidth,
+  northSeatBottom,
   playedCardTarget,
+  sideSeatTop,
+  sideStacks,
   showsTicker,
   TIGHT_AVATAR,
   TIGHT_SOUTH_SLOT,
   tickerPlacement,
+  TRUMP_BUTTON,
+  trumpPicker,
   utilityDockReserve,
 } from '../../src/game/canvas/layout.ts';
 
@@ -257,4 +263,65 @@ describe('landscape phones draw a larger hand beside your seat', () => {
     expect(handStep(L, 9)).toBeLessThan(L.cardW * 0.72);
     expect(handLeft(L, 9)).toBeGreaterThanOrEqual(48 + 188 + 6);
   });
+});
+
+describe('the trump picker sits in the felt, clear of everything (PID-209)', () => {
+  // The header row: an 8pt inset and the 53pt score plaque (TABLE_HEADER).
+  const HEADER = 61;
+  for (const [width, height, insets] of [
+    [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }],
+    [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }],
+    [640, 360, { top: 0, bottom: 0, left: 0, right: 0 }],
+    [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }],
+    [1024, 1366, { top: 24, bottom: 20, left: 0, right: 0 }],
+  ]) {
+    it(`on ${width}×${height}`, () => {
+      const portrait = height > width;
+      const tableTop = insets.top + (portrait ? HEADER : 0);
+      const headerBottom = insets.top + HEADER + 8;
+      const L = computeLayout(
+        width,
+        height,
+        insets,
+        portrait ? HEADER : 0,
+        portrait ? utilityDockReserve(height) : 0
+      );
+      const P = trumpPicker(L, tableTop, headerBottom);
+      const bottom = P.top + P.height;
+
+      // A 2×2 grid in portrait, one row in landscape, of buttons 64pt or more.
+      expect(P.columns).toBe(portrait ? 2 : 4);
+      expect(Math.min(TRUMP_BUTTON.width, TRUMP_BUTTON.height)).toBeGreaterThanOrEqual(64);
+      expect(P.width).toBe(P.columns * TRUMP_BUTTON.width + (P.columns - 1) * P.gap);
+
+      // In the trick circle.
+      expect(P.left + P.width / 2).toBeCloseTo(L.trick.cx);
+      expect(Math.abs(P.top + P.height / 2 - L.trick.cy)).toBeLessThanOrEqual(L.trick.r);
+
+      // The header, North and your hand stay clear.
+      expect(P.top).toBeGreaterThanOrEqual(portrait ? tableTop : headerBottom);
+      if (portrait) expect(P.top).toBeGreaterThanOrEqual(northSeatBottom(L, tableTop));
+      // Your hand, its previewed trumps lifted, keeps a gap.
+      expect(bottom).toBeLessThanOrEqual(
+        L.hand.cy - (L.cardH * handScale(L.profile)) / 2 - handLift(L) - 8
+      );
+
+      // East and West: their stacks along the edges, their seats above them.
+      // Roomy portraits give the seats a column beside the picker; small
+      // phones and landscape bring them in, so the picker sits below them.
+      const stackReach = (sideStacks(L).backW * 110) / 78;
+      expect(P.left).toBeGreaterThanOrEqual(insets.left + stackReach);
+      expect(P.left + P.width).toBeLessThanOrEqual(width - insets.right - stackReach);
+      if (portrait && !L.tight) {
+        const tablet = L.profile.startsWith('tablet');
+        const column = Math.min(tablet ? 150 : 112, (width - (tablet ? 200 : 156)) / 2 - 8);
+        expect(P.left).toBeGreaterThanOrEqual(insets.left + column);
+      } else {
+        const seat = L.tight ? TIGHT_AVATAR : portrait ? 56 : 52;
+        expect(P.top).toBeGreaterThanOrEqual(
+          sideSeatTop(L, { tableTop, seatHeight: seat, headerBottom }) + seat
+        );
+      }
+    });
+  }
 });

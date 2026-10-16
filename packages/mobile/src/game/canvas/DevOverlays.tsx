@@ -20,7 +20,6 @@ import type { Position } from '@/types/lobby';
 import { useGameStore } from '@/stores/game';
 import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
 import { BiddingActions } from '@/components/game/BiddingActions';
-import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
 import { HandSelector } from '@/components/game/HandSelector';
 import type { RematchVote } from '@pidro/shared';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
@@ -102,15 +101,6 @@ const BIDDING_SERVER: ServerGameState = {
   scores: { north_south: 0, east_west: 0 },
   round_number: 1,
 };
-
-const HAND6: Card[] = [
-  { suit: 'spades', rank: 14 },
-  { suit: 'spades', rank: 11 },
-  { suit: 'spades', rank: 5 },
-  { suit: 'hearts', rank: 13 },
-  { suit: 'diamonds', rank: 10 },
-  { suit: 'clubs', rank: 12 },
-];
 
 const HAND12: Card[] = [
   { suit: 'spades', rank: 14 },
@@ -211,10 +201,6 @@ export function DevOverlays({
           topReserve={topReserve}
           bottomReserve={bottomReserve}
         />
-      )}
-
-      {phase === 'declaring' && (
-        <TrumpSelectionModal isOpen onSelectTrump={async () => {}} cards={HAND6} />
       )}
 
       {phase === 'second_deal' && (

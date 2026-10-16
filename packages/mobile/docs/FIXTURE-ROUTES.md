@@ -73,7 +73,7 @@ player names retain intentional ellipsis. Captures precede interactive switching
 No baseline refresh is implicit.
 
 The bounded `iphone-insets-portrait` (402×874) and `iphone-insets-landscape`
-(874×402) grammar cases cover the trump window and Settings language group.
+(874×402) grammar cases cover the trump picker and Settings language group.
 `safeArea=iphone-17-portrait` simulates 62/34 top/bottom, and
 `safeArea=iphone-17-landscape` simulates 62pt on both sides and 21pt bottom.
 Settings accepts these via `/ui-dev?state=settings`; table fixtures use `/table-dev`.
@@ -97,7 +97,7 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 | `dealer_selection` | Skia table, dealer cut cards      | `seat-north`            |
 | `playing`          | Skia table + trick overlay        | `seat-north`            |
 | `bidding`          | Bidding window                    | `bidding-window`        |
-| `declaring`        | Trump declaration                 | `trump-window`          |
+| `declaring`        | You dealt: trump picker in felt   | `trump-picker`          |
 | `second_deal`      | Dealer's private hand selection   | `hand-selection-window` |
 | `game_over`        | Game-over summary                 | `game-over-window`      |
 

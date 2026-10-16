@@ -12,6 +12,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { RematchVote } from '@pidro/shared';
 import type { Room } from '@/types/lobby';
 import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } from '@/types/game';
+import { strongestSuit } from '@/features/game/trump';
 import { useGameTableController } from '@/game/useGameTableController';
 import { useTableHaptics } from '@/game/useGameHaptics';
 import { usePlayGuard } from '@/game/usePlayGuard';
@@ -20,7 +21,7 @@ import { ConnectionBanner } from '@/components/ui/ConnectionBanner';
 import { TableSettings } from './TableSettings';
 import { WatchingBadge } from '@/components/game/WatchingBadge';
 import { BiddingActions } from '@/components/game/BiddingActions';
-import { TrumpSelectionModal } from '@/components/game/TrumpSelectionModal';
+import { TrumpPicker } from '@/components/game/TrumpPicker';
 import { DealerSecondDeal } from '@/components/game/DealerSecondDeal';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
@@ -45,7 +46,7 @@ import { LastTrick, type LastTrickView } from './LastTrick';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals, tablePidro } from './TableSignals';
-import { computeLayout, showsTicker, tickerPlacement } from './layout';
+import { computeLayout, showsTicker, tickerPlacement, trumpPicker } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
@@ -302,6 +303,10 @@ export function GameCanvasTable({
     handlePlayCard,
   } = controller;
 
+  // Picking trump, the hand lifts the suit pointed at, or else the strongest.
+  const [pointedSuit, setPointedSuit] = useState<Suit | null>(null);
+  const previewSuit = showTrumpSelection ? (pointedSuit ?? strongestSuit(yourHand ?? [])) : null;
+
   const playCard = usePlayGuard(handlePlayCard, {
     presentation: dealerRobPresentation,
     handReady: isHandReady,
@@ -412,6 +417,7 @@ export function GameCanvasTable({
         onPlayCard={playCard}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
+        previewSuit={previewSuit}
       />
 
       {/* Seat furniture (avatars, names, dealer chip, turn rings, opponent backs) over the canvas */}
@@ -539,20 +545,26 @@ export function GameCanvasTable({
         </View>
       )}
 
-      {/* Bidding + trump selection (PartialModal floats from the bottom) */}
+      {/* Bidding floats from the bottom; trump is picked in the felt. */}
       <BiddingActions
         isYourTurn={isYourTurn}
         isHandReady={isHandReady}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
       />
-      <TrumpSelectionModal
-        isOpen={showTrumpSelection}
-        onSelectTrump={async (s: Suit) => {
-          await handleDeclareTrump(s);
-        }}
-        cards={yourHand}
-      />
+      {showTrumpSelection && (
+        <TrumpPicker
+          cards={yourHand ?? []}
+          frame={trumpPicker(
+            layout,
+            insets.top + topReserve,
+            insets.top + TABLE_HEADER + PidroSpacing.xs
+          )}
+          preview={previewSuit}
+          onPoint={setPointedSuit}
+          onSelect={handleDeclareTrump}
+        />
+      )}
 
       {/* Game over */}
       {isGameOver && roomFinished && viewModel && serverState && (
