@@ -394,7 +394,7 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "game.hand_number": "Giv %{number}",
   "game.won_of": "Tog %{captured} av %{total}",
   "game.bid_suit": "%{bidder} bjöd %{bid} %{suit}",
-  "game.both_pidros": ", och ni tog båda pidrona",
+  "game.both_pidros": ", och ni tog båda Pidrona",
   "game.in_a_row_with": "%{count} i rad med %{name}",
   "game.list_two": "%{first} och %{last}",
   "game.list_more": "%{first}, %{rest} och %{last}",
