@@ -351,6 +351,27 @@ const allCases = [
     testId: 'claim-classic-screen',
   },
   {
+    name: 'classic-login',
+    path: '/(auth)/claim-classic?fixture=login',
+    testId: 'claim-classic-screen',
+    classicLogin: true,
+  },
+  {
+    name: 'classic-login-guest',
+    path: '/(auth)/claim-classic?fixture=login',
+    testId: 'claim-classic-screen',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+    classicLogin: true,
+  },
+  {
+    name: 'locale-sv-classic-login',
+    path: '/ui-dev?state=claim-classic&fixture=login&locale=sv&language=sv',
+    testId: 'claim-classic-screen',
+    locale: 'sv',
+    classicLogin: true,
+  },
+  {
     name: 'classic-forgot',
     path: '/(auth)/classic-forgot',
     testId: 'classic-forgot-window',
@@ -947,6 +968,20 @@ const TABLE_MESSAGES = {
     text: 'Your cards and the rest of the deck. Keeping the best six.',
   },
 };
+
+// A Classic password claim shows the login it keeps and asks only for a new password.
+async function assertClassicLogin(page, testCase) {
+  if (!testCase.classicLogin) return;
+  const sv = testCase.locale === 'sv';
+  const screen = page.getByTestId('claim-classic-screen').last();
+  await screen.getByLabel(`${sv ? 'Användarnamn' : 'Username'}: cardshark`).waitFor();
+  await screen.getByLabel(`${sv ? 'E-post' : 'Email'}: sonja.lindqvist@example.com`).waitFor();
+  await screen.getByText(sv ? /^Pidro är en ny app/ : /^Pidro is a new app/).waitFor();
+  assert.equal(await screen.locator('input').count(), 1, `${testCase.name}: one input`);
+  await screen
+    .getByLabel(sv ? 'Nytt Pidro-lösenord' : 'New Pidro password', { exact: true })
+    .waitFor();
+}
 
 async function assertTableMessageReadable(page, name, viewport) {
   const message = TABLE_MESSAGES[name];
@@ -2868,6 +2903,7 @@ async function main() {
           await assertHomeGuestInteractions(page, testCase.name);
           await assertUpdateNotice(page, testCase.name, caseViewport);
           await assertTableMessageReadable(page, testCase.name, caseViewport);
+          await assertClassicLogin(page, testCase);
           await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);

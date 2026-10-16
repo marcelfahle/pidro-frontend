@@ -23,8 +23,8 @@ test('when a guest’s claim was saved but the answer was lost, they are recover
   await new HomeScreen(page).classicPlaque.click();
   const claim = new ClaimClassicScreen(page);
   await claim.verify(player.classicLogin, player.classicPassword);
-  await claim.field('Email').fill(player.email);
-  await claim.field('New Pidro password').fill(player.password);
+  await claim.found.waitFor();
+  const { email } = await claim.fillLogin({ email: player.email, password: player.password });
   await claim.button('Claim this Classic account').click();
 
   await page.waitForURL(/\/profile/);
@@ -35,6 +35,6 @@ test('when a guest’s claim was saved but the answer was lost, they are recover
   expect(await whoAmI(session?.accessToken as string)).toMatchObject({
     id: started.user.id,
     guest: false,
-    email: player.email,
+    email,
   });
 });

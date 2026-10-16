@@ -256,9 +256,11 @@ and the post-game `KeepProgressPrompt`. Deliberately outside the auth guard. tes
 ## `/claim-classic?fixture=<state>` — Classic claim
 
 The real claim screen with deterministic presentation states and no backend mutation. States:
-`method`, `preview`, `rename`, and `already-claimed` (signed out it offers sign-in and names how the owner signed in; signed in it only offers Back). Use an authenticated fixture for an existing
-guest/account preview; without one, `preview` also shows the fresh-account fields. testID
-`claim-classic-screen`.
+`method`, `preview`, `login`, `rename`, and `already-claimed` (signed out it offers sign-in and names how the owner signed in; signed in it only offers Back). Use an authenticated fixture for an existing
+guest/account preview; without one, `preview` also shows the fresh-account fields. `login` is a
+password claim whose server offered the Classic username and email (`new_account`): signed out
+or as a guest they show read-only and only a new password is asked. For Swedish use
+`/ui-dev?state=claim-classic&fixture=login&locale=sv`. testID `claim-classic-screen`.
 
 ## Account flow — sign in, create account, Classic recovery
 

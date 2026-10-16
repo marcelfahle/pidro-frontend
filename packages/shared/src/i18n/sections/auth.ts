@@ -215,6 +215,9 @@ export const en = {
   "auth.claim_this": "Claim this Classic account",
   "auth.create_claim": "Create account and claim",
   "auth.new_pidro_password": "New Pidro password",
+  "auth.your_pidro_login": "Your Pidro login",
+  "auth.classic_new_password":
+    "Pidro is a new app with its own login, so choose a new password for it. Your Classic password stays with Classic.",
   "auth.username_min": "Use at least 3 characters.",
   "auth.public_name_min": "Choose a public name with at least 2 characters.",
   "auth.valid_email": "Enter a valid email address.",
@@ -461,6 +464,9 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "auth.claim_this": "Koppla det här Classic-kontot",
   "auth.create_claim": "Skapa konto och koppla",
   "auth.new_pidro_password": "Nytt Pidro-lösenord",
+  "auth.your_pidro_login": "Din Pidro-inloggning",
+  "auth.classic_new_password":
+    "Pidro är en ny app med egen inloggning, så välj ett nytt lösenord för den. Ditt Classic-lösenord stannar i Classic.",
   "auth.username_min": "Använd minst 3 tecken.",
   "auth.public_name_min": "Välj ett offentligt namn med minst 2 tecken.",
   "auth.valid_email": "Ange en giltig e-postadress.",

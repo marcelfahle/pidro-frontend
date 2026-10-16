@@ -1,5 +1,5 @@
 import type { ApiClient } from './client';
-import type { ClassicAlreadyClaimed } from './classic';
+import type { ClassicAlreadyClaimed, ClassicNewAccount } from './classic';
 import type { SeatInvitation } from '../types/lobby';
 
 export const TERMS_VERSION = '1';
@@ -50,6 +50,7 @@ export interface ClassicPreview {
   level: number;
   member_since: string | null;
   name_allowed?: boolean | null;
+  new_account?: ClassicNewAccount | null;
 }
 
 export interface ClassicFound {

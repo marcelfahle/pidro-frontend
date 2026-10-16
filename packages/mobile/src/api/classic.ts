@@ -7,6 +7,7 @@ export type {
   ClassicClaimPreview,
   ClassicClaimRequest,
   ClassicHelpRequest,
+  ClassicNewAccount,
   ClassicSignInLink,
   ClassicVerification,
   ClassicVerifyRequest,
