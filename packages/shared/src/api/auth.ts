@@ -48,7 +48,7 @@ export interface ClassicPreview {
   name: string;
   games_played: number;
   level: number;
-  member_since: string;
+  member_since: string | null;
   name_allowed?: boolean | null;
 }
 
