@@ -5,6 +5,12 @@ import { friendsFixture } from '@/features/friends/fixtures';
 
 export function createTableFixture(value?: string): TableDraft | undefined {
   if (!__DEV__) return;
+  if (value === 'sheet-assigned')
+    return {
+      seats: { ...defaultSeats, seat_2: 'invite' },
+      requirements: {},
+      invited: { seat_2: friendsFixture('list')!.friends[0] },
+    };
   return {
     seats:
       value === 'bots'

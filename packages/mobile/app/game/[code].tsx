@@ -40,7 +40,12 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
-import { canManageRoom, firstUnfilledSeat, friendSeatTitle } from '@/features/invites/hostControls';
+import {
+  assignedRoomPlayerIds,
+  canManageRoom,
+  firstUnfilledSeat,
+  friendSeatTitle,
+} from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
 import { shouldAutoReadySolo } from '@/features/game/soloReadiness';
 import { readingTimeMs } from '@/features/game/readingTime';
@@ -823,6 +828,9 @@ export default function GameScreen() {
         <FriendSeatSheet
           key={`${room.code}-${inviteSeat}`}
           title={friendSeatTitle(room, inviteSeat)}
+          unavailableIds={assignedRoomPlayerIds(
+            readiness ? roomWithReadiness(room, readiness) : room
+          )}
           onClose={() => setInviteSeat(null)}
           onInvite={async (friend) => {
             roomRequestGenerationRef.current += 1;

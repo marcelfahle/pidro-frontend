@@ -75,7 +75,7 @@ const allCases = [
     testId: 'waiting-table',
     authenticated: true,
   },
-  ...['empty', 'friends', 'picked'].map((fixture) => ({
+  ...['empty', 'friends', 'picked', 'assigned'].map((fixture) => ({
     name: `friend-seat-${fixture}`,
     path: `/ui-dev?state=create&fixture=sheet-${fixture}`,
     testId: 'friend-seat-sheet',
@@ -1234,6 +1234,31 @@ async function assertCreationPresentation(page, testCase) {
       await sheet.getByText('No friends yet', { exact: true }).waitFor();
       assert.equal(await sheet.getByRole('radio').count(), 0);
       await sheet.getByRole('link', { name: 'Add friends', exact: true }).waitFor();
+    } else if (testCase.name === 'friend-seat-assigned') {
+      const nora = sheet.getByRole('radio', { name: 'Nora, Already has a seat', exact: true });
+      assert.equal(await nora.getAttribute('aria-disabled'), 'true');
+      assert.equal(
+        await sheet.getByRole('button', { name: 'Choose a friend', exact: true }).isDisabled(),
+        true
+      );
+      await sheet.getByRole('radio', { name: 'Pekka, At a table', exact: true }).click();
+      await sheet.getByRole('button', { name: 'Invite Pekka', exact: true }).click();
+      await page.getByTestId('create-seat_3').getByText('Pekka', { exact: true }).waitFor();
+      await page.getByTestId('create-seat_2').getByText('Nora', { exact: true }).waitFor();
+      await page
+        .getByTestId('create-seat_2')
+        .getByRole('radio', { name: 'Friend', exact: true })
+        .click();
+      assert.equal(
+        await sheet
+          .getByRole('radio', { name: 'Nora, Online', exact: true })
+          .getAttribute('aria-checked'),
+        'true'
+      );
+      assert.equal(
+        await sheet.getByRole('button', { name: 'Invite Nora', exact: true }).isEnabled(),
+        true
+      );
     } else {
       assert.equal(await sheet.getByRole('radio').count(), 3);
       const nora = sheet.getByRole('radio', { name: 'Nora, Online', exact: true });

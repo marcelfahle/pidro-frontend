@@ -43,6 +43,13 @@ export function firstUnfilledSeat(room: Room): Position | undefined {
   );
 }
 
+export function assignedRoomPlayerIds(room: Room): string[] {
+  return [
+    ...Object.values(room.positions ?? {}).flatMap((id) => (id ? [id] : [])),
+    ...(room.seats ?? []).flatMap((seat) => (seat.held_for ? [seat.held_for.user_id] : [])),
+  ];
+}
+
 export function friendSeatTitle(room: Room, position: Position): string {
   const host = POSITIONS.findIndex((seat) => room.positions?.[seat] === room.host_id);
   return host < 0

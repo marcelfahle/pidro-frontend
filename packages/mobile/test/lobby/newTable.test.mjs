@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { setLocale } from '@pidro/shared';
 import {
+  assignedFriendIds,
   chooseFriend,
   chooseRequirement,
   chooseSeat,
@@ -83,6 +84,9 @@ describe('seat draft', () => {
     const before = draft();
     const selected = chooseFriend(chooseFriend(before, 'seat_2', nora), 'seat_3', kalle);
     expect(before).toEqual(draft());
+    expect(assignedFriendIds(selected, 'seat_3')).toEqual(['nora']);
+    expect(assignedFriendIds(selected, 'seat_2')).toEqual(['kalle']);
+    expect(assignedFriendIds(chooseSeat(selected, 'seat_2', 'open'), 'seat_3')).toEqual([]);
     expect(
       newTableRequest('louisiana', selected.seats, selected.requirements, selected.invited)
     ).toEqual({

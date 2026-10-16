@@ -56,7 +56,7 @@ query parameters. `locale-sv-friends-*` checks list/empty/loading/error, add-bac
 recent/search results, profile/removal and the guest-save gate alongside the
 existing English Friends cases.
 
-Friend seats use `/ui-dev?state=create&fixture=sheet-empty|sheet-friends|sheet-picked`
+Friend seats use `/ui-dev?state=create&fixture=sheet-empty|sheet-friends|sheet-picked|sheet-assigned`
 and `fixture=invited` for the committed draft row. `/lobby?fixture=held` and
 `/table-dev?phase=waiting-host&fixture=held` show server-held seats. Invitation rows
 stack at `/home?fixture=invitations` (including the Friends count badge) and

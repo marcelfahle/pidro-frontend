@@ -27,6 +27,7 @@ import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
 import {
+  assignedFriendIds,
   chooseFriend,
   chooseRequirement,
   chooseSeat,
@@ -309,6 +310,7 @@ export function CreateRoomForm({
           title={t(SEATS.find((seat) => seat.key === friendSeat)!.label)}
           fixtureFriends={fixtureFriends}
           selectedId={draft.invited?.[friendSeat]?.user_id ?? initialFriendId}
+          unavailableIds={assignedFriendIds(draft, friendSeat)}
           onInvite={(friend) => {
             setDraft((current) => chooseFriend(current, friendSeat, friend));
             setFriendSeat(null);

@@ -29,6 +29,7 @@ import { localizedError } from '@/utils/apiErrors';
 interface Props {
   title: string;
   selectedId?: string;
+  unavailableIds?: string[];
   fixtureFriends?: FriendPlayer[];
   onInvite: (friend: FriendPlayer) => void | Promise<void>;
   onShare: () => void | Promise<void>;
@@ -39,6 +40,7 @@ interface Props {
 export function FriendSeatSheet({
   title,
   selectedId,
+  unavailableIds = [],
   fixtureFriends,
   onInvite,
   onShare,
@@ -66,7 +68,9 @@ export function FriendSeatSheet({
   useEffect(() => {
     if (handoff && Platform.OS !== 'ios') finishHandoff();
   });
-  const selected = friends.find((friend) => friend.user_id === picked);
+  const selected = friends.find(
+    (friend) => friend.user_id === picked && !unavailableIds.includes(friend.user_id)
+  );
   const loading = fixtureFriends === undefined && !user?.guest && store.isLoading;
   const loadError = fixtureFriends === undefined && !user?.guest ? store.error : null;
 
@@ -157,33 +161,46 @@ export function FriendSeatSheet({
                   accessibilityRole="radiogroup"
                   accessibilityLabel={t('social.friends')}
                   style={styles.list}>
-                  {findFriends(friends, query).map((friend) => (
-                    <PressableFX
-                      key={friend.user_id}
-                      accessibilityRole="radio"
-                      accessibilityLabel={`${friend.display_name}, ${presenceLabel(friend.presence)}`}
-                      accessibilityState={{ checked: picked === friend.user_id, disabled: busy }}
-                      aria-checked={picked === friend.user_id}
-                      disabled={busy}
-                      onPress={() => setPicked(friend.user_id)}
-                      style={[styles.friend, picked === friend.user_id && styles.selected]}>
-                      <View style={friend.presence === 'offline' && styles.dimmed}>
-                        <PlayerAvatar size={40} uri={friend.avatar_url} />
-                        {friend.presence !== 'offline' ? <View style={styles.dot} /> : null}
-                      </View>
-                      <View style={styles.name}>
-                        <PidroText role="label" numberOfLines={2}>
-                          {friend.display_name}
-                        </PidroText>
-                        <PidroText role="metadata" tone="soft">
-                          {presenceLabel(friend.presence)}
-                        </PidroText>
-                      </View>
-                      <View
-                        style={[styles.radio, picked === friend.user_id && styles.selectedRadio]}
-                      />
-                    </PressableFX>
-                  ))}
+                  {findFriends(friends, query).map((friend) => {
+                    const unavailable = unavailableIds.includes(friend.user_id);
+                    const status = unavailable
+                      ? t('seat_friend.assigned')
+                      : presenceLabel(friend.presence);
+                    return (
+                      <PressableFX
+                        key={friend.user_id}
+                        accessibilityRole="radio"
+                        accessibilityLabel={`${friend.display_name}, ${status}`}
+                        accessibilityState={{
+                          checked: picked === friend.user_id,
+                          disabled: busy || unavailable,
+                        }}
+                        aria-checked={picked === friend.user_id}
+                        disabled={busy || unavailable}
+                        onPress={() => setPicked(friend.user_id)}
+                        style={[
+                          styles.friend,
+                          picked === friend.user_id && styles.selected,
+                          unavailable && styles.dimmed,
+                        ]}>
+                        <View style={friend.presence === 'offline' && styles.dimmed}>
+                          <PlayerAvatar size={40} uri={friend.avatar_url} />
+                          {friend.presence !== 'offline' ? <View style={styles.dot} /> : null}
+                        </View>
+                        <View style={styles.name}>
+                          <PidroText role="label" numberOfLines={2}>
+                            {friend.display_name}
+                          </PidroText>
+                          <PidroText role="metadata" tone="soft">
+                            {status}
+                          </PidroText>
+                        </View>
+                        <View
+                          style={[styles.radio, picked === friend.user_id && styles.selectedRadio]}
+                        />
+                      </PressableFX>
+                    );
+                  })}
                 </View>
                 {friends.length > 0 && findFriends(friends, query).length === 0 ? (
                   <PidroText role="body">{t('friends.no_results')}</PidroText>

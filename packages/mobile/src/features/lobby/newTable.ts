@@ -41,6 +41,12 @@ export function chooseFriend(draft: TableDraft, seat: SeatKey, friend: FriendPla
   return { ...chooseSeat(draft, seat, 'invite'), invited: { ...draft.invited, [seat]: friend } };
 }
 
+export function assignedFriendIds(draft: TableDraft, current: SeatKey): string[] {
+  return Object.entries(draft.invited ?? {}).flatMap(([seat, friend]) =>
+    seat !== current && friend ? [friend.user_id] : []
+  );
+}
+
 export function findFriends(friends: FriendPlayer[], query: string): FriendPlayer[] {
   const search = query.normalize('NFKC').trim().toLocaleLowerCase();
   return friends.filter((friend) =>

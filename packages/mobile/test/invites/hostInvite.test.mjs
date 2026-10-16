@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import { setLocale } from '@pidro/shared';
 import {
+  assignedRoomPlayerIds,
   availableMoveTargets,
   canManageRoom,
   firstUnfilledSeat,
@@ -44,6 +45,8 @@ describe('waiting-table host controls', () => {
     };
     expect(firstUnfilledSeat(held)).toBe('west');
     expect(availableMoveTargets(held, 'east')).toEqual(['west']);
+    expect(assignedRoomPlayerIds(held)).toEqual(['host-1', 'guest-1', 'friend']);
+    expect(assignedRoomPlayerIds(room)).toEqual(['host-1', 'guest-1']);
     expect(friendSeatTitle({ ...room, host_id: 'guest-1' }, 'west')).toBe('Partner');
     expect(friendSeatTitle({ ...room, host_id: 'guest-1' }, 'south')).toBe('Opponent');
     expect(

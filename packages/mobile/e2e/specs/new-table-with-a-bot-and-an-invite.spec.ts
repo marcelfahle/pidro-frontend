@@ -145,6 +145,19 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     await expect(
       form.getByTestId('create-seat_4').getByText('Invited', { exact: true })
     ).toBeVisible();
+    await form
+      .getByTestId('create-seat_3')
+      .getByRole('radio', { name: 'Friend', exact: true })
+      .click();
+    await expect(
+      sheet.getByRole('radio', { name: `${friendPlayer.name}, Already has a seat`, exact: true })
+    ).toBeDisabled();
+    await sheet.getByRole('link', { name: 'Cancel', exact: true }).click();
+    await friendChoice.click();
+    await expect(
+      sheet.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true })
+    ).toBeEnabled();
+    await sheet.getByRole('link', { name: 'Cancel', exact: true }).click();
     expect(created).toBe(0);
     await form.getByRole('button', { name: 'Open the table', exact: true }).click();
     await page.waitForURL(/\/game\/[A-Z0-9]+$/);
@@ -153,6 +166,11 @@ test('picked friends become holds only on Open; invitations arrive live, recover
       (await api(`/api/v1/rooms/${code}`, { token: host.token })).payload.data.room.seats.west
         .held_for.user_id
     ).toBe(friend.user.id);
+    await page.getByRole('button', { name: 'Invite', exact: true }).click();
+    await expect(
+      sheet.getByRole('radio', { name: `${friendPlayer.name}, Already has a seat`, exact: true })
+    ).toBeDisabled();
+    await sheet.getByRole('link', { name: 'Cancel', exact: true }).click();
     const inbox = receiver.getByTestId('seat-invitations');
     await expect(
       inbox.getByText(`${player.name} is holding a seat for you`, { exact: true })
@@ -205,6 +223,10 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     expect(
       (await api('/api/v1/auth/me', { token: friend.token })).payload.data.seat_invitations
     ).toEqual([]);
+    await page.getByRole('button', { name: 'Invite', exact: true }).click();
+    await expect(
+      sheet.getByRole('radio', { name: `${friendPlayer.name}, Already has a seat`, exact: true })
+    ).toBeDisabled();
   } finally {
     await receiverContext.close();
   }
