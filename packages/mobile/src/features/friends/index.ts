@@ -1,5 +1,6 @@
 import {
   t,
+  formatNumber,
   type FriendLists,
   type FriendPlayer,
   type FriendResult,
@@ -11,6 +12,11 @@ export function friendSections(lists: FriendLists) {
     { title: t('friends.added_you'), players: lists.added_you, addBack: true },
     { title: t('social.friends'), players: lists.friends, addBack: false },
   ].filter((section) => section.players.length > 0);
+}
+
+export function classicFriendsMessage(lists: FriendLists): string | null {
+  const count = lists.classic?.not_here ?? 0;
+  return count > 0 ? t('friends.classic_not_here', { count, number: formatNumber(count) }) : null;
 }
 
 export function presenceLabel(presence: FriendPlayer['presence']) {

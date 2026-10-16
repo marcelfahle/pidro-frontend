@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { localizedError, type FriendPlayer } from '@pidro/shared';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
@@ -10,8 +10,9 @@ import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
+import { TextLink } from '@/components/ui/TextLink';
 import { PidroSpacing } from '@/design/tokens';
-import { friendSections } from '@/features/friends';
+import { classicFriendsMessage, friendSections } from '@/features/friends';
 import { FriendRow } from '@/features/friends/FriendRow';
 import { friendsFixture } from '@/features/friends/fixtures';
 import { useAuthStore } from '@/stores/auth';
@@ -39,8 +40,10 @@ export default function FriendsScreen() {
   const [accountOpen, setAccountOpen] = useState(guest);
   const [selected, setSelected] = useState<FriendPlayer | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [shareError, setShareError] = useState(false);
   const lists = preview ?? store;
   const sections = friendSections(lists);
+  const classicMessage = classicFriendsMessage(lists);
   const loading = preview ? fixture === 'loading' : store.isLoading;
   const error = preview ? fixture === 'error' : store.error;
 
@@ -120,6 +123,31 @@ export default function FriendsScreen() {
             <PidroText role="body" tone="soft">
               {t('friends.empty')}
             </PidroText>
+          ) : null}
+          {classicMessage ? (
+            <View testID="friends-classic-count">
+              <PidroText role="body" tone="soft">
+                {classicMessage}
+              </PidroText>
+              <TextLink
+                label={t('friends.share_app')}
+                onPress={async () => {
+                  setShareError(false);
+                  try {
+                    await Share.share({
+                      message: t('friends.share_app_message', { url: 'https://www.pidro.online/' }),
+                    });
+                  } catch {
+                    setShareError(true);
+                  }
+                }}
+              />
+              {shareError ? (
+                <PidroText role="body" tone="danger" accessibilityRole="alert">
+                  {t('invite.host.shareError')}
+                </PidroText>
+              ) : null}
+            </View>
           ) : null}
           <BevelButton
             label={t('friends.add_friend')}

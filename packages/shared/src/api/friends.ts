@@ -10,6 +10,7 @@ export interface FriendPlayer {
 export interface FriendLists {
   friends: FriendPlayer[];
   added_you: FriendPlayer[];
+  classic?: { not_here: number };
 }
 
 export interface BlockedPlayers {

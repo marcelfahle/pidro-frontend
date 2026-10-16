@@ -14,13 +14,19 @@ const initialState = {
   friends: [],
   added_you: [],
   blocked: [],
+  classic: undefined,
   isLoading: false,
   error: null,
 };
 
 export const useFriendsStore = create<FriendsState>((set) => ({
   ...initialState,
-  setLists: (lists) => set({ ...lists, isLoading: false, error: null }),
+  setLists: (lists) => set((state) => ({
+    ...lists,
+    classic: 'friends' in lists ? lists.classic : state.classic,
+    isLoading: false,
+    error: null,
+  })),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   reset: () => set(initialState),

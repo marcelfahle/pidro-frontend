@@ -26,10 +26,15 @@ const players: FriendResult[] = [
 ];
 
 export function friendsFixture(value?: string): FriendLists | undefined {
-  if (!__DEV__ || !['empty', 'list', 'added-you', 'loading', 'error'].includes(value ?? '')) return;
+  if (
+    !__DEV__ ||
+    !['empty', 'list', 'added-you', 'loading', 'error', 'classic'].includes(value ?? '')
+  )
+    return;
   return {
     friends: ['empty', 'loading', 'error'].includes(value ?? '') ? [] : players.slice(0, 3),
     added_you: value === 'added-you' ? [players[3]] : [],
+    ...(value === 'classic' ? { classic: { not_here: 7 } } : {}),
   };
 }
 
