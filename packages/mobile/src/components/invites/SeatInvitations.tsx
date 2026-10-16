@@ -65,7 +65,7 @@ export function SeatInvitations({
             <PlayerAvatar size={40} uri={invitation.host?.avatar_url} />
             <PidroText role="label" style={styles.copy}>
               {t('seat_invitation.waiting', {
-                name: invitation.host?.display_name ?? t('social.player'),
+                name: invitation.host?.display_name || t('social.player'),
               })}
             </PidroText>
             <BevelButton

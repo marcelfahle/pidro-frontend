@@ -176,6 +176,9 @@ test('picked friends become holds only on Open; invitations arrive live, recover
       inbox.getByText(`${player.name} is holding a seat for you`, { exact: true })
     ).toBeVisible();
     await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');
+    await expect(
+      receiver.getByRole('button', { name: 'Friends, 1 invitation waiting', exact: true })
+    ).toBeVisible();
     await receiver.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(receiver).toHaveURL(/\/settings$/);
     // The shell badge stays live even away from the invitation list.

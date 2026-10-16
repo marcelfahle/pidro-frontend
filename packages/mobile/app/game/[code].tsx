@@ -799,10 +799,11 @@ export default function GameScreen() {
     );
   }
 
+  const waitingRoom = readiness ? roomWithReadiness(room, readiness) : room;
   return (
     <>
       <WaitingTable
-        room={readiness ? roomWithReadiness(room, readiness) : room}
+        room={waitingRoom}
         youPlayerId={role === 'player' ? youPlayerId : ''}
         isSpectator={role === 'spectator'}
         readyPlayers={readiness?.ready_players}
@@ -812,11 +813,7 @@ export default function GameScreen() {
         canManage={canManage && origin !== 'single-player'}
         joiningName={joiningName}
         controlsBusy={controlsBusy}
-        onOpenInvite={() =>
-          setInviteSeat(
-            firstUnfilledSeat(readiness ? roomWithReadiness(room, readiness) : room) ?? null
-          )
-        }
+        onOpenInvite={() => setInviteSeat(firstUnfilledSeat(waitingRoom) ?? null)}
         onToggleLock={handleToggleLock}
         onMovePlayer={handleMovePlayer}
         onKickPlayer={handleKickPlayer}
@@ -827,10 +824,8 @@ export default function GameScreen() {
       {canManage && inviteSeat ? (
         <FriendSeatSheet
           key={`${room.code}-${inviteSeat}`}
-          title={friendSeatTitle(room, inviteSeat)}
-          unavailableIds={assignedRoomPlayerIds(
-            readiness ? roomWithReadiness(room, readiness) : room
-          )}
+          title={friendSeatTitle(waitingRoom, inviteSeat)}
+          unavailableIds={assignedRoomPlayerIds(waitingRoom)}
           onClose={() => setInviteSeat(null)}
           onInvite={async (friend) => {
             roomRequestGenerationRef.current += 1;

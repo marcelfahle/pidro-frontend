@@ -1289,8 +1289,12 @@ async function assertCreationPresentation(page, testCase) {
     await inbox.getByText('Nora is holding a seat for you', { exact: true }).waitFor();
     await inbox.getByText('Kalle is holding a seat for you', { exact: true }).waitFor();
     assert.equal(await inbox.getByRole('button', { name: 'Sit down', exact: true }).count(), 2);
-    if (testCase.name === 'home-invitations')
+    if (testCase.name === 'home-invitations') {
       assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
+      await page
+        .getByRole('button', { name: 'Friends, 2 invitations waiting', exact: true })
+        .waitFor();
+    }
   }
   const fixture = testCase.createFixture;
   if (!fixture) return;

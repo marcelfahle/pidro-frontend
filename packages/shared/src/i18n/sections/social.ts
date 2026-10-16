@@ -70,7 +70,10 @@ export const en = {
   "seat_invitation.waiting": "%{name} is holding a seat for you",
   "seat_invitation.sit": "Sit down",
   "seat_invitation.gone": "That seat is gone",
-  "seat_invitation.badge": "%{count} invitations waiting",
+  "seat_invitation.badge": {
+    one: "%{count} invitation waiting",
+    other: "%{count} invitations waiting",
+  },
   "blocks.title": "Blocked players",
   "blocks.block": "Block",
   "blocks.confirm":
@@ -353,7 +356,10 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "seat_invitation.waiting": "%{name} håller en plats åt dig",
   "seat_invitation.sit": "Sätt dig",
   "seat_invitation.gone": "Platsen är inte längre ledig",
-  "seat_invitation.badge": "%{count} väntande inbjudningar",
+  "seat_invitation.badge": {
+    one: "%{count} väntande inbjudan",
+    other: "%{count} väntande inbjudningar",
+  },
   "blocks.title": "Blockerade spelare",
   "blocks.block": "Blockera",
   "blocks.confirm":
