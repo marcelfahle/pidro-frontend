@@ -32,6 +32,9 @@ export const UI_VIEWPORTS = [
     width: 375,
     height: 667,
     cases: [
+      'classic-login',
+      'classic-login-guest',
+      'locale-sv-classic-login',
       'update-notice',
       'update-notice-friends-guest',
       'table-hand-made',

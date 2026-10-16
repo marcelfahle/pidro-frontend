@@ -16,13 +16,14 @@ describe('Classic provider handoff', () => {
           level: 42,
           member_since: '2012-04-03T00:00:00Z',
           name_allowed: true,
+          new_account: { username: 'Veteran', email: null },
         },
       },
-      'apple'
+      'password'
     );
 
     expect(takePendingClassicClaim()).toEqual({
-      method: 'apple',
+      method: 'password',
       verification: {
         ticket: 'short-lived-ticket',
         expires_at: '2026-09-30T12:00:00Z',
@@ -32,6 +33,7 @@ describe('Classic provider handoff', () => {
           level: 42,
           member_since: '2012-04-03T00:00:00Z',
           name_allowed: true,
+          new_account: { username: 'Veteran', email: null },
         },
         already_claimed: null,
       },

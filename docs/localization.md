@@ -61,7 +61,9 @@ Swedish review remains requested for **medspelare**, **returmatch**, **bot/botar
 **Spelstyrka**, **Testare från starten**, **Stöttepelare**, **Gesäll/Stormästare**,
 the count help hint (**Visa vilket kort som vinner, vad budgivarna har tagit och
 förra sticket.**, PID-230), the end of a hand (**Klarade det**, **Bet med 3**,
-**Nora tog deras Pidro**, PID-236) and trump-killing terminology. No native-speaker approval is claimed.
+**Nora tog deras Pidro**, PID-236), the Classic claim's new-password reason
+(**Din Pidro-inloggning**, **Pidro är en ny app med egen inloggning, så välj ett nytt
+lösenord för den. Ditt Classic-lösenord stannar i Classic.**) and trump-killing terminology. No native-speaker approval is claimed.
 
 ## Backend rollout
 

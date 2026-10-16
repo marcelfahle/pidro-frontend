@@ -22,13 +22,14 @@ test('a guest claims their Classic account with an email and password and keeps 
   await expect(claim.field('Username')).toBeHidden();
 
   await claim.button('Claim this Classic account').click();
-  await expect(claim.text('Enter an email address.')).toBeVisible();
-  await claim.field('Email').fill(player.email);
-  await claim.field('New Pidro password').fill('short');
+  // A server that offers the Classic email shows it instead of asking.
+  const offered = await claim.newAccount();
+  if (!offered?.email) await expect(claim.text('Enter an email address.')).toBeVisible();
+  await claim.fillLogin({ email: player.email, password: 'short' });
   await claim.button('Claim this Classic account').click();
   await expect(claim.text('Use 8 characters or more.')).toBeVisible();
 
-  await claim.field('New Pidro password').fill(player.password);
+  const { email } = await claim.fillLogin({ email: player.email, password: player.password });
   await claim.button('Claim this Classic account').click();
   await page.waitForURL(/\/profile/);
   await expect(new ProfileScreen(page).classicChip).toBeVisible();
@@ -40,11 +41,11 @@ test('a guest claims their Classic account with an email and password and keeps 
   expect(await whoAmI(token)).toMatchObject({
     id: started.user.id,
     guest: false,
-    email: player.email,
+    email,
   });
   expect((await profile(token)).classic).toMatchObject({ name: player.classicLogin });
   // The password typed is the way back in.
-  expect((await login(player, player.email)).status).toBe(200);
+  expect((await login(player, email)).status).toBe(200);
 
   // One Classic account per player: a second one is refused.
   // The guest session is seeded on every load; seed the claimed one after it.

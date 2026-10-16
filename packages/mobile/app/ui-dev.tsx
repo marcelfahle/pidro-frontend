@@ -13,6 +13,7 @@ import { FixtureInsets } from '@/components/dev/FixtureInsets';
 import FriendsScreen from './(shell)/friends';
 import AddFriendScreen from './(shell)/friends-add';
 import BlockedPlayersScreen from './(shell)/blocked-players';
+import ClaimClassicScreen from './(auth)/claim-classic';
 import { TabPill } from '@/components/shell/TabPill';
 import { useAuthStore } from '@/stores/auth';
 import { CtaBadge } from '@/components/home/CtaBadge';
@@ -440,6 +441,7 @@ function UiDevHarness() {
         ) : null}
       </View>
     );
+  if (state === 'claim-classic') return <ClaimClassicScreen />;
   if (state === 'settings')
     return (
       <FixtureInsets preset={params.safeArea}>

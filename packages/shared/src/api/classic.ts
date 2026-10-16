@@ -10,6 +10,13 @@ export interface ClassicClaimPreview {
   /** Null for Classic accounts created before Classic recorded a date. */
   member_since: string | null;
   name_allowed: boolean;
+  /** Password claims only: the Classic login the new account gets; null where the player chooses. */
+  new_account?: ClassicNewAccount | null;
+}
+
+export interface ClassicNewAccount {
+  username: string | null;
+  email: string | null;
 }
 
 /** Set when the Classic account is linked to a different player. */

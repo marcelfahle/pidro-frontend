@@ -23,6 +23,7 @@ export function handleClassicFound(claim: ClassicFound, method: AuthProvider): v
         // Older provider responses omitted this field. Requiring a new public
         // name is the safe fallback until the server explicitly allows it.
         name_allowed: claim.classic.name_allowed === true,
+        new_account: claim.classic.new_account ?? null,
       },
       already_claimed: claim.already_claimed ?? null,
     },

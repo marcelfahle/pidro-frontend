@@ -20,6 +20,12 @@ import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import { takePendingClassicClaim } from '@/features/auth/classicFound';
+import {
+  claimAccount,
+  claimForm,
+  refusedLogin,
+  type LoginField,
+} from '@/features/auth/classicClaimForm';
 import { runGuestSave } from '@/features/auth/saveGuest';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
@@ -38,7 +44,7 @@ const DEAD_TICKET_CODES = new Set([
 ]);
 
 type Field = 'login' | 'classicPassword' | 'username' | 'email' | 'password' | 'displayName';
-type Fixture = 'method' | 'preview' | 'rename' | 'already-claimed';
+type Fixture = 'method' | 'preview' | 'login' | 'rename' | 'already-claimed';
 
 const FIXTURE_PREVIEW: ClassicVerification = {
   ticket: 'fixture-ticket',
@@ -85,6 +91,9 @@ export default function ClaimClassicScreen() {
       classic: {
         ...FIXTURE_PREVIEW.classic,
         ...(fixture === 'rename' ? { name: 'Old Name', name_allowed: false } : {}),
+        ...(fixture === 'login'
+          ? { new_account: { username: 'cardshark', email: 'sonja.lindqvist@example.com' } }
+          : {}),
       },
       ...(fixture === 'already-claimed'
         ? { already_claimed: { sign_in_method: 'password' as const } }
@@ -112,10 +121,14 @@ export default function ClaimClassicScreen() {
   } | null>(null);
   const [errorProvider, setErrorProvider] = useState('');
   const [canSignIn, setCanSignIn] = useState(false);
+  const [refused, setRefused] = useState<LoginField[]>([]);
   const alreadyClaimed = verification?.already_claimed ?? null;
   // A guest's password claim sets the email and password the account is recovered with.
   const guestCredentials = Boolean(user?.guest) && method === 'password';
-  const needsCredentials = (!user && method === 'password') || guestCredentials;
+  const form = useMemo(
+    () => claimForm({ method, user, newAccount: verification?.classic.new_account, refused }),
+    [method, refused, user, verification]
+  );
 
   const clearField = useCallback((field: Field) => {
     setFields((current) => ({ ...current, [field]: undefined }));
@@ -129,6 +142,7 @@ export default function ClaimClassicScreen() {
       setMethod(nextMethod);
       setVerification(result);
       setDisplayName(result.classic.name_allowed ? (result.classic.name ?? '') : '');
+      setRefused([]);
       setError(null);
       setRequestFailure(null);
     },
@@ -144,7 +158,17 @@ export default function ClaimClassicScreen() {
       // Signing in from here would replace whoever is signed in on this phone
       // (a guest's games included), so only offer it when nobody is.
       setCanSignIn(!user && info.code === 'ALREADY_CLAIMED' && info.action?.type === 'sign_in');
-      if (info.code === 'PROVIDER_UNAVAILABLE') {
+      // An offered username or email taken since the preview becomes that one input.
+      const taken = refusedLogin(form, info.code);
+      if (taken === 'username') {
+        setRefused((current) => [...current, taken]);
+        setUsername(form.kept.username ?? '');
+        setFields({ username: 'auth.name_taken' });
+      } else if (taken === 'email') {
+        setRefused((current) => [...current, taken]);
+        setEmail(form.kept.email ?? '');
+        setFields({ email: 'auth.email_taken' });
+      } else if (info.code === 'PROVIDER_UNAVAILABLE') {
         setError('auth.provider_unavailable');
       } else if (DEAD_TICKET_CODES.has(info.code ?? '')) {
         setVerification(null);
@@ -161,7 +185,7 @@ export default function ClaimClassicScreen() {
         setRequestFailure({ error: requestError, fallback });
       }
     },
-    [user]
+    [form, user]
   );
 
   const verifyPassword = useCallback(async () => {
@@ -226,11 +250,9 @@ export default function ClaimClassicScreen() {
   const confirmClaim = useCallback(async () => {
     if (!verification || !method || fixture) return;
     const nextFields: Partial<Record<Field, string>> = {};
-    if (!user && username.trim().length < 3) nextFields.username = 'auth.username_min';
-    if (needsCredentials) {
-      if (!email.trim()) nextFields.email = 'auth.enter_an_email';
-      if (password.length < 8) nextFields.password = 'auth.password_min';
-    }
+    if (form.asks.username && username.trim().length < 3) nextFields.username = 'auth.username_min';
+    if (form.asks.email && !email.trim()) nextFields.email = 'auth.enter_an_email';
+    if (form.asks.password && password.length < 8) nextFields.password = 'auth.password_min';
     if (!verification.classic.name_allowed && displayName.trim().length < 2) {
       nextFields.displayName = 'auth.public_name_min';
     }
@@ -242,11 +264,11 @@ export default function ClaimClassicScreen() {
     setRequestFailure(null);
     try {
       const installId = user ? undefined : await getInstallId();
-      const account = {
-        ...(!user ? { username: username.trim() } : {}),
-        ...(needsCredentials ? { email: email.trim(), password } : {}),
-        ...(!verification.classic.name_allowed ? { display_name: displayName.trim() } : {}),
-      };
+      const account = claimAccount(
+        form,
+        { username, email, password, displayName },
+        verification.classic.name_allowed
+      );
       const claim = () =>
         classicApi.claim({
           ticket: verification.ticket,
@@ -261,7 +283,7 @@ export default function ClaimClassicScreen() {
         const saved = await runGuestSave({
           original: useAuthStore.getState(),
           displayName: '',
-          email: email.trim(),
+          email: form.kept.email ?? email.trim(),
           password,
           upgrade: () =>
             claim().catch((claimError: unknown) => {
@@ -314,10 +336,10 @@ export default function ClaimClassicScreen() {
     displayName,
     email,
     fixture,
+    form,
     from,
     guestCredentials,
     method,
-    needsCredentials,
     password,
     reportRequestError,
     router,
@@ -333,36 +355,6 @@ export default function ClaimClassicScreen() {
     setRequestFailure(null);
     setCanSignIn(false);
   };
-
-  const credentialFields = (
-    <>
-      <Input
-        label={t('auth.email')}
-        value={email}
-        error={fields.email ? t(fields.email as TranslationKey) : undefined}
-        editable={!busy}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoCorrect={false}
-        onChangeText={(value) => {
-          setEmail(value);
-          clearField('email');
-        }}
-      />
-      <Input
-        label={t('auth.new_pidro_password')}
-        value={password}
-        error={fields.password ? t(fields.password as TranslationKey, { count: 8 }) : undefined}
-        editable={!busy}
-        secureTextEntry
-        revealPassword
-        onChangeText={(value) => {
-          setPassword(value);
-          clearField('password');
-        }}
-      />
-    </>
-  );
 
   return (
     <ScreenShell scroll compact testID="claim-classic-screen">
@@ -594,32 +586,81 @@ export default function ClaimClassicScreen() {
               </View>
             ) : null}
 
-            {!alreadyClaimed && !user ? (
+            {!alreadyClaimed && (!user || guestCredentials) ? (
               <View style={styles.form}>
-                <PidroText role="label">{t('auth.create_your_account')}</PidroText>
-                <Input
-                  label={t('auth.username')}
-                  value={username}
-                  error={fields.username ? t(fields.username as TranslationKey) : undefined}
-                  maxLength={20}
-                  editable={!busy}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  onChangeText={(value) => {
-                    setUsername(value);
-                    clearField('username');
-                  }}
-                />
-                {method === 'password' ? credentialFields : null}
-              </View>
-            ) : null}
-
-            {!alreadyClaimed && guestCredentials ? (
-              <View style={styles.form}>
-                {credentialFields}
-                <PidroText role="metadata" tone="muted">
-                  {t('auth.guest_games')}
-                </PidroText>
+                {!user || form.fromClassic ? (
+                  <PidroText role="label">
+                    {t(form.fromClassic ? 'auth.your_pidro_login' : 'auth.create_your_account')}
+                  </PidroText>
+                ) : null}
+                {form.kept.username || form.kept.email ? (
+                  <Surface variant="subtle" padded style={styles.login}>
+                    {form.kept.username ? (
+                      <Kept label={t('auth.username')} value={form.kept.username} />
+                    ) : null}
+                    {form.kept.email ? (
+                      <Kept label={t('auth.email')} value={form.kept.email} />
+                    ) : null}
+                  </Surface>
+                ) : null}
+                {form.asks.username ? (
+                  <Input
+                    label={t('auth.username')}
+                    value={username}
+                    error={fields.username ? t(fields.username as TranslationKey) : undefined}
+                    maxLength={20}
+                    editable={!busy}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onChangeText={(value) => {
+                      setUsername(value);
+                      clearField('username');
+                    }}
+                  />
+                ) : null}
+                {form.asks.email ? (
+                  <Input
+                    label={t('auth.email')}
+                    value={email}
+                    error={fields.email ? t(fields.email as TranslationKey) : undefined}
+                    editable={!busy}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    onChangeText={(value) => {
+                      setEmail(value);
+                      clearField('email');
+                    }}
+                  />
+                ) : null}
+                {form.fromClassic ? (
+                  <PidroText role="body" tone="soft">
+                    {t('auth.classic_new_password')}
+                  </PidroText>
+                ) : null}
+                {form.asks.password ? (
+                  <Input
+                    label={t('auth.new_pidro_password')}
+                    value={password}
+                    error={
+                      fields.password
+                        ? t(fields.password as TranslationKey, { count: 8 })
+                        : undefined
+                    }
+                    editable={!busy}
+                    secureTextEntry
+                    revealPassword
+                    onChangeText={(value) => {
+                      setPassword(value);
+                      clearField('password');
+                    }}
+                  />
+                ) : null}
+                {guestCredentials ? (
+                  <PidroText role="metadata" tone="muted">
+                    {t('auth.guest_games')}
+                  </PidroText>
+                ) : null}
               </View>
             ) : null}
 
@@ -647,6 +688,17 @@ export default function ClaimClassicScreen() {
         )}
       </View>
     </ScreenShell>
+  );
+}
+
+function Kept({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.kept} accessible accessibilityLabel={`${label}: ${value}`}>
+      <PidroText role="metadata" tone="muted">
+        {label}
+      </PidroText>
+      <PidroText role="body">{value}</PidroText>
+    </View>
   );
 }
 
@@ -725,5 +777,11 @@ const styles = StyleSheet.create({
   },
   actions: {
     gap: PidroSpacing.sm,
+  },
+  login: {
+    gap: PidroSpacing.sm,
+  },
+  kept: {
+    gap: PidroSpacing.xxs,
   },
 });

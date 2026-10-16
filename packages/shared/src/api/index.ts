@@ -41,6 +41,7 @@ export {
   type ClassicClaimPreview,
   type ClassicClaimRequest,
   type ClassicHelpRequest,
+  type ClassicNewAccount,
   type ClassicSignInLink,
   type ClassicSignInLinkRequest,
   type ClassicVerification,
