@@ -25,6 +25,8 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 import { useLocale } from '@/i18n';
 import { useSettingsStore } from '@/stores/settings';
+import { BevelButton } from '@/components/ui/BevelButton';
+import type { HeldStyle } from '@/game/canvas/layout';
 
 // `bids=`: a hand's bids landing one by one against three bots.
 const BID_ROUNDS: Record<string, { dealer: Position; bids: ServerBid[] }> = {
@@ -206,6 +208,56 @@ const BOT_ROOM: Room = {
   ],
 };
 
+/** `deal=draw`: four people at the table, North bid 9 and West deals. */
+const DRAW_ROOM: Room = {
+  ...BOT_ROOM,
+  seats: (
+    [
+      ['south', 'Mia', 44],
+      ['west', 'Wynn', 18],
+      ['north', 'Nora', 31],
+      ['east', 'Eli', 12],
+    ] as const
+  ).map(([position, username, level], index) => ({
+    seat_index: index + 1,
+    status: 'occupied' as const,
+    player: { id: BOT_ROOM.positions![position]!, username, level },
+    position,
+  })),
+};
+
+const DRAW_TRUMP_HAND: Card[] = [spade(14), spade(11)];
+const DRAW_DEALT: Card[] = [
+  ...DRAW_TRUMP_HAND,
+  { rank: 13, suit: 'hearts' },
+  { rank: 8, suit: 'diamonds' },
+  { rank: 4, suit: 'clubs' },
+  { rank: 12, suit: 'hearts' },
+  { rank: 7, suit: 'clubs' },
+  { rank: 3, suit: 'diamonds' },
+  { rank: 9, suit: 'hearts' },
+];
+const DRAW_REFILLED: Card[] = [
+  ...DRAW_TRUMP_HAND,
+  spade(10),
+  { rank: 6, suit: 'hearts' },
+  { rank: 12, suit: 'clubs' },
+  { rank: 7, suit: 'diamonds' },
+];
+/** Kept after the discard, drawn to refill. West deals, so it robs the pack. */
+const DRAW_COUNTS = {
+  north: { kept: 1, drawn: 5 },
+  east: { kept: 3, drawn: 3 },
+  south: { kept: 2, drawn: 4 },
+  west: { kept: 4, drawn: 2 },
+} as const;
+const DRAW_FIRST_TRICK = [
+  { player: 'north', card: spade(13) },
+  { player: 'east', card: spade(9) },
+  { player: 'south', card: spade(10) },
+  { player: 'west', card: spade(3) },
+] as const;
+
 function fixtureAvatar(initial: string, color: string) {
   return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" fill="${color}"/><text x="40" y="54" text-anchor="middle" font-size="48" fill="white">${initial}</text></svg>`)}`;
 }
@@ -333,6 +385,7 @@ function TableDevHarness() {
     out?: string;
     trick?: string;
     count?: string;
+    hand?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -364,6 +417,18 @@ function TableDevHarness() {
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
+
+  if (params.deal === 'draw') {
+    return (
+      <SafeAreaProvider>
+        <FixtureInsets preset={params.safeArea}>
+          <DrawCountPreview
+            held={params.hand === 'still' || params.hand === 'fan' ? params.hand : 'tilt'}
+          />
+        </FixtureInsets>
+      </SafeAreaProvider>
+    );
+  }
 
   if (
     (fixture || params.role || phase === 'second_deal' || phase === 'declaring') &&
@@ -893,6 +958,139 @@ function RolePreview({
         timed={feedback === 'timed'}
         notice={feedback === 'notice' ? NORA_LOST : null}
       />
+    </View>
+  );
+}
+
+/**
+ * `deal=draw`: the second deal on a loop, as the server sends it. Trump is
+ * named with everyone holding nine; the next snapshot is the second deal done
+ * (the dealer still picking from the pack); then play starts. The table plays
+ * the throw, the deal and the dealer's pick out of those three. Then it deals
+ * again.
+ */
+function DrawCountPreview({ held }: { held: HeldStyle }) {
+  const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    let active = true;
+    loadGameCanvasTable().then((component) => {
+      if (active) setTable(() => component);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!Table) return;
+    const store = useGameStore.getState();
+    const seats = (
+      hands: Record<Position, Card[] | number>,
+      drawnBy: Position[],
+      keptBy: Position[]
+    ) =>
+      Object.fromEntries(
+        (['north', 'east', 'south', 'west'] as const).map((position) => [
+          position,
+          {
+            hand: hands[position],
+            ...(keptBy.includes(position) && { kept_count: DRAW_COUNTS[position].kept }),
+            ...(drawnBy.includes(position) && { drawn_count: DRAW_COUNTS[position].drawn }),
+          },
+        ])
+      );
+    const base = {
+      variant: 'finnish',
+      config: { min_bid: 6 },
+      dealer: 'west',
+      hand_number: 3,
+      scores: { north_south: 34, east_west: 21 },
+      highest_bid: { position: 'north', amount: 9 },
+      bid_order: [
+        { position: 'north', amount: 9 },
+        { position: 'east', amount: 'pass' },
+        { position: 'south', amount: 'pass' },
+        { position: 'west', amount: 'pass' },
+      ],
+      tricks: [],
+      current_trick: [],
+      trump: 'spades',
+    };
+    const everyone: Position[] = ['north', 'east', 'south', 'west'];
+    const nonDealers: Position[] = ['north', 'east', 'south'];
+    // The dealer's pool while picking: their four trumps and the four left in the pack.
+    const pool = DRAW_COUNTS.west.kept + (16 - 12);
+    const refilled = { north: 6, east: 6, south: DRAW_REFILLED, west: 6 };
+    const trick = (plays: number) => DRAW_FIRST_TRICK.slice(0, plays);
+    const afterPlays = (plays: number) => ({
+      north: 6 - (plays > 0 ? 1 : 0),
+      east: 6 - (plays > 1 ? 1 : 0),
+      south: plays > 2 ? DRAW_REFILLED.filter((card) => card.rank !== 10) : DRAW_REFILLED,
+      west: 6 - (plays > 3 ? 1 : 0),
+    });
+    const playing = (current: Position, plays: number) => ({
+      ...base,
+      phase: 'playing',
+      current_player: current,
+      current_trick: trick(plays),
+      players: seats(afterPlays(plays), everyone, everyone),
+    });
+    const frames: [number, Record<string, unknown>][] = [
+      [
+        0,
+        {
+          ...base,
+          phase: 'declaring',
+          trump: null,
+          current_player: 'north',
+          players: seats({ north: 9, east: 9, south: DRAW_DEALT, west: 9 }, [], []),
+        },
+      ],
+      [
+        1500,
+        {
+          ...base,
+          phase: 'second_deal',
+          current_player: 'west',
+          players: seats({ ...refilled, west: pool }, nonDealers, everyone),
+        },
+      ],
+      [9500, playing('north', 0)],
+      [12500, playing('east', 1)],
+      [14000, playing('south', 2)],
+      [15500, playing('west', 3)],
+      [17000, playing('north', 4)],
+    ];
+    store.reset();
+    store.initFromRoom({ room: DRAW_ROOM, youPlayerId: 'p-south' });
+    store.setRole('player');
+    store.setYouPosition('south');
+    store.setChannelStatus(true);
+    store.setLegalActions([]);
+    const timers = frames.map(([at, state]) =>
+      setTimeout(() => store.setServerState(state as unknown as ServerGameState), at)
+    );
+    // Hold on the finished trick, then deal again.
+    timers.push(setTimeout(() => setRun((n) => n + 1), 20_000));
+    return () => timers.forEach(clearTimeout);
+  }, [Table, run]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {Table ? (
+        <Table key={run} room={DRAW_ROOM} rulesFixtureSeen onLeave={() => {}} held={held} />
+      ) : (
+        <Loading />
+      )}
+      <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, bottom: 116 }}>
+        <BevelButton
+          size="sm"
+          material="glass"
+          label="Replay"
+          onPress={() => setRun((n) => n + 1)}
+        />
+      </View>
     </View>
   );
 }

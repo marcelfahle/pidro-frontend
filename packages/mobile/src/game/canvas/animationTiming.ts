@@ -31,3 +31,19 @@ export function dealAnimationDurationMs(cardCount: number): number {
   if (cardCount <= 0) return 0;
   return (cardCount - 1) * DEAL_CARD_STAGGER_MS + DEAL_CARD_TRAVEL_MS;
 }
+
+// The second deal in a few calm beats, as Classic plays it: everyone throws
+// their non-trumps face down in one swoop; the dealer gives each seat its
+// cards in one packet; then takes the rest of the pack and throws down to six.
+export const SECOND_DEAL_START_MS = 450;
+export const SECOND_DEAL_THROW_MS = 1_000;
+export const SECOND_DEAL_PACK_MS = 500;
+export const SECOND_DEAL_CARD_MS = 750;
+export const SECOND_DEAL_ROB_CARD_MS = 750;
+export const SECOND_DEAL_SETTLE_MS = 700;
+/** Cards in one swoop leave a hair apart, so it reads as a handful. */
+export const SECOND_DEAL_SWOOP_STAGGER_MS = 35;
+/** A thrown or dealt card's flight. */
+export const SECOND_DEAL_FLIGHT_MS = 300;
+/** What is left of the deck once everyone holds nine. */
+export const SECOND_DEAL_PACK = 52 - 36;

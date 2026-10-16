@@ -146,7 +146,9 @@ describe('dealer selection table model', () => {
 });
 
 describe('dealer second deal privacy', () => {
-  it('conceals the dealer pool count while preserving the other authoritative counts', () => {
+  // At a real table everyone sees the dealer take the pack: the pool's size
+  // is public, only its cards are the dealer's.
+  it("shows the dealer's pool count while they pick, like every other count", () => {
     const counts = { north: 6, east: 17, south: 6, west: 7 };
     const model = build({
       phase: 'second_deal',
@@ -154,10 +156,8 @@ describe('dealer second deal privacy', () => {
       getCardCountForPlayer: (position) => counts[position],
     });
 
-    expect(model.seats.south.cardCount).toBeNull();
-    expect(model.seats.south.cardCountConcealed).toBe(true);
+    expect(model.seats.south.cardCount).toBe(17);
     expect(model.seats.east.cardCount).toBe(6);
-    expect(model.seats.east.cardCountConcealed).toBe(false);
   });
 
   it('moves the dealer private pool into the selector instead of duplicating it on the table', () => {
@@ -189,7 +189,6 @@ describe('dealer second deal privacy', () => {
     });
 
     expect(model.seats.south.cardCount).toBe(6);
-    expect(model.seats.south.cardCountConcealed).toBe(false);
   });
 });
 
@@ -366,5 +365,39 @@ describe('out of trumps (PID-220)', () => {
     const model = build({ phase: 'bidding', serverPlayers: players([]) });
     expect(model.seats.north.out).toBe(false);
     expect(model.seats.north.revealedCards).toEqual([]);
+  });
+});
+
+describe('second deal counts', () => {
+  // Rotated: absolute west sits at relative north, absolute south at west.
+  const serverPlayers = {
+    north: { hand: 6, kept_count: 1, drawn_count: 5 },
+    east: { hand: [], kept_count: 2, drawn_count: 4 },
+    south: { hand: 6, kept_count: 4, drawn_count: 2 },
+    west: { hand: 6, kept_count: 3, drawn_count: 3 },
+  };
+
+  it('gives every seat what it kept and drew once the hand is played', () => {
+    const model = build({ phase: 'playing', dealerRelative: 'west', serverPlayers });
+    expect(model.seats.east.secondDeal).toEqual({ kept: 1, drawn: 5 });
+    expect(model.seats.north.secondDeal).toEqual({ kept: 3, drawn: 3 });
+    expect(model.seats.west.secondDeal).toEqual({ kept: 4, drawn: 2 });
+  });
+
+  it('shows what the dealer kept while they pick, and what they drew once picked', () => {
+    const picking = {
+      ...serverPlayers,
+      south: { hand: 8, kept_count: 4, drawn_count: null },
+    };
+    const model = build({ phase: 'second_deal', dealerRelative: 'west', serverPlayers: picking });
+    expect(model.seats.west.secondDeal).toEqual({ kept: 4, drawn: null });
+    expect(model.seats.east.secondDeal).toEqual({ kept: 1, drawn: 5 });
+  });
+
+  it('says nothing before the discard, or when an older server sends no counts', () => {
+    expect(build({ phase: 'bidding', serverPlayers }).seats.east.secondDeal).toBeNull();
+    expect(
+      build({ phase: 'playing', serverPlayers: { north: { hand: 6 } } }).seats.east.secondDeal
+    ).toBeNull();
   });
 });

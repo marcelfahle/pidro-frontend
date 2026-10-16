@@ -15,6 +15,7 @@ import {
   MENU_SLOT,
   NORTH_NAME_MIN,
   northChipBehind,
+  compactNorth,
   northBackWidth,
   northFanTop,
   northFanWidth,
@@ -161,7 +162,7 @@ describe('the plaque ticker keeps off North’s fan', () => {
   it('drops below the fan beside the plaque in landscape', () => {
     const L = computeLayout(844, 390, noInsets, 64, 0);
     const { lineMaxWidth, drop } = tickerPlacement(L, { tableTop: 64, ...plaque });
-    const fanBottom = northFanTop(L, 64) + (northBackWidth(L.cardW) * 110) / 78;
+    const fanBottom = northFanTop(L, 64) + (northBackWidth(L.cardW, compactNorth(L)) * 110) / 78;
     expect(plaque.plaqueTop + drop).toBeGreaterThanOrEqual(fanBottom);
     expect(lineMaxWidth).toBe(168);
   });
@@ -557,14 +558,14 @@ describe('a 32-character name in every seat stays in its own place (PID-232)', (
           bottom: 8 + size / 2 + dealer.size / 2,
         };
         const menu = { left: 640 - right - MENU_SLOT, right: 640 - right - 12, top: 8, bottom: 52 };
-        const fanW = northFanWidth(L.cardW, n);
+        const fanW = northFanWidth(L.cardW, n, compactNorth(L));
         const fanLeft = 320 - landscapeNorthShift(L, insets, n) - fanW / 2;
         const fanTop = northFanTop(L, 0);
         const fan = {
           left: fanLeft,
           right: fanLeft + fanW,
           top: fanTop,
-          bottom: fanTop + (northBackWidth(L.cardW) * 110) / 78,
+          bottom: fanTop + (northBackWidth(L.cardW, compactNorth(L)) * 110) / 78,
         };
         expect(overlap(chip, menu)).toBe(false);
         expect(overlap(chip, fan)).toBe(false);

@@ -52,7 +52,10 @@ booted_sims() { # "<udid>\t<name>" per line
 # cached client every time — don't just fill a gap when it's missing entirely.
 ensure_expo_go() {
   local udid="$1" expo_go newest installed container
-  expo_go=$(ls -d "$HOME/.expo/ios-simulator-app-cache/"*.app 2>/dev/null | sort -V | tail -1 || true)
+  # The newest cached Expo Go for the project's SDK: a newer SDK's refuses to open it.
+  local sdk
+  sdk=$(cd "$(dirname "$0")/.." && node -p "require('expo/package.json').version.split('.')[0]" 2>/dev/null || true)
+  expo_go=$(ls -d "$HOME/.expo/ios-simulator-app-cache/Expo-Go-${sdk}."*.app 2>/dev/null | sort -V | tail -1 || true)
   container=$(xcrun simctl get_app_container "$udid" host.exp.Exponent 2>/dev/null || true)
   if [[ -n "$container" ]]; then
     installed=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' \

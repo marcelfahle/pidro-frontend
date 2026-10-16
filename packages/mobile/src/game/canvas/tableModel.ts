@@ -24,6 +24,8 @@ import type { Position } from '@/types/lobby';
 import type { GameTableController } from '@/game/useGameTableController';
 import { isTrumpCard, sortCards } from '@/utils/cards';
 import { cardKey, type CardKey } from './cardKey';
+import type { SecondDealShow } from './useSecondDealPresentation';
+import type { HeldStyle } from './layout';
 
 export type TableCard = {
   key: string;
@@ -47,14 +49,21 @@ export type TableSeat = {
   isConnected: boolean;
   seatStatus: SeatStatus;
   isCurrentTurn: boolean;
+  /**
+   * Cards in hand, as the server counts them. The dealer's pool shows while
+   * they pick from the pack: at a real table everyone sees the pack taken.
+   */
   cardCount: number | null;
-  /** True when rendering the real count would reveal the dealer's private rob pool. */
-  cardCountConcealed: boolean;
   lastPlayedCard: TableCard | null;
   /** Out of trumps for the rest of the hand, as the server says. */
   out: boolean;
   /** What an out player lays face up. */
   revealedCards: TableCard[];
+  /**
+   * The second deal as the server tells it: trumps kept after the discard,
+   * cards drawn to refill. The dealer's drawn is null while they pick.
+   */
+  secondDeal: { kept: number; drawn: number | null } | null;
 };
 export type TableModel = {
   phase: GamePhase;
@@ -87,6 +96,10 @@ export type TableModel = {
   lastTrick: TrickResult | null;
   lastHand: ServerLastHand | null;
   yourTeam: TeamKey | null;
+  /** How your hand holds its cards; fixtures try the styles. */
+  held?: HeldStyle;
+  /** The second deal playing out (`useSecondDealPresentation`). */
+  secondDealShow?: SecondDealShow;
 };
 
 export type TrickResult = {
@@ -189,6 +202,17 @@ export function buildTableModel(input: TableModelInput): TableModel {
     outOf(abs) && Array.isArray(input.serverPlayers?.[abs]?.revealed_cards)
       ? sortCards(input.serverPlayers[abs].revealed_cards, trumpSuit).map((card) => toCard(card))
       : [];
+  // Every seat's second deal is public once the discard is done.
+  const afterDiscard = input.phase === 'second_deal' || playing;
+  const secondDealOf = (abs: Position) => {
+    const view = input.serverPlayers?.[abs];
+    return afterDiscard && typeof view?.kept_count === 'number'
+      ? {
+          kept: view.kept_count,
+          drawn: typeof view.drawn_count === 'number' ? view.drawn_count : null,
+        }
+      : null;
+  };
   const you = input.players.find((player) => player.isYou);
   // Gone cold, the cards you laid face up stay where you held them.
   const heldHand =
@@ -309,11 +333,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
           isConnected: p.isConnected,
           seatStatus: p.seatStatus,
           isCurrentTurn: p.isCurrentTurn,
-          cardCount:
-            input.phase === 'second_deal' && input.dealerRelative === rel
-              ? null
-              : input.getCardCountForPlayer(p.absolutePosition),
-          cardCountConcealed: input.phase === 'second_deal' && input.dealerRelative === rel,
+          cardCount: input.getCardCountForPlayer(p.absolutePosition),
+          secondDeal: secondDealOf(p.absolutePosition),
           lastPlayedCard: currentTrick[rel] ?? null,
           out: outOf(p.absolutePosition),
           revealedCards: p.isYou ? [] : revealedOf(p.absolutePosition),

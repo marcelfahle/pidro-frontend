@@ -45,6 +45,15 @@ is still ephemeral.
 Examples: `/ui-dev?state=settings&locale=sv&language=en&deviceLocale=sv-FI`,
 `/table-dev?phase=declaring&locale=sv`, `/auth-flow-dev?locale=sv`.
 
+The second deal loops at `/table-dev?deal=draw`, fed the snapshots the server
+sends (trump named, second deal done, play). The table plays it out in a few
+calm beats, as Classic does: every seat throws its non-trumps face down in
+front of it in one swoop, the dealer gives each seat its cards in one packet
+from the pack in the bottom-right corner, then takes the rest and throws down
+to six. The piles stay until the first card is played. No counts are written
+anywhere: players count the cards. `hand=still|tilt|fan` tries how hands hold
+their cards (default `tilt`). Replay restarts it.
+
 PID-214 bid presentation uses `/table-dev?phase=bidding&role=player&bids=round|high&locale=sv`.
 `table-bid-*` and `locale-sv-table-bid-*` check every seat's visible/spoken bid,
 the high-bid tone and compact south status without changing bid event identities.

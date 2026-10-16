@@ -27,13 +27,14 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
 import { PressableFX } from '@/components/ui/PressableFX';
-import { PidroLayout, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts, textFits } from '@/features/avatar';
 import { seatLine, type SeatLine } from '@/features/game/seatLine';
 import { getCardImage } from '@/utils/cardImages';
 import type { Card } from '@/types/game';
 import {
   AVATAR_SIZE,
+  compactNorth,
   computeLayout,
   LANDSCAPE_SOUTH_LEFT,
   landscapeNameReach,
@@ -41,8 +42,16 @@ import {
   landscapeNorthShift,
   northBackWidth,
   northChipBehind,
+  HELD_STYLE,
+  heldPose,
+  type HeldStyle,
   northFanTop,
+  packSpot,
+  northFanStep,
+  playedCardTarget,
+  SIDE_STACK_STEP,
   seatNameGap,
+  sideBackWidth,
   sideSeatTop,
   sideStacks,
   TIGHT_AVATAR,
@@ -51,7 +60,13 @@ import {
 } from './layout';
 import { TABLE_HEADER } from './TableChrome';
 import type { TableSeat } from './tableModel';
-import { DEAL_PACKET_CARD_STAGGER_MS, DEAL_PACKET_TRAVEL_MS } from './animationTiming';
+import {
+  DEAL_PACKET_CARD_STAGGER_MS,
+  DEAL_PACKET_TRAVEL_MS,
+  SECOND_DEAL_FLIGHT_MS,
+  SECOND_DEAL_SWOOP_STAGGER_MS,
+} from './animationTiming';
+import type { SecondDealShow } from './useSecondDealPresentation';
 import { t, useTranslation } from '@/i18n';
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
@@ -118,6 +133,10 @@ type Props = {
   onProfile?: Partial<Record<RelativePosition, () => void>>;
   /** A hand's result is showing: avatar and name only (PID-236). */
   quiet?: boolean;
+  /** The second deal playing out: the pack, what each seat threw. */
+  secondDeal?: SecondDealShow;
+  /** How every hand holds its cards. */
+  held?: HeldStyle;
 };
 
 export function SeatLayer({
@@ -130,6 +149,8 @@ export function SeatLayer({
   turnByRel,
   onProfile,
   quiet = false,
+  secondDeal,
+  held = HELD_STYLE,
 }: Props) {
   useTranslation();
   const { width, height } = useWindowDimensions();
@@ -215,7 +236,7 @@ export function SeatLayer({
   // Floating portrait scores no longer mask the fan behind a header band.
   const northBackTop = northFanTop(L, tableTop);
   const northSeatTop = portrait
-    ? northBackTop + northBackWidth(L.cardW) * (110 / 78) + PidroSpacing.sm
+    ? northBackTop + northBackWidth(L.cardW, compactNorth(L)) * (110 / 78) + PidroSpacing.sm
     : tableTop + 8;
   const stacks = sideStacks(L);
   const sideBackW = stacks.backW;
@@ -246,9 +267,49 @@ export function SeatLayer({
       )
     : L.sides.cy;
   const sideInset = tight ? PidroSpacing.xs : portrait ? 0 : 12;
+  // New backs fly in from the pack in the second deal, from the middle in the first.
+  const pack = packSpot(L);
+  const from = secondDeal ? pack : { x: L.felt.cx, y: L.felt.cy };
 
   return (
     <View style={[StyleSheet.absoluteFill, quiet && styles.quiet]} pointerEvents="box-none">
+      {secondDeal && secondDeal.pack > 0 ? (
+        <Pack
+          count={secondDeal.pack}
+          backW={northBackWidth(L.cardW, compactNorth(L))}
+          cx={pack.x}
+          cy={pack.y}
+        />
+      ) : null}
+      {secondDeal
+        ? REL.map((rel) => {
+            const thrown = secondDeal.thrown[rel] ?? 0;
+            if (!seats[rel] || thrown === 0) return null;
+            const backH = northBackWidth(L.cardW, compactNorth(L)) * (110 / 78);
+            const from =
+              rel === 'north'
+                ? { x: width / 2 - northShift, y: northBackTop + backH / 2 }
+                : rel === 'south'
+                  ? { x: L.hand.cx, y: L.hand.cy }
+                  : {
+                      x:
+                        rel === 'west'
+                          ? insets.left + sideBackW * 0.7
+                          : width - insets.right - sideBackW * 0.7,
+                      y: sideStackCy,
+                    };
+            return (
+              <ThrownPile
+                key={`thrown-${rel}`}
+                rel={rel}
+                count={thrown}
+                from={from}
+                at={playedCardTarget(L, rel, 0, 1)}
+                cardW={L.cardW * L.trick.pileScale * 0.82}
+              />
+            );
+          })
+        : null}
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
@@ -364,12 +425,13 @@ export function SeatLayer({
                 <BacksFan
                   testID={data.revealedCards.length > 0 ? 'seat-north-revealed' : undefined}
                   faces={data.revealedCards.map((card) => card.card)}
-                  count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
+                  count={data.cardCount ?? 0}
                   cardW={L.cardW}
+                  compact={compactNorth(L)}
+                  held={held}
                   dealing={dealing}
-                  originX={northShift}
-                  originY={L.trick.cy - northBackTop}
-                  concealed={data.cardCountConcealed}
+                  originX={secondDeal ? from.x - (width / 2 - northShift) : northShift}
+                  originY={(secondDeal ? from.y : L.trick.cy) - northBackTop}
                 />
               </View>
               <View
@@ -434,16 +496,16 @@ export function SeatLayer({
               <BacksStackV
                 testID={data.revealedCards.length > 0 ? `seat-${rel}-revealed` : undefined}
                 faces={data.revealedCards.map((card) => card.card)}
-                count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
+                count={data.cardCount ?? 0}
                 cardW={L.cardW}
+                held={held}
                 dealing={dealing}
                 originX={
                   rel === 'west'
-                    ? L.felt.cx - backsInset
-                    : L.felt.cx - (width - backsInset - sideBackW * (110 / 78))
+                    ? from.x - backsInset
+                    : from.x - (width - backsInset - sideBackW * (110 / 78))
                 }
-                originDy={L.felt.cy - sideStackCy}
-                concealed={data.cardCountConcealed}
+                originDy={from.y - sideStackCy}
               />
             </View>
           </View>
@@ -460,30 +522,31 @@ function BacksFan({
   dealing,
   originX = 0,
   originY,
-  concealed = false,
+  compact = false,
+  held = HELD_STYLE,
   testID,
 }: {
+  held?: HeldStyle;
   count: number;
   /** Cards laid face up (out of trumps) instead of the backs. */
   faces?: Card[];
   testID?: string;
   cardW: number;
+  /** Landscape phones' smaller fan (`compactNorth`). */
+  compact?: boolean;
   dealing: boolean;
   /** How far the felt's center sits right of the fan's own. */
   originX?: number;
   originY: number;
-  concealed?: boolean;
 }) {
-  const n = clamp(faces.length || count, 0, 9);
+  const n = clamp(faces.length || count, 0, 13);
   if (n === 0) return null;
-  const w = northBackWidth(cardW);
+  const w = northBackWidth(cardW, compact);
   const h = w * (110 / 78);
-  const overlap = w * 0.52 * Math.min(1, 5 / Math.max(1, n - 1));
+  const overlap = w * northFanStep(compact) * Math.min(1, 5 / Math.max(1, n - 1));
   const total = w + (n - 1) * overlap;
   return (
-    <View
-      testID={concealed ? 'dealer-card-count-concealed' : testID}
-      style={{ width: total, height: h }}>
+    <View testID={testID} style={{ width: total, height: h }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
@@ -491,7 +554,9 @@ function BacksFan({
           index={i}
           dealing={dealing}
           x={i * overlap}
-          y={0}
+          // North faces you: its fan turns the other way.
+          y={heldPose(held, `north-${i}`, (n - 1) / 2 - i).dy * 0.6}
+          tilt={heldPose(held, `north-${i}`, (n - 1) / 2 - i).tilt}
           originX={total / 2 - w / 2 + originX}
           originY={originY - h / 2}
           w={w}
@@ -509,9 +574,10 @@ function BacksStackV({
   dealing,
   originX,
   originDy = 0,
-  concealed = false,
+  held = HELD_STYLE,
   testID,
 }: {
+  held?: HeldStyle;
   count: number;
   /** Cards laid face up (out of trumps) instead of the backs. */
   faces?: Card[];
@@ -521,29 +587,27 @@ function BacksStackV({
   originX: number;
   /** How far the felt's center sits below (+) or above (−) the stack's own. */
   originDy?: number;
-  concealed?: boolean;
 }) {
-  const n = clamp(faces.length || count, 0, 9);
+  const n = clamp(faces.length || count, 0, 13);
   if (n === 0) return null;
-  const cw = clamp(cardW * 0.62, 30, 56); // portrait back
+  const cw = sideBackWidth(cardW); // portrait back
   const ch = cw * (110 / 78);
   // Backs lie sideways; cards laid face up stand upright, each showing its corner.
   const up = faces.length > 0;
   const visW = up ? cw : ch; // backs: after 90° rotation
   const visH = up ? ch : cw;
-  const overlap = (up ? ch * 0.36 : cw * 0.48) * Math.min(1, 5 / Math.max(1, n - 1));
+  const overlap = (up ? ch * 0.36 : cw * SIDE_STACK_STEP) * Math.min(1, 5 / Math.max(1, n - 1));
   return (
-    <View
-      testID={concealed ? 'dealer-card-count-concealed' : testID}
-      style={{ width: visW, height: visH + (n - 1) * overlap }}>
+    <View testID={testID} style={{ width: visW, height: visH + (n - 1) * overlap }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
           source={faces[i] ? getCardImage(faces[i]) : BACK}
           index={i}
           dealing={dealing}
-          x={0}
+          x={heldPose(held, `side-${i}`, i - (n - 1) / 2).dy * 0.6}
           y={i * overlap}
+          tilt={heldPose(held, `side-${i}`, i - (n - 1) / 2).tilt}
           originX={originX - visW / 2}
           originY={((n - 1) * overlap) / 2 + originDy}
           w={cw}
@@ -552,6 +616,113 @@ function BacksStackV({
         />
       ))}
     </View>
+  );
+}
+
+/** The pack in the middle while the dealer deals from it: thicker the more it holds. */
+function Pack({ count, backW, cx, cy }: { count: number; backW: number; cx: number; cy: number }) {
+  const h = backW * (110 / 78);
+  const layers = Math.min(count, 16);
+  return (
+    <View
+      testID="second-deal-pack"
+      pointerEvents="none"
+      accessibilityElementsHidden
+      style={{ position: 'absolute', left: cx - backW / 2, top: cy - h / 2 }}>
+      {Array.from({ length: layers }, (_, i) => (
+        <Image
+          key={i}
+          source={BACK}
+          style={[
+            styles.back,
+            { position: 'absolute', left: i * 0.6, top: -i * 1.1, width: backW, height: h },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+/**
+ * What a seat threw in the second deal, face down in front of it where it
+ * plays its cards, spread so each card can be counted. Each card flies in
+ * from the seat's hand as it is thrown.
+ */
+function ThrownPile({
+  rel,
+  count,
+  from,
+  at,
+  cardW,
+}: {
+  rel: RelativePosition;
+  count: number;
+  from: { x: number; y: number };
+  at: { x: number; y: number };
+  cardW: number;
+}) {
+  const cardH = cardW * (110 / 78);
+  const sideways = rel === 'east' || rel === 'west';
+  const step = cardW * 0.44;
+  return (
+    <View
+      testID={`second-deal-thrown-${rel}`}
+      accessibilityElementsHidden
+      pointerEvents="none"
+      style={StyleSheet.absoluteFill}>
+      {Array.from({ length: count }, (_, i) => {
+        const off = (i - (count - 1) / 2) * step;
+        return (
+          <ThrownBack
+            key={i}
+            from={from}
+            x={sideways ? at.x : at.x + off}
+            y={sideways ? at.y + off : at.y}
+            w={cardW}
+            h={cardH}
+            // A thrown card never lands quite square.
+            rot={(sideways ? 90 : 0) + (((i * 37) % 7) - 3)}
+            delay={i * SECOND_DEAL_SWOOP_STAGGER_MS}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+function ThrownBack({
+  from,
+  x,
+  y,
+  w,
+  h,
+  rot,
+  delay,
+}: {
+  delay: number;
+  from: { x: number; y: number };
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  rot: number;
+}) {
+  const tx = useSharedValue(from.x - w / 2);
+  const ty = useSharedValue(from.y - h / 2);
+  const turn = useSharedValue(rot - 25);
+  useEffect(() => {
+    const config = { duration: SECOND_DEAL_FLIGHT_MS, easing: Easing.out(Easing.cubic) };
+    tx.value = withDelay(delay, withTiming(x - w / 2, config));
+    ty.value = withDelay(delay, withTiming(y - h / 2, config));
+    turn.value = withDelay(delay, withTiming(rot, config));
+  }, [x, y, w, h, rot, delay, tx, ty, turn]);
+  const motion = useAnimatedStyle(() => ({
+    transform: [{ translateX: tx.value }, { translateY: ty.value }, { rotate: `${turn.value}deg` }],
+  }));
+  return (
+    <Animated.View style={[{ position: 'absolute', width: w, height: h }, motion]}>
+      <Image source={BACK} style={[styles.back, { width: w, height: h }]} />
+    </Animated.View>
   );
 }
 
@@ -566,10 +737,13 @@ function FlyingBack({
   w,
   h,
   sideways = false,
+  tilt = 0,
 }: {
   source: ImageSourcePropType;
   index: number;
   dealing: boolean;
+  /** Degrees off square, as a hand holds it. */
+  tilt?: number;
   x: number;
   y: number;
   originX: number;
@@ -613,7 +787,7 @@ function FlyingBack({
         style={[
           styles.back,
           { width: w, height: h },
-          sideways && { transform: [{ rotate: '90deg' }] },
+          { transform: [{ rotate: `${(sideways ? 90 : 0) + tilt}deg` }] },
         ]}
       />
     </Animated.View>
@@ -624,9 +798,14 @@ const styles = StyleSheet.create({
   out: { opacity: 0.6 },
   // Under the hand result's scrim the seats fade back further, as on the board.
   quiet: { opacity: 0.8 },
+  // A solid light edge on a solid card, and a shadow under it, so
+  // overlapping backs read as separate cards: nothing shows through.
   back: {
-    borderRadius: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: PidroColors.text,
+    backgroundColor: PidroBevel.panelMid,
+    overflow: 'hidden',
+    boxShadow: '0px 1px 3px rgba(0,0,0,0.55)',
   },
 });
