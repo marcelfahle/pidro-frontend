@@ -12,7 +12,7 @@ import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
-import { InviteModal } from '@/components/invites/InviteModal';
+import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
@@ -432,7 +432,9 @@ function TableDevHarness() {
             }
           : params.names === 'long' && seat.player?.id === 'p-west'
             ? { ...seat, player: { ...seat.player, username: 'Alexandria the Long-Named Player' } }
-            : seat
+            : params.fixture === 'held' && seat.position === 'east'
+              ? { ...seat, held_for: { user_id: 'nora', display_name: 'Nora', avatar_url: null } }
+              : seat
       ),
     };
     return (
@@ -497,9 +499,9 @@ function TableDevHarness() {
               }
             />
           </FixtureInsets>
-          {hostControls ? (
-            <InviteModal
-              isOpen={inviteOpen}
+          {hostControls && inviteOpen ? (
+            <InviteLinkModal
+              position="south"
               roomCode={WAITING_ROOM.code}
               onClose={() => setInviteOpen(false)}
               fixture={INVITE_FIXTURE}

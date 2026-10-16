@@ -1,14 +1,11 @@
-import type { RuleSet } from '@pidro/shared';
+import type { FriendPlayer, Position, RuleSet } from '@pidro/shared';
 import { t, formatNumber } from '@pidro/shared';
 import type { CreateRoomRequest } from '@/types/lobby';
 
 /** The three seats a host fills on New table: left opponent, partner, right opponent. */
 export type SeatKey = 'seat_2' | 'seat_3' | 'seat_4';
 
-/**
- * Who sits in a seat. The server knows open and bot seats; an invite seat is
- * an open seat the host means to share a link for once the table is open.
- */
+/** Friend seats hold a selected friend, or share a seat-bound link after creation. */
 export type SeatChoice = 'open' | 'ai' | 'invite';
 
 export type SeatRequirement = 0 | 100 | 1000;
@@ -16,6 +13,13 @@ export type TableDraft = {
   seats: Record<SeatKey, SeatChoice>;
   /** Games played an open seat asks for; 0 or missing means anyone may sit. */
   requirements: Partial<Record<SeatKey, SeatRequirement>>;
+  invited?: Partial<Record<SeatKey, FriendPlayer>>;
+};
+
+export const seatPositions: Record<SeatKey, Position> = {
+  seat_2: 'east',
+  seat_3: 'south',
+  seat_4: 'west',
 };
 
 export const defaultSeats: Record<SeatKey, SeatChoice> = {
@@ -29,7 +33,25 @@ export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: SeatChoice)
   return {
     seats: { ...draft.seats, [seat]: choice },
     requirements: choice === 'open' ? draft.requirements : { ...draft.requirements, [seat]: 0 },
+    ...(draft.invited && { invited: { ...draft.invited, [seat]: undefined } }),
   };
+}
+
+export function chooseFriend(draft: TableDraft, seat: SeatKey, friend: FriendPlayer): TableDraft {
+  return { ...chooseSeat(draft, seat, 'invite'), invited: { ...draft.invited, [seat]: friend } };
+}
+
+export function assignedFriendIds(draft: TableDraft, current: SeatKey): string[] {
+  return Object.entries(draft.invited ?? {}).flatMap(([seat, friend]) =>
+    seat !== current && friend ? [friend.user_id] : []
+  );
+}
+
+export function findFriends(friends: FriendPlayer[], query: string): FriendPlayer[] {
+  const search = query.normalize('NFKC').trim().toLocaleLowerCase();
+  return friends.filter((friend) =>
+    friend.display_name.normalize('NFKC').toLocaleLowerCase().includes(search)
+  );
 }
 
 /** Only an open seat can ask for games played. */
@@ -52,11 +74,14 @@ export function tableFooter(seats: Record<SeatKey, SeatChoice>): string {
 export function newTableRequest(
   ruleSet: RuleSet,
   seats: Record<SeatKey, SeatChoice>,
-  requirements: TableDraft['requirements'] = {}
-): { request: CreateRoomRequest; invite: boolean } {
+  requirements: TableDraft['requirements'] = {},
+  invited: TableDraft['invited'] = {}
+): { request: CreateRoomRequest; invite: Position[] } {
   const serverSeat = (key: SeatKey) => {
     const choice = seats[key];
     const min_games = requirements[key] ?? 0;
+    if (choice === 'invite' && invited[key])
+      return { type: 'held' as const, user_id: invited[key].user_id };
     return choice === 'ai'
       ? 'ai'
       : choice === 'open' && min_games > 0
@@ -72,6 +97,8 @@ export function newTableRequest(
         seat_4: serverSeat('seat_4'),
       },
     },
-    invite: Object.values(seats).includes('invite'),
+    invite: (Object.keys(seats) as SeatKey[])
+      .filter((key) => seats[key] === 'invite' && !invited[key])
+      .map((key) => seatPositions[key]),
   };
 }

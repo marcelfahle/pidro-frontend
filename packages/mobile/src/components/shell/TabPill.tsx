@@ -54,6 +54,7 @@ export interface TabPillProps {
   orientation: 'bottom' | 'rail';
   active: ShellTab;
   tableBadge?: boolean;
+  invitationCount?: number;
   onSelect: (tab: ShellTab) => void;
   style?: StyleProp<ViewStyle>;
 }
@@ -77,16 +78,22 @@ function TabItem({
   tab,
   active,
   onSelect,
+  count = 0,
 }: {
   tab: Exclude<ShellTab, 'table'>;
   active: boolean;
   onSelect: (tab: ShellTab) => void;
+  count?: number;
 }) {
   const { t } = useTranslation();
   return (
     <PressableFX
       accessibilityRole="button"
-      accessibilityLabel={t(`shell.${tab}`)}
+      accessibilityLabel={
+        count > 0
+          ? `${t(`shell.${tab}`)}, ${t('seat_invitation.badge', { count })}`
+          : t(`shell.${tab}`)
+      }
       accessibilityState={{ selected: active }}
       onPress={() => onSelect(tab)}
       style={[styles.item, active && styles.itemActive]}>
@@ -98,11 +105,25 @@ function TabItem({
       <PidroText style={[styles.itemLabel, active && styles.itemLabelActive]}>
         {t(`shell.${tab}`)}
       </PidroText>
+      {count > 0 ? (
+        <View testID="friends-invitation-count" style={styles.countBadge}>
+          <PidroText role="metadata" style={styles.countText}>
+            {count}
+          </PidroText>
+        </View>
+      ) : null}
     </PressableFX>
   );
 }
 
-export function TabPill({ orientation, active, tableBadge, onSelect, style }: TabPillProps) {
+export function TabPill({
+  orientation,
+  active,
+  tableBadge,
+  invitationCount,
+  onSelect,
+  style,
+}: TabPillProps) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const rail = orientation === 'rail';
@@ -149,7 +170,12 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
             ) : null}
           </PressableFX>
 
-          <TabItem tab="friends" active={active === 'friends'} onSelect={onSelect} />
+          <TabItem
+            tab="friends"
+            active={active === 'friends'}
+            count={invitationCount}
+            onSelect={onSelect}
+          />
           <TabItem tab="settings" active={active === 'settings'} onSelect={onSelect} />
         </View>
       </View>
@@ -158,6 +184,19 @@ export function TabPill({ orientation, active, tableBadge, onSelect, style }: Ta
 }
 
 const styles = StyleSheet.create({
+  countBadge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    minWidth: 18,
+    minHeight: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: PidroColors.success,
+    paddingHorizontal: 3,
+  },
+  countText: { color: PidroColors.ink },
   bottomAnchor: {
     position: 'absolute',
     left: 0,

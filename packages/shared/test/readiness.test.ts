@@ -36,6 +36,15 @@ beforeEach(() => {
 });
 
 describe('authoritative readiness snapshots', () => {
+  test('holds follow the latest readiness snapshot rather than stale room metadata', () => {
+    const held = snapshot(5);
+    held.positions = { ...held.positions, south: null };
+    held.seats.south = { occupant_type: 'vacant', status: 'held', user_id: null, held_for: { user_id: 'nora', display_name: 'Nora', avatar_url: null } };
+    const projected = roomWithReadiness(room, held);
+    expect(projected.seats?.[2]).toMatchObject({ player: null, held_for: { user_id: 'nora', display_name: 'Nora' } });
+    expect(roomWithReadiness(projected, snapshot(6)).seats?.[2].held_for).toBeUndefined();
+  });
+
   test('keeps avatars through ready updates and applies explicit avatar removal', () => {
     const ready = snapshot(5);
     ready.seats.north.avatar_url = 'avatar-v1';

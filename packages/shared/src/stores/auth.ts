@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { PersistStorage } from '../platform/types';
 import type { User } from '../api/auth';
+import type { SeatInvitation } from '../types/lobby';
 
 export type { User };
 
@@ -14,6 +15,10 @@ export type AuthState = {
   status: AuthStatus;
   hydrated: boolean;
   preserveSessionOnUnauthorized: boolean;
+  seatInvitations: SeatInvitation[];
+  setSeatInvitations: (invitations: SeatInvitation[]) => void;
+  receiveSeatInvitation: (invitation: SeatInvitation) => void;
+  removeSeatInvitation: (seat: Pick<SeatInvitation, 'code' | 'position'>) => void;
 
   setSession: (data: { accessToken: string; refreshToken?: string; user: User }) => void;
   clearSession: () => void;
@@ -28,6 +33,7 @@ const initialState = {
   status: 'checking' as AuthStatus,
   hydrated: false,
   preserveSessionOnUnauthorized: false,
+  seatInvitations: [] as SeatInvitation[],
 };
 
 interface CreateAuthStoreOptions {
@@ -41,11 +47,23 @@ export function createAuthStore({ storage, storageKey = 'auth-storage' }: Create
       (set, get) => ({
         ...initialState,
 
+        setSeatInvitations: (seatInvitations) => set({ seatInvitations }),
+        receiveSeatInvitation: (invitation) => set((state) => ({
+          seatInvitations: [
+            ...state.seatInvitations.filter((seat) => seat.code !== invitation.code || seat.position !== invitation.position),
+            invitation,
+          ],
+        })),
+        removeSeatInvitation: ({ code, position }) => set((state) => ({
+          seatInvitations: state.seatInvitations.filter((seat) => seat.code !== code || seat.position !== position),
+        })),
+
         setSession: ({ accessToken, refreshToken, user }) => {
           set({
             accessToken,
             refreshToken: refreshToken ?? get().refreshToken,
             user,
+            seatInvitations: get().user?.id === user.id ? get().seatInvitations : [],
             status: 'authenticated',
             preserveSessionOnUnauthorized: false,
           });
@@ -56,6 +74,7 @@ export function createAuthStore({ storage, storageKey = 'auth-storage' }: Create
             accessToken: null,
             refreshToken: null,
             user: null,
+            seatInvitations: [],
             status: 'unauthenticated',
             preserveSessionOnUnauthorized: false,
           });

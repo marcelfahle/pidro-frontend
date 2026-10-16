@@ -47,6 +47,34 @@ it('switches row copy and requirements live while preserving names and join auth
 });
 
 describe('lobby table rows', () => {
+  it('renders a held friend without offering their seat or counting them as a player', () => {
+    const result = tableRow(
+      room({
+        seats: [
+          player('north', 'Host'),
+          {
+            position: 'south',
+            status: 'free',
+            held_for: {
+              user_id: 'nora',
+              display_name: 'Nora',
+              avatar_url: 'https://example.com/nora.png',
+            },
+          },
+        ],
+      }),
+      'open_tables'
+    );
+    expect(result.seats[1]).toMatchObject({
+      kind: 'held',
+      name: 'Nora',
+      avatarUrl: 'https://example.com/nora.png',
+      canJoin: false,
+    });
+    expect(result.status).toBe('2 seats open');
+    expect(result.seats[2].canJoin).toBe(true);
+  });
+
   it('uses current hand and north-south score first, with fallbacks for older payloads', () => {
     const game = { hand: 4, scores: { north_south: -5, east_west: 21 } };
     const seats = [{ position: 'south', status: 'free', player: null, vacated_by: 'Jussi' }];

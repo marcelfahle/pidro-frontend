@@ -56,6 +56,13 @@ query parameters. `locale-sv-friends-*` checks list/empty/loading/error, add-bac
 recent/search results, profile/removal and the guest-save gate alongside the
 existing English Friends cases.
 
+Friend seats use `/ui-dev?state=create&fixture=sheet-empty|sheet-friends|sheet-picked|sheet-assigned`
+and `fixture=invited` for the committed draft row. `/lobby?fixture=held` and
+`/table-dev?phase=waiting-host&fixture=held` show server-held seats. Invitation rows
+stack at `/home?fixture=invitations` (including the Friends count badge) and
+`/lobby?fixture=invitations`. The old `table-invite` fixture now shows only the
+seat-bound share link, without a name or seat-preference form.
+
 Grammar cases `locale-{en,sv}-settings-{system,en,sv}` and
 `locale-{en,sv}-{waiting,bidding,trump,hand-selection,game-over,dealer,playing}`
 run at 390×844, 844×390, 667×375, plus localization-only additions to the

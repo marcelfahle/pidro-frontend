@@ -31,7 +31,8 @@ import type { LegalAction, ServerGameState } from '@/types/game';
 import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { WaitingTable } from '@/components/game/WaitingTable';
-import { InviteModal } from '@/components/invites/InviteModal';
+import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
+import { FriendSeatSheet } from '@/components/invites/FriendSeatSheet';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
@@ -39,7 +40,12 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
-import { canManageRoom } from '@/features/invites/hostControls';
+import {
+  assignedRoomPlayerIds,
+  canManageRoom,
+  firstUnfilledSeat,
+  friendSeatTitle,
+} from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
 import { shouldAutoReadySolo } from '@/features/game/soloReadiness';
 import { readingTimeMs } from '@/features/game/readingTime';
@@ -243,8 +249,13 @@ export default function GameScreen() {
     progressionResult?.roomCode === code ? progressionResult.summary : null;
   const [restoreFailureCode, setRestoreFailureCode] = useState<string | null>(null);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
-  // New table with an invite seat lands here with the invite sheet already up.
-  const [inviteOpen, setInviteOpen] = useState(invite === 'true');
+  const [inviteSeat, setInviteSeat] = useState<Position | null>(null);
+  const [shareSeats, setShareSeats] = useState<Position[]>(() =>
+    (invite ?? '')
+      .split(',')
+      .filter((seat): seat is Position => ['north', 'east', 'south', 'west'].includes(seat))
+  );
+  const shareSeat = shareSeats[0];
   const [controlsBusy, setControlsBusy] = useState(false);
   const controlsBusyRef = useRef(false);
   const [joiningName, setJoiningName] = useState<string | null>(null);
@@ -788,10 +799,11 @@ export default function GameScreen() {
     );
   }
 
+  const waitingRoom = readiness ? roomWithReadiness(room, readiness) : room;
   return (
     <>
       <WaitingTable
-        room={readiness ? roomWithReadiness(room, readiness) : room}
+        room={waitingRoom}
         youPlayerId={role === 'player' ? youPlayerId : ''}
         isSpectator={role === 'spectator'}
         readyPlayers={readiness?.ready_players}
@@ -801,7 +813,7 @@ export default function GameScreen() {
         canManage={canManage && origin !== 'single-player'}
         joiningName={joiningName}
         controlsBusy={controlsBusy}
-        onOpenInvite={() => setInviteOpen(true)}
+        onOpenInvite={() => setInviteSeat(firstUnfilledSeat(waitingRoom) ?? null)}
         onToggleLock={handleToggleLock}
         onMovePlayer={handleMovePlayer}
         onKickPlayer={handleKickPlayer}
@@ -809,12 +821,34 @@ export default function GameScreen() {
         notice={notice}
         onDismissNotice={dismissNotice}
       />
-      {canManage ? (
-        <InviteModal
-          key={room.code}
-          isOpen={inviteOpen}
+      {canManage && inviteSeat ? (
+        <FriendSeatSheet
+          key={`${room.code}-${inviteSeat}`}
+          title={friendSeatTitle(waitingRoom, inviteSeat)}
+          unavailableIds={assignedRoomPlayerIds(waitingRoom)}
+          onClose={() => setInviteSeat(null)}
+          onInvite={async (friend) => {
+            roomRequestGenerationRef.current += 1;
+            const updated = await lobbyApi.holdSeat(room.code, inviteSeat, friend.user_id);
+            applyRoomSnapshot(room.code, ++roomRequestGenerationRef.current, updated);
+            setInviteSeat(null);
+          }}
+          onShare={() => {
+            setShareSeats([inviteSeat]);
+            setInviteSeat(null);
+          }}
+          onAddFriends={() => {
+            setInviteSeat(null);
+            router.push('/friends');
+          }}
+        />
+      ) : null}
+      {canManage && shareSeat ? (
+        <InviteLinkModal
+          key={`${room.code}-${shareSeat}`}
+          position={shareSeat}
           roomCode={room.code}
-          onClose={() => setInviteOpen(false)}
+          onClose={() => setShareSeats((seats) => seats.slice(1))}
         />
       ) : null}
     </>

@@ -56,6 +56,35 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  {
+    name: 'home-invitations',
+    path: '/home?fixture=invitations',
+    testId: 'home-screen',
+    authenticated: true,
+  },
+  {
+    name: 'lobby-invitations',
+    path: '/lobby?fixture=invitations',
+    testId: 'lobby-screen',
+    authenticated: true,
+  },
+  { name: 'lobby-held', path: '/lobby?fixture=held', testId: 'lobby-screen', authenticated: true },
+  {
+    name: 'waiting-held',
+    path: '/table-dev?phase=waiting-host&fixture=held',
+    testId: 'waiting-table',
+    authenticated: true,
+  },
+  ...['empty', 'friends', 'picked', 'assigned'].map((fixture) => ({
+    name: `friend-seat-${fixture}`,
+    path: `/ui-dev?state=create&fixture=sheet-${fixture}`,
+    testId: 'friend-seat-sheet',
+  })),
+  {
+    name: 'create-invited',
+    path: '/ui-dev?state=create&fixture=invited',
+    testId: 'create-room-window',
+  },
   ...['empty', 'list', 'added-you', 'loading', 'error'].map((fixture) => ({
     name: `friends-${fixture}`,
     path: `/friends?fixture=${fixture}`,
@@ -1191,6 +1220,82 @@ async function assertLobbyPresentation(page, testCase) {
 }
 
 async function assertCreationPresentation(page, testCase) {
+  if (testCase.name === 'table-invite') {
+    const dialog = page.getByTestId('invite-window');
+    await dialog.getByText('south', { exact: true }).waitFor();
+    await dialog.getByRole('button', { name: 'Done', exact: true }).click();
+    await dialog.waitFor({ state: 'hidden' });
+    return;
+  }
+  if (testCase.name.startsWith('friend-seat-')) {
+    const sheet = page.getByTestId('friend-seat-sheet');
+    await sheet.getByText('Partner', { exact: true }).waitFor();
+    if (testCase.name === 'friend-seat-empty') {
+      await sheet.getByText('No friends yet', { exact: true }).waitFor();
+      assert.equal(await sheet.getByRole('radio').count(), 0);
+      await sheet.getByRole('link', { name: 'Add friends', exact: true }).waitFor();
+    } else if (testCase.name === 'friend-seat-assigned') {
+      const nora = sheet.getByRole('radio', { name: 'Nora, Already has a seat', exact: true });
+      assert.equal(await nora.getAttribute('aria-disabled'), 'true');
+      assert.equal(
+        await sheet.getByRole('button', { name: 'Choose a friend', exact: true }).isDisabled(),
+        true
+      );
+      await sheet.getByRole('radio', { name: 'Pekka, At a table', exact: true }).click();
+      await sheet.getByRole('button', { name: 'Invite Pekka', exact: true }).click();
+      await page.getByTestId('create-seat_3').getByText('Pekka', { exact: true }).waitFor();
+      await page.getByTestId('create-seat_2').getByText('Nora', { exact: true }).waitFor();
+      await page
+        .getByTestId('create-seat_2')
+        .getByRole('radio', { name: 'Friend', exact: true })
+        .click();
+      assert.equal(
+        await sheet
+          .getByRole('radio', { name: 'Nora, Online', exact: true })
+          .getAttribute('aria-checked'),
+        'true'
+      );
+      assert.equal(
+        await sheet.getByRole('button', { name: 'Invite Nora', exact: true }).isEnabled(),
+        true
+      );
+    } else {
+      assert.equal(await sheet.getByRole('radio').count(), 3);
+      const nora = sheet.getByRole('radio', { name: 'Nora, Online', exact: true });
+      assert.equal(
+        await nora.getAttribute('aria-checked'),
+        testCase.name === 'friend-seat-picked' ? 'true' : 'false'
+      );
+      await sheet.getByRole('textbox', { name: 'Find a friend', exact: true }).fill('nOr');
+      assert.equal(await sheet.getByRole('radio').count(), 1);
+      await nora.click();
+      await sheet.getByRole('button', { name: 'Invite Nora', exact: true }).click();
+      await page.getByTestId('create-seat_3').getByText('Invited', { exact: true }).waitFor();
+    }
+    return;
+  }
+  if (testCase.name === 'create-invited') {
+    await page.getByTestId('create-seat_3').getByText('Nora', { exact: true }).waitFor();
+    await page.getByTestId('create-seat_3').getByText('Invited', { exact: true }).waitFor();
+  }
+  if (testCase.name === 'lobby-held') {
+    const row = page.getByTestId('lobby-table-OPEN1');
+    await row.getByText('Invited', { exact: true }).waitFor();
+    assert.equal(await row.getByRole('button', { name: /^Join south seat/ }).count(), 0);
+  }
+  if (testCase.name === 'waiting-held') await page.getByText('Invited', { exact: true }).waitFor();
+  if (testCase.name.endsWith('-invitations')) {
+    const inbox = page.getByTestId('seat-invitations');
+    await inbox.getByText('Nora is holding a seat for you', { exact: true }).waitFor();
+    await inbox.getByText('Kalle is holding a seat for you', { exact: true }).waitFor();
+    assert.equal(await inbox.getByRole('button', { name: 'Sit down', exact: true }).count(), 2);
+    if (testCase.name === 'home-invitations') {
+      assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
+      await page
+        .getByRole('button', { name: 'Friends, 2 invitations waiting', exact: true })
+        .waitFor();
+    }
+  }
   const fixture = testCase.createFixture;
   if (!fixture) return;
   const form = page.getByTestId('create-room-window');
@@ -1245,9 +1350,10 @@ async function assertCreationPresentation(page, testCase) {
   assert.equal(await radio('Anyone').getAttribute('aria-checked'), 'true');
   assert.equal(await height(), 92);
   await radio('Friend').click();
-  await page.waitForTimeout(400);
-  assert.equal(await radio('Anyone').count(), 0);
-  assert.equal(await page.getByTestId('create-seat-sheet').count(), 0);
+  const friendSheet = page.getByTestId('friend-seat-sheet');
+  await friendSheet.waitFor();
+  await friendSheet.getByRole('link', { name: 'Cancel', exact: true }).click();
+  assert.equal(await radio('Open').getAttribute('aria-checked'), 'true');
 }
 
 async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
@@ -2387,6 +2493,10 @@ async function main() {
           }
           if (testCase.name.endsWith('friends-guest')) {
             await page.getByTestId('auth-sheet').waitFor();
+            await waitForScreenshotReady(page);
+          }
+          if (testCase.name.startsWith('friend-seat-')) {
+            await page.getByTestId('friend-seat-sheet').waitFor();
             await waitForScreenshotReady(page);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);

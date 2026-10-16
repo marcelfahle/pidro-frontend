@@ -16,6 +16,8 @@ import { PidroColors } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { gameRoute } from '@/navigation/gameRoute';
+import { seatInvitationsFixture } from '@/features/lobby/fixtures';
+import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 
 const TAB_ROUTES: Record<ShellTab, string> = {
   league: '/league',
@@ -38,12 +40,22 @@ export default function ShellLayout() {
   const params = useGlobalSearchParams<{ fixture?: string; safeArea?: string }>();
   return (
     <FixtureInsets preset={__DEV__ ? params.safeArea : undefined}>
-      <Shell forceUpdateNotice={__DEV__ && params.fixture === 'update-notice'} />
+      <Shell
+        forceUpdateNotice={__DEV__ && params.fixture === 'update-notice'}
+        fixtureInvitationCount={seatInvitationsFixture(params.fixture)?.length}
+      />
     </FixtureInsets>
   );
 }
 
-function Shell({ forceUpdateNotice }: { forceUpdateNotice: boolean }) {
+function Shell({
+  forceUpdateNotice,
+  fixtureInvitationCount,
+}: {
+  forceUpdateNotice: boolean;
+  fixtureInvitationCount?: number;
+}) {
+  useLobbyChannel();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const router = useRouter();
@@ -51,6 +63,7 @@ function Shell({ forceUpdateNotice }: { forceUpdateNotice: boolean }) {
   const active = activeTabForPath(pathname);
   const reduceMotion = useReducedMotion();
   const guest = useAuthStore((state) => Boolean(state.user?.guest));
+  const invitationCount = useAuthStore((state) => state.seatInvitations.length);
   const rejoinable = useLobbyStore((state) => state.lobby.my_rejoinable);
   const waitingGame = rejoinable.length > 0 ? rejoinable[0] : null;
   const insets = useSafeAreaInsets();
@@ -101,6 +114,7 @@ function Shell({ forceUpdateNotice }: { forceUpdateNotice: boolean }) {
           orientation={landscape ? 'rail' : 'bottom'}
           active={active}
           tableBadge={Boolean(waitingGame)}
+          invitationCount={fixtureInvitationCount ?? invitationCount}
           onSelect={handleSelect}
         />
       ) : null}

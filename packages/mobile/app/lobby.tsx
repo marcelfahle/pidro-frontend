@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
-import { lobbyFixture } from '@/features/lobby/fixtures';
+import { lobbyFixture, seatInvitationsFixture } from '@/features/lobby/fixtures';
 import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
 import { pickProfile } from '@/game/canvas/layout';
 import { publicPlayerName } from '@pidro/shared';
@@ -19,6 +19,7 @@ import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
+import { SeatInvitations } from '@/components/invites/SeatInvitations';
 import { OpenChair } from '@/components/lobby/OpenChair';
 import { AuthFlowButton, AuthFlowHeading } from '@/components/auth/AuthFlow';
 import { AuthSheet } from '@/components/auth/AuthSheet';
@@ -79,6 +80,7 @@ function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
 
 function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
   const { t } = useTranslation();
+  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const profile = pickProfile(width, height);
@@ -301,14 +303,13 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
 
   const handleCreateRoom = async (
     data: CreateRoomRequest,
-    invite = false,
+    invite: Position[] = [],
     mayRequestAccount = true,
     showFailureAlert = false
   ) => {
     if (fixture) return;
-    // An invite seat is an open seat; the waiting table opens with its invite sheet up.
     const openTable = (code: string) =>
-      router.replace(invite ? `/game/${code}?invite=true` : `/game/${code}`);
+      router.replace(invite.length ? `/game/${code}?invite=${invite.join(',')}` : `/game/${code}`);
     const reportFailure = (fallback: TranslationKey, error?: unknown) => {
       if (showFailureAlert) Alert.alert(t('social.create_failed'), localizedError(error, fallback));
       else setCreateError({ error, fallback });
@@ -443,6 +444,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       {portraitPhone && !isEmptyLobby ? search : null}
 
       <View style={styles.content}>
+        <SeatInvitations fixture={seatInvitationsFixture(fixtureParam)} scrollable />
         {quickGame.error ? (
           <Surface variant="subtle" style={styles.error} accessibilityRole="alert">
             <PidroText role="metadata" tone="danger">

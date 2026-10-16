@@ -1,5 +1,7 @@
 import { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { SeatInvitations } from '@/components/invites/SeatInvitations';
+import { seatInvitationsFixture } from '@/features/lobby/fixtures';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { publicPlayerName, type ProfileIdentity } from '@pidro/shared';
@@ -34,14 +36,20 @@ export default function HomeScreen() {
   const compactLandscape = landscape && height < PidroLayout.compactHeight;
   const tablet = Math.min(width, height) >= 700;
   const tileSize: HomeTileSize = tablet ? 'tablet' : compactLandscape ? 'landscape' : 'phone';
+  const params = useLocalSearchParams<{ fixture?: string }>();
+  const fixture = __DEV__ ? params.fixture : undefined;
+  const fixtureInvitations = seatInvitationsFixture(fixture);
   const user = useAuthStore((state) => state.user);
+  const storedInvitations = useAuthStore((state) => state.seatInvitations);
+  const invitations = fixtureInvitations ?? storedInvitations;
+  // Keep the inbox mounted to show a last-seat-gone notice after its row disappears.
+  const [showInvitations, setShowInvitations] = useState(invitations.length > 0);
+  if (invitations.length > 0 && !showInvitations) setShowInvitations(true);
   const guest = Boolean(user?.guest);
   const lobby = useLobbyStore((state) => state.lobby);
   const setLobby = useLobbyStore((state) => state.setLobby);
   const setStats = useLobbyStore((state) => state.setStats);
   const router = useRouter();
-  const params = useLocalSearchParams<{ fixture?: string }>();
-  const fixture = __DEV__ ? params.fixture : undefined;
   const [accountSheetReason, setAccountSheetReason] = useState<AuthSheetReason | null>(null);
   const [identity, setIdentity] = useState<ProfileIdentity | null>(null);
   const [lobbyCountState, setLobbyCountState] = useState<LobbyCountState>('loading');
@@ -270,7 +278,14 @@ export default function HomeScreen() {
               compactLandscape && !guest && { paddingRight: pillClearance.right },
             ]}>
             {topBar}
-            {compactLandscape ? (
+            {showInvitations ? (
+              <ScrollView
+                style={styles.invitationScroll}
+                contentContainerStyle={styles.invitationContent}>
+                <SeatInvitations fixture={fixtureInvitations} />
+                {actions}
+              </ScrollView>
+            ) : compactLandscape ? (
               <View style={styles.bodyLandscape}>
                 {logoStage}
                 {actions}
@@ -307,6 +322,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  invitationScroll: { flex: 1, width: '100%', maxWidth: 794 },
+  invitationContent: { gap: PidroSpacing.md, paddingBottom: PidroSpacing.md },
   scrim: { flex: 1, backgroundColor: PidroColors.screenScrim },
   safe: { flex: 1 },
   main: {

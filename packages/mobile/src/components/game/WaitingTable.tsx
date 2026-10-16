@@ -9,7 +9,11 @@ import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { PidroText } from '@/components/ui/PidroText';
 import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
-import { availableMoveTargets, seatDisplayName } from '@/features/invites/hostControls';
+import {
+  availableMoveTargets,
+  firstUnfilledSeat,
+  seatDisplayName,
+} from '@/features/invites/hostControls';
 import { t, useTranslation } from '@/i18n';
 import { localizedError } from '@pidro/shared';
 import type { Position, Room } from '@/types/lobby';
@@ -33,6 +37,7 @@ interface SeatInfo {
   isBot: boolean;
   occupied: boolean;
   avatarUrl: string | null;
+  held: boolean;
 }
 
 function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
@@ -46,18 +51,23 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
   return POSITIONS.map((absolute, absoluteIndex) => {
     const playerId = positions?.[absolute] ?? null;
     const seat = playerId ? seatByPlayerId.get(playerId) : undefined;
+    const held = !playerId
+      ? room.seats?.find((seat) => seat.position === absolute)?.held_for
+      : null;
     const isBot = !!seat?.player?.is_bot;
     return {
       absolute,
       rel: relatives[(absoluteIndex - youIdx + 4) % 4],
       name:
+        held?.display_name ||
         seatDisplayName(seat?.player) ||
         t(isBot ? 'game.bot' : playerId ? 'game.player' : 'game.open_seat'),
       playerId,
       isYou: !!playerId && playerId === youPlayerId,
       isBot,
       occupied: !!playerId,
-      avatarUrl: seat?.player?.avatar_url ?? null,
+      avatarUrl: held?.avatar_url ?? seat?.player?.avatar_url ?? null,
+      held: !!held,
     };
   });
 }
@@ -76,12 +86,21 @@ function SeatPlate({
   compact: boolean;
 }) {
   useTranslation();
-  const status = t(seat.occupied ? (ready ? 'game.ready' : 'game.not_ready') : 'game.available');
+  const status = t(
+    seat.held
+      ? 'seat_friend.invited'
+      : seat.occupied
+        ? ready
+          ? 'game.ready'
+          : 'game.not_ready'
+        : 'game.available'
+  );
   const identity = (
     <View style={styles.identity}>
       <View>
-        <View style={[styles.avatar, compact && styles.avatarCompact]}>
-          {seat.occupied ? (
+        <View
+          style={[styles.avatar, compact && styles.avatarCompact, seat.held && { opacity: 0.55 }]}>
+          {seat.occupied || seat.held ? (
             <PlayerAvatar key={seat.playerId} uri={seat.avatarUrl} size={compact ? 48 : 64} />
           ) : (
             <Feather name="user-plus" size={28} color={PidroColors.textSoft} />
@@ -190,6 +209,7 @@ export function WaitingTable({
   const canManageTable = canManage && !isSpectator;
   const seats = buildSeats(room, isSpectator ? '' : youPlayerId);
   const openSeats = seats.filter((seat) => !seat.occupied).length;
+  const botSeat = seats.find((seat) => !seat.occupied && !seat.held);
   const youPosition = isSpectator
     ? null
     : (POSITIONS.find((position) => room.positions?.[position] === youPlayerId) ?? null);
@@ -266,7 +286,7 @@ export function WaitingTable({
             testID="waiting-rules-menu"
             onPress={rules.show}
           />
-          {canManageTable && openSeats > 0 && (
+          {canManageTable && firstUnfilledSeat(room) && (
             <BevelButton
               accessibilityLabel={t('table.invite')}
               material="glass"
@@ -377,17 +397,14 @@ export function WaitingTable({
                     : t('game.ready_count', { count: readyPlayers.length })}
               </PidroText>
             </View>
-            {canManageTable && openSeats > 0 && onSeatBot && (
+            {canManageTable && botSeat && onSeatBot && (
               <BevelButton
                 testID="waiting-seat-bot"
                 label={t('table.seatBot')}
                 material="glass"
                 fullWidth
                 disabled={controlsBusy}
-                onPress={() => {
-                  const open = seats.find((seat) => !seat.occupied);
-                  if (open) onSeatBot(open.absolute);
-                }}
+                onPress={() => onSeatBot(botSeat.absolute)}
               />
             )}
             {!isSpectator && openSeats === 0 && onReady && (

@@ -80,7 +80,7 @@ export const RoomCard = memo(function RoomCard({
         {row.seats.map((seat, index) => {
           const content = (
             <>
-              <View>
+              <View style={seat.kind === 'held' && styles.lockedChair}>
                 {seat.kind === 'open' || seat.kind === 'sub' ? (
                   <View style={seat.requirementReason ? styles.lockedChair : undefined}>
                     <OpenChair size={44} substitute={seat.kind === 'sub'} />
@@ -106,6 +106,11 @@ export const RoomCard = memo(function RoomCard({
                 ]}>
                 {seat.name}
               </PidroText>
+              {seat.kind === 'held' ? (
+                <PidroText role="metadata" tone="soft">
+                  {t('seat_friend.invited')}
+                </PidroText>
+              ) : null}
             </>
           );
           return (
