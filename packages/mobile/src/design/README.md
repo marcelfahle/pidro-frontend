@@ -46,7 +46,8 @@ white labels). All values live in `PidroBevel` in `tokens.ts` — never inline t
   form** — hide the logo, keep the fields comfortable.
 - **Clearances are derived, never hardcoded.** A floating element (the tab pill) owns a
   hook that computes the space screens must leave from safe-area insets + its own
-  geometry (`usePillClearance`). Web previews have zero insets — a clearance tuned
+  geometry (`usePillClearance`, which also covers the floating update notice while it
+  shows). Web previews have zero insets — a clearance tuned
   there WILL overlap on device.
 - **Layered centering.** HUD chips (identity, rating) float as overlays; the world
   (logo) centers against the full height; an action stack centers within the zone

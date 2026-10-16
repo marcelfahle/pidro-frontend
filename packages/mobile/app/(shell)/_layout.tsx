@@ -5,14 +5,20 @@
  * shell full-screen, so the pill never competes with the table.
  */
 import { Slot, useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
-import { SafeAreaInsetsContext, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
-import { TabPill, usePillClearance, type ShellTab } from '@/components/shell/TabPill';
+import {
+  TabPill,
+  UpdateNoticeReach,
+  usePillClearance,
+  type ShellTab,
+} from '@/components/shell/TabPill';
 import { UpdateNotice } from '@/components/shell/UpdateNotice';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
-import { PidroColors } from '@/design/tokens';
+import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { gameRoute } from '@/navigation/gameRoute';
@@ -68,6 +74,9 @@ function Shell({
   const waitingGame = rejoinable.length > 0 ? rejoinable[0] : null;
   const insets = useSafeAreaInsets();
   const pillClearance = usePillClearance();
+  // The notice floats just above the bottom pill, or above the safe area beside the rail.
+  const noticeBottom = Math.max(guest ? 0 : pillClearance.bottom, insets.bottom + PidroSpacing.xs);
+  const [noticeHeight, setNoticeHeight] = useState(0);
   const update = useAppUpdate({
     // The game pushes over the shell; never offer a restart from under the table.
     inGame: pathname.startsWith('/game'),
@@ -90,16 +99,9 @@ function Shell({
 
   return (
     <View style={styles.root}>
-      {update.visible ? (
-        <UpdateNotice
-          restarting={update.restarting}
-          onRestart={update.restart}
-          onDismiss={update.dismiss}
-          rightClearance={guest ? 0 : pillClearance.right}
-        />
-      ) : null}
-      {/* The notice takes the top inset, so the screen below it must not add it again. */}
-      <SafeAreaInsetsContext.Provider value={update.visible ? { ...insets, top: 0 } : insets}>
+      {/* The notice floats over the screen; screens only learn how far up it reaches. */}
+      <UpdateNoticeReach.Provider
+        value={update.visible && noticeHeight > 0 ? noticeBottom + noticeHeight : 0}>
         {/* 160ms opacity-only cross-fade on tab switch: cheap on old GPUs,
             skipped under Reduce Motion. The pill stays outside the fade. */}
         <Animated.View
@@ -108,7 +110,17 @@ function Shell({
           entering={reduceMotion ? undefined : FadeIn.duration(140)}>
           <Slot />
         </Animated.View>
-      </SafeAreaInsetsContext.Provider>
+      </UpdateNoticeReach.Provider>
+      {update.visible ? (
+        <UpdateNotice
+          restarting={update.restarting}
+          onRestart={update.restart}
+          onDismiss={update.dismiss}
+          bottom={noticeBottom}
+          rightClearance={guest ? 0 : pillClearance.right}
+          onHeight={setNoticeHeight}
+        />
+      ) : null}
       {!guest ? (
         <TabPill
           orientation={landscape ? 'rail' : 'bottom'}
