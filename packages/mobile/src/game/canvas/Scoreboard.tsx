@@ -30,6 +30,7 @@ import { isStillCapture } from '@/utils/stillCapture';
 import type { TablePace } from '@pidro/shared';
 import { handLogEntries, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
+import { SCORE_COUNT } from './HandResult';
 import { HandLogWindow } from './HandLogWindow';
 import { TableUtilityWindow } from './TableUtilityWindow';
 import { formatNumber, useTranslation } from '@/i18n';
@@ -89,6 +90,65 @@ function useScoreGlow(key: string | null) {
   return useAnimatedStyle(() => ({ opacity: t.value }));
 }
 
+/**
+ * What a team's score just moved by, beside its figure while a hand's result
+ * shows (PID-236), counting up as the point cards land.
+ */
+function ScoreDelta({ value, side }: { value: number; side: PointsSide }) {
+  const reduceMotion = useReducedMotion();
+  const instant = reduceMotion || isStillCapture();
+  const [shown, setShown] = useState<number | null>(instant ? value : null);
+  useEffect(() => {
+    if (instant) return;
+    const start = Date.now() + SCORE_COUNT.delayMs;
+    const id = setInterval(() => {
+      const progress = (Date.now() - start) / SCORE_COUNT.ms;
+      if (progress < 0) return;
+      setShown(Math.round(value * Math.min(1, progress)));
+      if (progress >= 1) clearInterval(id);
+    }, 40);
+    return () => clearInterval(id);
+  }, [instant, value]);
+  if (shown == null || value === 0) return null;
+  const tone = value < 0 ? 'down' : side;
+  return (
+    <View
+      testID={`score-delta-${side}`}
+      style={[
+        styles.delta,
+        tone === 'ours' ? gradientBg(PidroBevel.goldRimGradient) : DELTA_TONE[tone].face,
+      ]}>
+      <PidroText
+        role="metadata"
+        style={[styles.deltaText, { color: DELTA_TONE[tone].ink }]}
+        maxFontSizeMultiplier={1}>
+        {`${value < 0 ? '−' : '+'}${formatNumber(Math.abs(shown))}`}
+      </PidroText>
+    </View>
+  );
+}
+
+const DELTA_TONE = {
+  ours: { face: null, ink: PidroBevel.keyline },
+  theirs: { face: { backgroundColor: PidroColors.theirPidro }, ink: PidroColors.theirPidroInk },
+  neutral: {
+    face: {
+      backgroundColor: PidroColors.trickChipBg,
+      borderWidth: 1,
+      borderColor: PidroColors.cyanBorderStrong,
+    },
+    ink: PidroColors.text,
+  },
+  down: {
+    face: {
+      backgroundColor: PidroColors.scoreDownBg,
+      borderWidth: 1,
+      borderColor: PidroColors.scoreDownEdge,
+    },
+    ink: PidroColors.theirScore,
+  },
+} as const;
+
 function teams(scores: Scores, you: Position | null) {
   const ns = scores?.north_south ?? 0;
   const ew = scores?.east_west ?? 0;
@@ -127,6 +187,7 @@ export function Scoreboard({
   restingOnly = false,
   help = null,
   glow = null,
+  delta = null,
 }: {
   scores: Scores;
   youPosition: Position | null;
@@ -151,11 +212,16 @@ export function Scoreboard({
   help?: ReactNode;
   /** The columns a trick's points just landed in. */
   glow?: ScoreGlow | null;
+  /** What the hand just scored moved each team's score by (`delta` of `last_hand`). */
+  delta?: ConcreteScores | null;
 }) {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const { us, them } = teams(scores, youPosition);
+  const moved = delta ? teams(delta, youPosition) : null;
+  const usSide: PointsSide = youPosition ? 'ours' : 'neutral';
+  const themSide: PointsSide = youPosition ? 'theirs' : 'neutral';
   const usLabel = youPosition ? t('game.us').toLocaleUpperCase() : t('game.ns_short');
   const themLabel = youPosition ? t('game.them').toLocaleUpperCase() : t('game.ew_short');
   const glowStyle = useScoreGlow(glow?.key ?? null);
@@ -248,6 +314,7 @@ export function Scoreboard({
               {formatNumber(us)}
             </PidroText>
           </View>
+          {moved ? <ScoreDelta value={moved.us} side={usSide} /> : null}
           <View style={styles.divider} />
           <View style={styles.col}>
             {glowLight('them')}
@@ -258,6 +325,7 @@ export function Scoreboard({
               {formatNumber(them)}
             </PidroText>
           </View>
+          {moved ? <ScoreDelta value={moved.them} side={themSide} /> : null}
           <Icon name="chevron-down" size={14} color={PidroColors.goldLight} />
         </View>
       </PressableFX>
@@ -372,6 +440,14 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: VALUE_LINE,
   },
+  delta: {
+    height: 20,
+    paddingHorizontal: 6,
+    marginLeft: -PidroSpacing.xxs,
+    borderRadius: PidroRadii.full,
+    justifyContent: 'center',
+  },
+  deltaText: { fontWeight: '900', fontSize: 12, lineHeight: 16, letterSpacing: 0 },
   divider: {
     width: 1,
     alignSelf: 'stretch',

@@ -46,6 +46,7 @@ import { LastTrick, type LastTrickView } from './LastTrick';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals, scoreGlow, tablePidro } from './TableSignals';
+import { HandResultPanel, useHandResult, viewerOf } from './HandResult';
 import { computeLayout, showsTicker, tickerPlacement, trumpPicker } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
@@ -198,6 +199,7 @@ function TimedSeatLayer({
   statusByRel,
   players,
   onProfile,
+  quiet,
 }: {
   seats: TableModel['seats'];
   dealerRel: RelativePosition | null;
@@ -207,6 +209,7 @@ function TimedSeatLayer({
   statusByRel: Partial<Record<RelativePosition, SeatLine | null>> | undefined;
   players: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'];
   onProfile: (playerId: string) => void;
+  quiet: boolean;
 }) {
   const turnTimer = useGameStore((state) => state.turnTimer);
   const timerProgress = useTurnTimerProgress(turnTimer);
@@ -231,6 +234,7 @@ function TimedSeatLayer({
       bottomReserve={bottomReserve}
       statusByRel={statusByRel}
       turnByRel={turnByRel}
+      quiet={quiet}
       onProfile={Object.fromEntries(
         players
           .filter(canViewPlayer)
@@ -286,6 +290,12 @@ export function GameCanvasTable({
   const { width, height } = useWindowDimensions();
   const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
   const pace = useSettingsStore((state) => state.pace);
+  // A hand scored while watching dims the table until its result closes.
+  const handResult = useHandResult(
+    controller.serverState ? (controller.serverState.last_hand ?? null) : undefined,
+    viewerOf(model.seats),
+    pace
+  );
 
   const {
     trumpSuit,
@@ -434,6 +444,7 @@ export function GameCanvasTable({
         statusByRel={statusByRel}
         players={viewModel?.players ?? []}
         onProfile={setProfilePlayerId}
+        quiet={handResult.result != null}
       />
       <TableSignals
         model={model}
@@ -443,6 +454,15 @@ export function GameCanvasTable({
       />
 
       <TableChromeBars reserves={reserves} />
+      {handResult.result ? (
+        <HandResultPanel
+          result={handResult.result}
+          seats={model.seats}
+          onClose={handResult.close}
+          topReserve={topReserve}
+          bottomReserve={bottomReserve}
+        />
+      ) : null}
       <View
         pointerEvents="none"
         style={{
@@ -497,6 +517,7 @@ export function GameCanvasTable({
           restingOnly={!fullTicker}
           help={lastTrickView ? <LastTrick trick={lastTrickView} yourTurn={isYourTurn} /> : null}
           glow={scoreGlow(model.lastTrick, model.seats, trickKey)}
+          delta={handResult.result?.hand.delta ?? null}
           yourTurn={
             isYourTurn && (controller.phase === 'bidding' || controller.phase === 'playing')
           }
@@ -550,7 +571,7 @@ export function GameCanvasTable({
       {/* Bidding floats from the bottom; trump is picked in the felt. */}
       <BiddingActions
         isYourTurn={isYourTurn}
-        isHandReady={isHandReady}
+        isHandReady={isHandReady && !handResult.result}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
       />

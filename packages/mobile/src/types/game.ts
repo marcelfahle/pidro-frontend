@@ -12,6 +12,8 @@ export type {
   ServerTrickDetails,
   ServerTwoOfTrump,
   ServerLastHand,
+  ServerHandSummary,
+  ServerPointCard,
   ServerBid,
   TeamKey,
   ServerGameState,

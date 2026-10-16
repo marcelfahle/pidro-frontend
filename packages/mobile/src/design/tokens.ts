@@ -58,6 +58,21 @@ export const PidroColors = {
   // Their Pidro (PID-230): coral, so the other side's five never reads as ours.
   theirPidro: '#ffb4b9',
   theirPidroSoft: 'rgba(255, 180, 185, 0.32)',
+  // The end of a hand (PID-236): the table dims under one panel, each team's
+  // point cards in its own tray, gold edge ours and coral theirs.
+  handScrim: 'rgba(2, 14, 28, 0.62)',
+  trayOurs: 'rgba(10, 35, 64, 0.9)',
+  trayOursEdge: 'rgba(226, 175, 69, 0.8)',
+  trayTheirs: 'rgba(40, 16, 30, 0.82)',
+  trayTheirsEdge: 'rgba(255, 180, 185, 0.7)',
+  theirPidroInk: '#3a1520',
+  theirScore: '#ffd9dc',
+  scoreDownBg: 'rgba(255, 180, 185, 0.18)',
+  scoreDownEdge: 'rgba(255, 180, 185, 0.6)',
+  suitRedOnFelt: '#ff6f7d',
+  pointCardShadow: '0px 3px 8px rgba(0,0,0,0.45)',
+  pointCardFiveShadow:
+    '0px 0px 0px 2px #FFD447, 0px 0px 14px rgba(255,212,71,0.6), 0px 3px 8px rgba(0,0,0,0.45)',
   // The table seen from above on Tables and New table: an open chair, a chosen seat.
   chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
   chairSubBorder: 'rgba(255, 184, 107, 0.85)',

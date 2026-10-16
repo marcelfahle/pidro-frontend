@@ -142,6 +142,9 @@ export const en = {
   "game.team_made": "%{team} made their bid",
   "game.team_set": "%{team} missed their bid",
   "game.bid_took": "Bid %{bid} · won %{captured}",
+  "game.made_it": "Made it",
+  "game.missed_by": "Missed by %{n}",
+  "game.took_their_pidro": "%{name} took their Pidro",
   "game.result_accessibility":
     "%{headline}. Bid %{bid}, won %{captured}. %{usLabel} %{us}, %{themLabel} %{them}. Tap to close.",
   "game.reconnecting": "Reconnecting…",
@@ -367,6 +370,9 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "game.team_made": "%{team} klarade budet",
   "game.team_set": "%{team} gick bet",
   "game.bid_took": "Bud %{bid} · tog %{captured}",
+  "game.made_it": "Klarade det",
+  "game.missed_by": "Bet med %{n}",
+  "game.took_their_pidro": "%{name} tog deras Pidro",
   "game.result_accessibility":
     "%{headline}. Bud %{bid}, tog %{captured}. %{usLabel} %{us}, %{themLabel} %{them}. Tryck för att stänga.",
   "game.reconnecting": "Återansluter…",
