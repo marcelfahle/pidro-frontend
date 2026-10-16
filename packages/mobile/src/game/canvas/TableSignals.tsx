@@ -1,9 +1,9 @@
 /**
  * What just happened at the table, in the server's words: a "+N" where a
  * trick was taken (a trick holding a five is a "Pidro!", gold when ours and
- * coral when theirs) and how the last hand scored, before the next deal. The server
- * decides who wins and what anything is worth; this only shows it. Only what
- * matters gets fanfare: a trick worth nothing passes quietly.
+ * coral when theirs) and how the last hand scored, before the next deal. The
+ * server decides who wins and what anything is worth; this only shows it. Only
+ * what matters gets fanfare: a trick worth nothing passes quietly.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
