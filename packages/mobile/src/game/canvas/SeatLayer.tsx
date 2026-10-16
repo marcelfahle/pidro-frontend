@@ -28,7 +28,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
-import { avatarLabel, avatarParts } from '@/features/avatar';
+import { avatarLabel, avatarParts, textFits } from '@/features/avatar';
 import { seatLine, type SeatLine } from '@/features/game/seatLine';
 import { getCardImage } from '@/utils/cardImages';
 import type { Card } from '@/types/game';
@@ -134,6 +134,9 @@ export function SeatLayer({
   const size = tight ? TIGHT_AVATAR : AVATAR_SIZE[L.profile];
   const tablet = L.profile.startsWith('tablet');
   const parts = avatarParts(size);
+  // Where your landscape line would run into the hand, your seat says its
+  // short line instead, as your tight seat does.
+  const besideStatus = avatarParts(size, { beside: true }).status.fontSize;
   // Portrait names sit in a fixed column so a long one truncates instead of
   // pushing the seat off its axis. North and south have the table's width to
   // themselves; east and west get what North's column leaves them, their
@@ -171,7 +174,8 @@ export function SeatLayer({
   const besideName = !portrait || tight;
   const dealerSide = (rel: RelativePosition): 'left' | 'right' =>
     rel === 'west' || (besideName && rel === 'north') ? 'right' : 'left';
-  // Tight North's avatar stays on the table's axis, its name running right.
+  // Tight North's avatar stays on the table's axis, its name running right;
+  // East and West run toward each other, each up to the middle.
   const tightNorthLeft = width / 2 - size / 2;
   const seatWidth = (rel: RelativePosition) =>
     tight
@@ -179,7 +183,7 @@ export function SeatLayer({
           maxWidth:
             rel === 'north'
               ? width - insets.right - PidroSpacing.sm - tightNorthLeft
-              : sideColumn + PidroSpacing.lg,
+              : (width - insets.left - insets.right) / 2 - PidroSpacing.xs * 2,
           gap: PidroSpacing.xs,
         }
       : portrait
@@ -259,6 +263,13 @@ export function SeatLayer({
                 name: null,
                 status: line?.short ?? null,
                 accessibilityLabel: avatarLabel({ ...seat, level: null, pin: null }),
+              })}
+            {...(!portrait &&
+              rel === 'south' &&
+              line &&
+              !textFits(line.text, besideStatus, reach('south')) && {
+                status: line.short ?? null,
+                accessibilityLabel: avatarLabel(seat),
               })}
           />
         );

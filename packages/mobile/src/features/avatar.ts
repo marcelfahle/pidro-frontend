@@ -124,8 +124,12 @@ export function avatarParts(size: number, { beside = false } = {}): AvatarParts 
 
 const LARGE_NAME = { fontSize: 16, lineHeight: 20 };
 const SMALL_NAME = { fontSize: 13, lineHeight: 16 };
-/** A Nunito 800 name's narrowest likely advance per character, in ems. */
-const NAME_ADVANCE = 0.5;
+/** A Nunito label's narrowest likely advance per character, in ems. */
+const LABEL_ADVANCE = 0.5;
+
+/** Whether a seat label fits `room` at `fontSize`; never says no to one that does. */
+export const textFits = (text: string, fontSize: number, room: number) =>
+  text.length * LABEL_ADVANCE * fontSize <= room;
 
 /**
  * A name too long for `room` at the large type drops one step, to the phone
@@ -136,7 +140,7 @@ export function nameType(
   name: string | null | undefined,
   room: number | undefined
 ): AvatarParts['name'] {
-  const long = !!name && room != null && name.length * NAME_ADVANCE * type.fontSize > room;
+  const long = !!name && room != null && !textFits(name, type.fontSize, room);
   return long && type.fontSize > SMALL_NAME.fontSize ? SMALL_NAME : type;
 }
 
