@@ -1,0 +1,93 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+.tile{position:relative;box-sizing:border-box;height:150px;border-radius:12px;overflow:hidden;border:1px solid rgba(184,225,246,0.22);background:radial-gradient(ellipse at 50% 40%,#1b6aa4 0%,#0d5087 55%,#083a66 100%)}
+.tile.dim::after{content:"";position:absolute;inset:0;background:rgba(2,14,28,0.45)}
+.mc{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;border-radius:5px;background:#fbfbf7;border:1px solid rgba(0,0,0,0.25);box-shadow:0px 3px 8px rgba(0,0,0,0.45);font-family:"Bree Serif",serif;color:#c3172f;line-height:1;z-index:1}
+.mc.hero{box-shadow:0px 0px 0px 2px #FFD447,0px 0px 18px rgba(255,212,71,0.85)}
+.t{font-family:"Nunito",sans-serif;font-weight:900;font-size:13px;font-variant-numeric:tabular-nums;color:#FFD447;margin:0}
+.lanelabel{font-family:"Nunito",sans-serif;font-weight:900;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#8beaff;margin:0;padding-top:2px}
+.cell{font-family:"Nunito",sans-serif;font-weight:600;font-size:13px;line-height:18px;color:rgba(239,249,255,0.86);margin:0}
+.cell b{font-weight:800;color:#ffffff}
+.hr{grid-column:1 / -1;height:1px;background:rgba(184,225,246,0.18)}
+.rule{box-sizing:border-box;display:flex;flex-direction:column;gap:4px;padding:12px 14px;border-radius:10px;background:rgba(18,74,119,0.58);border:1px solid rgba(184,225,246,0.22)}
+</style>
+</head><body>
+
+<div style="width: 1240px; height: 700px; box-sizing: border-box; padding: 40px; background: #07264c; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: grid; grid-template-columns: 110px repeat(6, minmax(0, 1fr)); column-gap: 16px; row-gap: 14px">
+<span></span>
+<p class="t">0.00 s</p>
+<p class="t">0.15 s</p>
+<p class="t">0.95 s</p>
+<p class="t">1.05 s</p>
+<p class="t">1.50 s</p>
+<p class="t">2.55 s → idle</p>
+
+<p class="lanelabel">Picture</p>
+<div class="tile dim" role="img" aria-label="The last card lands on the trick">
+<span class="mc" style="left: 54px; top: 46px; width: 40px; height: 58px; padding: 4px; transform: rotate(-8deg)"><span style="font-size: 14px">A<br><span style="font-size: 10px">♥</span></span></span>
+<span class="mc" style="left: 80px; top: 30px; width: 40px; height: 58px; padding: 4px; transform: rotate(5deg)"><span style="font-size: 14px">2<br><span style="font-size: 10px">♥</span></span></span>
+<span class="mc hero" style="left: 70px; top: 60px; width: 40px; height: 58px; padding: 4px"><span style="font-size: 14px">5<br><span style="font-size: 10px">♥</span></span></span>
+</div>
+<div class="tile" role="img" aria-label="The winning card rises and the rays start turning">
+<span aria-hidden="true" style="position: absolute; left: -40px; top: -60px; width: 260px; height: 260px; border-radius: 999px; background: repeating-conic-gradient(from 0deg, rgba(255,212,71,0.2) 0deg 5deg, rgba(255,212,71,0) 5deg 15deg); -webkit-mask-image: radial-gradient(circle, #000 0%, transparent 60%); mask-image: radial-gradient(circle, #000 0%, transparent 60%)"></span>
+<span class="mc hero" style="left: 58px; top: 22px; width: 64px; height: 92px; padding: 6px; transform: rotate(-6deg)"><span style="font-size: 20px">5<br><span style="font-size: 14px">♥</span></span></span>
+</div>
+<div class="tile" role="img" aria-label="The title appears">
+<span class="mc hero" style="left: 70px; top: 10px; width: 40px; height: 58px; padding: 4px; transform: rotate(-6deg)"><span style="font-size: 14px">5<br><span style="font-size: 10px">♥</span></span></span>
+<p class="display" style="position: absolute; left: 0; right: 0; top: 84px; text-align: center; font-size: 19px; line-height: 22px">You and Nora win</p>
+</div>
+<div class="tile" role="img" aria-label="62 slams down">
+<p style="position: absolute; left: 0; right: 0; top: 22px; margin: 0; text-align: center; font-family: 'Bree Serif', serif; font-size: 78px; line-height: 90px; color: #FFD447; text-shadow: 0px 3px 0px #4E2509, 0px 0px 20px rgba(255,212,71,0.6)">62</p>
+</div>
+<div class="tile" role="img" aria-label="The race line draws hand by hand">
+<svg width="160" height="80" viewBox="0 0 358 86" aria-hidden="true" style="position: absolute; left: 12px; top: 36px"><polyline points="8,78 42.2,67.8 76.4,63.3 110.6,73.5 144.8,66.7 179,54.3 213.2,53.2 247.4,39.6 281.6,31.7 315.8,45.3 350,45.3" fill="none" stroke="#ffb4b9" stroke-width="5" stroke-linejoin="round" opacity="0.8"></polyline><polyline points="8,78 42.2,72.4 76.4,61.1 110.6,52 144.8,43 179,39.6 213.2,24.9 247.4,22.7 281.6,31.7" fill="none" stroke="#FFD447" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"></polyline></svg>
+</div>
+<div class="tile" role="img" aria-label="Star at 62, chips and suits fall, Rematch glows">
+<span class="cf" aria-hidden="true" style="position: absolute; left: 24px; top: 16px; color: #FFD447; font-size: 14px">♥</span>
+<span aria-hidden="true" style="position: absolute; left: 140px; top: 30px; color: #ffffff; font-size: 12px">♠</span>
+<span aria-hidden="true" style="position: absolute; left: 96px; top: 8px; color: #ff8a91; font-size: 12px">♦</span>
+<span class="wood" style="position: absolute; left: 16px; right: 16px; bottom: 16px; height: 44px; box-shadow: 0px 0px 22px rgba(255,212,71,0.6)"><span class="face" style="font-size: 16px">Rematch</span></span>
+</div>
+
+<span class="hr"></span>
+<p class="lanelabel">What happens</p>
+<p class="cell">The last card lands. The table <b>dims</b> to 45%, seats fade.</p>
+<p class="cell">The card that finished it <b>rises out of the trick</b>, tilts, its foil sweeps. Rays begin to turn, 60 s a lap.</p>
+<p class="cell"><b>"You and Nora win"</b> fades up. Partners, never "You win".</p>
+<p class="cell">The score counts 48 → 62 and <b>slams</b> with overshoot. Ours in foil, theirs plain.</p>
+<p class="cell">The race line <b>draws hand by hand</b>. The 41–41 dot stays lit.</p>
+<p class="cell">Star pops at 62. Chips rise, suits fall. <b>Rematch breathes</b> until someone taps.</p>
+
+<span class="hr"></span>
+<p class="lanelabel">Sound</p>
+<p class="cell">Card snap, heavier than a normal play.</p>
+<p class="cell">One quick riffle, rising.</p>
+<p class="cell">Nothing. Let it land.</p>
+<p class="cell">One low brass note.</p>
+<p class="cell">A soft tick per hand, rising in pitch.</p>
+<p class="cell">Quiet. Table room tone only.</p>
+
+<span class="hr"></span>
+<p class="lanelabel">Haptic</p>
+<p class="cell">Rigid tap.</p>
+<p class="cell">None. Let it build.</p>
+<p class="cell">None.</p>
+<p class="cell">Success, then one heavy.</p>
+<p class="cell">Selection tick per hand, 10 total.</p>
+<p class="cell">None.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-top: auto">
+<div class="rule"><span class="label">Tap skips</span><span class="meta">A tap anywhere jumps to the idle state. Rematch and Share work from 0.3 s.</span></div>
+<div class="rule"><span class="label">Reduce Motion</span><span class="meta">Idle state at once, no rays or suits, one success haptic.</span></div>
+<div class="rule"><span class="label">Sound obeys silent</span><span class="meta">The ring/silent switch and the app's sound setting both mute it.</span></div>
+<div class="rule"><span class="label">A loss is quieter</span><span class="meta">No rays, suits or brass. Your best hand comes first, then Get them back.</span></div>
+</div>
+</div>
+
+</body></html>

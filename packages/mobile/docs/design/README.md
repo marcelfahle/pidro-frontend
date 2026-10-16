@@ -1,6 +1,6 @@
 # Design boards
 
-The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202). The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
+The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202), and the end-of-hand, game-over and share boards were added on 2026-10-16. The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
 
 - `boards/<Name>.png`: what it should look like. Phone boards are at 2×, wide boards at 1×.
 - `source/<Name>.html`: the same board as plain HTML and CSS. Open it in a browser, or read it for exact sizes, offsets and colours. The shared classes are in `source/pidro-ds-v2.css`.
@@ -29,6 +29,10 @@ Initials stand in for photos on the boards. In the app the avatar is the player'
 | `Lobby-Landscape`, `Lobby-iPad-Portrait`, `Lobby-iPad-Landscape` | The same row in two columns (phone landscape, iPad portrait) and three (iPad landscape) | Tables (PID-203) |
 | `Create-Table` | Start a table: rules, then the seats with Open / Bot / Friend; Open flips in place to Anyone / 100+ / 1000+ | Start a table (PID-204, PID-206) |
 | `Create-Seat` | The friend sheet behind Friend on a seat | Start a table (PID-208) |
+| `Hand-Made`, `Hand-Missed`, `Hand-Landscape` | After a hand: the table dims, one panel with the bid result and the point cards each team took; closes by itself | End of hand (PID-236) |
+| `Win-Reveal`, `Lose-Reveal`, `Win-Compact`, `Win-Landscape` | Game over, won and lost, on a phone, a small phone (375×667) and in landscape. iPad uses the phone layouts at 1.25×, centred | Game over (PID-237) |
+| `Win-Beats` | The win beat by beat: picture, sound and haptic, Reduce Motion, the quieter loss | Game over (PID-237) |
+| `Share-Card` | The 1080×1920 story card shared from the win screen | Share the win (PID-238) |
 
 On the boards the gold ring means a paying supporter and the gem means lifetime. Neither exists on the server yet, so until it does every avatar uses the glass ring.
 

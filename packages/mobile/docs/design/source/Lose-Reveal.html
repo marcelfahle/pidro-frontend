@@ -1,0 +1,87 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+.mc{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;width:60px;height:86px;padding:5px 6px;border-radius:7px;background:#fbfbf7;border:1px solid rgba(0,0,0,0.25);box-shadow:0px 4px 10px rgba(0,0,0,0.5);font-family:"Bree Serif",serif;color:#1b1b1b;line-height:1}
+.mc.five{box-shadow:0px 0px 0px 2px #FFD447,0px 0px 14px rgba(255,212,71,0.6),0px 4px 10px rgba(0,0,0,0.5)}
+.chip{box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 8px;border-radius:999px;background:rgba(7,45,82,0.9);border:1px solid rgba(184,225,246,0.3);font-family:"Nunito",sans-serif;font-weight:800;font-size:13px;color:#ffffff;white-space:nowrap}
+.rm{display:flex;align-items:center;justify-content:center;gap:10px}
+.rm .who{display:flex;gap:6px}
+.rm .who>span{position:relative}
+.rm .wait{filter:grayscale(1) brightness(0.6)}
+.rm .ok{position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:999px;background:#92e6b2;box-shadow:0px 0px 0px 2px #0A2340;display:flex;align-items:center;justify-content:center}
+@keyframes up{0%{opacity:0;transform:translateY(14px)}100%{opacity:1;transform:none}}
+@keyframes fan{0%{opacity:0;transform:translateY(20px) rotate(0deg)}100%{opacity:1}}
+@keyframes draw{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
+@keyframes ping{0%{r:4}50%{r:8}100%{r:4}}
+.a-up{animation:up 380ms ease-out both}
+.a-fan{animation:fan 480ms cubic-bezier(.2,1.2,.4,1) both}
+.a-draw{stroke-dasharray:100;animation:draw 1000ms cubic-bezier(.5,0,.2,1) 900ms both}
+.a-ping{animation:ping 1.6s ease-in-out 2s infinite}
+@media (prefers-reduced-motion: reduce){.a-up,.a-fan,.a-draw,.a-ping{animation:none}}
+</style>
+</head><body>
+
+<main class="felt" aria-label="Game over, Bengt and Nora won 62 to 29" style="width: 390px; height: 844px; box-sizing: border-box">
+<div class="scrim" style="background: rgba(2, 14, 28, 0.6)"></div>
+
+<section style="position: absolute; left: 16px; right: 16px; top: 72px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center">
+<p class="eyebrow">Game over · 10 hands</p>
+<h1 class="label a-up" style="font-family: 'Bree Serif', serif; font-weight: 400; font-size: 28px; line-height: 34px; margin-top: 6px">Bengt and Nora win</h1>
+<div style="display: flex; align-items: flex-end; gap: 22px; margin-top: 6px" role="img" aria-label="You 29, them 62">
+<span style="display: flex; flex-direction: column; align-items: center"><span class="eyebrow" style="color: #92e6b2">You and Mikko</span><span style="font-family: 'Bree Serif', serif; font-size: 52px; line-height: 58px; color: #ffffff">29</span></span>
+<span style="display: flex; flex-direction: column; align-items: center"><span class="eyebrow" style="color: #ffb4b9">Them</span><span style="font-family: 'Bree Serif', serif; font-size: 52px; line-height: 58px; color: #ffd9dc">62</span></span>
+</div>
+</section>
+
+<section class="window a-up" aria-label="Your best hand" style="position: absolute; left: 16px; right: 16px; top: 262px; padding: 16px; display: flex; flex-direction: column; gap: 14px; border-color: rgba(226, 175, 69, 0.8); animation-delay: 400ms">
+<div style="display: flex; align-items: center; justify-content: space-between">
+<p class="eyebrow" style="color: #FFD447">Your best hand</p>
+<p class="meta">Hand 7</p>
+</div>
+<div style="display: flex; align-items: center; gap: 16px">
+<div style="position: relative; width: 132px; height: 100px; flex-shrink: 0" role="img" aria-label="A, 5 and 5 of spades and clubs">
+<span class="mc a-fan" style="left: 0; top: 10px; transform: rotate(-12deg); transform-origin: 50% 100%; animation-delay: 500ms"><span style="display: flex; flex-direction: column; align-items: center; width: 14px; font-size: 18px; gap: 1px">A<span style="font-size: 13px">♠</span></span><span style="align-self: center; font-size: 28px; margin-top: -14px">♠</span><span></span></span>
+<span class="mc five a-fan" style="left: 36px; top: 2px; animation-delay: 580ms"><span style="display: flex; flex-direction: column; align-items: center; width: 14px; font-size: 18px; gap: 1px">5<span style="font-size: 13px">♠</span></span><span style="align-self: center; font-size: 28px; margin-top: -14px">♠</span><span></span></span>
+<span class="mc five a-fan" style="left: 72px; top: 10px; transform: rotate(12deg); transform-origin: 50% 100%; animation-delay: 660ms"><span style="display: flex; flex-direction: column; align-items: center; width: 14px; font-size: 18px; gap: 1px">5<span style="font-size: 13px">♣</span></span><span style="align-self: center; font-size: 28px; margin-top: -14px">♣</span><span></span></span>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px">
+<p class="display" style="font-size: 26px; line-height: 30px">Won 12 of 14</p>
+<p class="body" style="font-size: 14px; line-height: 20px">Mikko bid 11 ♠, and you took both Pidros.</p>
+</div>
+</div>
+</section>
+
+<section class="subtle" aria-label="How the game went" style="position: absolute; left: 16px; right: 16px; top: 456px; padding: 10px 12px 8px; background: rgba(5, 30, 58, 0.72)">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<p class="eyebrow">How it went</p>
+<p class="meta" style="color: #ffffff">Level at 41 after hand 8</p>
+</div>
+<svg width="334" height="72" viewBox="0 0 358 86" role="img" aria-label="Score by hand. You drew level at 41 after hand 8." style="display: block; margin-top: 4px">
+<line x1="8" y1="8" x2="350" y2="8" stroke="#E2AF45" stroke-width="1" stroke-dasharray="3 4" opacity="0.5"></line>
+<polyline points="8,78 42.2,72.4 76.4,61.1 110.6,52 144.8,43 179,39.6 213.2,24.9 247.4,22.7 281.6,31.7 315.8,23.8 350,8" fill="none" stroke="#ffb4b9" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.8"></polyline>
+<polyline class="a-draw" pathLength="100" points="8,78 42.2,67.8 76.4,63.3 110.6,73.5 144.8,66.7 179,54.3 213.2,53.2 247.4,39.6 281.6,31.7 315.8,45.3 350,45.3" fill="none" stroke="#FFD447" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"></polyline>
+<circle class="a-ping" cx="281.6" cy="31.7" r="4" fill="#ffffff" stroke="#0A2340" stroke-width="2"></circle>
+<circle cx="247.4" cy="39.6" r="4" fill="#FFD447" stroke="#0A2340" stroke-width="2"></circle>
+</svg>
+</section>
+
+<div class="a-up" style="position: absolute; left: 16px; right: 16px; top: 576px; display: flex; gap: 8px; justify-content: center; animation-delay: 1.6s">
+<span class="chip"><span class="ring" style="width: 22px; height: 22px; padding: 1.5px"><span class="face-initial" style="font-size: 10px">M</span></span>5 games with Mikko</span>
+<span class="chip"><span class="num" style="font-size: 13px; color: #FFD447">+76</span>XP</span>
+</div>
+
+<footer style="position: absolute; left: 16px; right: 16px; bottom: 34px; display: flex; flex-direction: column; gap: 10px">
+<div class="rm" role="status" aria-label="Mikko wants a rematch. Waiting for Bengt and Nora.">
+<span class="who" aria-hidden="true"><span><span class="ring" style="width: 30px; height: 30px; padding: 2px"><span class="face-initial" style="font-size: 13px">M</span></span><span class="ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#0A2340" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span></span><span class="wait"><span class="ring glass-ring" style="width: 30px; height: 30px; padding: 2px"><span class="face-initial" style="font-size: 13px">B</span></span></span><span class="wait"><span class="ring glass-ring" style="width: 30px; height: 30px; padding: 2px"><span class="face-initial" style="font-size: 13px">N</span></span></span></span>
+<span style="display: flex; flex-direction: column"><span class="label" style="font-size: 15px; line-height: 20px">Mikko wants a rematch</span><span class="meta">Waiting for Bengt and Nora</span></span>
+</div>
+<div style="display: flex; gap: 10px">
+<a class="wood" href="Lose-Reveal.dc.html" style="flex-grow: 1; height: 62px"><span class="face" style="font-size: 22px">Rematch</span></a>
+<a class="glass" href="Main.dc.html" aria-label="Home" style="width: 62px; height: 62px"><span class="face"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg></span></a>
+</div>
+</footer>
+</main>
+
+</body></html>

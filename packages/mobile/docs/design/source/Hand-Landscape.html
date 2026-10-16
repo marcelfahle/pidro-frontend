@@ -1,0 +1,80 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+.pc{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;width:44px;height:62px;padding:4px 5px;border-radius:6px;background:#fbfbf7;border:1px solid rgba(0,0,0,0.25);box-shadow:0px 3px 8px rgba(0,0,0,0.45);font-family:"Bree Serif",serif;color:#c3172f;line-height:1}
+.pc.blk{color:#1b1b1b}
+.pc .ix{display:flex;flex-direction:column;align-items:center;width:12px;font-size:15px;gap:1px}
+.pc .ix span{font-size:11px}
+.pc .pip{align-self:center;font-size:20px;margin-top:-12px}
+.pc.five{box-shadow:0px 0px 0px 2px #FFD447,0px 0px 14px rgba(255,212,71,0.6),0px 3px 8px rgba(0,0,0,0.45)}
+.pts{position:absolute;right:-8px;top:-9px;box-sizing:border-box;min-width:24px;height:20px;padding:0 5px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-family:"Nunito",sans-serif;font-weight:900;font-size:11px;color:#2A1505;background:linear-gradient(180deg,#F6DE9A 0%,#E2AF45 50%,#C4892A 100%);box-shadow:0px 0px 0px 1.5px #0A2340}
+.pts.them{color:#3a1520;background:#ffb4b9}
+.delta{box-sizing:border-box;display:inline-flex;align-items:center;height:20px;padding:0 6px;border-radius:999px;font-family:"Nunito",sans-serif;font-weight:900;font-size:12px}
+.delta.up{color:#2A1505;background:linear-gradient(180deg,#F6DE9A 0%,#E2AF45 50%,#C4892A 100%)}
+.delta.them{color:#3a1520;background:#ffb4b9}
+.delta.down{color:#ffd9dc;background:rgba(255,180,185,0.18);border:1px solid rgba(255,180,185,0.6)}
+.result{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;gap:2px;padding:12px 10px;border-radius:16px;background:rgba(5,30,58,0.78);border:1.5px solid rgba(184,225,246,0.28);text-align:center}
+.result.won{border-color:#E2AF45;box-shadow:0px 0px 26px rgba(255,212,71,0.32)}
+.next{position:absolute;left:16px;right:16px;bottom:30px;display:flex;flex-direction:column;gap:8px}
+.next .bar{height:4px;border-radius:999px;background:rgba(184,225,246,0.18);overflow:hidden}
+.next .bar span{display:block;height:100%;border-radius:999px;background:#8beaff;transform-origin:0 50%}
+.tc{position:relative;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;width:44px;height:62px;padding:4px 5px;border-radius:6px;background:#fbfbf7;border:1px solid rgba(0,0,0,0.25);box-shadow:0px 3px 8px rgba(0,0,0,0.45);font-family:"Bree Serif",serif;color:#c3172f;line-height:1;flex-shrink:0}
+.tc.blk{color:#1b1b1b}
+.tc .ix{display:flex;flex-direction:column;align-items:center;width:12px;font-size:15px;gap:1px}
+.tc .ix span{font-size:11px}
+.tc .pip{align-self:center;font-size:20px;margin-top:-12px}
+.tc.five{box-shadow:0px 0px 0px 2px #FFD447,0px 0px 14px rgba(255,212,71,0.6),0px 3px 8px rgba(0,0,0,0.45)}
+.tray{box-sizing:border-box;display:flex;align-items:center;gap:12px;padding:12px 14px 10px;border-radius:14px}
+.tray.us{background:rgba(10,35,64,0.9);border:1.5px solid rgba(226,175,69,0.8)}
+.tray.them{background:rgba(40,16,30,0.82);border:1.5px solid rgba(255,180,185,0.7)}
+.tray .who{display:flex;flex-direction:column;align-items:flex-start;width:52px;flex-shrink:0}
+.tray .cards{display:flex;gap:8px;flex-wrap:wrap}
+.quiet{position:absolute;inset:0;opacity:0.3;filter:saturate(0.6)}
+@keyframes stampIn{0%{opacity:0;transform:scale(1.6) rotate(-8deg)}60%{opacity:1;transform:scale(0.95) rotate(-3deg)}100%{opacity:1;transform:scale(1) rotate(-3deg)}}
+@keyframes fly{0%{opacity:0;transform:translate(var(--fx),var(--fy)) scale(0.8)}100%{opacity:1;transform:none}}
+@keyframes pop{0%{opacity:0;transform:scale(0.4)}70%{transform:scale(1.15)}100%{opacity:1;transform:none}}
+@keyframes rise{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}
+@keyframes run{0%{transform:scaleX(0)}100%{transform:scaleX(1)}}
+.a-stamp{animation:stampIn 420ms cubic-bezier(.2,1.4,.4,1) 700ms both}
+.a-fly{animation:fly 460ms cubic-bezier(.2,.9,.3,1.1) both}
+.a-pop{animation:pop 320ms cubic-bezier(.2,1.4,.4,1) both}
+.a-rise{animation:rise 300ms ease-out both}
+.a-run{animation:run var(--dur) linear 600ms both}
+@media (prefers-reduced-motion: reduce){.a-stamp,.a-fly,.a-pop,.a-rise,.a-run{animation:none}}
+</style>
+</head><body>
+
+<main class="felt" aria-label="Hand 6 scored: Bengt bid 9 hearts and made it" style="position: relative; width: 844px; height: 390px; flex-shrink: 0; box-sizing: border-box">
+<div class="scrim" style="background: rgba(2, 14, 28, 0.62)"></div>
+<div class="quiet" aria-hidden="true">
+<div style="position: absolute; left: 394px; top: 14px; display: flex; flex-direction: column; align-items: center"><span class="ring" style="width: 48px; height: 48px; padding: 3px"><span class="face-initial" style="font-size: 20px">N</span></span><p class="sname mate">Nora</p></div>
+<div style="position: absolute; left: 70px; top: 150px; display: flex; flex-direction: column; align-items: center"><span class="ring glass-ring" style="width: 48px; height: 48px; padding: 3px"><span class="face-initial" style="font-size: 20px">K</span></span><p class="sname">Kalle</p></div>
+<div style="position: absolute; right: 70px; top: 150px; display: flex; flex-direction: column; align-items: center"><span class="ring glass-ring" style="width: 48px; height: 48px; padding: 3px"><span class="face-initial" style="font-size: 20px">M</span></span><p class="sname">Mikko</p></div>
+<div style="position: absolute; left: 70px; bottom: 24px; display: flex; flex-direction: column; align-items: center"><span class="ring" style="width: 48px; height: 48px; padding: 3px"><span class="face-initial" style="font-size: 20px">B</span></span><p class="sname">Bengt</p></div>
+</div>
+<div role="group" aria-label="Score, us 47, them 22" style="position: absolute; left: 56px; top: 16px; padding: 1.5px; border-radius: 12px; background: linear-gradient(180deg, #F6DE9A 0%, #E2AF45 35%, #C4892A 65%, #8F5E12 100%); box-shadow: 0px 0px 18px rgba(255,212,71,0.5)">
+<div style="display: flex; align-items: center; gap: 14px; border-radius: 11px; background: #0A2340; padding: 5px 12px 5px 14px">
+<span style="display: flex; flex-direction: column; align-items: center"><span class="eyebrow" style="font-size: 10px; color: #92e6b2">Us</span><span class="num gold" style="font-size: 18px; line-height: 22px">47</span></span>
+<span class="delta up a-pop" style="animation-delay: 1500ms; margin-left: -8px">+13</span>
+<span style="display: flex; flex-direction: column; align-items: center"><span class="eyebrow" style="font-size: 10px">Them</span><span class="num" style="font-size: 18px; line-height: 22px">22</span></span>
+<span class="delta them a-pop" style="animation-delay: 1600ms; margin-left: -8px">+1</span>
+</div>
+</div>
+<section role="status" aria-label="Bengt bid 9 hearts and made it. Us 13, them 1." style="position: absolute; left: 160px; right: 160px; top: 100px; display: flex; flex-direction: column; align-items: center; gap: 12px">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 0; text-align: center">
+<p class="eyebrow">Bengt bid 9 <span style="color: #ff6f7d">♥</span></p>
+<h1 class="display a-stamp" style="font-size: 44px; line-height: 50px">Made it</h1>
+<p class="label" style="font-size: 15px; line-height: 20px">Bid 9 · won 13</p>
+</div>
+<div style="display: flex; gap: 10px; align-items: stretch">
+<div class="tray us"><span class="who"><span class="eyebrow" style="color: #92e6b2">Us</span><span class="num gold" style="font-size: 26px; line-height: 30px;">13</span></span><span class="cards"><span class="tc a-fly" style="--fx: 0px; --fy: -60px; animation-delay: 300ms"><span class="ix">A<span>♥</span></span><span class="pip">♥</span><span></span><span class="pts">+1</span></span><span class="tc a-fly" style="--fx: 0px; --fy: -60px; animation-delay: 360ms"><span class="ix">J<span>♥</span></span><span class="pip">♥</span><span></span><span class="pts">+1</span></span><span class="tc five a-fly" style="--fx: 0px; --fy: -60px; animation-delay: 420ms"><span class="ix">5<span>♥</span></span><span class="pip">♥</span><span></span><span class="pts">+5</span></span><span class="tc five a-fly" style="--fx: 0px; --fy: -60px; animation-delay: 480ms"><span class="ix">5<span>♦</span></span><span class="pip">♦</span><span></span><span class="pts">+5</span></span><span class="tc a-fly" style="--fx: 0px; --fy: -60px; animation-delay: 540ms"><span class="ix">2<span>♥</span></span><span class="pip">♥</span><span></span><span class="pts">+1</span></span></span></div>
+<div class="tray them"><span class="who"><span class="eyebrow" style="color: #ffb4b9">Them</span><span class="num" style="font-size: 26px; line-height: 30px; color: #ffd9dc;">1</span></span><span class="cards"><span class="tc a-fly" style="--fx: 0px; --fy: -60px; animation-delay: 620ms"><span class="ix">10<span>♥</span></span><span class="pip">♥</span><span></span><span class="pts them">+1</span></span></span></div>
+</div>
+</section>
+<div class="next" role="timer" aria-label="Next hand in 3 seconds" style="left: 160px; right: 160px; bottom: 18px">
+<div class="bar"><span class="a-run" style="--dur: 3s"></span></div>
+</div></main>
+
+</body></html>

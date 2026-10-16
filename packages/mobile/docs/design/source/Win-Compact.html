@@ -1,0 +1,115 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+.rays{position:absolute;left:-235px;top:-215px;width:860px;height:860px;border-radius:999px;background:repeating-conic-gradient(from 0deg,rgba(255,212,71,0.17) 0deg 5deg,rgba(255,212,71,0) 5deg 15deg);-webkit-mask-image:radial-gradient(circle,#000 0%,rgba(0,0,0,0.6) 30%,transparent 62%);mask-image:radial-gradient(circle,#000 0%,rgba(0,0,0,0.6) 30%,transparent 62%)}
+.spot{position:absolute;left:15px;top:20px;width:360px;height:360px;border-radius:999px;background:radial-gradient(circle,rgba(255,226,140,0.55) 0%,rgba(255,212,71,0.18) 40%,rgba(255,212,71,0) 70%)}
+.vig{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 30%,rgba(2,14,28,0) 30%,rgba(2,14,28,0.72) 100%)}
+.tcard{position:absolute;box-sizing:border-box;display:flex;flex-direction:column;justify-content:space-between;border-radius:10px;background:#fbfbf7;border:1px solid rgba(0,0,0,0.25);font-family:"Bree Serif",serif;color:#c3172f;line-height:1;overflow:hidden}
+.tcard.hero{box-shadow:0px 0px 0px 3px #FFD447,0px 0px 40px rgba(255,212,71,0.85),0px 18px 36px rgba(0,0,0,0.55)}
+.tcard.side{box-shadow:0px 8px 18px rgba(0,0,0,0.5)}
+.sheen{position:absolute;top:-20%;left:0;width:60%;height:140%;background:linear-gradient(100deg,rgba(255,255,255,0) 0%,rgba(255,250,220,0.85) 45%,rgba(255,215,120,0.5) 55%,rgba(255,255,255,0) 100%);mix-blend-mode:screen;transform:translateX(-160%) skewX(-12deg)}
+.plaque{position:absolute;box-sizing:border-box;display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:999px;background:#0A2340;border:1.5px solid #E2AF45;box-shadow:0px 4px 12px rgba(0,0,0,0.5);font-family:"Nunito",sans-serif;font-weight:900;font-size:13px;color:#FFD447;white-space:nowrap}
+.big62{font-family:"Bree Serif",serif;font-size:104px;line-height:96px;margin:0;background:linear-gradient(180deg,#FFF6CF 0%,#FFD447 38%,#E2AF45 62%,#9C6A1A 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0px 3px 0px #4E2509) drop-shadow(0px 0px 18px rgba(255,212,71,0.55))}
+.chip{box-sizing:border-box;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 12px 0 8px;border-radius:999px;background:rgba(7,45,82,0.9);border:1px solid rgba(226,175,69,0.75);font-family:"Nunito",sans-serif;font-weight:800;font-size:13px;color:#ffffff;white-space:nowrap}
+.cf{position:absolute;top:-30px;font-family:"Bree Serif",serif;line-height:1;pointer-events:none}
+.cf.card{width:9px;height:13px;border-radius:2px;background:#fbfbf7;box-shadow:0px 1px 2px rgba(0,0,0,0.4)}
+.cf.gold{color:#FFD447}.cf.white{color:#ffffff}.cf.coral{color:#ff8a91}.cf.cyan{color:#8beaff}
+.rm{display:flex;align-items:center;justify-content:center;gap:10px}
+.rm .who{display:flex;gap:6px}
+.rm .who>span{position:relative}
+.rm .wait{filter:grayscale(1) brightness(0.6)}
+.rm .ok{position:absolute;right:-3px;bottom:-3px;width:14px;height:14px;border-radius:999px;background:#92e6b2;box-shadow:0px 0px 0px 2px #0A2340;display:flex;align-items:center;justify-content:center}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes heroIn{0%{opacity:0;transform:translateY(120px) rotate(-30deg) scale(0.6)}55%{opacity:1;transform:translateY(-10px) rotate(-3deg) scale(1.08)}100%{opacity:1;transform:rotate(-6deg)}}
+@keyframes sideL{0%{opacity:0;transform:rotate(0deg)}100%{opacity:1;transform:rotate(-20deg)}}
+@keyframes sideR{0%{opacity:0;transform:rotate(0deg)}100%{opacity:1;transform:rotate(10deg)}}
+@keyframes sweep{0%,55%{transform:translateX(-160%) skewX(-12deg)}100%{transform:translateX(260%) skewX(-12deg)}}
+@keyframes slam{0%{opacity:0;transform:scale(2.4)}55%{opacity:1;transform:scale(0.92)}75%{transform:scale(1.04)}100%{opacity:1;transform:none}}
+@keyframes up{0%{opacity:0;transform:translateY(16px)}100%{opacity:1;transform:none}}
+@keyframes draw{0%{stroke-dashoffset:100}100%{stroke-dashoffset:0}}
+@keyframes pop{0%{opacity:0;transform:scale(0)}70%{opacity:1;transform:scale(1.4)}100%{opacity:1;transform:none}}
+@keyframes fall{0%{transform:translateY(0) rotate(0deg)}100%{transform:translateY(900px) rotate(540deg)}}
+@keyframes fill{0%{width:48%}100%{width:52%}}
+@keyframes breathe{0%,100%{box-shadow:0px 8px 16px rgba(0,0,0,0.5),0px 0px 0px rgba(255,212,71,0)}50%{box-shadow:0px 8px 16px rgba(0,0,0,0.5),0px 0px 26px rgba(255,212,71,0.55)}}
+.a-spin{animation:spin 60s linear infinite}
+.a-hero{animation:heroIn 700ms cubic-bezier(.2,1.1,.3,1) 150ms both}
+.a-sideL{animation:sideL 500ms cubic-bezier(.2,1.2,.4,1) 600ms both}
+.a-sideR{animation:sideR 500ms cubic-bezier(.2,1.2,.4,1) 650ms both}
+.a-sweep{animation:sweep 3.4s ease-in-out 1.2s infinite}
+.a-slam{animation:slam 520ms cubic-bezier(.2,1.3,.4,1) 1050ms both}
+.a-up{animation:up 380ms ease-out both}
+.a-draw{stroke-dasharray:100;animation:draw 1100ms cubic-bezier(.5,0,.2,1) 1500ms both}
+.a-pop{transform-box:fill-box;transform-origin:center;animation:pop 360ms cubic-bezier(.2,1.5,.4,1) 2550ms both}
+.a-fall{animation:fall linear infinite}
+.a-fill{animation:fill 900ms ease-out 2600ms both}
+.a-breathe{animation:breathe 2.4s ease-in-out 3.2s infinite}
+@media (prefers-reduced-motion: reduce){.a-spin,.a-hero,.a-sideL,.a-sideR,.a-sweep,.a-slam,.a-up,.a-draw,.a-pop,.a-fall,.a-fill,.a-breathe{animation:none}.cf{display:none}}
+</style>
+</head><body>
+
+<main class="felt" aria-label="Game over, you and Nora won 62 to 29" style="width: 375px; height: 667px; box-sizing: border-box">
+<div aria-hidden="true" style="position: absolute; inset: 0; overflow: hidden">
+<span class="rays a-spin"></span>
+<span class="spot"></span>
+<span class="vig"></span>
+<span class="cf gold a-fall" style="left: 22px; font-size: 18px; animation-duration: 6.5s; animation-delay: 1.2s">♥</span>
+<span class="cf card a-fall" style="left: 58px; animation-duration: 5.2s; animation-delay: 1.5s"></span>
+<span class="cf white a-fall" style="left: 92px; font-size: 14px; animation-duration: 7.4s; animation-delay: 1.1s">♠</span>
+<span class="cf coral a-fall" style="left: 128px; font-size: 16px; animation-duration: 6.1s; animation-delay: 2.3s">♦</span>
+<span class="cf gold a-fall" style="left: 170px; font-size: 12px; animation-duration: 5.6s; animation-delay: 1.3s">♣</span>
+<span class="cf card a-fall" style="left: 206px; animation-duration: 6.8s; animation-delay: 2.0s"></span>
+<span class="cf cyan a-fall" style="left: 240px; font-size: 15px; animation-duration: 5.9s; animation-delay: 1.6s">♠</span>
+<span class="cf gold a-fall" style="left: 276px; font-size: 20px; animation-duration: 7.0s; animation-delay: 1.0s">♥</span>
+<span class="cf white a-fall" style="left: 312px; font-size: 13px; animation-duration: 6.3s; animation-delay: 2.6s">♦</span>
+<span class="cf card a-fall" style="left: 344px; animation-duration: 5.4s; animation-delay: 1.8s"></span>
+<span class="cf coral a-fall" style="left: 364px; font-size: 14px; animation-duration: 7.6s; animation-delay: 1.4s">♥</span>
+<span class="cf gold a-fall" style="left: 110px; font-size: 11px; animation-duration: 8.0s; animation-delay: 3.0s">♦</span>
+<span class="cf white a-fall" style="left: 296px; font-size: 11px; animation-duration: 8.4s; animation-delay: 3.4s">♣</span>
+</div>
+<p class="eyebrow a-up" style="position: absolute; left: 0; width: 375px; top: 26px; text-align: center; color: #FFF4C4">Hand 10 · the last trick</p>
+<div style="position: absolute; left: 87px; top: 46px; width: 200px; height: 190px; transform: scale(0.74); transform-origin: 50% 0" role="img" aria-label="The winning card, the 5 of hearts, the Pidro">
+<span class="tcard side a-sideL" style="left: 4px; top: 30px; width: 84px; height: 120px; padding: 7px 8px; transform-origin: 50% 100%; transform: rotate(-20deg)"><span style="display: flex; flex-direction: column; align-items: center; width: 18px; font-size: 22px; gap: 2px">A<span style="font-size: 16px">♥</span></span><span style="align-self: center; font-size: 40px; margin-top: -20px">♥</span><span></span></span>
+<span class="tcard side a-sideR" style="left: 112px; top: 30px; width: 84px; height: 120px; padding: 7px 8px; transform-origin: 50% 100%; transform: rotate(10deg)"><span style="display: flex; flex-direction: column; align-items: center; width: 18px; font-size: 22px; gap: 2px">2<span style="font-size: 16px">♥</span></span><span style="align-self: center; font-size: 40px; margin-top: -20px">♥</span><span></span></span>
+<span class="tcard hero a-hero" style="left: 44px; top: 0; width: 112px; height: 160px; padding: 9px 10px; transform: rotate(-6deg)"><span style="display: flex; flex-direction: column; align-items: center; width: 22px; font-size: 30px; gap: 2px">5<span style="font-size: 22px">♥</span></span><span style="align-self: center; font-size: 58px; margin-top: -28px">♥</span><span style="align-self: flex-end; font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 10px; letter-spacing: 1px; color: #8F5E12">PIDRO</span><span class="sheen a-sweep"></span></span>
+<span class="plaque a-up" style="left: 32px; top: 166px; animation-delay: 900ms"><svg width="14" height="14" viewBox="0 0 24 24" fill="#FFD447" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17.1l-5.9 3.2 1.3-6.5-4.9-4.5 6.6-.8z"></path></svg>Bid 14 · won all 14</span>
+</div>
+<section style="position: absolute; left: 16px; right: 16px; top: 196px; display: flex; flex-direction: column; align-items: center">
+<h1 class="display a-up" style="font-size: 30px; line-height: 36px; animation-delay: 950ms">You and Nora win</h1>
+<div style="display: flex; align-items: flex-end; gap: 16px" role="img" aria-label="62 to 29">
+<span style="display: flex; flex-direction: column; align-items: center"><span class="eyebrow" style="color: #92e6b2">Us</span><p class="big62 a-slam" style="font-size: 80px; line-height: 74px">62</p></span>
+<span style="display: flex; flex-direction: column; align-items: center; padding-bottom: 8px"><span class="eyebrow">Them</span><span style="font-family: 'Bree Serif', serif; font-size: 38px; line-height: 42px; color: rgba(255,255,255,0.88)">29</span></span>
+</div>
+</section>
+<div style="position: absolute; left: 16px; right: 16px; top: 330px"><section class="subtle" aria-label="How the game went" style="padding: 8px 12px 6px; background: rgba(5, 30, 58, 0.72)">
+<div style="display: flex; justify-content: space-between; align-items: baseline"><p class="eyebrow">How it went</p><p class="meta">10 hands · 24 min</p></div>
+<svg width="319" height="56" preserveAspectRatio="none" viewBox="0 0 358 86" role="img" aria-label="Score by hand. Level at 41 after hand 8, then they missed 12 and you bid 14 to finish." style="display: block; margin-top: 4px">
+<line x1="8" y1="8" x2="350" y2="8" stroke="#E2AF45" stroke-width="1" stroke-dasharray="3 4" opacity="0.7"></line>
+<text x="8" y="20" fill="#E2AF45" font-family="Nunito, sans-serif" font-weight="900" font-size="9">62</text>
+<polyline points="8,78 42.2,67.8 76.4,63.3 110.6,73.5 144.8,66.7 179,54.3 213.2,53.2 247.4,39.6 281.6,31.7 315.8,45.3 350,45.3" fill="none" stroke="#ffb4b9" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"></polyline>
+<polyline class="a-draw" pathLength="100" points="8,78 42.2,72.4 76.4,61.1 110.6,52 144.8,43 179,39.6 213.2,24.9 247.4,22.7 281.6,31.7 315.8,23.8 350,8" fill="none" stroke="#FFD447" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round" style="filter: drop-shadow(0px 0px 4px rgba(255,212,71,0.8))"></polyline>
+<circle cx="281.6" cy="31.7" r="4.5" fill="#ffffff" stroke="#0A2340" stroke-width="2"></circle>
+<text x="262" y="50" fill="rgba(239,249,255,0.85)" font-family="Nunito, sans-serif" font-weight="800" font-size="9">41–41</text>
+<circle cx="315.8" cy="45.3" r="4" fill="#ffb4b9" stroke="#0A2340" stroke-width="2"></circle>
+<circle class="a-pop" cx="350" cy="8" r="6.5" fill="#FFD447" stroke="#4E2509" stroke-width="2"></circle>
+</svg>
+</section></div>
+<div class="a-up" style="position: absolute; left: 16px; right: 16px; top: 440px; display: flex; gap: 8px; justify-content: center; animation-delay: 2.2s">
+<span class="chip"><span class="ring" style="width: 22px; height: 22px; padding: 1.5px"><span class="face-initial" style="font-size: 10px">N</span></span>3 in a row with Nora</span>
+<span class="chip"><span class="num gold" style="font-size: 13px">+126</span>XP<span class="well" style="width: 46px; height: 8px; margin-left: 2px"><span class="fill a-fill" style="display: block; width: 52%"></span></span></span>
+</div>
+<footer style="position: absolute; left: 16px; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px">
+<div class="rm" role="status" aria-label="Nora wants a rematch. Waiting for Kalle and Mikko.">
+<span class="who" aria-hidden="true"><span><span class="ring" style="width: 30px; height: 30px; padding: 2px"><span class="face-initial" style="font-size: 13px">N</span></span><span class="ok"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#0A2340" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"></path></svg></span></span><span class="wait"><span class="ring glass-ring" style="width: 30px; height: 30px; padding: 2px"><span class="face-initial" style="font-size: 13px">K</span></span></span><span class="wait"><span class="ring glass-ring" style="width: 30px; height: 30px; padding: 2px"><span class="face-initial" style="font-size: 13px">M</span></span></span></span>
+<span style="display: flex; flex-direction: column"><span class="label" style="font-size: 15px; line-height: 20px">Nora wants a rematch</span><span class="meta">Waiting for Kalle and Mikko</span></span>
+</div>
+<a class="wood a-breathe" href="Win-Reveal.dc.html" style="width: 100%; height: 56px"><span class="face" style="font-size: 21px">Rematch</span></a>
+<div style="display: flex; gap: 10px">
+<a class="glass" href="Share-Card.dc.html" style="flex-grow: 1; height: 46px"><span class="face" style="font-size: 16px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD447" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5"></path><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"></path></svg>Share the win</span></a>
+<a class="glass" href="Main.dc.html" aria-label="Home" style="width: 46px; height: 46px"><span class="face"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"></path><path d="M5 10v10h14V10"></path></svg></span></a>
+</div>
+</footer>
+</main>
+
+</body></html>
