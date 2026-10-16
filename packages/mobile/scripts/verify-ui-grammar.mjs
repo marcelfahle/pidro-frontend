@@ -582,13 +582,13 @@ const allCases = [
   },
   // PID-220: with count help on, the plaque's bid line carries the bidders'
   // count and "Last trick" sits under it, clear of every seat, also on the
-  // small phones that leave the ticker out. Wynn is out of trumps: dimmed,
+  // small phones that leave the ticker out. Marcel is out of trumps: dimmed,
   // "Out", the two cards laid face up on screen.
   {
     name: 'table-count-help',
     path: '/table-dev?phase=playing&role=player&out=one&count=on',
     testId: 'last-trick',
-    countHelp: { bidder: 'Eli', line: 'bid 6 · 2 of 6', out: ['west'], revealed: ['west'] },
+    countHelp: { bidder: 'Jocke', line: 'bid 6 · 2 of 6', out: ['west'], revealed: ['west'] },
   },
   {
     name: 'table-last-trick',
