@@ -613,7 +613,10 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
                   ? snapshot.seats[position].pin
                   : known?.pin,
               is_bot: snapshot.seats[position].occupant_type === 'bot',
-              bot_persona: snapshot.seats[position].bot_persona ?? known?.bot_persona ?? null,
+              bot_persona:
+                snapshot.seats[position].bot_persona !== undefined
+                  ? snapshot.seats[position].bot_persona
+                  : (known?.bot_persona ?? null),
             }
           : null,
       };

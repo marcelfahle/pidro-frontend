@@ -31,8 +31,9 @@ export function seatPlayerName(
   player: { username?: unknown; display_name?: unknown; bot_persona?: unknown },
   fallback = 'Player',
 ): string {
-  if (player.bot_persona && typeof player.display_name === 'string' && player.display_name.trim()) {
-    return player.display_name.trim();
+  if (player.bot_persona) {
+    const name = typeof player.display_name === 'string' ? player.display_name.trim() : '';
+    return name || fallback;
   }
   return publicPlayerName(player.username, fallback, player.display_name);
 }

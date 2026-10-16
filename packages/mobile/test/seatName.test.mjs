@@ -10,6 +10,10 @@ test('a bot goes by its persona, a substitute and a human by their own name', ()
       'Player'
     )
   ).toBe('Antti');
+  // A persona without a usable name falls back to "Bot", not the internal username.
+  expect(
+    seatName({ username: 'bot_7f3a', display_name: ' ', bot_persona: 'antti' }, 'Player')
+  ).toBe('Bot');
   // An older server sends no persona: the seat is just "Bot", never its internal name.
   expect(seatName({ username: 'Bot/User 7f3a2b', is_bot: true }, 'Player')).toBe('Bot');
   // A substitute bot plays for Ritva: no persona, so the seat keeps her name.
