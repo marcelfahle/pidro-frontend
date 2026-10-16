@@ -71,6 +71,13 @@ export interface ServerPlayerView {
   eliminated?: boolean;
   /** What a cold player lays face up, as Classic does. */
   revealed_cards?: Card[];
+  /**
+   * The second deal, public to every seat: trumps kept after the discard and
+   * cards drawn to refill (the dealer's from the pack). Null until that seat's
+   * second deal is done; the dealer's stays null while they rob the pack.
+   */
+  kept_count?: number | null;
+  drawn_count?: number | null;
 }
 
 export interface ServerTrickPlay {

@@ -629,9 +629,8 @@ const allCases = [
   {
     name: 'table-dealer-waiting',
     path: '/table-dev?phase=second_deal&role=player&dealer=north',
-    testId: 'dealer-second-deal-status',
-    protectNorthSeat: true,
-    verifyDealerPrivacy: true,
+    testId: 'seat-north',
+    verifyDealerOnTable: true,
   },
   {
     name: 'table-automatic-dealer-rob',
@@ -1065,10 +1064,6 @@ const TABLE_MESSAGES = {
     testId: 'hand-result',
     text: 'Nora took their Pidro',
     tapCloses: true,
-  },
-  'table-dealer-waiting': {
-    testId: 'dealer-second-deal-status',
-    text: 'The dealer picks up the rest of the deck',
   },
   'table-automatic-dealer-rob': {
     testId: 'automatic-dealer-rob',
@@ -1734,8 +1729,9 @@ async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
   if (testCase.rulesExplainer) {
     await page.getByTestId('rules-done').click();
     await page.getByTestId(testCase.rulesBadge).waitFor();
+    // At the table the badge is the flag alone, in the header: it says its rules aloud.
     assert.ok(
-      (await page.getByTestId(testCase.rulesBadge).innerText()).includes(
+      (await page.getByTestId(testCase.rulesBadge).getAttribute('aria-label')).includes(
         ruleLabels[testCase.ruleSet]
       )
     );
@@ -2183,11 +2179,11 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
     }
   }
 
-  if (testCase.verifyDealerPrivacy) {
-    await page.getByTestId('dealer-card-count-concealed').waitFor({ state: 'attached' });
-    const symbolicCards = page.locator('[data-testid="dealer-pack-symbol"] img');
-    if ((await symbolicCards.count()) !== 3) {
-      throw new Error(`dealer pack must stay a fixed three-card symbol in ${viewport.name}`);
+  // Everyone else watches the dealer take the pack on the table: no panel
+  // over the felt, the dealer's hand holds the pool.
+  if (testCase.verifyDealerOnTable) {
+    if ((await page.getByTestId('dealer-second-deal-status').count()) !== 0) {
+      throw new Error(`the dealer's pick must play out on the table in ${viewport.name}`);
     }
   }
 }

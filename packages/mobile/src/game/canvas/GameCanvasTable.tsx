@@ -5,7 +5,7 @@
  * NOTE: web loads CanvasKit through the platform-specific loader before this
  * module is imported. Native imports this module directly.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -32,6 +32,7 @@ import { useCardTextures } from './cardTextures';
 import { useTableModel, type TableModel } from './tableModel';
 import { useHandPresentationReady } from './useHandPresentationReady';
 import { useDealPresentation } from './useDealPresentation';
+import { useSecondDealPresentation } from './useSecondDealPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatTurn } from './SeatLayer';
@@ -47,7 +48,7 @@ import { LastTrick, type LastTrickView } from './LastTrick';
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { TableSignals, scoreGlow, tablePidro } from './TableSignals';
 import { HandResultPanel, useHandResult, viewerOf } from './HandResult';
-import { computeLayout, showsTicker, tickerPlacement, trumpPicker } from './layout';
+import { computeLayout, showsTicker, tickerPlacement, trumpPicker, type HeldStyle } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
 import { PidroLayout, PidroSpacing } from '@/design/tokens';
@@ -68,6 +69,8 @@ type Props = {
   playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
+  /** How every hand holds its cards; fixtures try the styles. */
+  held?: HeldStyle;
 };
 
 const HIDDEN_PRESENTATION_HAND: Card[] = [];
@@ -200,6 +203,8 @@ function TimedSeatLayer({
   players,
   onProfile,
   quiet,
+  secondDeal,
+  held,
 }: {
   seats: TableModel['seats'];
   dealerRel: RelativePosition | null;
@@ -210,6 +215,8 @@ function TimedSeatLayer({
   players: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'];
   onProfile: (playerId: string) => void;
   quiet: boolean;
+  secondDeal: ComponentProps<typeof SeatLayer>['secondDeal'];
+  held: ComponentProps<typeof SeatLayer>['held'];
 }) {
   const turnTimer = useGameStore((state) => state.turnTimer);
   const timerProgress = useTurnTimerProgress(turnTimer);
@@ -235,6 +242,8 @@ function TimedSeatLayer({
       statusByRel={statusByRel}
       turnByRel={turnByRel}
       quiet={quiet}
+      secondDeal={secondDeal}
+      held={held}
       onProfile={Object.fromEntries(
         players
           .filter(canViewPlayer)
@@ -257,6 +266,7 @@ export function GameCanvasTable({
   showGuestSave,
   onSaveGuest,
   rulesFixtureSeen,
+  held,
 }: Props) {
   const { locale } = useTranslation();
   const controller = useGameTableController();
@@ -273,7 +283,10 @@ export function GameCanvasTable({
     isPrivateDealerRob ? HIDDEN_PRESENTATION_HAND : undefined,
     countHelp
   );
-  const model = useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null);
+  const presented = useSecondDealPresentation(
+    useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null)
+  );
+  const model = useMemo(() => (held ? { ...presented, held } : presented), [presented, held]);
   useTableHaptics(model);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
   const facesReady = useHandPresentationReady(serverModel.yourHand, textures, isBiddingTurn);
@@ -411,7 +424,12 @@ export function GameCanvasTable({
   const trickKey = `${serverState?.hand_number ?? serverState?.round_number ?? 0}:${model.lastTrick?.number}`;
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
-      const line = model.dealStage ? { text: t('game.dealing') } : statusText(player, serverState);
+      // In the second deal the cards say what happens; only the dealer says it is dealing.
+      const line = model.dealStage
+        ? model.secondDealShow && player.relativePosition !== model.dealerRelative
+          ? null
+          : { text: t('game.dealing') }
+        : statusText(player, serverState);
       acc[player.relativePosition] =
         pidro?.side === 'theirs' && pidro.seat === player.relativePosition
           ? { ...(line ?? { text: t('game.took_trick') }), pulse: `pidro-${trickKey}` }
@@ -445,6 +463,8 @@ export function GameCanvasTable({
         players={viewModel?.players ?? []}
         onProfile={setProfilePlayerId}
         quiet={handResult.result != null}
+        secondDeal={model.secondDealShow}
+        held={model.held}
       />
       <TableSignals
         model={model}
@@ -467,21 +487,13 @@ export function GameCanvasTable({
         pointerEvents="none"
         style={{
           position: 'absolute',
-          ...(controller.phase === 'playing'
-            ? { top: layout.trick.cy + layout.cardW * 0.4, left: 0, right: 0 }
-            : {
-                // Centered on the menu button beside it.
-                top: headerTop(insets.top) + PidroSpacing.xxs,
-                right: insets.right + PidroLayout.touchTarget + PidroSpacing.lg,
-              }),
+          // Beside the menu, out of the felt: the middle is for the cards.
+          top: headerTop(insets.top) + PidroSpacing.xxs,
+          right: insets.right + PidroLayout.touchTarget + PidroSpacing.lg,
           alignItems: 'center',
         }}>
         <View style={{ alignSelf: 'center' }}>
-          <RuleSetChip
-            ruleSet={ruleSet}
-            flagOnly={controller.phase !== 'playing'}
-            testID="table-rule-set"
-          />
+          <RuleSetChip ruleSet={ruleSet} flagOnly testID="table-rule-set" />
         </View>
       </View>
       <RulesExplainer
@@ -544,29 +556,31 @@ export function GameCanvasTable({
         </>
       )}
 
-      {/* Dealer rob: symbolic for public views; selectable only with an authoritative private pool. */}
-      {(isSecondDeal || dealerRobPresentation) && viewModel && (
-        <View
-          style={[
-            isPrivateDealerRob ? styles.robbedCardsOverlay : styles.centerOverlay,
-            isPrivateDealerRob
-              ? { bottom: insets.bottom + bottomReserve + 116 }
-              : {
-                  paddingTop: insets.top + TABLE_HEADER + PidroSpacing.xs,
-                  paddingBottom: insets.bottom + 16,
-                },
-          ]}
-          pointerEvents="box-none">
-          <DealerSecondDeal
-            viewModel={viewModel}
-            cards={yourHand}
-            trumpSuit={trumpSuit}
-            canSelectHand={canSelectHand}
-            automaticPresentation={dealerRobPresentation}
-            onSelectHand={handleSelectHand}
-          />
-        </View>
-      )}
+      {/* Dealer rob: only the dealer's own pick. Everyone else watches the pack taken on the table. */}
+      {(isSecondDeal || dealerRobPresentation) &&
+        viewModel &&
+        (canSelectHand || isPrivateDealerRob) && (
+          <View
+            style={[
+              isPrivateDealerRob ? styles.robbedCardsOverlay : styles.centerOverlay,
+              isPrivateDealerRob
+                ? { bottom: insets.bottom + bottomReserve + 116 }
+                : {
+                    paddingTop: insets.top + TABLE_HEADER + PidroSpacing.xs,
+                    paddingBottom: insets.bottom + 16,
+                  },
+            ]}
+            pointerEvents="box-none">
+            <DealerSecondDeal
+              viewModel={viewModel}
+              cards={yourHand}
+              trumpSuit={trumpSuit}
+              canSelectHand={canSelectHand}
+              automaticPresentation={dealerRobPresentation}
+              onSelectHand={handleSelectHand}
+            />
+          </View>
+        )}
 
       {/* Bidding floats from the bottom; trump is picked in the felt. */}
       <BiddingActions

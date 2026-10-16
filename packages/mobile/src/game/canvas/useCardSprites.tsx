@@ -42,6 +42,9 @@ import {
   playedCardTarget,
   type RelativePosition,
   type TableLayout,
+  heldPose,
+  HELD_STYLE,
+  packSpot,
 } from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
@@ -224,8 +227,10 @@ export function useCardSprites({
       );
     }
 
-    const deckX = L.felt.cx;
-    const deckY = L.trick.cy;
+    // Second-deal cards come from the pack in its corner; the first deal from the middle.
+    const pack = model.secondDealShow ? packSpot(L) : null;
+    const deckX = pack?.x ?? L.felt.cx;
+    const deckY = pack?.y ?? L.trick.cy;
 
     type Desired = {
       key: string;
@@ -261,6 +266,8 @@ export function useCardSprites({
       const previewed = preview.has(tc.textureKey);
       // Reduce Motion keeps a previewed card in the row: its outline says enough.
       const lifted = legal || (previewed && !reduceMotion);
+      // Held by a hand, not printed: each card keeps a slight tilt of its own.
+      const held = heldPose(model.held ?? HELD_STYLE, tc.key, i - (n - 1) / 2);
       desired.push({
         key: tc.key,
         textureKey: tc.textureKey,
@@ -268,8 +275,8 @@ export function useCardSprites({
         z: i + (lifted ? 30 : 0),
         delayOrder: i,
         tx: s.x,
-        ty: lifted ? s.y - handLift(L) : s.y,
-        trot: s.rot,
+        ty: (lifted ? s.y - handLift(L) : s.y) + held.dy,
+        trot: s.rot + (held.tilt * Math.PI) / 180,
         tscale: handScale * (legal ? 1.03 : blocked ? 0.98 : 1),
         ox: s.x,
         oy: s.y,

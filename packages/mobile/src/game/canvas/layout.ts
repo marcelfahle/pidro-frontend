@@ -55,10 +55,66 @@ const LANDSCAPE_SIDE_DROP = 16;
  */
 const NORTH_SEAT_STACK = { phone: 98, tablet: 115 } as const;
 /** One of North's card backs, as SeatLayer draws them. */
-export const northBackWidth = (cardW: number) => clamp(cardW * 0.66, 31, 58);
+// Opponents' backs are big enough to count at a glance: veterans read the
+// second deal off them (how many each drew), not just that cards are there.
+export const northBackWidth = (cardW: number, compact = false) =>
+  compact ? clamp(cardW * 0.66, 31, 58) : clamp(cardW * 0.8, 36, 68);
+/** Landscape phones keep North's smaller fan: its row is shared with the name, chip and menu. */
+export const compactNorth = (L: Pick<TableLayout, 'profile'>) => L.profile === 'phone-landscape';
+/**
+ * Where the pack waits in the second deal: the bottom-right corner, low
+ * beside your hand and clear of East's stack, out of the middle where the
+ * thrown piles land. Its center; the pack's backs are North's size.
+ */
+export function packSpot(L: TableLayout) {
+  const w = northBackWidth(L.cardW, compactNorth(L));
+  return { x: L.hand.cx + L.hand.maxWidth / 2 - w / 2 + 8, y: L.hand.cy + L.cardH * 0.45 };
+}
+/**
+ * How a hand holds its cards. `still`: a dead straight row. `tilt`: each card
+ * a touch off square, fixed by its seed so it never wobbles. `fan`: no chance
+ * at all, each card turned a little more toward the ends on a shallow arc.
+ */
+export type HeldStyle = 'still' | 'tilt' | 'fan';
+export const HELD_STYLE: HeldStyle = 'tilt';
+
+/** A held card's pose: `tilt` in degrees, `dy` in points (down is +). `off` is its place from the middle of the hand. */
+export function heldPose(
+  style: HeldStyle,
+  seed: string,
+  off: number
+): { tilt: number; dy: number } {
+  if (style === 'fan') return { tilt: off * 1.1, dy: off * off * 0.5 };
+  if (style === 'still') return { tilt: 0, dy: 0 };
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const a = ((h >>> 0) % 1000) / 500 - 1;
+  const b = ((h >>> 10) % 1000) / 500 - 1;
+  return { tilt: a * 0.7, dy: b };
+}
+/** East and West's backs, before they lie sideways. */
+export const sideBackWidth = (cardW: number) => clamp(cardW * 0.7, 31, 62);
 /** North's fan of backs: each back after the first adds half a back, up to six. */
-export const northFanWidth = (cardW: number, count: number) =>
-  count > 0 ? northBackWidth(cardW) * (1 + (Math.min(6, count) - 1) * 0.52) : northBackWidth(cardW);
+// The backs grew so they can be counted, but a hand's footprint did not:
+// a full fan or stack takes no more room than it did with smaller backs, so
+// nothing else on the table moves. Few cards (right after the second deal)
+// spread out to their full step; a full hand closes up to fit.
+const legacyNorthBack = (cardW: number) => clamp(cardW * 0.66, 31, 58);
+const legacySideBack = (cardW: number) => clamp(cardW * 0.62, 30, 56);
+/** Points between backs in North's fan of `n`. */
+export function northFanStep(cardW: number, n: number, compact = false) {
+  const w = northBackWidth(cardW, compact);
+  const room = legacyNorthBack(cardW) * 0.52 * 5;
+  return n > 1 ? Math.min(w * (compact ? 0.52 : 0.6), room / (n - 1)) : 0;
+}
+/** North's fan of backs, as wide as it draws. */
+export const northFanWidth = (cardW: number, count: number, compact = false) =>
+  northBackWidth(cardW, compact) + (Math.max(1, count) - 1) * northFanStep(cardW, count, compact);
+/** Points between sideways backs in East's or West's stack of `n`. */
+export function sideStackStep(cardW: number, n: number) {
+  const room = legacySideBack(cardW) * 0.48 * 5;
+  return n > 1 ? Math.min(sideBackWidth(cardW) * 0.56, room / (n - 1)) : 0;
+}
 /**
  * Where North's backs start. Portrait hangs them under the header row;
  * landscape tucks them partly above the table, under the floating scores.
@@ -69,14 +125,14 @@ export const northFanTop = (L: TableLayout, tableTop: number) =>
 /** Portrait seat clearance, including its level chip, name and status line. */
 export const northSeatBottom = (L: TableLayout, tableTop: number) =>
   northFanTop(L, tableTop) +
-  northBackWidth(L.cardW) * CARD_RATIO +
+  northBackWidth(L.cardW, compactNorth(L)) * CARD_RATIO +
   12 +
   (L.tight ? TIGHT_AVATAR : NORTH_SEAT_STACK[L.profile.startsWith('tablet') ? 'tablet' : 'phone']);
 
 /** East and west's backs along the edges, up to six, as SeatLayer stacks them. */
 export function sideStacks(L: TableLayout) {
-  const backW = clamp(L.cardW * 0.62, 30, 56);
-  const maxHeight = backW * (1 + 5 * 0.48);
+  const backW = sideBackWidth(L.cardW);
+  const maxHeight = backW + legacySideBack(L.cardW) * 0.48 * 5;
   const top = L.trick.cy - maxHeight / 2;
   const handTop = L.hand.cy - L.cardH / 2;
   return { backW, maxHeight, top, lowestTop: Math.max(top, handTop - 12 - maxHeight) };
@@ -99,7 +155,8 @@ export function sideSeatTop(
 ): number {
   const stacks = sideStacks(L);
   if (!L.profile.endsWith('portrait')) return Math.max(headerBottom, stacks.top - 12 - seatHeight);
-  const northSeatTop = northFanTop(L, tableTop) + northBackWidth(L.cardW) * CARD_RATIO + 12;
+  const northSeatTop =
+    northFanTop(L, tableTop) + northBackWidth(L.cardW, compactNorth(L)) * CARD_RATIO + 12;
   return Math.max(
     L.tight ? northSeatTop + seatHeight + 8 : tableTop + 8,
     Math.min(
@@ -164,7 +221,7 @@ export function tickerPlacement(
   always = false
 ): { lineMaxWidth: number; drop: number } | null {
   if (!always && !showsTicker(L)) return null;
-  const backW = northBackWidth(L.cardW);
+  const backW = northBackWidth(L.cardW, compactNorth(L));
   if (L.tight && L.profile.endsWith('portrait')) {
     const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
     const room = L.width / 2 - TIGHT_AVATAR / 2 - 4 - plaqueLeft - TICKER_CHEVRON;
@@ -177,7 +234,7 @@ export function tickerPlacement(
     const fanBottom = northFanTop(L, tableTop) + backW * CARD_RATIO;
     return { lineMaxWidth: TICKER_LINE_MAX, drop: Math.max(0, fanBottom + 4 - plaqueTop) };
   }
-  const fanLeft = L.seats.north.x - northFanWidth(L.cardW, 6) / 2;
+  const fanLeft = L.seats.north.x - northFanWidth(L.cardW, 6, compactNorth(L)) / 2;
   const room = fanLeft + backW / 2 - plaqueLeft - TICKER_CHEVRON;
   return { lineMaxWidth: clamp(room, TICKER_LINE_MIN, TICKER_LINE_MAX), drop: 0 };
 }
@@ -211,7 +268,7 @@ const northRoom = (L: TableLayout, insets: Insets, backs: number) =>
   insets.right -
   MENU_SLOT -
   8 -
-  (L.width / 2 + northFanWidth(L.cardW, backs) / 2 + 16) -
+  (L.width / 2 + northFanWidth(L.cardW, backs, compactNorth(L)) / 2 + 16) -
   AVATAR_SIZE[L.profile] -
   seatNameGap(L.profile);
 /**
@@ -227,7 +284,10 @@ export const landscapeNorthShift = (L: TableLayout, insets: Insets, backs: numbe
   clamp(NORTH_NAME_MIN - northRoom(L, insets, backs), 0, NORTH_SHIFT_MAX);
 /** Where landscape North's seat starts: right of its fan of backs. */
 export const landscapeNorthLeft = (L: TableLayout, insets: Insets, backs: number) =>
-  L.width / 2 - landscapeNorthShift(L, insets, backs) + northFanWidth(L.cardW, backs) / 2 + 16;
+  L.width / 2 -
+  landscapeNorthShift(L, insets, backs) +
+  northFanWidth(L.cardW, backs, compactNorth(L)) / 2 +
+  16;
 /**
  * How far a landscape name runs before it truncates. South's runs toward
  * your hand, North's (and the dealer chip after it, `chip`) toward the menu:
@@ -396,7 +456,7 @@ export function computeLayout(
     const northBottom =
       tableTop +
       8 +
-      clamp(cardW * 0.66, 31, 58) * CARD_RATIO +
+      northBackWidth(cardW) * CARD_RATIO +
       12 +
       (tightSeats ? TIGHT_AVATAR : NORTH_SEAT_STACK[tabletPortrait ? 'tablet' : 'phone']);
     return { handY, northBottom, band: Math.max(0, handY - cardH / 2 - northBottom) };
