@@ -9,13 +9,10 @@ import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { PidroText } from '@/components/ui/PidroText';
 import { Modal } from '@/components/ui/Modal';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
-import {
-  availableMoveTargets,
-  firstUnfilledSeat,
-  seatDisplayName,
-} from '@/features/invites/hostControls';
+import { availableMoveTargets, firstUnfilledSeat } from '@/features/invites/hostControls';
+import { seatName } from '@/features/seatName';
 import { t, useTranslation } from '@/i18n';
-import { localizedError } from '@pidro/shared';
+import { localizedError, type BotPersona } from '@pidro/shared';
 import type { Position, Room } from '@/types/lobby';
 import type { TableNotice } from '@/game/tableNotices';
 import { PressableFX } from '@/components/ui/PressableFX';
@@ -35,6 +32,7 @@ interface SeatInfo {
   playerId: string | null;
   isYou: boolean;
   isBot: boolean;
+  persona: BotPersona | null;
   occupied: boolean;
   avatarUrl: string | null;
   held: boolean;
@@ -60,11 +58,12 @@ function buildSeats(room: Room, youPlayerId: string): SeatInfo[] {
       rel: relatives[(absoluteIndex - youIdx + 4) % 4],
       name:
         held?.display_name ||
-        seatDisplayName(seat?.player) ||
-        t(isBot ? 'game.bot' : playerId ? 'game.player' : 'game.open_seat'),
+        seatName(seat?.player, '', isBot) ||
+        t(playerId ? 'game.player' : 'game.open_seat'),
       playerId,
       isYou: !!playerId && playerId === youPlayerId,
       isBot,
+      persona: seat?.player?.bot_persona ?? null,
       occupied: !!playerId,
       avatarUrl: held?.avatar_url ?? seat?.player?.avatar_url ?? null,
       held: !!held,
@@ -101,13 +100,21 @@ function SeatPlate({
         <View
           style={[styles.avatar, compact && styles.avatarCompact, seat.held && { opacity: 0.55 }]}>
           {seat.occupied || seat.held ? (
-            <PlayerAvatar key={seat.playerId} uri={seat.avatarUrl} size={compact ? 48 : 64} />
+            <PlayerAvatar
+              key={seat.playerId}
+              uri={seat.avatarUrl}
+              kind={seat.isBot ? 'bot' : 'player'}
+              persona={seat.persona}
+              size={compact ? 48 : 64}
+            />
           ) : (
             <Feather name="user-plus" size={28} color={PidroColors.textSoft} />
           )}
         </View>
         {seat.occupied && ready && (
-          <View testID={`waiting-ready-${seat.absolute}`} style={styles.readyBadge}>
+          <View
+            testID={`waiting-ready-${seat.absolute}`}
+            style={[styles.readyBadge, seat.persona && styles.readyBadgeLeft]}>
             <Feather name="check" size={12} color={PidroColors.ink} />
           </View>
         )}
@@ -575,6 +582,8 @@ const styles = StyleSheet.create({
     backgroundColor: PidroColors.panelSoft,
   },
   avatarCompact: { width: 48, height: 48 },
+  // A bot's robot badge keeps the right corner.
+  readyBadgeLeft: { left: 0, right: undefined },
   readyBadge: {
     position: 'absolute',
     right: 0,

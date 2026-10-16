@@ -18,7 +18,7 @@ import type {
 import type { Position, ReadinessSnapshot, Room } from '../types/lobby';
 import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/positions';
 import { buildPositionsFromSeats } from '../utils/rooms';
-import { isGeneratedGuestUsername, publicPlayerName } from '../utils/playerName';
+import { isGeneratedGuestUsername, publicPlayerName, seatPlayerName } from '../utils/playerName';
 import { lifecycleFromReply } from '../utils/seatLifecycle';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
@@ -171,10 +171,11 @@ export const useGameStore = create<GameState>((set, get) => ({
         playerMeta[position] = {
           ...playerMeta[position],
           playerId: seat.player_id,
-          username: publicPlayerName(seat.username, '', seat.display_name),
+          username: seatPlayerName(seat, ''),
           avatar_url: seat.avatar_url !== undefined ? seat.avatar_url : (known?.avatar_url ?? null),
           level: seat.level !== undefined ? seat.level : (known?.level ?? null),
           pin: seat.pin !== undefined ? seat.pin : (known?.pin ?? null),
+          bot_persona: seat.bot_persona ?? null,
           seatStatus: seat.status,
           isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
           isYou,
@@ -248,11 +249,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           position: pos,
           playerId,
           username: seat?.player
-            ? publicPlayerName(
-                seat.player.username,
-                sameOccupant ? (previous.username ?? '') : '',
-                seat.player.display_name,
-              )
+            ? seatPlayerName(seat.player, sameOccupant ? (previous.username ?? '') : '')
             : sameOccupant
               ? previous.username
               : null,
@@ -270,6 +267,7 @@ export const useGameStore = create<GameState>((set, get) => ({
                 : null,
           pin:
             seat?.player?.pin !== undefined ? seat.player.pin : sameOccupant ? previous.pin : null,
+          bot_persona: seat?.player?.bot_persona ?? null,
           isYou: youPos === pos,
           isTeammate: false,
           isOpponent: false,
@@ -507,7 +505,7 @@ export const useGameStore = create<GameState>((set, get) => ({
         const previous = Object.values(current.playerMeta).find(
           (meta) => meta.playerId === playerId,
         );
-        const snapshotName = publicPlayerName(seat.username, '', seat.display_name);
+        const snapshotName = seatPlayerName(seat, '');
         const keepsKnownGuestName =
           previous?.username &&
           isGeneratedGuestUsername(seat.username) &&
@@ -522,6 +520,7 @@ export const useGameStore = create<GameState>((set, get) => ({
             seat.avatar_url !== undefined ? seat.avatar_url : (previous?.avatar_url ?? null),
           level: seat.level !== undefined ? seat.level : (previous?.level ?? null),
           pin: seat.pin !== undefined ? seat.pin : (previous?.pin ?? null),
+          bot_persona: seat.bot_persona ?? null,
           isYou: pos === youPosition,
           isTeammate: !!youPosition && pos !== youPosition && isTeammate(youPosition, pos),
           isOpponent: !!youPosition && !isTeammate(youPosition, pos),
@@ -600,6 +599,7 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
                 known?.username ?? '',
                 snapshot.seats[position].display_name ?? known?.display_name,
               ),
+              display_name: snapshot.seats[position].display_name ?? known?.display_name,
               avatar_url:
                 snapshot.seats[position].avatar_url !== undefined
                   ? snapshot.seats[position].avatar_url
@@ -613,6 +613,10 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
                   ? snapshot.seats[position].pin
                   : known?.pin,
               is_bot: snapshot.seats[position].occupant_type === 'bot',
+              bot_persona:
+                snapshot.seats[position].bot_persona !== undefined
+                  ? snapshot.seats[position].bot_persona
+                  : (known?.bot_persona ?? null),
             }
           : null,
       };
@@ -666,6 +670,7 @@ export function useGameViewModel(): GameViewModel | null {
         rank: meta.rank ?? null,
         level: meta.level ?? null,
         pin: meta.pin ?? null,
+        bot_persona: meta.bot_persona ?? null,
       };
     });
 

@@ -4,7 +4,7 @@
  * stops is interpolated, anything above the largest grows in proportion. Below
  * a part's smallest stop the part is dropped: the ring never is.
  */
-import { t, formatNumber } from '@pidro/shared';
+import { t, formatNumber, type BotPersona } from '@pidro/shared';
 
 type Stop = readonly number[];
 
@@ -158,6 +158,7 @@ export function avatarLabel({
   turn,
   away,
   kind = 'player',
+  persona = null,
 }: {
   name?: string | null;
   status?: string | null;
@@ -167,6 +168,8 @@ export function avatarLabel({
   turn?: { urgent?: boolean } | null;
   away?: AvatarAway | null;
   kind?: AvatarKind;
+  /** A bot with a persona has a person's name; say that it is a bot. */
+  persona?: BotPersona | null;
 }): string {
   const who =
     name ||
@@ -180,6 +183,7 @@ export function avatarLabel({
   const statusText = status?.trim() ? status.trim().replace(/^./, (c) => c.toLowerCase()) : null;
   return [
     who,
+    kind === 'bot' && persona ? t('social.bot') : null,
     dealer ? t('social.avatar_dealer') : null,
     level != null ? t('social.avatar_level', { number: formatNumber(level) }) : null,
     pin ? (pin === 'classic' ? 'Pidro Classic' : t('profile.founding_tester')) : null,

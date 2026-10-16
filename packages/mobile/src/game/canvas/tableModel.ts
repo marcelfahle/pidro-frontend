@@ -19,6 +19,7 @@ import type {
   Suit,
   TeamKey,
 } from '@/types/game';
+import type { BotPersona } from '@pidro/shared';
 import type { Position } from '@/types/lobby';
 import type { GameTableController } from '@/game/useGameTableController';
 import { isTrumpCard, sortCards } from '@/utils/cards';
@@ -39,6 +40,7 @@ export type TableSeat = {
   avatar_url: string | null;
   level: number | null;
   pin: SeatPin | null;
+  bot_persona: BotPersona | null;
   isYou: boolean;
   isTeammate: boolean;
   isOpponent: boolean;
@@ -300,6 +302,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
           avatar_url: p.avatar_url ?? null,
           level: p.level ?? null,
           pin: p.pin ?? null,
+          bot_persona: p.bot_persona ?? null,
           isYou: p.isYou,
           isTeammate: p.isTeammate,
           isOpponent: p.isOpponent,

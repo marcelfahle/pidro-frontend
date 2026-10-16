@@ -1,4 +1,5 @@
-import { POSITION_TO_INDEX, publicPlayerName, t, formatNumber } from '@pidro/shared';
+import { POSITION_TO_INDEX, t, formatNumber } from '@pidro/shared';
+import { seatName } from '@/features/seatName';
 import type { LobbyCategories, LobbyCategoryKey, Position, Room } from '@pidro/shared';
 
 const pairs: Position[][] = [
@@ -38,14 +39,13 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
       name:
         kind === 'held'
           ? seat!.held_for!.display_name
-          : kind === 'bot'
-            ? t('social.bot')
-            : occupied
-              ? publicPlayerName(player?.username, t('social.player'), player?.display_name)
-              : kind === 'sub'
-                ? t('social.sit_in')
-                : t('social.open'),
+          : occupied
+            ? seatName(player, t('social.player'), kind === 'bot')
+            : kind === 'sub'
+              ? t('social.sit_in')
+              : t('social.open'),
       avatarUrl: kind === 'held' ? seat!.held_for!.avatar_url : player?.avatar_url,
+      persona: kind === 'bot' ? (player?.bot_persona ?? null) : null,
       minGames,
       requirementReason:
         kind === 'open' &&

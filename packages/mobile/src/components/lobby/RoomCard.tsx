@@ -90,6 +90,7 @@ export const RoomCard = memo(function RoomCard({
                     size={44}
                     uri={seat.avatarUrl}
                     kind={seat.kind === 'bot' ? 'bot' : 'player'}
+                    persona={seat.persona}
                   />
                 )}
                 {seat.minGames > 0 ? (

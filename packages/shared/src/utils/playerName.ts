@@ -22,3 +22,18 @@ export function publicPlayerName(
   }
   return typeof username === 'string' && username.trim() ? username : fallback;
 }
+
+/**
+ * A seat's public name. A bot with a persona goes by the server's display
+ * name (Marcel, Antti, Jocke); everyone else by `publicPlayerName`.
+ */
+export function seatPlayerName(
+  player: { username?: unknown; display_name?: unknown; bot_persona?: unknown },
+  fallback = 'Player',
+): string {
+  if (player.bot_persona) {
+    const name = typeof player.display_name === 'string' ? player.display_name.trim() : '';
+    return name || fallback;
+  }
+  return publicPlayerName(player.username, fallback, player.display_name);
+}

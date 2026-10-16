@@ -262,3 +262,75 @@ test('REST, lobby, readiness and lifecycle agree for the reported accounts, play
     }
   }
 });
+
+test('a bot with a persona goes by its display name; a substitute keeps the player name', () => {
+  const room = normalizeRoom({
+    code: 'CREW',
+    seats: {
+      north: { user_id: 'human', username: 'Ritva' },
+      east: {
+        user_id: 'bot_1',
+        username: 'bot_1',
+        display_name: 'Antti',
+        bot_persona: 'antti',
+      },
+      south: { user_id: 'viewer', username: 'Mia' },
+      west: { user_id: 'bot_2', username: 'Bot' },
+    },
+  });
+  const store = useGameStore.getState();
+  store.initFromRoom({ room, youPlayerId: 'viewer' });
+  const seats = () =>
+    positions.map((pos) => {
+      const meta = useGameStore.getState().playerMeta[pos];
+      return [meta.username, meta.bot_persona ?? null];
+    });
+  expect(seats()).toEqual([
+    ['Ritva', null],
+    ['Antti', 'antti'],
+    ['Mia', null],
+    ['Bot', null],
+  ]);
+  store.applySeatLifecycle({
+    room_id: 'crew',
+    room_code: 'CREW',
+    revision: 1,
+    owner_id: null,
+    room_status: 'playing',
+    seats: {
+      north: {
+        player_id: 'human',
+        username: 'Ritva',
+        status: 'bot_substitute',
+        bot_persona: null,
+        decision: null,
+      },
+      east: {
+        player_id: 'bot_1',
+        username: 'bot_1',
+        display_name: 'Antti',
+        bot_persona: 'antti',
+        status: 'permanent_bot',
+        decision: null,
+      },
+      south: {
+        player_id: 'viewer',
+        username: 'Mia',
+        status: 'normal',
+        decision: null,
+      },
+      west: {
+        player_id: 'bot_2',
+        username: null,
+        status: 'permanent_bot',
+        decision: null,
+      },
+    },
+  });
+  expect(seats()).toEqual([
+    ['Ritva', null],
+    ['Antti', 'antti'],
+    ['Mia', null],
+    ['', null],
+  ]);
+});

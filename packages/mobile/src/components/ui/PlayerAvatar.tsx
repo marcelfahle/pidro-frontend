@@ -14,6 +14,7 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 import { DealerChip } from '@/components/game/DealerChip';
 import { Avatar } from '@/components/ui/Avatar';
+import { BotPersonaFace } from '@/components/ui/BotPersonaFace';
 import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
@@ -28,6 +29,7 @@ import {
   type AvatarKind,
   type AvatarPin,
 } from '@/features/avatar';
+import type { BotPersona } from '@pidro/shared';
 
 /**
  * A player, drawn the same way everywhere: the photo in a ring, with up to
@@ -59,6 +61,8 @@ export interface PlayerAvatarProps {
   turn?: { progress: number; urgent?: boolean; attention?: boolean } | null;
   away?: AvatarAway | null;
   kind?: AvatarKind;
+  /** A bot with a persona wears its face, with the robot badge on top. */
+  persona?: BotPersona | null;
   name?: string | null;
   /** The width the name may take: a longer one drops a type step, then truncates. */
   nameRoom?: number;
@@ -92,6 +96,7 @@ export function PlayerAvatar({
   turn = null,
   away = null,
   kind = 'player',
+  persona = null,
   name,
   nameRoom,
   status,
@@ -105,6 +110,7 @@ export function PlayerAvatar({
 }: PlayerAvatarProps) {
   const { t } = useTranslation();
   const parts = avatarParts(size, { beside: label !== 'below' });
+  const crew = kind === 'bot' ? persona : null;
   const seated = kind !== 'open';
   const gold = ring !== 'glass' && kind === 'player';
   const chip = seated && level != null ? parts.level : null;
@@ -112,7 +118,7 @@ export function PlayerAvatar({
   const spoken =
     accessibilityLabel ??
     (name || kind !== 'player'
-      ? avatarLabel({ name, status, level, pin, dealer, turn, away, kind })
+      ? avatarLabel({ name, status, level, pin, dealer, turn, away, kind, persona: crew })
       : undefined);
 
   const hasLabel = !!(name || status);
@@ -152,7 +158,9 @@ export function PlayerAvatar({
                 borderColor: gold ? PidroBevel.keyline : PidroBevel.panelDeep,
               },
             ]}>
-            {kind === 'bot' ? (
+            {crew ? (
+              <BotPersonaFace persona={crew} />
+            ) : kind === 'bot' ? (
               <Icon name="bot" size={Math.round(size * 0.5)} color={PidroColors.text} />
             ) : (
               <Avatar uri={uri} style={styles.photo} resizeMode="cover" />
@@ -236,6 +244,9 @@ export function PlayerAvatar({
       ) : null}
 
       {away && seated && parts.dealer ? <AwayBadge away={away} size={parts.dealer.size} /> : null}
+      {crew && !away ? (
+        <AwayBadge away="bot" size={parts.dealer?.size ?? Math.round(size * 0.42)} />
+      ) : null}
     </View>
   );
 

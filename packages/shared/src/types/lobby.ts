@@ -5,6 +5,8 @@ export type RuleSet = 'finnish' | 'louisiana';
 export type SeatType = 'open' | 'ai' | { type: 'open'; min_games: 0 | 100 | 1000 } | { type: 'held'; user_id: string };
 export type BotDifficulty = 'random' | 'basic' | 'smart';
 export type Position = 'north' | 'east' | 'south' | 'west';
+/** Which of the three bot personas sits in a bot seat; the server picks it. */
+export type BotPersona = 'marcel' | 'antti' | 'jocke';
 export type PositionPreference = Position | 'north_south' | 'east_west';
 
 export interface HeldPlayer {
@@ -46,6 +48,7 @@ export interface ReadinessSnapshot {
       avatar_url?: string | null;
       level?: number | null;
       pin?: SeatPin | null;
+      bot_persona?: BotPersona | null;
       held_for?: HeldPlayer | null;
     }
   >;
@@ -71,6 +74,8 @@ export interface Player {
   level?: number | null;
   pin?: SeatPin | null;
   is_bot?: boolean;
+  /** Set for a real bot (Marcel, Antti, Jocke); null for humans and substitute bots. */
+  bot_persona?: BotPersona | null;
 }
 
 export interface Seat {

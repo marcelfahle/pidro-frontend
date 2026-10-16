@@ -158,7 +158,12 @@ export function GameOverOverlay({
                           disabled={!onProfile || !canViewPlayer(player)}
                           onPress={() => onProfile?.(player.playerId!)}
                           style={[styles.player, wide && styles.playerWide]}>
-                          <PlayerAvatar uri={player.avatar_url} size={compact ? 32 : 44} />
+                          <PlayerAvatar
+                            uri={player.avatar_url}
+                            kind={player.bot_persona ? 'bot' : 'player'}
+                            persona={player.bot_persona}
+                            size={compact ? 32 : 44}
+                          />
                           <PidroText role="label" numberOfLines={2} style={styles.playerName}>
                             {displayName(player)}
                           </PidroText>
