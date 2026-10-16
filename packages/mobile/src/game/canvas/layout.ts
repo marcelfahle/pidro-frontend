@@ -73,6 +73,73 @@ export const northSeatBottom = (L: TableLayout, tableTop: number) =>
   12 +
   (L.tight ? TIGHT_AVATAR : NORTH_SEAT_STACK[L.profile.startsWith('tablet') ? 'tablet' : 'phone']);
 
+/** East and west's backs along the edges, up to six, as SeatLayer stacks them. */
+export function sideStacks(L: TableLayout) {
+  const backW = clamp(L.cardW * 0.62, 30, 56);
+  const maxHeight = backW * (1 + 5 * 0.48);
+  const top = L.trick.cy - maxHeight / 2;
+  const handTop = L.hand.cy - L.cardH / 2;
+  return { backW, maxHeight, top, lowestTop: Math.max(top, handTop - 12 - maxHeight) };
+}
+
+/**
+ * Where East and West's seats start: above their stacks. Portrait keeps the
+ * opponents a triangle where it can: a step below North, the stacks moving
+ * down under them as far as the hand allows; on the smallest phones the
+ * seats rise beside North instead. Landscape seats never rise into the
+ * header row. `seatHeight` is the seat drawn above the stack.
+ */
+export function sideSeatTop(
+  L: TableLayout,
+  {
+    tableTop,
+    seatHeight,
+    headerBottom,
+  }: { tableTop: number; seatHeight: number; headerBottom: number }
+): number {
+  const stacks = sideStacks(L);
+  if (!L.profile.endsWith('portrait')) return Math.max(headerBottom, stacks.top - 12 - seatHeight);
+  const northSeatTop = northFanTop(L, tableTop) + northBackWidth(L.cardW) * CARD_RATIO + 12;
+  return Math.max(
+    L.tight ? northSeatTop + seatHeight + 8 : tableTop + 8,
+    Math.min(
+      Math.max(northSeatTop + 16, stacks.top - 12 - seatHeight),
+      stacks.lowestTop - 12 - seatHeight
+    )
+  );
+}
+
+/** A trump button: the suit, its name and the count stacked, big enough for older hands. */
+export const TRUMP_BUTTON = { width: 76, height: 76 } as const;
+const TRUMP_GAP = 8;
+/** "Pick trump" and the gap under it. */
+const TRUMP_CAPTION = 22;
+/**
+ * The trump picker, in the trick circle: a 2×2 grid in portrait, one row of
+ * four in landscape. Where the side seats come down beside it (small phones,
+ * landscape), it sits below them instead of over their names.
+ */
+export function trumpPicker(L: TableLayout, tableTop: number, headerBottom: number) {
+  const portrait = L.profile.endsWith('portrait');
+  const columns = portrait ? 2 : 4;
+  const rows = 4 / columns;
+  const width = columns * TRUMP_BUTTON.width + (columns - 1) * TRUMP_GAP;
+  const height = TRUMP_CAPTION + rows * TRUMP_BUTTON.height + (rows - 1) * TRUMP_GAP;
+  const seat = L.tight ? TIGHT_AVATAR : AVATAR_SIZE[L.profile];
+  const seatsBottom =
+    L.tight || !portrait
+      ? sideSeatTop(L, { tableTop, seatHeight: seat, headerBottom }) + seat + TRUMP_GAP
+      : 0;
+  return {
+    columns,
+    gap: TRUMP_GAP,
+    left: L.trick.cx - width / 2,
+    top: Math.max(L.trick.cy - height / 2, seatsBottom),
+    width,
+    height,
+  };
+}
+
 const TICKER_LINE_MAX = 168;
 const TICKER_LINE_MIN = 72;
 /** The chevron and the gap before it. */
@@ -185,6 +252,9 @@ export function playedCardTarget(
         : L.trick.cy + off * spacing * (rel === 'east' ? -1 : 1);
   return { x, y, rot, scale: pileScale };
 }
+
+/** How far a playable (or previewed) hand card rises out of the row. */
+export const handLift = (L: TableLayout) => Math.min(16, L.cardH * 0.14);
 
 const HAND_STEP = 0.72;
 /** Step between hand cards: a straight row, squeezed to fit the hand's width. */

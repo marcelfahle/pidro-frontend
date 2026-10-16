@@ -108,6 +108,17 @@ const BOT_TRICK = [
   { player: 'east', card: heart(4) },
 ];
 const BOT_TRICK_HAND: Card[] = [heart(14), heart(10), heart(5), heart(2)];
+const TRUMP_HAND: Card[] = [
+  heart(14),
+  heart(11),
+  heart(9),
+  { rank: 5, suit: 'diamonds' },
+  { rank: 10, suit: 'diamonds' },
+  spade(13),
+  spade(7),
+  { rank: 12, suit: 'clubs' },
+  { rank: 2, suit: 'clubs' },
+];
 const CLOCKWISE: Position[] = ['north', 'east', 'south', 'west'];
 const nextSeat = (position: Position) => CLOCKWISE[(CLOCKWISE.indexOf(position) + 1) % 4];
 const highBid = (bids: ServerBid[]) => bids.filter((bid) => bid.amount !== 'pass').at(-1) ?? null;
@@ -360,7 +371,7 @@ function TableDevHarness() {
   const [waitingLocked, setWaitingLocked] = useState(false);
 
   if (
-    (fixture || params.role || phase === 'second_deal') &&
+    (fixture || params.role || phase === 'second_deal' || phase === 'declaring') &&
     !phase.startsWith('waiting') &&
     !phase.startsWith('ready')
   ) {
@@ -727,6 +738,17 @@ function RolePreview({
         },
         highest_bid: { position: 'east', amount: 6 },
         current_trick: BOT_TRICK,
+      }),
+      // PID-209: you dealt and won the bid; hearts, with the 5♦, is your best suit.
+      ...(previewPhase === 'declaring' && {
+        dealer: 'south',
+        highest_bid: { position: 'south', amount: 8 },
+        players: {
+          north: { hand: 9 },
+          east: { hand: 9 },
+          west: { hand: 9 },
+          south: { hand: TRUMP_HAND },
+        },
       }),
     } as unknown as ServerGameState);
     if (phase === 'auto_rob') {

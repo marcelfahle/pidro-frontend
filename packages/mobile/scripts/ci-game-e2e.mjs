@@ -136,7 +136,7 @@ async function captureMilestones(page, seen) {
   const milestones = [
     ['waiting-table', 'waiting'],
     ['bidding-window', 'bidding'],
-    ['trump-window', 'trump'],
+    ['trump-picker', 'trump'],
     ['seat-north', 'playing'],
     ['game-over-window', 'game-over'],
   ];

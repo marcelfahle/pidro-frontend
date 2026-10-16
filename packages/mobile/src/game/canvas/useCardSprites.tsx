@@ -32,9 +32,11 @@ import {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
-import type { Card } from '@/types/game';
+import type { Card, Suit } from '@/types/game';
+import { trumpsIn } from '@/features/game/trump';
 import { isStillCapture } from '@/utils/stillCapture';
 import {
+  handLift,
   handScale as handScaleFor,
   handStep,
   playedCardTarget,
@@ -43,6 +45,7 @@ import {
 } from './layout';
 import type { TableModel } from './tableModel';
 import type { CardKey, CardTextures } from './cardTextures';
+import { cardKey } from './cardKey';
 import {
   CUT_CARD_STAGGER_MS,
   CUT_CARD_TRAVEL_MS,
@@ -102,6 +105,8 @@ type SlotInfo = {
   leading: boolean;
   /** A five that just landed: it shimmers once. */
   flashing: boolean;
+  /** Would be trump under the suit being considered. */
+  previewed: boolean;
 } | null;
 
 type Opts = {
@@ -110,9 +115,18 @@ type Opts = {
   L: TableLayout;
   onPlayCard?: (card: Card) => void;
   enabled: boolean;
+  /** Picking trump: the suit under the finger, whose trumps lift in the hand. */
+  previewSuit?: Suit | null;
 };
 
-export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts) {
+export function useCardSprites({
+  model,
+  textures,
+  L,
+  onPlayCard,
+  enabled,
+  previewSuit = null,
+}: Opts) {
   /* eslint-disable react-hooks/rules-of-hooks -- fixed-length pools → stable hook order */
   const sx = Array.from({ length: MAX }, () => useSharedValue(0));
   const sy = Array.from({ length: MAX }, () => useSharedValue(0));
@@ -227,28 +241,41 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
       oy: number;
       legal: boolean;
       blocked: boolean;
+      previewed: boolean;
       topacity: number;
     };
     const desired: Desired[] = [];
+    const preview = new Set<string>(
+      previewSuit
+        ? trumpsIn(
+            model.yourHand.map((tc) => tc.card),
+            previewSuit
+          ).map(cardKey)
+        : []
+    );
 
     model.yourHand.forEach((tc, i) => {
       const s = handSlot(i);
       const legal = model.canPlay && tc.isLegalPlay;
       const blocked = model.canPlay && !tc.isLegalPlay;
+      const previewed = preview.has(tc.textureKey);
+      // Reduce Motion keeps a previewed card in the row: its outline says enough.
+      const lifted = legal || (previewed && !reduceMotion);
       desired.push({
         key: tc.key,
         textureKey: tc.textureKey,
         kind: 'hand',
-        z: i + (legal ? 30 : 0),
+        z: i + (lifted ? 30 : 0),
         delayOrder: i,
         tx: s.x,
-        ty: legal ? s.y - Math.min(16, cardH * 0.14) : s.y,
+        ty: lifted ? s.y - handLift(L) : s.y,
         trot: s.rot,
         tscale: handScale * (legal ? 1.03 : blocked ? 0.98 : 1),
         ox: s.x,
         oy: s.y,
         legal,
         blocked,
+        previewed,
         topacity: 1,
       });
     });
@@ -271,6 +298,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         oy: seat.y,
         legal: false,
         blocked: false,
+        previewed: false,
         topacity: 1,
       });
     });
@@ -293,6 +321,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
           oy: seat.y,
           legal: false,
           blocked: false,
+          previewed: false,
           topacity: 1,
         });
       });
@@ -417,6 +446,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
         winner: d.kind === 'cut' && d.key === winnerCutKey,
         leading: d.kind === 'played' && d.key === model.winningKey,
         flashing: d.kind === 'played' && d.key === flashKey.current,
+        previewed: d.previewed,
       };
 
       const pressed = pressSlot.value === sl;
@@ -516,7 +546,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
     prevModel.current = model;
     prevLayout.current = L;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, L, enabled, reduceMotion]);
+  }, [model, L, enabled, reduceMotion, previewSuit]);
 
   useEffect(() => {
     const cutCount = model ? Object.keys(model.dealerCuts).length : 0;
@@ -672,6 +702,7 @@ export function useCardSprites({ model, textures, L, onPlayCard, enabled }: Opts
             leadGlow={leadGlow}
             flashing={s.flashing}
             flashGlow={flashGlow}
+            previewed={s.previewed}
           />
         ))}
       </>
@@ -718,6 +749,7 @@ function CardSprite({
   leadGlow,
   flashing,
   flashGlow,
+  previewed,
 }: {
   img: SkImage | null;
   x: SharedValue<number>;
@@ -734,6 +766,7 @@ function CardSprite({
   leadGlow: SharedValue<number>;
   flashing: boolean;
   flashGlow: SharedValue<number>;
+  previewed: boolean;
 }) {
   const transform = useDerivedValue(() => [
     { translateX: x.value },
@@ -801,6 +834,18 @@ function CardSprite({
         strokeWidth={3}
         opacity={winnerOpacity}
       />
+      {previewed && (
+        <RoundedRect
+          x={-w / 2 - 1}
+          y={-h / 2 - 1}
+          width={w + 2}
+          height={h + 2}
+          r={r + 1}
+          color={T.gold}
+          style="stroke"
+          strokeWidth={2}
+        />
+      )}
     </Group>
   );
 }

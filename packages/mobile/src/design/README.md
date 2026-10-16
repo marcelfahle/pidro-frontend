@@ -232,7 +232,8 @@ moving anything.
 - Marquee banner (gold rim / wood band / navy panel plaque) — designed on the canvas,
   not yet a `react-native-svg` primitive.
 - Danger material for `BevelButton` (designed on the canvas Buttons sheet).
-- In-game windows (bid grid, trump, hand selection) still on legacy surfaces.
+- In-game windows (bid grid, hand selection) still on legacy surfaces. Trump is
+  picked in the felt (`TrumpPicker`), not in a window.
 
 ## Exceptions
 
