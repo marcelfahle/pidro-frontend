@@ -167,7 +167,7 @@ function fixtureSignals(plays: Play[]) {
   };
 }
 
-/** A card that scored in spades, kept by `position`'s team. */
+/** A card that scored, kept by `position`'s team. */
 const scored = (rank: number, suit: Suit, points: number, position: Position) =>
   ({
     card: { rank, suit },
