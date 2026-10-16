@@ -5,7 +5,7 @@ import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-c
 import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { ruleSetFixture } from '@/features/rules/fixtures';
-import { createTableFixture } from '@/features/lobby/fixtures';
+import { BOT_CREW, createTableFixture } from '@/features/lobby/fixtures';
 import { friendsFixture } from '@/features/friends/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
@@ -269,7 +269,14 @@ const SEAT_STATES: (Omit<PlayerAvatarProps, 'size'> & { caption: string })[] = [
     statusTone: 'danger',
   },
   { caption: 'Left mid-game', name: 'Jussi', away: 'bot', status: 'Bot is playing' },
-  { caption: 'A bot seat', name: 'Bot', kind: 'bot', status: 'Bid 7', statusTone: 'quiet' },
+  {
+    caption: 'A bot seat',
+    name: 'Antti',
+    kind: 'bot',
+    persona: 'antti',
+    status: 'Bid 7',
+    statusTone: 'quiet',
+  },
   {
     caption: 'Before the game',
     kind: 'open',
@@ -335,6 +342,31 @@ function AvatarGallery() {
           {[104, 64, 56, 44, 36, 24].map((size) => (
             <View key={size} style={styles.sizeCell}>
               <PlayerAvatar uri={GALLERY_AVATAR} size={size} pin="classic" level={44} />
+              <PidroText role="metadata" tone="muted">
+                {size}
+              </PidroText>
+            </View>
+          ))}
+        </View>
+      </Surface>
+
+      <Surface variant="panel" style={styles.section} padded>
+        <PidroText role="title">Bot crew — Marcel, Antti, Jocke</PidroText>
+        <View style={styles.avatarRow}>
+          {BOT_CREW.map((bot) => (
+            <PlayerAvatar
+              key={bot.bot_persona}
+              size={64}
+              kind="bot"
+              persona={bot.bot_persona}
+              name={bot.display_name}
+            />
+          ))}
+        </View>
+        <View style={[styles.avatarRow, styles.sizes]}>
+          {[104, 56, 44, 36, 24].map((size, index) => (
+            <View key={size} style={styles.sizeCell}>
+              <PlayerAvatar size={size} kind="bot" persona={BOT_CREW[index % 3].bot_persona} />
               <PidroText role="metadata" tone="muted">
                 {size}
               </PidroText>

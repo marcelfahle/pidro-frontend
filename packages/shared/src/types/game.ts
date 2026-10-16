@@ -1,4 +1,4 @@
-import type { Position, RuleSet } from './lobby';
+import type { BotPersona, Position, RuleSet } from './lobby';
 
 export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
 /** The pin a seat wears: `classic` for a Pidro Classic player. */
@@ -19,6 +19,7 @@ export interface SeatLifecycleSnapshot {
       avatar_url?: string | null;
       level?: number | null;
       pin?: SeatPin | null;
+      bot_persona?: BotPersona | null;
       decision: { id: string; player_name: string | null } | null;
     }
   >;
@@ -234,6 +235,7 @@ export interface PlayerMeta {
   /** All-time level; null for bots and open seats. */
   level?: number | null;
   pin?: SeatPin | null;
+  bot_persona?: BotPersona | null;
 }
 
 export type RelativePosition = 'north' | 'east' | 'south' | 'west';
@@ -254,6 +256,7 @@ export interface RelativePlayerView {
   /** All-time level; null for bots and open seats. */
   level?: number | null;
   pin?: SeatPin | null;
+  bot_persona?: BotPersona | null;
 }
 
 export interface GameViewModel {

@@ -189,6 +189,26 @@ export const PidroFlagColors = {
   usCanton: '#2b3a7a',
 } as const;
 
+/**
+ * The bot crew's faces (Marcel, Antti, Jocke): skin, hair and props. The
+ * table's own navy, gold, cream and card red do the rest; nothing else may
+ * use these.
+ */
+export const PidroPersonaColors = {
+  skin: '#F3C9A3',
+  skinShade: '#DDA27C',
+  cheek: 'rgba(236, 104, 112, 0.5)',
+  hairBrown: '#6B3F1D',
+  hairBlond: '#EBCB7E',
+  hairDark: '#2A1A10',
+  felt: '#EADFC8',
+  feltShade: '#C9B48D',
+  headphones: '#1D2B3F',
+  hoodie: '#2A76D0',
+  steam: 'rgba(255, 255, 255, 0.75)',
+  lens: '#0B1726',
+} as const;
+
 export const PidroRadii = {
   tight: 6,
   surface: 8,

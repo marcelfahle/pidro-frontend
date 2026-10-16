@@ -570,6 +570,7 @@ const allCases = [
     protectNorthSeat: true,
     protectPlayerHand: true,
     bidLines: { west: 'Passed', north: 'Bid 7', east: 'Bid 9 · high' },
+    crew: { west: 'Marcel', north: 'Antti', east: 'Jocke' },
     viewports: { 'compact-landscape': { width: 640, height: 360 } },
   },
   {
@@ -866,7 +867,7 @@ async function assertTargetGeometry(page, testCase, viewport) {
   }
 
   if (testCase.name === 'table-waiting' || testCase.name === 'table-host-controls') {
-    if (await page.getByRole('button', { name: /Bot.*View profile/ }).count()) {
+    if (await page.getByRole('button', { name: /(Bot|Marcel).*View profile/ }).count()) {
       throw new Error(`${testCase.name} exposes a bot profile action in ${viewport.name}`);
     }
     await page.getByRole('button', { name: /, You, .*View profile$/ }).waitFor();
@@ -1408,7 +1409,7 @@ async function assertLobbyPresentation(page, testCase) {
     assert.equal(await row('OPEN1').getByText('Open', { exact: true }).count(), 3);
     await row('OPEN1').getByText('3 seats open', { exact: true }).waitFor();
     await row('OPEN2').getByText('Yaya', { exact: true }).waitFor();
-    assert.equal(await row('OPEN2').getByText('Bot', { exact: true }).count(), 1);
+    assert.equal(await row('OPEN2').getByText('Marcel', { exact: true }).count(), 1);
     assert.equal(await row('OPEN2').getByText('Open', { exact: true }).count(), 2);
     await row('OPEN2').getByText('2 seats open', { exact: true }).waitFor();
     assert.equal(await row('OPEN1').getByTestId('seat-requirement').count(), 3);
@@ -1441,6 +1442,9 @@ async function assertLobbyPresentation(page, testCase) {
   if (['list', 'search-empty', 'watch'].includes(fixture)) {
     await row('WATCH1').getByText('Hand 4 · 34 to 21', { exact: true }).waitFor();
     await row('WATCH2').getByText('Playing', { exact: true }).waitFor();
+    for (const name of ['Marcel', 'Antti', 'Jocke']) {
+      await row('WATCH2').getByText(name, { exact: true }).waitFor();
+    }
     assert.equal(
       await row('WATCH1').getByRole('button', { name: 'Watch', exact: true }).count(),
       1
@@ -1456,7 +1460,7 @@ async function assertLobbyPresentation(page, testCase) {
   await search.fill('  cLaAs  ');
   await row('OPEN1').waitFor();
   assert.equal(await page.getByTestId(/^lobby-table-/).count(), 1);
-  for (const query of ['OPEN1', 'Never show this table name', 'Bot']) {
+  for (const query of ['OPEN1', 'Never show this table name', 'Marcel']) {
     await search.fill(query);
     await page.getByText('No matching tables', { exact: true }).waitFor();
     assert.equal(await page.getByTestId(/^lobby-table-/).count(), 0);
@@ -2085,6 +2089,21 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
 // Each seat says its bid, aloud and on screen. Your tight seat has no name,
 // so it shows the short form under its avatar, inside the seat's column,
 // which ends where your cards begin.
+/** The bot crew sits by name, and each seat still says it is a bot. */
+async function assertCrew(page, testCase) {
+  for (const [seat, name] of Object.entries(testCase.crew ?? {})) {
+    await page.waitForFunction(
+      ([id, text]) =>
+        document
+          .querySelector(`[data-testid="${id}"]`)
+          ?.getAttribute('aria-label')
+          ?.startsWith(text),
+      [`seat-${seat}`, `${name}, Bot`],
+      { timeout: 10_000 }
+    );
+  }
+}
+
 async function assertBidLines(page, testCase, viewport) {
   if (!testCase.bidLines) return;
   for (const [seat, line] of Object.entries(testCase.bidLines)) {
@@ -2838,6 +2857,7 @@ async function main() {
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
           await assertBidLines(page, testCase, caseViewport);
+          await assertCrew(page, testCase);
           await assertPlayLines(page, testCase, caseViewport);
           if (testCase.locale && testCase.path.includes('game_over')) {
             await page

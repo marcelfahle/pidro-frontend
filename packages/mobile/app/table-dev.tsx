@@ -12,6 +12,7 @@ import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { WaitingTable } from '@/components/game/WaitingTable';
+import { BOT_CREW } from '@/features/lobby/fixtures';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
@@ -99,7 +100,7 @@ const OUT_PLAYERS = {
     south: { hand: OUT_HAND },
   },
 } as const;
-// `trick=bots`: hand 4 against bots, hearts trump. Wynn, Nora and Eli have
+// `trick=bots`: hand 4 against bots, hearts trump. Marcel, Antti and Jocke have
 // played to the first trick and it is your turn.
 const heart = (rank: number): Card => ({ rank, suit: 'hearts' });
 const BOT_TRICK = [
@@ -181,14 +182,14 @@ const WAITING_ROOM: Room = {
     {
       seat_index: 3,
       status: 'occupied',
-      player: { id: 'p-north', username: 'Bot', is_bot: true },
+      player: { id: 'p-north', is_bot: true, ...BOT_CREW[0] },
       position: 'north',
     },
     { seat_index: 4, status: 'free', player: null, position: 'east' },
   ],
 };
 
-/** `bids=`: a solo table, you and three bots, as a quick game seats it. */
+/** `bids=`: a solo table, you and the bot crew, as a quick game seats it. */
 const BOT_ROOM: Room = {
   ...WAITING_ROOM,
   status: 'playing',
@@ -196,19 +197,34 @@ const BOT_ROOM: Room = {
   positions: { north: 'b-north', east: 'b-east', south: 'p-south', west: 'b-west' },
   seats: [
     { ...WAITING_ROOM.seats![0], player: { id: 'p-south', username: 'Mia', level: 44 } },
-    ...(
-      [
-        ['west', 'Wynn'],
-        ['north', 'Nora'],
-        ['east', 'Eli'],
-      ] as const
-    ).map(([position, username], index) => ({
+    ...(['west', 'north', 'east'] as const).map((position, index) => ({
       seat_index: index + 2,
       status: 'occupied' as const,
-      player: { id: `b-${position}`, username, is_bot: true },
+      player: { id: `b-${position}`, is_bot: true, ...BOT_CREW[index] },
       position,
     })),
   ],
+};
+
+/**
+ * `out=`: bots from a server before personas, which go by their usernames.
+ * Their short names keep the count-help line's width check as it was: on a
+ * 390pt phone that line cuts any name longer than three letters.
+ */
+const OUT_ROOM: Room = {
+  ...BOT_ROOM,
+  seats: BOT_ROOM.seats!.map((seat, index) =>
+    index === 0
+      ? seat
+      : {
+          ...seat,
+          player: {
+            id: seat.player!.id,
+            username: ['Wynn', 'Nora', 'Eli'][index - 1],
+            is_bot: true,
+          },
+        }
+  ),
 };
 
 function fixtureAvatar(initial: string, color: string) {
@@ -427,6 +443,7 @@ function TableDevHarness() {
           ),
         }
       : WAITING_ROOM;
+    let bot = 0;
     const fixtureRoom = {
       ...waitingRoom,
       locked: waitingLocked,
@@ -435,11 +452,10 @@ function TableDevHarness() {
         phase === 'ready-solo' && seat.player
           ? {
               ...seat,
-              player: {
-                id: seat.player.id,
-                username: seat.position === viewerPosition ? 'Alex' : 'Bot',
-                is_bot: seat.position !== viewerPosition,
-              },
+              player:
+                seat.position === viewerPosition
+                  ? { id: seat.player.id, username: 'Alex' }
+                  : { id: seat.player.id, is_bot: true, ...BOT_CREW[bot++ % 3] },
             }
           : params.names === 'long' && seat.player?.id === 'p-west'
             ? { ...seat, player: { ...seat.player, username: 'Alexandria the Long-Named Player' } }
@@ -620,6 +636,7 @@ function RolePreview({
   botTrick?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
+  const tableRoom = outPlayers ? OUT_ROOM : bidRound || botTrick ? BOT_ROOM : WAITING_ROOM;
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
@@ -661,10 +678,9 @@ function RolePreview({
       automaticRobbed[3],
       automaticRobbed[4],
     ];
-    const botTable = bidRound || outPlayers || botTrick;
     useSettingsStore.setState({ countHelp });
     store.reset();
-    store.initFromRoom({ room: botTable ? BOT_ROOM : WAITING_ROOM, youPlayerId: 'p-south' });
+    store.initFromRoom({ room: tableRoom, youPlayerId: 'p-south' });
     store.setRole(role);
     store.setYouPosition('south');
     store.setChannelStatus(connected);
@@ -839,6 +855,7 @@ function RolePreview({
     outPlayers,
     countHelp,
     botTrick,
+    tableRoom,
   ]);
 
   useEffect(() => {
@@ -889,11 +906,7 @@ function RolePreview({
   return (
     <View className="flex-1">
       {Table ? (
-        <Table
-          room={bidRound || outPlayers || botTrick ? BOT_ROOM : WAITING_ROOM}
-          rulesFixtureSeen={rulesFixtureSeen}
-          onLeave={() => {}}
-        />
+        <Table room={tableRoom} rulesFixtureSeen={rulesFixtureSeen} onLeave={() => {}} />
       ) : (
         <Loading />
       )}

@@ -68,14 +68,20 @@ function avatarFor(
   line: SeatLine | null,
   turn: SeatTurn | undefined
 ): Omit<PlayerAvatarProps, 'size'> {
+  // Only a real bot has a persona, whatever status the room gave the seat first.
+  const crew = data.seatStatus !== 'vacant' ? data.bot_persona : null;
   const away: PlayerAvatarProps['away'] =
     data.seatStatus === 'reconnecting'
       ? 'reconnecting'
-      : data.seatStatus === 'bot_substitute'
+      : data.seatStatus === 'bot_substitute' && !crew
         ? 'bot'
         : null;
   const kind: PlayerAvatarProps['kind'] =
-    data.seatStatus === 'permanent_bot' ? 'bot' : data.seatStatus === 'vacant' ? 'open' : 'player';
+    crew || data.seatStatus === 'permanent_bot'
+      ? 'bot'
+      : data.seatStatus === 'vacant'
+        ? 'open'
+        : 'player';
   const onTurn = data.isCurrentTurn && kind !== 'open';
   return {
     uri: data.avatar_url,
@@ -87,6 +93,7 @@ function avatarFor(
       : null,
     away,
     kind,
+    persona: crew,
     name: kind === 'open' ? null : data.username,
     status: line?.text ?? null,
     pulse: line?.pulse ?? null,

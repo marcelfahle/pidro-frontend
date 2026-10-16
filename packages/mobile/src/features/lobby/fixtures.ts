@@ -48,8 +48,17 @@ export function seatInvitationsFixture(value?: string): SeatInvitation[] | undef
   ];
 }
 
+/** The bot crew, in the order the server hands them out at a table. */
+export const BOT_CREW = [
+  { bot_persona: 'marcel', username: 'Marcel', display_name: 'Marcel' },
+  { bot_persona: 'antti', username: 'Antti', display_name: 'Antti' },
+  { bot_persona: 'jocke', username: 'Jocke', display_name: 'Jocke' },
+] as const;
+
+/** `Bot` in `names` seats the next of the crew. */
 function room(code: string, names: (string | null)[], louisiana = false, playing = false): Room {
   const positions: Position[] = ['north', 'south', 'east', 'west'];
+  let bots = 0;
   return {
     code,
     name: 'Never show this table name',
@@ -66,7 +75,11 @@ function room(code: string, names: (string | null)[], louisiana = false, playing
       seat_index: POSITION_TO_INDEX[positions[index]],
       status: name ? 'occupied' : 'free',
       player: name
-        ? { id: `${code}-${positions[index]}`, username: name, is_bot: name === 'Bot' }
+        ? {
+            id: `${code}-${positions[index]}`,
+            username: name,
+            ...(name === 'Bot' ? { is_bot: true, ...BOT_CREW[bots++ % 3] } : {}),
+          }
         : null,
     })),
     available_positions: positions.filter((_, index) => !names[index]),
@@ -106,7 +119,7 @@ export function lobbyFixture(
     substitute_needed: [room('SUB', ['Anna', 'Pekka', null, 'Liisa'], false, true)],
     spectatable: [
       room('WATCH1', ['Kalle', 'Eero', 'Hanna', 'Olli'], false, true),
-      room('WATCH2', ['Ritva', 'Timo', 'Ville', 'Bot'], true, true),
+      room('WATCH2', ['Ritva', 'Bot', 'Bot', 'Bot'], true, true),
       room('WATCH3', ['Juha', 'Lasse', 'Matti', 'Antti'], false, true),
     ],
   };

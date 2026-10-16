@@ -58,6 +58,14 @@ const seat = (
   ...extra,
 });
 
+/** `lifecycle=permanent_bot`: the bot crew, seated as a quick game seats them. */
+const CREW_SEATS: Partial<Record<Position, Pick<RelativePlayerView, 'username' | 'bot_persona'>>> =
+  {
+    west: { username: 'Marcel', bot_persona: 'marcel' },
+    north: { username: 'Antti', bot_persona: 'antti' },
+    east: { username: 'Jocke', bot_persona: 'jocke' },
+  };
+
 /** `names=long`: Classic-length usernames, the longest a seat label has to carry. */
 const LONG_NAMES: Record<Position, string> = {
   south: 'ThunderThor88',
@@ -437,18 +445,15 @@ export default function GameCanvasDev({
               : player
         )
         .map((player) =>
-          lifecycle && !player.isYou
-            ? {
-                ...player,
-                seatStatus: lifecycle,
-                username:
-                  lifecycle === 'permanent_bot'
-                    ? t('game.bot')
-                    : lifecycle === 'vacant'
-                      ? t('game.open_seat')
-                      : player.username,
-              }
-            : player
+          player.isYou || !lifecycle
+            ? player
+            : lifecycle === 'permanent_bot'
+              ? { ...player, seatStatus: lifecycle, ...CREW_SEATS[player.absolutePosition] }
+              : {
+                  ...player,
+                  seatStatus: lifecycle,
+                  username: lifecycle === 'vacant' ? t('game.open_seat') : player.username,
+                }
         ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- locale invalidates synthetic seat names
     [turn, lifecycle, names, locale]
