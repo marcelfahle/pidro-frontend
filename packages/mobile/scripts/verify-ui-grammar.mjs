@@ -1525,6 +1525,7 @@ async function assertSingleSubmit(page, submitField, endpoint, expectedPayload, 
     input.dispatchEvent(enter());
   });
   const request = await requestPromise;
+  await page.waitForTimeout(100);
   releaseResponse();
   if (requestCount !== 1) {
     throw new Error(
