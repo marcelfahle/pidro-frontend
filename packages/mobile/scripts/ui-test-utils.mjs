@@ -67,6 +67,7 @@ export const UI_VIEWPORTS = [
       'table-count-help',
       'table-bot-plays',
       'table-long-names',
+      'table-long-names-inset',
     ],
   },
   {

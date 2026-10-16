@@ -201,14 +201,39 @@ export const SOUTH_NAME_MIN = 56;
 const FULL_HAND = 9;
 /** The table menu at the right end of the header row: its inset and touch target. */
 export const MENU_SLOT = 12 + 44;
+/** The least of North's landscape name the table leaves room for. */
+export const NORTH_NAME_MIN = 80;
+/** How far North's fan and seat may move left of the table's axis to make that room. */
+const NORTH_SHIFT_MAX = 32;
+/** What the menu leaves landscape North's name, its fan on the table's axis. */
+const northRoom = (L: TableLayout, insets: Insets, backs: number) =>
+  L.width -
+  insets.right -
+  MENU_SLOT -
+  8 -
+  (L.width / 2 + northFanWidth(L.cardW, backs) / 2 + 16) -
+  AVATAR_SIZE[L.profile] -
+  seatNameGap(L.profile);
+/**
+ * Landscape North on the narrowest phones (640pt with a side inset): where
+ * the dealer chip after the name would leave it less than NORTH_NAME_MIN, the
+ * chip tucks behind the avatar, as South's does (`northChipBehind`), and the
+ * fan and seat move left of the table's axis by what the name still lacks
+ * (`landscapeNorthShift`).
+ */
+export const northChipBehind = (L: TableLayout, insets: Insets, backs: number, chip: number) =>
+  chip > 0 && northRoom(L, insets, backs) - chip < NORTH_NAME_MIN;
+export const landscapeNorthShift = (L: TableLayout, insets: Insets, backs: number) =>
+  clamp(NORTH_NAME_MIN - northRoom(L, insets, backs), 0, NORTH_SHIFT_MAX);
 /** Where landscape North's seat starts: right of its fan of backs. */
-export const landscapeNorthLeft = (L: TableLayout, backs: number) =>
-  L.width / 2 + northFanWidth(L.cardW, backs) / 2 + 16;
+export const landscapeNorthLeft = (L: TableLayout, insets: Insets, backs: number) =>
+  L.width / 2 - landscapeNorthShift(L, insets, backs) + northFanWidth(L.cardW, backs) / 2 + 16;
 /**
  * How far a landscape name runs before it truncates. South's runs toward
  * your hand, North's (and the dealer chip after it, `chip`) toward the menu:
  * each takes what those leave. South never gets less than SOUTH_NAME_MIN (the
- * hand makes way for it); North never runs into the menu, however little is left.
+ * hand makes way for it); North never runs into the menu, and makes room for
+ * NORTH_NAME_MIN where it can (`northChipBehind`).
  */
 export function landscapeNameReach(
   L: TableLayout,
@@ -226,7 +251,13 @@ export function landscapeNameReach(
     rel === 'south'
       ? handLeft(L, southCards) - (insets.left + LANDSCAPE_SOUTH_LEFT + seat) - 12
       : rel === 'north'
-        ? L.width - insets.right - MENU_SLOT - 8 - landscapeNorthLeft(L, northBacks) - seat - chip
+        ? L.width -
+          insets.right -
+          MENU_SLOT -
+          8 -
+          landscapeNorthLeft(L, insets, northBacks) -
+          seat -
+          (northChipBehind(L, insets, northBacks, chip) ? 0 : chip)
         : most;
   return clamp(room, rel === 'north' ? 0 : SOUTH_NAME_MIN, most);
 }
