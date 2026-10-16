@@ -209,6 +209,90 @@ describe('count help keeps the bid line on small phones (PID-220)', () => {
   });
 });
 
+describe('count help shows the bidder’s whole name on phones (PID-220)', () => {
+  // The bid line's pill: 8pt either side of the text and a 1pt border; a row
+  // is 16pt. A name with no room beside the bid takes a row of its own, so a
+  // whole line is two rows, inside the ticker's 44pt touch target.
+  const PILL = 2 * 8 + 2;
+  const LINE_HEIGHT = 44;
+  // Nunito 800 at 12pt runs under 7pt a letter ("Margaretha" is 68pt).
+  const nameWidth = (name) => name.length * 7.5;
+  const overlap = (a, b) =>
+    a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+  for (const [width, height, insets] of [
+    [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }],
+    [375, 667, { top: 0, bottom: 0, left: 0, right: 0 }],
+    [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }],
+  ]) {
+    it(`on ${width}×${height}, ${insets.top}pt top inset`, () => {
+      const HEADER = 61;
+      const tableTop = insets.top + HEADER;
+      const L = computeLayout(width, height, insets, HEADER, utilityDockReserve(height));
+      const plaqueTop = insets.top > 0 ? insets.top : 8;
+      const plaqueBottom = plaqueTop + 53 + 4;
+      const placed = tickerPlacement(
+        L,
+        { tableTop, plaqueLeft: 12, plaqueTop, plaqueBottom },
+        true
+      );
+      for (const name of ['Jocke', 'Margaretha']) {
+        expect(nameWidth(name)).toBeLessThanOrEqual(placed.lineMaxWidth - PILL);
+      }
+
+      // The line and its chevron, against North's fan (up to the half back the
+      // ticker may reach over, above) and every seat beside it.
+      const top = plaqueBottom + placed.drop;
+      const line = {
+        left: 12,
+        right: 12 + placed.lineMaxWidth + 16,
+        top,
+        bottom: top + LINE_HEIGHT,
+      };
+      const backW = northBackWidth(L.cardW);
+      const fanTop = northFanTop(L, tableTop);
+      const parts = avatarParts(AVATAR_SIZE[L.profile]);
+      const seatHeight = L.tight
+        ? TIGHT_AVATAR
+        : AVATAR_SIZE[L.profile] +
+          parts.level.height +
+          parts.level.bottom +
+          3 +
+          parts.name.lineHeight +
+          parts.status.lineHeight;
+      const northBottom = northSeatBottom(L, tableTop);
+      const sideTop = sideSeatTop(L, {
+        tableTop,
+        seatHeight,
+        headerBottom: insets.top + HEADER + 8,
+      });
+      const center = L.tight ? TIGHT_AVATAR / 2 : 78;
+      const others = {
+        north: {
+          left: width / 2 - center,
+          right: width / 2 + center,
+          top: northBottom - seatHeight,
+          bottom: northBottom,
+        },
+        west: { left: 0, right: width / 2, top: sideTop, bottom: sideTop + seatHeight },
+        east: { left: width / 2, right: width, top: sideTop, bottom: sideTop + seatHeight },
+      };
+      for (const n of [1, 4, 6]) {
+        const fanLeft = L.seats.north.x - northFanWidth(L.cardW, n) / 2;
+        others[`${n} backs`] = {
+          left: fanLeft + backW / 2,
+          right: fanLeft + northFanWidth(L.cardW, n),
+          top: fanTop,
+          bottom: fanTop + (backW * 110) / 78,
+        };
+      }
+      for (const [other, box] of Object.entries(others)) {
+        expect(overlap(line, box), `the bid line and ${other}`).toBe(false);
+      }
+    });
+  }
+});
+
 describe('landscape: your played card lands above your hand', () => {
   for (const [width, height, side, bottom] of [
     [640, 360, 0, 0],

@@ -43,6 +43,8 @@ export const UI_VIEWPORTS = [
       'table-game-over',
       'table-game-over-loss',
       'table-game-over-spectator',
+      'table-count-help',
+      'locale-sv-table-count-help',
     ],
   },
   {

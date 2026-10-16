@@ -49,10 +49,10 @@ const BID_ROUNDS: Record<string, { dealer: Position; bids: ServerBid[] }> = {
 };
 const BID_STEP_MS = 450;
 
-// `out=`: hand 4 against bots, two tricks in. Eli (East) bid 6 and took the
-// first trick for 2; you took the second, where Nora's 2 of trump fell. Wynn
-// (West) is out of trumps and lays two cards face up. `lone`: everyone else
-// has gone cold and the rest is yours.
+// `out=`: hand 4 against the bot crew, two tricks in. Jocke (East) bid 6 and
+// took the first trick for 2; you took the second, where Antti's 2 of trump
+// fell. Marcel (West) is out of trumps and lays two cards face up. `lone`:
+// everyone else has gone cold and the rest is yours.
 const spade = (rank: number): Card => ({ rank, suit: 'spades' });
 const OUT_TRICKS = [
   {
@@ -204,27 +204,6 @@ const BOT_ROOM: Room = {
       position,
     })),
   ],
-};
-
-/**
- * `out=`: bots from a server before personas, which go by their usernames.
- * Their short names keep the count-help line's width check as it was: on a
- * 390pt phone that line cuts any name longer than three letters.
- */
-const OUT_ROOM: Room = {
-  ...BOT_ROOM,
-  seats: BOT_ROOM.seats!.map((seat, index) =>
-    index === 0
-      ? seat
-      : {
-          ...seat,
-          player: {
-            id: seat.player!.id,
-            username: ['Wynn', 'Nora', 'Eli'][index - 1],
-            is_bot: true,
-          },
-        }
-  ),
 };
 
 function fixtureAvatar(initial: string, color: string) {
@@ -636,7 +615,7 @@ function RolePreview({
   botTrick?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
-  const tableRoom = outPlayers ? OUT_ROOM : bidRound || botTrick ? BOT_ROOM : WAITING_ROOM;
+  const tableRoom = bidRound || botTrick || outPlayers ? BOT_ROOM : WAITING_ROOM;
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();

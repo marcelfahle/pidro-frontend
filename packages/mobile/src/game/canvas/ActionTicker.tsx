@@ -166,6 +166,7 @@ export function ActionTicker({
                 ours={resting.ours}
                 fading={false}
                 maxWidth={lineMaxWidth}
+                wraps
               />
             )}
       </View>
@@ -180,6 +181,7 @@ function TickerLine({
   ours,
   fading,
   maxWidth,
+  wraps = false,
   testID,
 }: {
   who: string | null;
@@ -187,6 +189,8 @@ function TickerLine({
   ours: boolean | null;
   fading: boolean;
   maxWidth: number;
+  /** The name takes a row of its own rather than be cut short. */
+  wraps?: boolean;
   testID?: string;
 }) {
   const still = isStillCapture();
@@ -200,7 +204,13 @@ function TickerLine({
   return (
     <Animated.View
       testID={testID}
-      style={[styles.pill, { maxWidth }, ours ? styles.pillOurs : null, motion]}>
+      style={[
+        styles.pill,
+        { maxWidth },
+        wraps ? styles.pillWraps : null,
+        ours ? styles.pillOurs : null,
+        motion,
+      ]}>
       {who ? (
         <PidroText
           role="metadata"
@@ -214,7 +224,7 @@ function TickerLine({
       <PidroText
         role="metadata"
         tone={tone}
-        style={[styles.text, who ? styles.what : null]}
+        style={[styles.text, styles.what]}
         numberOfLines={1}
         maxFontSizeMultiplier={MAX_FONT_SCALE}>
         {what}
@@ -235,6 +245,7 @@ const styles = StyleSheet.create({
   lines: { alignItems: 'flex-start', gap: 1 },
   pill: {
     flexDirection: 'row',
+    columnGap: 4,
     paddingHorizontal: PidroSpacing.xs,
     paddingVertical: 1,
     borderRadius: PidroRadii.full,
@@ -242,9 +253,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: PidroColors.border,
   },
+  // The bid line: a name that leaves no room for the bid moves to its own row.
+  // Half a single row's height, so one row still reads as a pill.
+  pillWraps: { flexWrap: 'wrap', borderRadius: PidroRadii.panel },
   pillOurs: { borderColor: PidroColors.goldSoft },
   text: { fontWeight: '800' },
   // The name gives way first; the card, amount or points always show.
   who: { flexShrink: 1 },
-  what: { marginLeft: 4, flexShrink: 0 },
+  what: { flexShrink: 0 },
 });
