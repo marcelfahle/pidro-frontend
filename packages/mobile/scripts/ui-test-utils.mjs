@@ -55,6 +55,8 @@ export const UI_VIEWPORTS = [
       'table-completed-trick',
       'table-trick-pidro',
       'table-trick-pidro-theirs',
+      'table-trick-points',
+      'table-trick-points-theirs',
       'table-count-help',
       'table-bot-plays',
     ],

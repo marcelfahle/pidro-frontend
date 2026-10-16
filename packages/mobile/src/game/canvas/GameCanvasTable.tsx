@@ -45,7 +45,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { LastTrick, type LastTrickView } from './LastTrick';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
-import { TableSignals, tablePidro } from './TableSignals';
+import { TableSignals, scoreGlow, tablePidro } from './TableSignals';
 import { computeLayout, showsTicker, tickerPlacement, trumpPicker } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
@@ -263,9 +263,11 @@ export function GameCanvasTable({
     controller.youPositionAbs === dealerRobPresentation?.dealer && !!dealerRobPresentation.pool;
   const isSpectator = role === 'spectator';
   const textures = useCardTextures();
+  const countHelp = useSettingsStore((state) => state.countHelp);
   const serverModel = useTableModel(
     controller,
-    isPrivateDealerRob ? HIDDEN_PRESENTATION_HAND : undefined
+    isPrivateDealerRob ? HIDDEN_PRESENTATION_HAND : undefined,
+    countHelp
   );
   const model = useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null);
   useTableHaptics(model);
@@ -283,7 +285,6 @@ export function GameCanvasTable({
   );
   const { width, height } = useWindowDimensions();
   const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
-  const countHelp = useSettingsStore((state) => state.countHelp);
   const pace = useSettingsStore((state) => state.pace);
 
   const {
@@ -394,15 +395,16 @@ export function GameCanvasTable({
       : null;
   const fullTicker = showsTicker(layout);
 
-  // A Pidro glows the score column it landed in; theirs also lights the seat that took it.
+  // A trick's points glow the score column they landed in; their Pidro also lights the seat
+  // that took it.
   const pidro = tablePidro(model.lastTrick, model.seats);
-  const pidroKey = `${serverState?.hand_number ?? serverState?.round_number ?? 0}:${model.lastTrick?.number}`;
+  const trickKey = `${serverState?.hand_number ?? serverState?.round_number ?? 0}:${model.lastTrick?.number}`;
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
       const line = model.dealStage ? { text: t('game.dealing') } : statusText(player, serverState);
       acc[player.relativePosition] =
-        pidro?.side === 'theirs' && pidro.winner === player.relativePosition
-          ? { ...(line ?? { text: t('game.took_trick') }), pulse: `pidro-${pidroKey}` }
+        pidro?.side === 'theirs' && pidro.seat === player.relativePosition
+          ? { ...(line ?? { text: t('game.took_trick') }), pulse: `pidro-${trickKey}` }
           : line;
       return acc;
     },
@@ -494,7 +496,7 @@ export function GameCanvasTable({
           tickerPace={pace}
           restingOnly={!fullTicker}
           help={lastTrickView ? <LastTrick trick={lastTrickView} yourTurn={isYourTurn} /> : null}
-          glow={pidro ? { column: pidro.column, side: pidro.side, key: pidroKey } : null}
+          glow={scoreGlow(model.lastTrick, model.seats, trickKey)}
           yourTurn={
             isYourTurn && (controller.phase === 'bidding' || controller.phase === 'playing')
           }

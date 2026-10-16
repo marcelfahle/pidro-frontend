@@ -232,9 +232,11 @@ describe('trick signals from the server (PID-218)', () => {
   const ace = { suit: 'spades', rank: 14 };
   const five = { suit: 'spades', rank: 5 };
   const king = { suit: 'spades', rank: 13 };
+  // The winning card lights only with "Help me keep count" on (PID-230).
+  const counting = (overrides) => build({ countHelp: true, ...overrides });
 
   it('lights the card the server says is winning, with what the trick holds', () => {
-    const model = build({
+    const model = counting({
       phase: 'playing',
       trumpSuit: 'spades',
       currentTrick: [
@@ -262,7 +264,7 @@ describe('trick signals from the server (PID-218)', () => {
         two_of_trump: { position: 'north', points: 1 },
       },
     ];
-    const done = build({ phase: 'playing', trumpSuit: 'spades', tricks, currentTrick: [] });
+    const done = counting({ phase: 'playing', trumpSuit: 'spades', tricks, currentTrick: [] });
     expect(done.winningKey).toBe(done.playedCards.west[0].key);
     expect(done.trickPoints).toBeNull();
     expect(done.lastTrick).toEqual({
@@ -277,7 +279,7 @@ describe('trick signals from the server (PID-218)', () => {
       ],
     });
 
-    const next = build({
+    const next = counting({
       phase: 'playing',
       trumpSuit: 'spades',
       tricks,
@@ -291,7 +293,7 @@ describe('trick signals from the server (PID-218)', () => {
   });
 
   it('shows nothing it cannot match: an older server, or a winner whose card is not on the table', () => {
-    const older = build({
+    const older = counting({
       phase: 'playing',
       trumpSuit: 'spades',
       currentTrick: [{ player: 'east', card: ace }],
@@ -299,13 +301,39 @@ describe('trick signals from the server (PID-218)', () => {
     expect(older.winningKey).toBeNull();
     expect(older.trickPoints).toBeNull();
 
-    const mismatch = build({
+    const mismatch = counting({
       phase: 'playing',
       trumpSuit: 'spades',
       currentTrick: [{ player: 'east', card: ace }],
       trickDetails: { winning: { position: 'east', card: king }, points: 1 },
     });
     expect(mismatch.winningKey).toBeNull();
+  });
+
+  it('lights no winning card with count help off, the default', () => {
+    const playing = {
+      phase: 'playing',
+      trumpSuit: 'spades',
+      currentTrick: [{ player: 'east', card: ace }],
+      trickDetails: { winning: { position: 'east', card: ace }, points: 1 },
+    };
+    expect(build(playing).winningKey).toBeNull();
+    expect(build({ ...playing, countHelp: false }).winningKey).toBeNull();
+    expect(counting(playing).winningKey).toBe(counting(playing).currentTrick.south.key);
+    // What the trick holds is still the server's, help or not.
+    expect(build(playing).trickPoints).toBe(1);
+
+    const done = {
+      phase: 'playing',
+      trumpSuit: 'spades',
+      currentTrick: [],
+      tricks: [
+        { cards: [{ player: 'east', card: ace }], winner: 'east', points: 1, two_of_trump: null },
+      ],
+    };
+    expect(build(done).winningKey).toBeNull();
+    expect(build(done).lastTrick?.winner).toBe('south');
+    expect(counting(done).winningKey).toBe(counting(done).playedCards.south[0].key);
   });
 });
 

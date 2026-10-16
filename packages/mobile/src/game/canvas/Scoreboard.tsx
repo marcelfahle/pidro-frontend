@@ -4,8 +4,8 @@
  * the action ticker: the latest table actions, resting on who holds the bid as
  * Classic's "Bet 6" did. Tap the ticker for the hand's log. With count help
  * (PID-220), the "Last trick" pill sits under it, and small phones that leave
- * the ticker out keep its resting line. A Pidro glows the column it landed in
- * (PID-230).
+ * the ticker out keep its resting line. Points a trick scores glow the column
+ * they landed in (PID-230).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
@@ -25,7 +25,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Position } from '@/types/lobby';
-import type { PidroSide } from '@/features/game/pidro';
+import type { PointsSide } from '@/features/game/points';
 import { isStillCapture } from '@/utils/stillCapture';
 import type { TablePace } from '@pidro/shared';
 import { handLogEntries, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
@@ -50,7 +50,7 @@ export const SCORE_PLAQUE_HEIGHT = 2 * RIM + 2 * PidroSpacing.xxs + LABEL_LINE +
 
 const NO_ENTRIES: HandLogEntry[] = [];
 
-/** A Pidro's glow on the score: up quickly, held a moment, then gone. */
+/** Points landing on the score: up quickly, held a moment, then gone. */
 const GLOW_IN_MS = 180;
 const GLOW_HOLD_MS = 1100;
 const GLOW_OUT_MS = 700;
@@ -65,9 +65,10 @@ const GLOW_EDGE = {
   neutral: PidroColors.cyanBorderStrong,
 } as const;
 
-export type ScoreGlow = { column: 'us' | 'them'; side: PidroSide; key: string };
+/** The columns a trick's points landed in, and whose they were; lit once per `key`. */
+export type ScoreGlow = { columns: Partial<Record<'us' | 'them', PointsSide>>; key: string };
 
-/** Lights once for each new key; a table that opens on a Pidro stays dark. */
+/** Lights once for each new key; a table that opens on scored points stays dark. */
 function useScoreGlow(key: string | null) {
   const reduceMotion = useReducedMotion();
   const t = useSharedValue(0);
@@ -148,7 +149,7 @@ export function Scoreboard({
   restingOnly?: boolean;
   /** Under the ticker: the count help's "Last trick". */
   help?: ReactNode;
-  /** The column a Pidro just landed in. */
+  /** The columns a trick's points just landed in. */
   glow?: ScoreGlow | null;
 }) {
   const { t } = useTranslation();
@@ -158,20 +159,20 @@ export function Scoreboard({
   const usLabel = youPosition ? t('game.us').toLocaleUpperCase() : t('game.ns_short');
   const themLabel = youPosition ? t('game.them').toLocaleUpperCase() : t('game.ew_short');
   const glowStyle = useScoreGlow(glow?.key ?? null);
-  const glowLight = glow ? (
-    <Animated.View
-      pointerEvents="none"
-      testID={`score-glow-${glow.column}`}
-      style={[
-        styles.glow,
-        {
-          backgroundColor: GLOW_TINT[glow.side],
-          boxShadow: `0px 0px 10px ${GLOW_EDGE[glow.side]}`,
-        },
-        glowStyle,
-      ]}
-    />
-  ) : null;
+  const glowLight = (column: 'us' | 'them') => {
+    const side = glow?.columns[column];
+    return side ? (
+      <Animated.View
+        pointerEvents="none"
+        testID={`score-glow-${column}`}
+        style={[
+          styles.glow,
+          { backgroundColor: GLOW_TINT[side], boxShadow: `0px 0px 10px ${GLOW_EDGE[side]}` },
+          glowStyle,
+        ]}
+      />
+    ) : null;
+  };
   const [isOpen, setIsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   // The log steps aside the moment it becomes your turn.
@@ -239,7 +240,7 @@ export function Scoreboard({
         style={[styles.plaque, gradientBg(PidroBevel.goldRimGradient)]}>
         <View style={styles.plaqueRow}>
           <View style={styles.col}>
-            {glow?.column === 'us' ? glowLight : null}
+            {glowLight('us')}
             <PidroText role="metadata" tone="gold" style={styles.label} maxFontSizeMultiplier={1}>
               {usLabel}
             </PidroText>
@@ -249,7 +250,7 @@ export function Scoreboard({
           </View>
           <View style={styles.divider} />
           <View style={styles.col}>
-            {glow?.column === 'them' ? glowLight : null}
+            {glowLight('them')}
             <PidroText role="metadata" tone="gold" style={styles.label} maxFontSizeMultiplier={1}>
               {themLabel}
             </PidroText>

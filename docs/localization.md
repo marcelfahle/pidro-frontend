@@ -58,7 +58,8 @@ Louisiana explanations remain based on the current app/server contract.
 Swedish review remains requested for **medspelare**, **returmatch**, **bot/botar**,
 **koppla** (Classic claim), **offentligt namn**, **gästspel**, **solobord**,
 **Spelstyrka**, **Testare från starten**, **Stöttepelare**, **Gesäll/Stormästare**,
-and trump-killing terminology. No native-speaker approval is claimed.
+the count help hint (**Visa vilket kort som vinner, vad budgivarna har tagit och
+förra sticket.**, PID-230) and trump-killing terminology. No native-speaker approval is claimed.
 
 ## Backend rollout
 
