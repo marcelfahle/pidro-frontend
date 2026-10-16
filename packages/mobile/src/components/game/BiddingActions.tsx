@@ -105,7 +105,8 @@ export function BiddingActions({
     hardTop,
     Math.min(
       layout.trick.cy - gridHeight / 2 - PANEL_PADDING,
-      handTop - handGap - gridHeight - FIXED_GROUP_HEIGHT - errorHeight
+      // Staying centered may take some of the portrait gap, never the last 18pt.
+      handTop - Math.min(handGap, HAND_GAP) - gridHeight - FIXED_GROUP_HEIGHT - errorHeight
     )
   );
 

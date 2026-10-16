@@ -629,7 +629,7 @@ const allCases = [
   {
     name: 'table-dealer-waiting',
     path: '/table-dev?phase=second_deal&role=player&dealer=north',
-    testId: 'seat-north-cards',
+    testId: 'seat-north',
     verifyDealerOnTable: true,
   },
   {

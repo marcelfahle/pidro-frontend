@@ -27,7 +27,19 @@ const hasPlay = (model: TableModel) =>
 
 export function useSecondDealPresentation(model: TableModel): TableModel {
   const reducedMotion = useReducedMotion();
-  const [previous, setPrevious] = useState(model);
+  // What this hook reacts to. The model is a new object on every render
+  // while the first deal plays, so it is compared by what it says, not by
+  // identity, or each render would set state and render again.
+  const signature = [
+    model.phase,
+    model.yourHand.map((card) => card.key).join(','),
+    CLOCKWISE.map((rel) => {
+      const seat = model.seats[rel];
+      return `${seat?.cardCount}/${seat?.secondDeal?.kept}/${seat?.secondDeal?.drawn}`;
+    }).join(' '),
+    hasPlay(model),
+  ].join('|');
+  const [previous, setPrevious] = useState(signature);
   // Your nine, remembered until the discard so the cards you kept can stay put.
   const [held, setHeld] = useState<TableCard[] | null>(null);
   const [armed, setArmed] = useState(false);
@@ -36,8 +48,8 @@ export function useSecondDealPresentation(model: TableModel): TableModel {
   // The dealer's last throw, once the pick is in: frames past the plan.
   const [trim, setTrim] = useState(0);
 
-  if (previous !== model) {
-    setPrevious(model);
+  if (previous !== signature) {
+    setPrevious(signature);
     if (BEFORE.has(model.phase)) {
       if (plan) setPlan(null);
       if (!armed) setArmed(true);
