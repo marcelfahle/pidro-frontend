@@ -14,6 +14,7 @@ import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatTurn } from './SeatLayer';
 import type { SeatLine } from '@/features/game/seatLine';
 import { TableSignals, scoreGlow, tablePidro } from './TableSignals';
+import { HandResultPanel, useHandResult, viewerOf } from './HandResult';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
@@ -32,6 +33,7 @@ import type {
   RelativePosition,
   ServerBid,
   ServerLastHand,
+  ServerPointCard,
   Suit,
   SeatStatus,
 } from '@/types/game';
@@ -165,28 +167,78 @@ function fixtureSignals(plays: Play[]) {
   };
 }
 
+/** A card that scored, kept by `position`'s team. */
+const scored = (rank: number, suit: Suit, points: number, position: Position) =>
+  ({
+    card: { rank, suit },
+    points,
+    position,
+    team: position === 'north' || position === 'south' ? 'north_south' : 'east_west',
+  }) satisfies ServerPointCard;
+
+/** `hand=`: the hand before this one, as the server scored it (PID-233's `point_cards`). */
 const FIXTURE_HANDS = {
   made: {
     hand_number: 4,
     bidding_team: 'north_south',
     bidder: 'south',
     bid: 8,
+    trump: 'spades',
     captured: { north_south: 9, east_west: 5 },
     made: true,
     delta: { north_south: 9, east_west: 5 },
     scores: { north_south: 45, east_west: 34 },
+    point_cards: [
+      scored(14, 'spades', 1, 'south'),
+      scored(11, 'spades', 1, 'north'),
+      scored(5, 'clubs', 5, 'east'),
+      scored(5, 'spades', 5, 'north'),
+      scored(10, 'spades', 1, 'south'),
+      scored(2, 'spades', 1, 'south'),
+    ],
   },
   set: {
     hand_number: 4,
     bidding_team: 'north_south',
     bidder: 'south',
     bid: 10,
+    trump: 'spades',
     captured: { north_south: 7, east_west: 7 },
     made: false,
     delta: { north_south: -10, east_west: 7 },
     scores: { north_south: 26, east_west: 36 },
+    point_cards: [
+      scored(5, 'spades', 5, 'south'),
+      scored(11, 'spades', 1, 'west'),
+      scored(14, 'spades', 1, 'north'),
+      scored(5, 'clubs', 5, 'east'),
+      scored(10, 'spades', 1, 'west'),
+      scored(2, 'spades', 1, 'south'),
+    ],
+  },
+  // East bids 9 and misses; Nora takes the 5 of trump on the way.
+  'they-set': {
+    hand_number: 4,
+    bidding_team: 'east_west',
+    bidder: 'east',
+    bid: 9,
+    trump: 'spades',
+    captured: { north_south: 8, east_west: 6 },
+    made: false,
+    delta: { north_south: 8, east_west: -9 },
+    scores: { north_south: 44, east_west: 20 },
+    point_cards: [
+      scored(5, 'clubs', 5, 'east'),
+      scored(5, 'spades', 5, 'north'),
+      scored(14, 'spades', 1, 'south'),
+      scored(10, 'spades', 1, 'west'),
+      scored(11, 'spades', 1, 'north'),
+      scored(2, 'spades', 1, 'south'),
+    ],
   },
 } satisfies Record<string, ServerLastHand>;
+const fixtureHand = (name: string | undefined) =>
+  name && name in FIXTURE_HANDS ? FIXTURE_HANDS[name as keyof typeof FIXTURE_HANDS] : null;
 
 /** The bidding behind the seats' "Passed" / "Bid 6", in order from the dealer's left. */
 const FIXTURE_BIDS: ServerBid[] = [
@@ -296,14 +348,6 @@ export default function GameCanvasDev({
     const landed = setTimeout(() => setBids(FIXTURE_BIDS), 300);
     return () => clearTimeout(landed);
   }, [ticker]);
-  const [lastHand, setLastHand] = useState<ServerLastHand | null>(null);
-  useEffect(() => {
-    const fixture =
-      handFixture === 'made' || handFixture === 'set' ? FIXTURE_HANDS[handFixture] : null;
-    if (!fixture) return;
-    const shown = setTimeout(() => setLastHand(fixture), 1600);
-    return () => clearTimeout(shown);
-  }, [handFixture]);
   const dealer = SEATS.find((rel) => rel === dealerFixture) ?? ('south' satisfies RelativePosition);
   const turnTimer = useFixtureTurnTimer(timer === 'running', turn);
   const [scores, setScores] = useState(
@@ -321,6 +365,16 @@ export default function GameCanvasDev({
     };
   }, [scoreFixture]);
 
+  const [lastHand, setLastHand] = useState<ServerLastHand | null>(null);
+  useEffect(() => {
+    const fixture = fixtureHand(handFixture);
+    if (!fixture) return;
+    const shown = setTimeout(() => {
+      setLastHand(fixture);
+      setScores(fixture.scores);
+    }, 1600);
+    return () => clearTimeout(shown);
+  }, [handFixture]);
   const after = useCallback((ms: number, fn: () => void) => {
     timers.current.push(setTimeout(fn, ms));
   }, []);
@@ -439,7 +493,8 @@ export default function GameCanvasDev({
   );
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
   // A `hand=` fixture's result belongs to the hand before this one.
-  const handNumber = handFixture === 'made' || handFixture === 'set' ? 5 : 4;
+  const handNumber = fixtureHand(handFixture) ? 5 : 4;
+  const handResult = useHandResult(lastHand, viewerOf(model.seats), 'normal');
   const handLog = useMemo(
     () =>
       buildHandLog({
@@ -483,6 +538,7 @@ export default function GameCanvasDev({
         dealerRel={phase === 'dealer_selection' ? null : dealer}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
+        quiet={handResult.result != null}
         statusByRel={
           phase === 'dealer_selection'
             ? dealerCutStatus()
@@ -498,6 +554,15 @@ export default function GameCanvasDev({
         }
       />
       <TableChromeBars reserves={reserves} />
+      {handResult.result ? (
+        <HandResultPanel
+          result={handResult.result}
+          seats={model.seats}
+          onClose={handResult.close}
+          topReserve={topReserve}
+          bottomReserve={bottomReserve}
+        />
+      ) : null}
       {phase !== 'game_over' && (
         <>
           <Scoreboard
@@ -506,6 +571,7 @@ export default function GameCanvasDev({
             handNumber={4}
             roomCode="DEV01"
             glow={scoreGlow(model.lastTrick, model.seats, trickKey)}
+            delta={handResult.result?.hand.delta ?? null}
             top={headerTop(insets.top)}
             left={insets.left}
             log={handLog}

@@ -480,8 +480,15 @@ const allCases = [
     path: '/table-dev?phase=playing&signals=points-theirs&autoplay=true',
     testId: 'trick-pop-theirs',
   },
+  // PID-236: the table dims under the hand's result and the point cards each
+  // team took; ours made is stamped gold, the rest is quiet.
   { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
   { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },
+  {
+    name: 'table-hand-they-set',
+    path: '/table-dev?phase=playing&hand=they-set',
+    testId: 'hand-result',
+  },
   // PID-221: the ticker at its fullest, long names included, stays clear of the
   // plaque and the North seat; the hand log opens from it. Small phones leave
   // the ticker out (PID-229).
@@ -917,8 +924,13 @@ const TABLE_MESSAGES = {
     text: 'Nora lost connection. A bot is playing for now.',
     tapCloses: true,
   },
-  'table-hand-made': { testId: 'hand-result', text: 'We made our bid', tapCloses: true },
-  'table-hand-set': { testId: 'hand-result', text: 'We missed our bid', tapCloses: true },
+  'table-hand-made': { testId: 'hand-result', text: 'Made it', tapCloses: true },
+  'table-hand-set': { testId: 'hand-result', text: 'Missed by 3', tapCloses: true },
+  'table-hand-they-set': {
+    testId: 'hand-result',
+    text: 'Nora took their Pidro',
+    tapCloses: true,
+  },
   'table-dealer-waiting': {
     testId: 'dealer-second-deal-status',
     text: 'The dealer picks up the rest of the deck',

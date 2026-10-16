@@ -111,8 +111,16 @@ export interface ServerBid {
   amount: number | 'pass';
 }
 
-/** How the last scored hand ended; kept until the next hand's first trick is done. */
-export interface ServerLastHand {
+/** A card that scored in a hand, and who kept it: the trick's winner, or the 2 of trump's player. */
+export interface ServerPointCard {
+  card: Card;
+  points: number;
+  position: Position;
+  team: TeamKey;
+}
+
+/** A scored hand, as `hand_history` keeps it (PID-233). */
+export interface ServerHandSummary {
   hand_number: number;
   bidding_team: TeamKey;
   bidder: Position;
@@ -121,9 +129,15 @@ export interface ServerLastHand {
   made: boolean;
   delta: Record<TeamKey, number>;
   scores: Record<TeamKey, number>;
+  trump?: Suit | null;
+  /** Every card that scored, in play order; each team's add up to its `captured`. Absent from older servers. */
+  point_cards?: ServerPointCard[];
+}
+
+/** How the last scored hand ended; kept until the next hand's first trick is done. */
+export interface ServerLastHand extends ServerHandSummary {
   /** The finished hand itself (PID-221), final trick included; absent from older servers. */
   bids?: ServerBid[];
-  trump?: Suit | null;
   tricks?: ServerTrick[];
 }
 
@@ -158,6 +172,8 @@ export interface ServerGameState {
   current_trick_details?: ServerTrickDetails | null;
   tricks?: ServerTrick[];
   last_hand?: ServerLastHand | null;
+  /** Every scored hand of the game, oldest first. */
+  hand_history?: ServerHandSummary[];
 
   scores?: {
     north_south: number;

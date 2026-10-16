@@ -109,6 +109,8 @@ type Props = {
   statusByRel?: Partial<Record<RelativePosition, SeatLine | null>>;
   turnByRel?: Partial<Record<RelativePosition, SeatTurn>>;
   onProfile?: Partial<Record<RelativePosition, () => void>>;
+  /** A hand's result is showing: avatar and name only (PID-236). */
+  quiet?: boolean;
 };
 
 export function SeatLayer({
@@ -120,6 +122,7 @@ export function SeatLayer({
   statusByRel,
   turnByRel,
   onProfile,
+  quiet = false,
 }: Props) {
   useTranslation();
   const { width, height } = useWindowDimensions();
@@ -238,12 +241,14 @@ export function SeatLayer({
   const sideInset = tight ? PidroSpacing.xs : portrait ? 0 : 12;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={[StyleSheet.absoluteFill, quiet && styles.quiet]} pointerEvents="box-none">
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
-        const line = seatLine(data, statusByRel?.[rel]);
-        const seat = avatarFor(data, dealerRel === rel, line, turnByRel?.[rel]);
+        const line = quiet ? null : seatLine(data, statusByRel?.[rel]);
+        const seat = quiet
+          ? { ...avatarFor(data, false, null, undefined), level: null, pin: null, turn: null }
+          : avatarFor(data, dealerRel === rel, line, turnByRel?.[rel]);
         const identity = (
           <PlayerAvatar
             testID={`seat-${rel}`}
@@ -610,6 +615,8 @@ function FlyingBack({
 
 const styles = StyleSheet.create({
   out: { opacity: 0.6 },
+  // Under the hand result's scrim the seats fade back further, as on the board.
+  quiet: { opacity: 0.8 },
   back: {
     borderRadius: 3,
     borderWidth: 1,

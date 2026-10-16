@@ -1,32 +1,29 @@
 /**
  * What just happened at the table, in the server's words: a "+N" where a
  * trick was taken, gold when ours and coral when theirs (a trick holding a
- * five is a "Pidro!"), and how the last hand scored, before the next deal. The
- * server decides who wins and what anything is worth; this only shows it. Only
- * what matters gets fanfare: a trick worth nothing passes quietly.
+ * five is a "Pidro!"). The server decides who wins and what anything is worth;
+ * this only shows it. Only what matters gets fanfare: a trick worth nothing
+ * passes quietly. How a hand scored is `HandResult`.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
-  withDelay,
-  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
-import { readingTimeMs } from '@/features/game/readingTime';
 import { PIDRO_POINTS, whosePoints, type PointsSide } from '@/features/game/points';
 import {
   playBigTrickHaptic,
   playOurPidroHaptic,
   playTheirPidroHaptic,
 } from '@/game/useGameHaptics';
-import type { RelativePosition, ServerLastHand, TeamKey } from '@/types/game';
+import type { RelativePosition } from '@/types/game';
 import { isStillCapture } from '@/utils/stillCapture';
 import { computeLayout, playedCardTarget, type TableLayout } from './layout';
 import type { TableModel, TrickResult } from './tableModel';
@@ -36,9 +33,6 @@ import { paced } from '@/features/game/tableHelp';
 import type { TablePace } from '@pidro/shared';
 
 const POP_MS = 1500;
-/** The least a hand's result stays unless tapped away; longer if its words need it. */
-const HAND_RESULT_MS = 4500;
-const EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
 const easeOutCubic = (t: number) => {
   'worklet';
   return 1 - Math.pow(1 - t, 3);
@@ -61,7 +55,6 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <TrickPop trick={model.lastTrick} seats={model.seats} L={L} popMs={paced(POP_MS, pace)} />
-      <HandResult hand={model.lastHand} yourTeam={model.yourTeam} L={L} pace={pace} />
     </View>
   );
 }
@@ -313,158 +306,6 @@ function Pop({
   );
 }
 
-/**
- * The hand's result, before the next deal: "We made our bid" or "They missed
- * their bid", the bid and the points the bidders won, and what each side's
- * score moved by. Stays until tapped, or for its reading time and at least
- * HAND_RESULT_MS, twice that at a slow pace. A made bid glows gold; a missed one shakes once in muted
- * red, with no fanfare.
- */
-function HandResult({
-  hand,
-  yourTeam,
-  L,
-  pace,
-}: {
-  hand: ServerLastHand | null;
-  yourTeam: TeamKey | null;
-  L: TableLayout;
-  pace: TablePace;
-}) {
-  const { t } = useTranslation();
-  const reduceMotion = useReducedMotion();
-  const { width } = useWindowDimensions();
-  const handNumber = hand?.hand_number ?? null;
-  // A new hand number is a new result; it shows until tapped or read.
-  const [seen, setSeen] = useState(handNumber);
-  const [shown, setShown] = useState(handNumber);
-  if (handNumber !== seen) {
-    setSeen(handNumber);
-    setShown(handNumber);
-  }
-  const appear = useSharedValue(0);
-  const shake = useSharedValue(0);
-  const set = hand ? !hand.made : false;
-
-  const them: TeamKey = yourTeam === 'east_west' ? 'north_south' : 'east_west';
-  const us: TeamKey = yourTeam ?? 'north_south';
-  const ours = hand?.bidding_team === us;
-  const headline = !hand
-    ? ''
-    : !yourTeam
-      ? t(hand.made ? 'game.team_made' : 'game.team_set', {
-          team: t(hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew'),
-        })
-      : hand.made
-        ? ours
-          ? t('game.we_made')
-          : t('game.they_made')
-        : ours
-          ? t('game.we_set')
-          : t('game.they_set');
-  const signed = (n: number) => (n > 0 ? `+${n}` : `${n}`);
-  const captured = t('game.points', { count: hand?.captured[hand.bidding_team] ?? 0 });
-  const bidLine = hand ? t('game.bid_took', { bid: hand.bid, captured }) : '';
-  const usLabel = t(yourTeam ? 'game.us' : 'game.ns');
-  const themLabel = t(yourTeam ? 'game.them' : 'game.ew');
-  const usDelta = hand ? signed(hand.delta[us]) : '';
-  const themDelta = hand ? signed(hand.delta[them]) : '';
-  const holdMs = paced(
-    Math.max(
-      HAND_RESULT_MS,
-      readingTimeMs(`${headline} ${bidLine} ${usLabel} ${usDelta} ${themLabel} ${themDelta}`)
-    ),
-    pace
-  );
-
-  useEffect(() => {
-    if (shown == null) return;
-    appear.value = 0;
-    appear.value = withTiming(1, { duration: 240, easing: EASE_OUT });
-    if (set && !reduceMotion) {
-      shake.value = withDelay(
-        240,
-        withSequence(
-          withTiming(-6, { duration: 60 }),
-          withTiming(6, { duration: 80 }),
-          withTiming(-3, { duration: 70 }),
-          withTiming(0, { duration: 60 })
-        )
-      );
-    }
-    if (isStillCapture()) return;
-    const timer = setTimeout(() => setShown(null), holdMs);
-    return () => clearTimeout(timer);
-  }, [shown, set, reduceMotion, appear, shake, holdMs]);
-
-  const motion = useAnimatedStyle(() => ({
-    opacity: appear.value,
-    transform: [
-      { translateX: shake.value },
-      { scale: reduceMotion ? 1 : 0.94 + 0.06 * appear.value },
-    ],
-  }));
-
-  if (!hand || shown !== handNumber) return null;
-  const cardWidth = Math.min(300, width - PidroSpacing.xl * 2);
-
-  return (
-    <Animated.View
-      testID="hand-result"
-      style={[
-        styles.result,
-        {
-          width: cardWidth,
-          left: L.trick.cx - cardWidth / 2,
-          top: L.trick.cy - 68,
-          borderColor: hand.made ? PidroColors.gold : PidroColors.dangerBorder,
-          boxShadow: hand.made
-            ? `0px 0px 24px ${PidroColors.goldSoft}, 0px 8px 20px rgba(0,0,0,0.45)`
-            : '0px 8px 20px rgba(0,0,0,0.45)',
-        },
-        motion,
-      ]}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('game.result_accessibility', {
-          headline,
-          bid: hand.bid,
-          captured,
-          usLabel,
-          themLabel,
-          us: usDelta,
-          them: themDelta,
-        })}
-        onPress={() => setShown(null)}
-        style={styles.resultBody}>
-        <PidroText role="title" tone={hand.made ? 'gold' : 'danger'} align="center">
-          {headline}
-        </PidroText>
-        <PidroText role="metadata" tone="soft" align="center">
-          {bidLine}
-        </PidroText>
-        <View style={styles.deltas}>
-          <Delta label={usLabel} value={usDelta} good={hand.delta[us] >= 0} />
-          <Delta label={themLabel} value={themDelta} good={hand.delta[them] >= 0} />
-        </View>
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-function Delta({ label, value, good }: { label: string; value: string; good: boolean }) {
-  return (
-    <View style={styles.delta}>
-      <PidroText role="metadata" tone="muted" align="center">
-        {label}
-      </PidroText>
-      <PidroText role="title" tone={good ? 'default' : 'danger'} align="center">
-        {value}
-      </PidroText>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   onTable: {
     position: 'absolute',
@@ -513,26 +354,5 @@ const styles = StyleSheet.create({
   },
   pidro: {
     color: PidroBevel.textGold,
-  },
-  result: {
-    position: 'absolute',
-    borderRadius: PidroRadii.lg,
-    borderWidth: 2,
-    backgroundColor: PidroBevel.panelDeep,
-  },
-  resultBody: {
-    paddingVertical: PidroSpacing.md,
-    paddingHorizontal: PidroSpacing.lg,
-    gap: PidroSpacing.xxs,
-  },
-  deltas: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: PidroSpacing.xl,
-    marginTop: PidroSpacing.xs,
-  },
-  delta: {
-    alignItems: 'center',
-    minWidth: 64,
   },
 });

@@ -31,7 +31,13 @@ export const UI_VIEWPORTS = [
     name: 'small-portrait',
     width: 375,
     height: 667,
-    cases: ['update-notice', 'update-notice-friends-guest'],
+    cases: [
+      'update-notice',
+      'update-notice-friends-guest',
+      'table-hand-made',
+      'table-hand-set',
+      'table-hand-they-set',
+    ],
   },
   {
     name: 'compact-portrait',
@@ -81,7 +87,14 @@ export const UI_VIEWPORTS = [
     name: 'tablet-portrait',
     width: 768,
     height: 1024,
-    cases: ['table-bidding', 'table-count-help', 'update-notice'],
+    cases: [
+      'table-bidding',
+      'table-count-help',
+      'update-notice',
+      'table-hand-made',
+      'table-hand-set',
+      'table-hand-they-set',
+    ],
   },
   {
     name: 'home-tablet-portrait',
