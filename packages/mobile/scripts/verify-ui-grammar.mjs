@@ -444,21 +444,34 @@ const allCases = [
   },
   {
     name: 'table-completed-trick',
-    path: '/table-dev?phase=playing&autoplay=true',
+    // With count help on, the trick's winning card keeps its glow (PID-230).
+    path: '/table-dev?phase=playing&autoplay=true&count=on',
     testId: 'seat-north',
     verifyPlayedCardPersistence: true,
   },
   // PID-219: a trick holding a five pops "Pidro!"; a hand ends with its result.
-  // PID-230: gold "Us +6" when ours, coral "Them +5 · Wynn" when theirs.
+  // PID-230: gold "Us +6" when ours, coral "Them +5 · Wynn" when theirs; every
+  // "+N" (the 2 of trump's too) in its team's colour, without the winning-card
+  // glow that count help adds.
   {
     name: 'table-trick-pidro',
-    path: '/table-dev?phase=playing&signals=pidro&autoplay=true',
+    path: '/table-dev?phase=playing&signals=pidro&autoplay=true&count=on',
     testId: 'trick-pop-pidro-ours',
   },
   {
     name: 'table-trick-pidro-theirs',
-    path: '/table-dev?phase=playing&signals=pidro-theirs&autoplay=true',
+    path: '/table-dev?phase=playing&signals=pidro-theirs&autoplay=true&count=on',
     testId: 'trick-pop-pidro-theirs',
+  },
+  {
+    name: 'table-trick-points',
+    path: '/table-dev?phase=playing&signals=points&autoplay=true',
+    testId: 'trick-pop-ours',
+  },
+  {
+    name: 'table-trick-points-theirs',
+    path: '/table-dev?phase=playing&signals=points-theirs&autoplay=true',
+    testId: 'trick-pop-theirs',
   },
   { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
   { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },

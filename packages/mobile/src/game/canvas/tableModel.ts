@@ -74,6 +74,7 @@ export type TableModel = {
   /**
    * The played card the server says is taking the trick: the current trick's
    * leader, or once a trick is done, its winner until the next card lands.
+   * Only with "Help me keep count" on (PID-230); null otherwise.
    */
   winningKey: string | null;
   /** What the trick in progress holds for its winner, as the server counts it. */
@@ -117,6 +118,8 @@ export type TableModelInput = {
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
   /** The server's per-seat view: who is out of trumps and what they revealed. */
   serverPlayers?: Partial<Record<Position, ServerPlayerView>> | null;
+  /** "Help me keep count": lights the card winning the trick. */
+  countHelp?: boolean;
 };
 
 type RawPlay = { player?: Position; position?: Position; card?: Card };
@@ -329,7 +332,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
     currentTurnRelative: input.currentTurnRelative,
     legalPlayKeys,
     canPlay: input.canPlay,
-    winningKey,
+    winningKey: input.countHelp ? winningKey : null,
     trickPoints,
     latestPlayKey: latestPlay ? ((currentTrick[latestPlay] ?? null)?.key ?? null) : null,
     lastTrick,
@@ -338,7 +341,11 @@ export function buildTableModel(input: TableModelInput): TableModel {
   };
 }
 
-export function useTableModel(c: GameTableController, presentationHand?: Card[]): TableModel {
+export function useTableModel(
+  c: GameTableController,
+  presentationHand?: Card[],
+  countHelp = false
+): TableModel {
   return useMemo(
     () =>
       buildTableModel({
@@ -358,6 +365,7 @@ export function useTableModel(c: GameTableController, presentationHand?: Card[])
         canPlay: c.isPlayingTurn && !c.isPlayingCard,
         getCardCountForPlayer: c.getCardCountForPlayer,
         serverPlayers: c.serverState?.players ?? null,
+        countHelp,
       }),
     [
       c.phase,
@@ -378,6 +386,7 @@ export function useTableModel(c: GameTableController, presentationHand?: Card[])
       c.isPlayingCard,
       c.getCardCountForPlayer,
       c.serverState?.players,
+      countHelp,
     ]
   );
 }

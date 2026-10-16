@@ -1,7 +1,7 @@
 /**
  * What just happened at the table, in the server's words: a "+N" where a
- * trick was taken (a trick holding a five is a "Pidro!", gold when ours and
- * coral when theirs) and how the last hand scored, before the next deal. The
+ * trick was taken, gold when ours and coral when theirs (a trick holding a
+ * five is a "Pidro!"), and how the last hand scored, before the next deal. The
  * server decides who wins and what anything is worth; this only shows it. Only
  * what matters gets fanfare: a trick worth nothing passes quietly.
  */
@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { readingTimeMs } from '@/features/game/readingTime';
-import { PIDRO_POINTS, whosePidro, type PidroSide } from '@/features/game/pidro';
+import { PIDRO_POINTS, whosePoints, type PointsSide } from '@/features/game/points';
 import {
   playBigTrickHaptic,
   playOurPidroHaptic,
@@ -30,6 +30,7 @@ import type { RelativePosition, ServerLastHand, TeamKey } from '@/types/game';
 import { isStillCapture } from '@/utils/stillCapture';
 import { computeLayout, playedCardTarget, type TableLayout } from './layout';
 import type { TableModel, TrickResult } from './tableModel';
+import type { ScoreGlow } from './Scoreboard';
 import { useTranslation } from '@/i18n';
 import { paced } from '@/features/game/tableHelp';
 import type { TablePace } from '@pidro/shared';
@@ -65,18 +66,55 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 
   );
 }
 
+/** Points a trick scored for one seat: whose they were and where they land. */
+export type TrickScore = {
+  side: PointsSide;
+  column: 'us' | 'them';
+  seat: RelativePosition;
+  points: number;
+};
+
 /**
- * Whose the last trick's Pidro was, if it held a five: the side, the score
- * column it lands in, and the seat that took it.
+ * Who scored what in a trick: its taker, and the 2 of trump's holder, whose
+ * point stays with the team that played it.
  */
+export function trickScores(
+  trick: TrickResult | null,
+  seats: TableModel['seats']
+): { taken: TrickScore | null; two: TrickScore | null } {
+  const viewer = Object.values(seats).find((seat) => seat?.isYou)?.absolutePosition ?? null;
+  const score = (rel: RelativePosition, points: number): TrickScore | null => {
+    const scorer = seats[rel];
+    return scorer && points > 0
+      ? { ...whosePoints(scorer.absolutePosition, viewer), seat: rel, points }
+      : null;
+  };
+  return {
+    taken: trick ? score(trick.winner, trick.points) : null,
+    two: trick?.twoOfTrump ? score(trick.twoOfTrump.holder, trick.twoOfTrump.points) : null,
+  };
+}
+
+/** The trick's taker, when the trick held a five. */
 export function tablePidro(
   trick: TrickResult | null,
   seats: TableModel['seats']
-): { side: PidroSide; column: 'us' | 'them'; winner: RelativePosition } | null {
-  const winner = trick && trick.points >= PIDRO_POINTS ? seats[trick.winner] : null;
-  if (!trick || !winner) return null;
-  const viewer = Object.values(seats).find((seat) => seat?.isYou)?.absolutePosition ?? null;
-  return { ...whosePidro(winner.absolutePosition, viewer), winner: trick.winner };
+): TrickScore | null {
+  const { taken } = trickScores(trick, seats);
+  return taken && taken.points >= PIDRO_POINTS ? taken : null;
+}
+
+/** The score columns the last trick's points landed in, lit under `key`. */
+export function scoreGlow(
+  trick: TrickResult | null,
+  seats: TableModel['seats'],
+  key: string
+): ScoreGlow | null {
+  const { taken, two } = trickScores(trick, seats);
+  if (!taken && !two) return null;
+  const columns: ScoreGlow['columns'] = {};
+  for (const score of [taken, two]) if (score) columns[score.column] = score.side;
+  return { columns, key };
 }
 
 /**
@@ -107,6 +145,7 @@ function TrickPop({
     setPop(taken && (taken.points > 0 || taken.twoOfTrump) ? taken : null);
   }
 
+  const { taken, two } = trickScores(pop, seats);
   const pidro = tablePidro(pop, seats);
   const side = pidro?.side ?? null;
   useEffect(() => {
@@ -132,21 +171,21 @@ function TrickPop({
     : pidro.side === 'neutral'
       ? t(pidro.column === 'us' ? 'game.ns_short' : 'game.ew_short')
       : t(pidro.side === 'ours' ? 'game.us' : 'game.them');
-  const taker = pidro?.side === 'theirs' ? seats[pop.winner]?.username : null;
+  const taker = pidro?.side === 'theirs' ? seats[pidro.seat]?.username : null;
   const at = big ? { x: L.trick.cx, y: L.trick.cy } : above(pop.winner);
   const twoAt = pop.twoOfTrump ? above(pop.twoOfTrump.holder) : null;
   return (
     <>
-      {pop.points > 0 ? (
+      {taken ? (
         <Pop
           key={`win-${pop.number}`}
           x={at.x}
           y={at.y}
-          label={`+${pop.points}`}
+          label={`+${taken.points}`}
+          side={taken.side}
           pidro={
             pidro
               ? {
-                  side: pidro.side,
                   chip: `${team} +${pop.points}${taker ? ` · ${taker}` : ''}`,
                 }
               : null
@@ -154,12 +193,13 @@ function TrickPop({
           ms={popMs}
         />
       ) : null}
-      {twoAt && pop.twoOfTrump ? (
+      {twoAt && two ? (
         <Pop
           key={`two-${pop.number}`}
           x={twoAt.x}
-          y={twoAt.y + (!big && pop.twoOfTrump.holder === pop.winner ? -26 : 0)}
-          label={`+${pop.twoOfTrump.points}`}
+          y={twoAt.y + (!big && two.seat === pop.winner ? -26 : 0)}
+          label={`+${two.points}`}
+          side={two.side}
           ms={popMs}
         />
       ) : null}
@@ -167,18 +207,25 @@ function TrickPop({
   );
 }
 
-/** The chip under a "Pidro!": whose points they were, in their colour. */
-const PIDRO_TONE = {
-  ours: { text: PidroColors.goldLight, border: PidroColors.gold, glow: PidroColors.gold },
+/** Whose points they were, in their colour: a "+N" and the chip under a "Pidro!". */
+const POINTS_TONE = {
+  ours: {
+    text: PidroColors.goldLight,
+    border: PidroColors.gold,
+    glow: PidroColors.gold,
+    edge: PidroColors.goldSoft,
+  },
   theirs: {
     text: PidroColors.theirPidro,
     border: PidroColors.theirPidro,
     glow: PidroColors.theirPidroSoft,
+    edge: PidroColors.theirPidroSoft,
   },
   neutral: {
     text: PidroColors.cyanText,
     border: PidroColors.cyanBorderStrong,
     glow: PidroColors.cyanSoft,
+    edge: PidroColors.cyanSoft,
   },
 } as const;
 
@@ -186,21 +233,23 @@ function Pop({
   x,
   y,
   label,
+  side,
   pidro = null,
   ms,
 }: {
   x: number;
   y: number;
   label: string;
+  side: PointsSide;
   /** A trick holding a five: "Pidro!" in the middle, and whose points it was. */
-  pidro?: { side: PidroSide; chip: string } | null;
+  pidro?: { chip: string } | null;
   ms: number;
 }) {
   const reduceMotion = useReducedMotion();
   const t = useSharedValue(0);
   const big = pidro != null;
   // Their Pidro is the same moment, a size down: it is not ours to celebrate.
-  const size = pidro?.side === 'theirs' ? 0.88 : 1;
+  const size = pidro && side === 'theirs' ? 0.88 : 1;
   useEffect(() => {
     // UI grammar captures the pop at its peak instead of mid-flight.
     t.value = isStillCapture() ? 0.35 : withTiming(1, { duration: ms, easing: Easing.linear });
@@ -220,25 +269,28 @@ function Pop({
   });
   const box = big ? 280 : 64;
   const height = big ? 44 : 28;
+  const tone = POINTS_TONE[side];
   if (!pidro) {
     return (
       <Animated.View
         pointerEvents="none"
-        testID="trick-pop"
+        testID={`trick-pop-${side}`}
         style={[styles.pop, { left: x - box / 2, top: y - height / 2, width: box }, motion]}>
-        <View style={styles.popChip}>
-          <PidroText role="label" tone="gold" style={styles.popText}>
+        <View style={[styles.popChip, { borderColor: tone.edge }]}>
+          <PidroText
+            role="label"
+            tone="gold"
+            style={[styles.popText, side === 'ours' ? null : { color: tone.text }]}>
             {label}
           </PidroText>
         </View>
       </Animated.View>
     );
   }
-  const tone = PIDRO_TONE[pidro.side];
   return (
     <Animated.View
       pointerEvents="none"
-      testID={`trick-pop-pidro-${pidro.side}`}
+      testID={`trick-pop-pidro-${side}`}
       style={[styles.pop, { left: x - box / 2, top: y - height / 2, width: box }, motion]}>
       <View
         style={[
@@ -248,7 +300,7 @@ function Pop({
         ]}>
         <PidroText
           role="title"
-          style={[styles.popText, pidro.side === 'ours' ? styles.pidro : { color: tone.text }]}>
+          style={[styles.popText, side === 'ours' ? styles.pidro : { color: tone.text }]}>
           Pidro!
         </PidroText>
       </View>

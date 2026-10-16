@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatTurn } from './SeatLayer';
 import type { SeatLine } from '@/features/game/seatLine';
-import { TableSignals, tablePidro } from './TableSignals';
+import { TableSignals, scoreGlow, tablePidro } from './TableSignals';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
@@ -120,6 +120,28 @@ const OPP_PLAYS_THEIR_PIDRO: { player: Position; card: Card }[] = [
   { player: 'east', card: { suit: 'spades', rank: 5 } },
 ];
 
+// `signals=points`: your ace takes a point and North keeps the 2 of trump's.
+const OPP_PLAYS_POINTS: { player: Position; card: Card }[] = [
+  { player: 'west', card: { suit: 'diamonds', rank: 5 } },
+  { player: 'north', card: { suit: 'spades', rank: 2 } },
+  { player: 'east', card: { suit: 'hearts', rank: 4 } },
+];
+
+// `signals=points-theirs`: West's jack takes your 7 for a point and East keeps the 2's.
+const OPP_PLAYS_THEIR_POINTS: { player: Position; card: Card }[] = [
+  { player: 'west', card: { suit: 'spades', rank: 11 } },
+  { player: 'north', card: { suit: 'hearts', rank: 4 } },
+  { player: 'east', card: { suit: 'spades', rank: 2 } },
+];
+
+/** Which of your cards autoplay leads, and how the others answer, per `signals=`. */
+const SIGNAL_TRICKS: Record<string, { lead: number; plays: { player: Position; card: Card }[] }> = {
+  pidro: { lead: 0, plays: OPP_PLAYS_PIDRO },
+  'pidro-theirs': { lead: 1, plays: OPP_PLAYS_THEIR_PIDRO },
+  points: { lead: 0, plays: OPP_PLAYS_POINTS },
+  'points-theirs': { lead: 1, plays: OPP_PLAYS_THEIR_POINTS },
+};
+
 /**
  * The fake server's trick signals (PID-218 shape). Fixture-only: the real
  * table gets winner and points from the server and never computes them.
@@ -133,9 +155,11 @@ function fixtureSignals(plays: Play[]) {
     null
   );
   const lead = best ?? plays[0] ?? null;
+  const two = trumps.find((play) => play.card.rank === 2);
   return {
     winning: lead ? { position: lead.player, card: lead.card } : null,
     points: plays.reduce((sum, play) => sum + fixturePoints(play.card), 0),
+    two_of_trump: two ? { position: two.player, points: 1 } : null,
   };
 }
 
@@ -231,7 +255,12 @@ export default function GameCanvasDev({
   const [hand, setHand] = useState<Card[]>([]);
   const [trick, setTrick] = useState<Play[]>([]);
   const [tricks, setTricks] = useState<
-    { cards: Play[]; winner: Position | undefined; points: number }[]
+    {
+      cards: Play[];
+      winner: Position | undefined;
+      points: number;
+      two_of_trump: { position: Position; points: number } | null;
+    }[]
   >([]);
   const [trump, setTrump] = useState<Suit | null>(null);
   const [turn, setTurn] = useState<RelativePosition>('south');
@@ -245,6 +274,7 @@ export default function GameCanvasDev({
     signals,
     hand: handFixture,
     ticker,
+    count,
   } = useLocalSearchParams<{
     scores?: string;
     dealer?: string;
@@ -253,6 +283,7 @@ export default function GameCanvasDev({
     signals?: string;
     hand?: string;
     ticker?: string;
+    count?: string;
   }>();
   // `ticker=full`: three bids land after the table opens, so the ticker fills.
   const [bids, setBids] = useState<ServerBid[]>(
@@ -316,11 +347,7 @@ export default function GameCanvasDev({
       playing.current = true;
       const trickCards = [
         { player: 'south' as Position, card },
-        ...(signals === 'pidro'
-          ? OPP_PLAYS_PIDRO
-          : signals === 'pidro-theirs'
-            ? OPP_PLAYS_THEIR_PIDRO
-            : OPP_PLAYS),
+        ...(SIGNAL_TRICKS[signals ?? '']?.plays ?? OPP_PLAYS),
       ];
       setHand((h) => h.filter((c) => !sameCard(c, card)));
       setTurn('east');
@@ -331,8 +358,11 @@ export default function GameCanvasDev({
       after(1650, () => setTrick(trickCards));
       // Trick completes → cards stay on table as round history.
       after(2450, () => {
-        const { winning, points } = fixtureSignals(trickCards);
-        setTricks((t) => [...t, { cards: trickCards, winner: winning?.position, points }]);
+        const { winning, points, two_of_trump } = fixtureSignals(trickCards);
+        setTricks((t) => [
+          ...t,
+          { cards: trickCards, winner: winning?.position, points, two_of_trump },
+        ]);
         setTrick([]);
         setTurn('north');
       });
@@ -383,8 +413,23 @@ export default function GameCanvasDev({
         currentTurnRelative: turn,
         canPlay,
         getCardCountForPlayer: (abs) => (abs ? (COUNTS[abs] ?? null) : null),
+        // `count=on`: "Help me keep count" lights the card winning the trick.
+        countHelp: count === 'on',
       }),
-    [phase, hand, trick, tricks, legalActions, trump, players, turn, canPlay, dealer, lastHand]
+    [
+      phase,
+      hand,
+      trick,
+      tricks,
+      legalActions,
+      trump,
+      players,
+      turn,
+      canPlay,
+      dealer,
+      lastHand,
+      count,
+    ]
   );
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
   // A `hand=` fixture's result belongs to the hand before this one.
@@ -405,7 +450,7 @@ export default function GameCanvasDev({
   );
 
   const pidro = tablePidro(model.lastTrick, model.seats);
-  const pidroKey = `${handNumber}:${model.lastTrick?.number}`;
+  const trickKey = `${handNumber}:${model.lastTrick?.number}`;
 
   useEffect(() => {
     onHandPresentationReadyChange?.(isHandReady);
@@ -413,7 +458,7 @@ export default function GameCanvasDev({
 
   useEffect(() => {
     if (!autoPlay || phase !== 'playing' || !isHandReady) return;
-    onPlayCard(INITIAL_HAND[signals === 'pidro-theirs' ? 1 : 0]);
+    onPlayCard(INITIAL_HAND[SIGNAL_TRICKS[signals ?? '']?.lead ?? 0]);
   }, [autoPlay, isHandReady, onPlayCard, phase, signals]);
 
   return (
@@ -441,7 +486,7 @@ export default function GameCanvasDev({
                 west: { text: t('game.passed'), tone: 'quiet' },
                 [turn]: { text: t('game.playing'), tone: 'now' },
                 ...(pidro?.side === 'theirs'
-                  ? { [pidro.winner]: { text: t('game.took_trick'), pulse: `pidro-${pidroKey}` } }
+                  ? { [pidro.seat]: { text: t('game.took_trick'), pulse: `pidro-${trickKey}` } }
                   : null),
               }
         }
@@ -454,7 +499,7 @@ export default function GameCanvasDev({
             youPosition="south"
             handNumber={4}
             roomCode="DEV01"
-            glow={pidro ? { column: pidro.column, side: pidro.side, key: pidroKey } : null}
+            glow={scoreGlow(model.lastTrick, model.seats, trickKey)}
             top={headerTop(insets.top)}
             left={insets.left}
             log={handLog}
