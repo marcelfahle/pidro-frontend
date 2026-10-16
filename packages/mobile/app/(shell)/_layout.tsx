@@ -5,18 +5,18 @@
  * shell full-screen, so the pill never competes with the table.
  */
 import { Slot, useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
 import {
+  FloatingNotice,
   TabPill,
-  UpdateNoticeReach,
   usePillClearance,
   type ShellTab,
 } from '@/components/shell/TabPill';
-import { UpdateNotice } from '@/components/shell/UpdateNotice';
+import { UpdateNotice, UpdateNoticeHost } from '@/components/shell/UpdateNotice';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
@@ -77,11 +77,26 @@ function Shell({
   // The notice floats just above the bottom pill, or above the safe area beside the rail.
   const noticeBottom = Math.max(guest ? 0 : pillClearance.bottom, insets.bottom + PidroSpacing.xs);
   const [noticeHeight, setNoticeHeight] = useState(0);
-  const update = useAppUpdate({
+  // A screen with an UpdateNoticeSlot shows the notice itself; it then never floats here.
+  // Slots claim it as they mount, so float only after that, or Home flashes a copy.
+  const [noticePlaced, setNoticePlaced] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- runs after the slots' claims
+  useEffect(() => setMounted(true), []);
+  const { visible, restarting, restart, dismiss } = useAppUpdate({
     // The game pushes over the shell; never offer a restart from under the table.
     inGame: pathname.startsWith('/game'),
     forced: forceUpdateNotice,
   });
+  const host = useMemo(
+    () => ({
+      notice: visible ? { restarting, onRestart: restart, onDismiss: dismiss } : null,
+      setPlaced: setNoticePlaced,
+    }),
+    [visible, restarting, restart, dismiss]
+  );
+  const floating = visible && mounted && !noticePlaced;
+  const noticeHeightShown = floating ? noticeHeight : 0;
 
   const handleSelect = (tab: ShellTab) => {
     if (tab === 'table') {
@@ -99,25 +114,33 @@ function Shell({
 
   return (
     <View style={styles.root}>
-      {/* The notice floats over the screen; screens only learn how far up it reaches. */}
-      <UpdateNoticeReach.Provider
-        value={update.visible && noticeHeight > 0 ? noticeBottom + noticeHeight : 0}>
-        {/* 160ms opacity-only cross-fade on tab switch: cheap on old GPUs,
-            skipped under Reduce Motion. The pill stays outside the fade. */}
-        <Animated.View
-          key={active}
-          style={styles.root}
-          entering={reduceMotion ? undefined : FadeIn.duration(140)}>
-          <Slot />
-        </Animated.View>
-      </UpdateNoticeReach.Provider>
-      {update.visible ? (
+      {/* The notice floats over the screen; screens learn how far up it reaches, or place it. */}
+      <UpdateNoticeHost.Provider value={host}>
+        <FloatingNotice.Provider
+          value={{
+            reach: noticeHeightShown > 0 ? noticeBottom + noticeHeightShown : 0,
+            height: noticeHeightShown,
+          }}>
+          {/* 160ms opacity-only cross-fade on tab switch: cheap on old GPUs,
+              skipped under Reduce Motion. The pill stays outside the fade. */}
+          <Animated.View
+            key={active}
+            style={styles.root}
+            entering={reduceMotion ? undefined : FadeIn.duration(140)}>
+            <Slot />
+          </Animated.View>
+        </FloatingNotice.Provider>
+      </UpdateNoticeHost.Provider>
+      {floating ? (
         <UpdateNotice
-          restarting={update.restarting}
-          onRestart={update.restart}
-          onDismiss={update.dismiss}
-          bottom={noticeBottom}
-          rightClearance={guest ? 0 : pillClearance.right}
+          restarting={restarting}
+          onRestart={restart}
+          onDismiss={dismiss}
+          style={{
+            bottom: noticeBottom,
+            paddingLeft: insets.left + PidroSpacing.md,
+            paddingRight: Math.max(insets.right + PidroSpacing.md, guest ? 0 : pillClearance.right),
+          }}
           onHeight={setNoticeHeight}
         />
       ) : null}

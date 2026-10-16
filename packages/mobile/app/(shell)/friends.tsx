@@ -5,7 +5,7 @@ import { localizedError, type FriendPlayer } from '@pidro/shared';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
-import { usePillClearance } from '@/components/shell/TabPill';
+import { useNoticeInset, usePillClearance } from '@/components/shell/TabPill';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
@@ -37,6 +37,7 @@ export default function FriendsScreen() {
   const store = useFriendsStore();
   const guest = useAuthStore((state) => Boolean(state.user?.guest));
   const clearance = usePillClearance();
+  const noticeInset = useNoticeInset();
   const [accountOpen, setAccountOpen] = useState(guest);
   const [selected, setSelected] = useState<FriendPlayer | null>(null);
   const [pending, setPending] = useState<string | null>(null);
@@ -55,7 +56,7 @@ export default function FriendsScreen() {
       contentStyle={[
         styles.content,
         {
-          paddingBottom: PidroSpacing.md + (guest ? 0 : clearance.bottom),
+          paddingBottom: PidroSpacing.md + (guest ? noticeInset : clearance.bottom),
           paddingRight: PidroSpacing.md + (guest ? 0 : clearance.right),
         },
       ]}>

@@ -26,6 +26,13 @@ export const UI_VIEWPORTS = [
     cases: ['locale-en-settings-system', 'locale-sv-settings-system', 'locale-sv-settings-sv'],
   },
   { name: 'portrait', width: 390, height: 844 },
+  // The smallest phone testers hold upright (iPhone SE).
+  {
+    name: 'small-portrait',
+    width: 375,
+    height: 667,
+    cases: ['update-notice', 'update-notice-friends-guest'],
+  },
   {
     name: 'compact-portrait',
     width: 360,

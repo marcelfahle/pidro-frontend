@@ -11,7 +11,8 @@ import { AuthSheet, type AuthSheetReason } from '@/components/auth/AuthSheet';
 import { ClassicPlaque } from '@/components/home/ClassicPlaque';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { LogoGlow } from '@/components/home/LogoGlow';
-import { usePillClearance } from '@/components/shell/TabPill';
+import { useNoticeInset, usePillClearance } from '@/components/shell/TabPill';
+import { UpdateNoticeSlot } from '@/components/shell/UpdateNotice';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { HomeTileButton, type HomeTileSize } from '@/components/ui/HomeTileButton';
@@ -28,6 +29,8 @@ import { useLobbyStore } from '@/stores/lobby';
 import { formatNumber, useTranslation } from '@/i18n';
 
 type LobbyCountState = 'loading' | 'ready' | 'failed';
+
+const LANDSCAPE_GUTTER = 56;
 
 export default function HomeScreen() {
   const { t } = useTranslation();
@@ -54,8 +57,10 @@ export default function HomeScreen() {
   const [identity, setIdentity] = useState<ProfileIdentity | null>(null);
   const [lobbyCountState, setLobbyCountState] = useState<LobbyCountState>('loading');
   const refreshIdentity = useProfileIdentity();
-  // Home's layout is fixed: the update notice floats over it rather than moving it.
+  // Home's layout is fixed: the update notice never moves it. It sits in the logo
+  // stage, the one place no control reaches; the invitations scroll clears it instead.
   const rawPillClearance = usePillClearance({ notice: false });
+  const noticeInset = useNoticeInset();
   const pillClearance = guest ? { bottom: 0, right: 0 } : rawPillClearance;
   const playerName = publicPlayerName(user?.username, t('social.player'), user?.display_name);
   const quickGame = useQuickGame(fixture === 'table-unknown' ? TABLE_UNKNOWN_ERROR : null);
@@ -169,9 +174,10 @@ export default function HomeScreen() {
   const logoStage = (
     <View
       style={[styles.logoStage, compactLandscape && styles.logoStageLandscape]}
-      pointerEvents="none">
+      pointerEvents="box-none">
       <LogoGlow size={tablet ? 700 : compactLandscape ? 360 : 420} />
       <PidroLogo size="hero" width={tablet ? 440 : compactLandscape ? 270 : 280} />
+      <UpdateNoticeSlot style={compactLandscape && styles.noticeLandscape} />
     </View>
   );
 
@@ -282,7 +288,10 @@ export default function HomeScreen() {
             {showInvitations ? (
               <ScrollView
                 style={styles.invitationScroll}
-                contentContainerStyle={styles.invitationContent}>
+                contentContainerStyle={[
+                  styles.invitationContent,
+                  { paddingBottom: PidroSpacing.md + noticeInset },
+                ]}>
                 <SeatInvitations fixture={fixtureInvitations} />
                 {actions}
               </ScrollView>
@@ -324,7 +333,7 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   invitationScroll: { flex: 1, width: '100%', maxWidth: 794 },
-  invitationContent: { gap: PidroSpacing.md, paddingBottom: PidroSpacing.md },
+  invitationContent: { gap: PidroSpacing.md },
   scrim: { flex: 1, backgroundColor: PidroColors.screenScrim },
   safe: { flex: 1 },
   main: {
@@ -336,7 +345,7 @@ const styles = StyleSheet.create({
     paddingBottom: PidroSpacing.lg,
   },
   mainTablet: { gap: PidroSpacing.lg, paddingHorizontal: 48, paddingTop: 48, paddingBottom: 56 },
-  mainLandscape: { paddingHorizontal: 56, paddingVertical: PidroSpacing.md, gap: 6 },
+  mainLandscape: { paddingHorizontal: LANDSCAPE_GUTTER, paddingVertical: PidroSpacing.md, gap: 6 },
   topBar: {
     width: '100%',
     maxWidth: 794,
@@ -369,6 +378,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoStageLandscape: { width: 340, alignSelf: 'stretch', flexShrink: 1 },
+  // A small phone's logo column is too narrow for the notice: it also takes the
+  // side gutter and the gap, stopping short of the tiles.
+  noticeLandscape: {
+    left: PidroSpacing.md - LANDSCAPE_GUTTER,
+    right: PidroSpacing.xs - PidroSpacing.xxl,
+  },
   bodyLandscape: {
     width: '100%',
     flex: 1,
