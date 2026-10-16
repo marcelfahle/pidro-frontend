@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatTurn } from './SeatLayer';
 import type { SeatLine } from '@/features/game/seatLine';
-import { TableSignals } from './TableSignals';
+import { TableSignals, tablePidro } from './TableSignals';
 import { Scoreboard } from './Scoreboard';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
@@ -110,6 +110,14 @@ const OPP_PLAYS_PIDRO: { player: Position; card: Card }[] = [
   { player: 'west', card: { suit: 'diamonds', rank: 5 } },
   { player: 'north', card: { suit: 'spades', rank: 5 } },
   { player: 'east', card: { suit: 'hearts', rank: 4 } },
+];
+
+// `signals=pidro-theirs`: you play the 7 of trump, West tops it with the king
+// and East drops the 5 on it, so the Pidro is theirs.
+const OPP_PLAYS_THEIR_PIDRO: { player: Position; card: Card }[] = [
+  { player: 'west', card: { suit: 'spades', rank: 13 } },
+  { player: 'north', card: { suit: 'hearts', rank: 4 } },
+  { player: 'east', card: { suit: 'spades', rank: 5 } },
 ];
 
 /**
@@ -308,7 +316,11 @@ export default function GameCanvasDev({
       playing.current = true;
       const trickCards = [
         { player: 'south' as Position, card },
-        ...(signals === 'pidro' ? OPP_PLAYS_PIDRO : OPP_PLAYS),
+        ...(signals === 'pidro'
+          ? OPP_PLAYS_PIDRO
+          : signals === 'pidro-theirs'
+            ? OPP_PLAYS_THEIR_PIDRO
+            : OPP_PLAYS),
       ];
       setHand((h) => h.filter((c) => !sameCard(c, card)));
       setTurn('east');
@@ -392,14 +404,17 @@ export default function GameCanvasDev({
     [handNumber, bids, trump, tricks, trick, lastHand, players, locale]
   );
 
+  const pidro = tablePidro(model.lastTrick, model.seats);
+  const pidroKey = `${handNumber}:${model.lastTrick?.number}`;
+
   useEffect(() => {
     onHandPresentationReadyChange?.(isHandReady);
   }, [isHandReady, onHandPresentationReadyChange]);
 
   useEffect(() => {
     if (!autoPlay || phase !== 'playing' || !isHandReady) return;
-    onPlayCard(INITIAL_HAND[0]);
-  }, [autoPlay, isHandReady, onPlayCard, phase]);
+    onPlayCard(INITIAL_HAND[signals === 'pidro-theirs' ? 1 : 0]);
+  }, [autoPlay, isHandReady, onPlayCard, phase, signals]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -425,6 +440,9 @@ export default function GameCanvasDev({
                 east: { text: t('game.bid', { amount: 6 }) },
                 west: { text: t('game.passed'), tone: 'quiet' },
                 [turn]: { text: t('game.playing'), tone: 'now' },
+                ...(pidro?.side === 'theirs'
+                  ? { [pidro.winner]: { text: t('game.took_trick'), pulse: `pidro-${pidroKey}` } }
+                  : null),
               }
         }
       />
@@ -436,6 +454,7 @@ export default function GameCanvasDev({
             youPosition="south"
             handNumber={4}
             roomCode="DEV01"
+            glow={pidro ? { column: pidro.column, side: pidro.side, key: pidroKey } : null}
             top={headerTop(insets.top)}
             left={insets.left}
             log={handLog}

@@ -449,10 +449,16 @@ const allCases = [
     verifyPlayedCardPersistence: true,
   },
   // PID-219: a trick holding a five pops "Pidro!"; a hand ends with its result.
+  // PID-230: gold "Us +6" when ours, coral "Them +5 · Wynn" when theirs.
   {
     name: 'table-trick-pidro',
     path: '/table-dev?phase=playing&signals=pidro&autoplay=true',
-    testId: 'trick-pop-pidro',
+    testId: 'trick-pop-pidro-ours',
+  },
+  {
+    name: 'table-trick-pidro-theirs',
+    path: '/table-dev?phase=playing&signals=pidro-theirs&autoplay=true',
+    testId: 'trick-pop-pidro-theirs',
   },
   { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
   { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },
