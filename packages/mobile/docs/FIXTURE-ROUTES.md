@@ -320,14 +320,17 @@ lobby cases; other screens keep their existing dimensions.
 ## `/friends?fixture=<state>` and `/friends-add?fixture=<state>`
 
 Use an authenticated fixture. Friends has `empty`, `list` (all three presences),
-`added-you`, `loading`, and `error`. Tap a row in `list` for the real profile sheet
+`added-you`, `loading`, `error`, and `classic` (seven Classic friends not here yet).
+Tap a row in `list` for the real profile sheet
 with a fixture identity; Remove friend opens its confirmation without a backend
 write. Add a friend has `recent` and `results` (all four server relation labels).
 The guest route opens the account sheet and continues on Friends after saving.
 
 Grammar cases: `friends-empty`, `friends-list`, `friends-added-you`,
 `friends-loading`, `friends-error`, `friends-profile`, `friends-remove`,
-`friends-block`, `friends-recent`, `friends-results`, and `friends-guest`.
+`friends-block`, `friends-recent`, `friends-results`, `friends-guest`, and
+`friends-classic`. The Classic case checks the count below the list and the app-share
+payload, including share failure and retry; it never opens a real share sheet.
 
 ## `/blocked-players?fixture=<state>`
 

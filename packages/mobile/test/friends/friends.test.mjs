@@ -3,6 +3,7 @@ import { localizedError, setLocale, useFriendsStore } from '@pidro/shared';
 import {
   canSearch,
   canViewPlayer,
+  classicFriendsMessage,
   friendSections,
   presenceLabel,
   relationLabel,
@@ -14,6 +15,38 @@ afterEach(() => {
 });
 
 describe('Friends presentation', () => {
+  test('Classic copy uses only a positive server count, with singular and plural wording', () => {
+    const lists = { friends: [], added_you: [] };
+    expect(classicFriendsMessage(lists)).toBeNull();
+    expect(classicFriendsMessage({ ...lists, classic: { not_here: 0 } })).toBeNull();
+    expect(classicFriendsMessage({ ...lists, classic: { not_here: 1 } })).toBe(
+      "1 of your Classic friends isn't here yet"
+    );
+    expect(classicFriendsMessage({ ...lists, classic: { not_here: 7 } })).toBe(
+      "7 of your Classic friends aren't here yet"
+    );
+    setLocale('sv');
+    expect(classicFriendsMessage({ ...lists, classic: { not_here: 7 } })).toBe(
+      '7 av dina Classic-vänner är inte här ännu'
+    );
+  });
+
+  test('Classic metadata follows friend responses, survives block updates, and clears on reset', () => {
+    const store = useFriendsStore.getState();
+    const lists = { friends: [], added_you: [], classic: { not_here: 7 } };
+    store.setLists(lists);
+    store.setLists({ blocked: [] });
+    expect(useFriendsStore.getState().classic).toEqual({ not_here: 7 });
+    store.setLists({ ...lists, classic: { not_here: 0 } });
+    expect(classicFriendsMessage(useFriendsStore.getState())).toBeNull();
+    store.setLists(lists);
+    store.setLists({ friends: [], added_you: [] });
+    expect(useFriendsStore.getState().classic).toBeUndefined();
+    store.setLists(lists);
+    store.reset();
+    expect(useFriendsStore.getState().classic).toBeUndefined();
+  });
+
   test('human seats open profiles, but empty and bot seats do not', () => {
     for (const seatStatus of ['normal', 'reconnecting', 'bot_substitute']) {
       expect(canViewPlayer({ playerId: 'nora', seatStatus })).toBe(true);

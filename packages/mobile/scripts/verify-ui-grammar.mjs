@@ -85,7 +85,7 @@ const allCases = [
     path: '/ui-dev?state=create&fixture=invited',
     testId: 'create-room-window',
   },
-  ...['empty', 'list', 'added-you', 'loading', 'error'].map((fixture) => ({
+  ...['empty', 'list', 'added-you', 'loading', 'error', 'classic'].map((fixture) => ({
     name: `friends-${fixture}`,
     path: `/friends?fixture=${fixture}`,
     testId: 'friends-screen',
@@ -1065,6 +1065,62 @@ async function assertFriendsPresentation(page, name) {
     return;
   }
   if (!name.startsWith('friends-')) return;
+  if (name === 'friends-classic') {
+    const footer = page.getByTestId('friends-classic-count');
+    await footer
+      .getByText(
+        swedish
+          ? '7 av dina Classic-vänner är inte här ännu'
+          : "7 of your Classic friends aren't here yet",
+        { exact: true }
+      )
+      .waitFor();
+    const lastFriend = page.getByRole('button', {
+      name: swedish ? 'Visa profilen för Liisa' : "View Liisa's profile",
+      exact: true,
+    });
+    assert.ok(
+      (await footer.boundingBox()).y >=
+        (await lastFriend.boundingBox()).y + (await lastFriend.boundingBox()).height
+    );
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async () => {
+          throw new Error('Share unavailable');
+        },
+      });
+    });
+    const share = footer.getByRole('link', {
+      name: swedish ? 'Dela appen' : 'Share the app',
+      exact: true,
+    });
+    await share.click();
+    await footer
+      .getByText(
+        swedish ? 'Delningsmenyn kunde inte öppnas.' : 'The share sheet could not be opened.',
+        { exact: true }
+      )
+      .waitFor();
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async (data) => {
+          window.__appShare = data;
+        },
+      });
+    });
+    await share.click();
+    assert.equal(
+      await page.evaluate(() => window.__appShare.text),
+      swedish
+        ? 'Kom och spela Pidro med mig 🃏 https://www.pidro.online/'
+        : 'Come play Pidro with me 🃏 https://www.pidro.online/'
+    );
+    assert.equal(await footer.getByRole('alert').count(), 0);
+  } else {
+    assert.equal(await page.getByTestId('friends-classic-count').count(), 0);
+  }
   const expected =
     (swedish
       ? {
