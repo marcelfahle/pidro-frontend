@@ -53,6 +53,8 @@ export const UI_VIEWPORTS = [
       'table-bidding',
       'table-playing',
       'table-completed-trick',
+      'table-trick-pidro',
+      'table-trick-pidro-theirs',
       'table-count-help',
       'table-bot-plays',
     ],

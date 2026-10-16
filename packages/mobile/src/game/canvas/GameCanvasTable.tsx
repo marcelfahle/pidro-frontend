@@ -44,7 +44,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { LastTrick, type LastTrickView } from './LastTrick';
 
 import { TABLE_HEADER, TableChromeBars, headerTop, useTableReserves } from './TableChrome';
-import { TableSignals } from './TableSignals';
+import { TableSignals, tablePidro } from './TableSignals';
 import { computeLayout, showsTicker, tickerPlacement } from './layout';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { RulesExplainer, useRulesExplainer } from '@/components/rules/RulesExplainer';
@@ -389,11 +389,16 @@ export function GameCanvasTable({
       : null;
   const fullTicker = showsTicker(layout);
 
+  // A Pidro glows the score column it landed in; theirs also lights the seat that took it.
+  const pidro = tablePidro(model.lastTrick, model.seats);
+  const pidroKey = `${serverState?.hand_number ?? serverState?.round_number ?? 0}:${model.lastTrick?.number}`;
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
-      acc[player.relativePosition] = model.dealStage
-        ? { text: t('game.dealing') }
-        : statusText(player, serverState);
+      const line = model.dealStage ? { text: t('game.dealing') } : statusText(player, serverState);
+      acc[player.relativePosition] =
+        pidro?.side === 'theirs' && pidro.winner === player.relativePosition
+          ? { ...(line ?? { text: t('game.took_trick') }), pulse: `pidro-${pidroKey}` }
+          : line;
       return acc;
     },
     {} as Partial<Record<RelativePosition, SeatLine | null>>
@@ -483,6 +488,7 @@ export function GameCanvasTable({
           tickerPace={pace}
           restingOnly={!fullTicker}
           help={lastTrickView ? <LastTrick trick={lastTrickView} yourTurn={isYourTurn} /> : null}
+          glow={pidro ? { column: pidro.column, side: pidro.side, key: pidroKey } : null}
           yourTurn={
             isYourTurn && (controller.phase === 'bidding' || controller.phase === 'playing')
           }

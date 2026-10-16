@@ -4,16 +4,29 @@
  * the action ticker: the latest table actions, resting on who holds the bid as
  * Classic's "Bet 6" did. Tap the ticker for the hand's log. With count help
  * (PID-220), the "Last trick" pill sits under it, and small phones that leave
- * the ticker out keep its resting line.
+ * the ticker out keep its resting line. A Pidro glows the column it landed in
+ * (PID-230).
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import Animated, {
+  Easing,
+  cancelAnimation,
+  useAnimatedStyle,
+  useReducedMotion,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withTiming,
+} from 'react-native-reanimated';
 import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Position } from '@/types/lobby';
+import type { PidroSide } from '@/features/game/pidro';
+import { isStillCapture } from '@/utils/stillCapture';
 import type { TablePace } from '@pidro/shared';
 import { handLogEntries, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
@@ -36,6 +49,44 @@ const VALUE_LINE = 29;
 export const SCORE_PLAQUE_HEIGHT = 2 * RIM + 2 * PidroSpacing.xxs + LABEL_LINE + VALUE_LINE;
 
 const NO_ENTRIES: HandLogEntry[] = [];
+
+/** A Pidro's glow on the score: up quickly, held a moment, then gone. */
+const GLOW_IN_MS = 180;
+const GLOW_HOLD_MS = 1100;
+const GLOW_OUT_MS = 700;
+const GLOW_TINT = {
+  ours: PidroColors.goldSoft,
+  theirs: PidroColors.theirPidroSoft,
+  neutral: PidroColors.cyanSoft,
+} as const;
+const GLOW_EDGE = {
+  ours: PidroColors.gold,
+  theirs: PidroColors.theirPidro,
+  neutral: PidroColors.cyanBorderStrong,
+} as const;
+
+export type ScoreGlow = { column: 'us' | 'them'; side: PidroSide; key: string };
+
+/** Lights once for each new key; a table that opens on a Pidro stays dark. */
+function useScoreGlow(key: string | null) {
+  const reduceMotion = useReducedMotion();
+  const t = useSharedValue(0);
+  const seen = useRef(key);
+  useEffect(() => {
+    if (!key || key === seen.current) return;
+    seen.current = key;
+    // UI grammar captures the glow lit.
+    if (isStillCapture()) {
+      t.set(1);
+      return;
+    }
+    const fade = (to: number, ms: number) =>
+      withTiming(to, { duration: reduceMotion ? 0 : ms, easing: Easing.out(Easing.quad) });
+    t.set(withSequence(fade(1, GLOW_IN_MS), withDelay(GLOW_HOLD_MS, fade(0, GLOW_OUT_MS))));
+  }, [key, reduceMotion, t]);
+  useEffect(() => () => cancelAnimation(t), [t]);
+  return useAnimatedStyle(() => ({ opacity: t.value }));
+}
 
 function teams(scores: Scores, you: Position | null) {
   const ns = scores?.north_south ?? 0;
@@ -74,6 +125,7 @@ export function Scoreboard({
   tickerPace = 'normal',
   restingOnly = false,
   help = null,
+  glow = null,
 }: {
   scores: Scores;
   youPosition: Position | null;
@@ -96,6 +148,8 @@ export function Scoreboard({
   restingOnly?: boolean;
   /** Under the ticker: the count help's "Last trick". */
   help?: ReactNode;
+  /** The column a Pidro just landed in. */
+  glow?: ScoreGlow | null;
 }) {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
@@ -103,6 +157,21 @@ export function Scoreboard({
   const { us, them } = teams(scores, youPosition);
   const usLabel = youPosition ? t('game.us').toLocaleUpperCase() : t('game.ns_short');
   const themLabel = youPosition ? t('game.them').toLocaleUpperCase() : t('game.ew_short');
+  const glowStyle = useScoreGlow(glow?.key ?? null);
+  const glowLight = glow ? (
+    <Animated.View
+      pointerEvents="none"
+      testID={`score-glow-${glow.column}`}
+      style={[
+        styles.glow,
+        {
+          backgroundColor: GLOW_TINT[glow.side],
+          boxShadow: `0px 0px 10px ${GLOW_EDGE[glow.side]}`,
+        },
+        glowStyle,
+      ]}
+    />
+  ) : null;
   const [isOpen, setIsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   // The log steps aside the moment it becomes your turn.
@@ -170,6 +239,7 @@ export function Scoreboard({
         style={[styles.plaque, gradientBg(PidroBevel.goldRimGradient)]}>
         <View style={styles.plaqueRow}>
           <View style={styles.col}>
+            {glow?.column === 'us' ? glowLight : null}
             <PidroText role="metadata" tone="gold" style={styles.label} maxFontSizeMultiplier={1}>
               {usLabel}
             </PidroText>
@@ -179,6 +249,7 @@ export function Scoreboard({
           </View>
           <View style={styles.divider} />
           <View style={styles.col}>
+            {glow?.column === 'them' ? glowLight : null}
             <PidroText role="metadata" tone="gold" style={styles.label} maxFontSizeMultiplier={1}>
               {themLabel}
             </PidroText>
@@ -285,6 +356,10 @@ const styles = StyleSheet.create({
     boxShadow: PidroBevel.glassFaceInset,
   },
   col: { alignItems: 'center', minWidth: 52 },
+  glow: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: PidroRadii.tight,
+  },
   label: {
     fontSize: 10,
     lineHeight: LABEL_LINE,

@@ -55,6 +55,9 @@ export const PidroColors = {
   // Trick signals: the "on the table" chip and the shadow under a "+N" pop.
   trickChipBg: 'rgba(10, 35, 64, 0.72)',
   popShadow: 'rgba(0, 0, 0, 0.6)',
+  // Their Pidro (PID-230): coral, so the other side's five never reads as ours.
+  theirPidro: '#ffb4b9',
+  theirPidroSoft: 'rgba(255, 180, 185, 0.32)',
   // The table seen from above on Tables and New table: an open chair, a chosen seat.
   chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
   chairSubBorder: 'rgba(255, 184, 107, 0.85)',

@@ -1,7 +1,7 @@
 /**
  * What just happened at the table, in the server's words: a "+N" where a
- * trick was taken (a trick holding a five is a "Pidro!") and how the last
- * hand scored, before the next deal. The server
+ * trick was taken (a trick holding a five is a "Pidro!", gold when ours and
+ * coral when theirs) and how the last hand scored, before the next deal. The server
  * decides who wins and what anything is worth; this only shows it. Only what
  * matters gets fanfare: a trick worth nothing passes quietly.
  */
@@ -20,8 +20,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { readingTimeMs } from '@/features/game/readingTime';
-import { playBigTrickHaptic } from '@/game/useGameHaptics';
-import type { ServerLastHand, TeamKey } from '@/types/game';
+import { PIDRO_POINTS, whosePidro, type PidroSide } from '@/features/game/pidro';
+import {
+  playBigTrickHaptic,
+  playOurPidroHaptic,
+  playTheirPidroHaptic,
+} from '@/game/useGameHaptics';
+import type { RelativePosition, ServerLastHand, TeamKey } from '@/types/game';
 import { isStillCapture } from '@/utils/stillCapture';
 import { computeLayout, playedCardTarget, type TableLayout } from './layout';
 import type { TableModel, TrickResult } from './tableModel';
@@ -29,8 +34,6 @@ import { useTranslation } from '@/i18n';
 import { paced } from '@/features/game/tableHelp';
 import type { TablePace } from '@pidro/shared';
 
-/** A trick worth this much holds a five: the big moment. */
-const PIDRO_POINTS = 5;
 const POP_MS = 1500;
 /** The least a hand's result stays unless tapped away; longer if its words need it. */
 const HAND_RESULT_MS = 4500;
@@ -56,10 +59,24 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 
   );
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <TrickPop trick={model.lastTrick} L={L} popMs={paced(POP_MS, pace)} />
+      <TrickPop trick={model.lastTrick} seats={model.seats} L={L} popMs={paced(POP_MS, pace)} />
       <HandResult hand={model.lastHand} yourTeam={model.yourTeam} L={L} pace={pace} />
     </View>
   );
+}
+
+/**
+ * Whose the last trick's Pidro was, if it held a five: the side, the score
+ * column it lands in, and the seat that took it.
+ */
+export function tablePidro(
+  trick: TrickResult | null,
+  seats: TableModel['seats']
+): { side: PidroSide; column: 'us' | 'them'; winner: RelativePosition } | null {
+  const winner = trick && trick.points >= PIDRO_POINTS ? seats[trick.winner] : null;
+  if (!trick || !winner) return null;
+  const viewer = Object.values(seats).find((seat) => seat?.isYou)?.absolutePosition ?? null;
+  return { ...whosePidro(winner.absolutePosition, viewer), winner: trick.winner };
 }
 
 /**
@@ -69,13 +86,16 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 
  */
 function TrickPop({
   trick,
+  seats,
   L,
   popMs,
 }: {
   trick: TrickResult | null;
+  seats: TableModel['seats'];
   L: TableLayout;
   popMs: number;
 }) {
+  const { t } = useTranslation();
   // A trick taken while watching pops; one already done when the table opened does not.
   const number = trick?.number ?? null;
   const [seen, setSeen] = useState(number);
@@ -87,9 +107,13 @@ function TrickPop({
     setPop(taken && (taken.points > 0 || taken.twoOfTrump) ? taken : null);
   }
 
+  const pidro = tablePidro(pop, seats);
+  const side = pidro?.side ?? null;
   useEffect(() => {
-    if (pop && pop.points >= PIDRO_POINTS) playBigTrickHaptic();
-  }, [pop]);
+    if (side === 'ours') playOurPidroHaptic();
+    else if (side === 'theirs') playTheirPidroHaptic();
+    else if (side === 'neutral') playBigTrickHaptic();
+  }, [pop, side]);
 
   if (!pop) return null;
   // A small "+N" sits on the table side of the card it rose from, clear of
@@ -101,7 +125,14 @@ function TrickPop({
     const toward = (L.cardH * 0.42) / Math.max(1, Math.hypot(dx, dy));
     return { x: card.x + dx * toward, y: card.y + dy * toward };
   };
-  const big = pop.points >= PIDRO_POINTS;
+  const big = pidro != null;
+  // Who got the points, so a five never reads as ours when it was theirs.
+  const team = !pidro
+    ? ''
+    : pidro.side === 'neutral'
+      ? t(pidro.column === 'us' ? 'game.ns_short' : 'game.ew_short')
+      : t(pidro.side === 'ours' ? 'game.us' : 'game.them');
+  const taker = pidro?.side === 'theirs' ? seats[pop.winner]?.username : null;
   const at = big ? { x: L.trick.cx, y: L.trick.cy } : above(pop.winner);
   const twoAt = pop.twoOfTrump ? above(pop.twoOfTrump.holder) : null;
   return (
@@ -111,8 +142,15 @@ function TrickPop({
           key={`win-${pop.number}`}
           x={at.x}
           y={at.y}
-          big={big}
           label={`+${pop.points}`}
+          pidro={
+            pidro
+              ? {
+                  side: pidro.side,
+                  chip: `${team} +${pop.points}${taker ? ` · ${taker}` : ''}`,
+                }
+              : null
+          }
           ms={popMs}
         />
       ) : null}
@@ -121,7 +159,6 @@ function TrickPop({
           key={`two-${pop.number}`}
           x={twoAt.x}
           y={twoAt.y + (!big && pop.twoOfTrump.holder === pop.winner ? -26 : 0)}
-          big={false}
           label={`+${pop.twoOfTrump.points}`}
           ms={popMs}
         />
@@ -130,51 +167,94 @@ function TrickPop({
   );
 }
 
+/** The chip under a "Pidro!": whose points they were, in their colour. */
+const PIDRO_TONE = {
+  ours: { text: PidroColors.goldLight, border: PidroColors.gold, glow: PidroColors.gold },
+  theirs: {
+    text: PidroColors.theirPidro,
+    border: PidroColors.theirPidro,
+    glow: PidroColors.theirPidroSoft,
+  },
+  neutral: {
+    text: PidroColors.cyanText,
+    border: PidroColors.cyanBorderStrong,
+    glow: PidroColors.cyanSoft,
+  },
+} as const;
+
 function Pop({
   x,
   y,
-  big,
   label,
+  pidro = null,
   ms,
 }: {
   x: number;
   y: number;
-  big: boolean;
   label: string;
+  /** A trick holding a five: "Pidro!" in the middle, and whose points it was. */
+  pidro?: { side: PidroSide; chip: string } | null;
   ms: number;
 }) {
   const reduceMotion = useReducedMotion();
   const t = useSharedValue(0);
+  const big = pidro != null;
+  // Their Pidro is the same moment, a size down: it is not ours to celebrate.
+  const size = pidro?.side === 'theirs' ? 0.88 : 1;
   useEffect(() => {
     // UI grammar captures the pop at its peak instead of mid-flight.
     t.value = isStillCapture() ? 0.35 : withTiming(1, { duration: ms, easing: Easing.linear });
   }, [t, ms]);
   const motion = useAnimatedStyle(() => {
+    // Reduced motion: no rise, no swell, no fade; it is there, then gone.
+    if (reduceMotion) return { opacity: t.value < 1 ? 1 : 0, transform: [{ scale: size }] };
     const appear = Math.min(1, t.value / 0.12);
     const fade = t.value < 0.7 ? 1 : Math.max(0, 1 - (t.value - 0.7) / 0.3);
-    const rise = reduceMotion ? 0 : -(big ? 24 : 18) * easeOutCubic(t.value);
+    const rise = -(big ? 24 : 18) * easeOutCubic(t.value);
     // A quick swell past full size, then settle: the "pop".
     const swell = appear < 1 ? 0.8 + 0.3 * appear : 1.1 - 0.1 * Math.min(1, (t.value - 0.12) / 0.1);
     return {
       opacity: appear * fade,
-      transform: [{ translateY: rise }, { scale: reduceMotion ? 1 : swell }],
+      transform: [{ translateY: rise }, { scale: size * swell }],
     };
   });
-  const box = big ? 160 : 64;
+  const box = big ? 280 : 64;
   const height = big ? 44 : 28;
+  if (!pidro) {
+    return (
+      <Animated.View
+        pointerEvents="none"
+        testID="trick-pop"
+        style={[styles.pop, { left: x - box / 2, top: y - height / 2, width: box }, motion]}>
+        <View style={styles.popChip}>
+          <PidroText role="label" tone="gold" style={styles.popText}>
+            {label}
+          </PidroText>
+        </View>
+      </Animated.View>
+    );
+  }
+  const tone = PIDRO_TONE[pidro.side];
   return (
     <Animated.View
       pointerEvents="none"
-      testID={big ? 'trick-pop-pidro' : 'trick-pop'}
+      testID={`trick-pop-pidro-${pidro.side}`}
       style={[styles.pop, { left: x - box / 2, top: y - height / 2, width: box }, motion]}>
-      <View style={[styles.popChip, big ? styles.popChipBig : null]}>
-        {big ? (
-          <PidroText role="title" style={[styles.popText, styles.pidro]}>
-            Pidro!
-          </PidroText>
-        ) : null}
-        <PidroText role={big ? 'title' : 'label'} tone="gold" style={styles.popText}>
-          {label}
+      <View
+        style={[
+          styles.popChip,
+          styles.popChipBig,
+          { borderColor: tone.border, boxShadow: `0px 0px 18px ${tone.glow}` },
+        ]}>
+        <PidroText
+          role="title"
+          style={[styles.popText, pidro.side === 'ours' ? styles.pidro : { color: tone.text }]}>
+          Pidro!
+        </PidroText>
+      </View>
+      <View style={[styles.popChip, styles.whoseChip, { borderColor: tone.border }]}>
+        <PidroText role="label" numberOfLines={1} style={[styles.popText, { color: tone.text }]}>
+          {pidro.chip}
         </PidroText>
       </View>
     </Animated.View>
@@ -368,8 +448,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: PidroSpacing.md,
     paddingVertical: PidroSpacing.xxs,
     borderWidth: 2,
-    borderColor: PidroColors.gold,
-    boxShadow: `0px 0px 18px ${PidroColors.gold}`,
+  },
+  whoseChip: {
+    marginTop: PidroSpacing.xxs,
+    maxWidth: '100%',
   },
   popText: {
     fontWeight: '900',

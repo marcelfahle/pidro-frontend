@@ -58,12 +58,30 @@ function playTrickHaptic() {
   );
 }
 
-/** A trick holding a five: the heaviest tap the table makes. */
+/** A trick holding a five, seen from no seat: the heaviest tap the table makes. */
 export function playBigTrickHaptic() {
   runHaptic(() =>
     Platform.OS === 'android'
       ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Long_Press)
       : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+  );
+}
+
+/** Our side took a five: the happy one. Sounds hook in here later. */
+export function playOurPidroHaptic() {
+  runHaptic(() =>
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Confirm)
+      : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+  );
+}
+
+/** They took a five: the sad one. Sounds hook in here later. */
+export function playTheirPidroHaptic() {
+  runHaptic(() =>
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Reject)
+      : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning)
   );
 }
 
