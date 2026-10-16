@@ -81,7 +81,14 @@ export const UI_VIEWPORTS = [
     width: 667,
     height: 375,
     tableOnly: true,
-    entryCases: ['welcome', 'welcome-guest', 'update-notice'],
+    entryCases: [
+      'welcome',
+      'welcome-guest',
+      'home',
+      'home-guest',
+      'update-notice',
+      'update-notice-home-guest',
+    ],
   },
   {
     name: 'tablet-portrait',

@@ -235,7 +235,13 @@ that it is clear of the tab pill, has 44pt Restart and Dismiss targets, that Res
 busy and cannot be tapped twice, and that dismissing it moves nothing on Home. It then
 opens `/settings?fixture=update-notice&safeArea=island` and checks the notice floats
 above the bottom inset, the last row scrolls clear of it and no control sits under it.
-`update-notice-friends-guest` does the same for a guest on Friends.
+`update-notice-friends-guest` does the same for a guest on Friends, and
+`update-notice-home-guest` for a guest on Home.
+
+Every Home case (including 667×375 for `home`, `home-guest` and the notice cases)
+hit-tests the header's controls and both play tiles: each must take its own taps. In
+landscape a guest's column (tiles, Classic plaque, Sign in) is taller than the space
+beside the logo once there are insets, so it scrolls there instead of covering the header.
 
 In a release build the notice shows by itself once Expo has downloaded an update, and
 never on the game screen. The real path (check on foreground, download, reload) needs a

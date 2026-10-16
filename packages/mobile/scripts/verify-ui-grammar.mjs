@@ -176,6 +176,13 @@ const allCases = [
     authenticated: true,
   },
   {
+    name: 'update-notice-home-guest',
+    path: '/home?fixture=update-notice&safeArea=island',
+    testId: 'update-notice',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+  },
+  {
     name: 'update-notice-friends-guest',
     path: '/friends?fixture=update-notice&safeArea=island',
     testId: 'auth-sheet',
@@ -992,6 +999,40 @@ async function assertNothingUnderNotice(page, screen, viewport) {
   );
 }
 
+// Every header control and both play tiles take their own taps once in view: a
+// guest's taller column once overflowed upward over Friends and Settings with
+// landscape insets.
+async function assertHomeHeaderClear(page, path, viewport) {
+  if (!path.startsWith('/home')) return;
+  await getStableBox(page.getByTestId('home-quick-game'), page);
+  const covered = await page.evaluate(() => {
+    const header = document.querySelector('[data-testid="home-header"]');
+    const targets = [
+      ...header.querySelectorAll('[role="button"], [role="link"]'),
+      ...document.querySelectorAll(
+        '[data-testid="home-quick-game"], [data-testid="home-play-online"]'
+      ),
+    ];
+    return targets
+      .filter((element) => {
+        element.scrollIntoView({ block: 'nearest' });
+        const { left, right, top, bottom } = element.getBoundingClientRect();
+        const [x1, x2] = [left + (right - left) / 4, right - (right - left) / 4];
+        const [y1, y2] = [top + (bottom - top) / 4, bottom - (bottom - top) / 4];
+        const points = [
+          [(left + right) / 2, (top + bottom) / 2],
+          [x1, y1],
+          [x2, y1],
+          [x1, y2],
+          [x2, y2],
+        ];
+        return points.some(([x, y]) => !element.contains(document.elementFromPoint(x, y)));
+      })
+      .map((element) => element.getAttribute('aria-label') || element.textContent.trim());
+  });
+  assert.deepEqual(covered, [], `Home's header or tiles are covered in ${viewport.name}`);
+}
+
 // The update notice floats over the shell (faked island insets: 59 top, 34 bottom).
 // Home's controls reach the bottom, so there it sits under the header, in the logo
 // stage; it must cover nothing, stay clear of the tab pill, and move nothing when it
@@ -999,9 +1040,13 @@ async function assertNothingUnderNotice(page, screen, viewport) {
 // above the bottom inset and every scrolling screen scrolls its last row clear of it.
 async function assertUpdateNotice(page, name, viewport) {
   const notice = page.getByTestId('update-notice');
-  if (name === 'update-notice-friends-guest') {
+  const guestScreen = {
+    'update-notice-friends-guest': 'Friends',
+    'update-notice-home-guest': 'Home',
+  }[name];
+  if (guestScreen) {
     await getStableBox(notice, page);
-    await assertNothingUnderNotice(page, 'Friends (guest)', viewport);
+    await assertNothingUnderNotice(page, `${guestScreen} (guest)`, viewport);
     return;
   }
   if (name !== 'update-notice') return;
@@ -2634,6 +2679,7 @@ async function main() {
             'home-guest',
             'home-table-unknown',
             'update-notice',
+            'update-notice-home-guest',
             'profile',
             'profile-guest',
             'profile-badges',
@@ -2811,6 +2857,7 @@ async function main() {
             path: resolve(screenshotDir, `${testCase.name}.png`),
             fullPage: false,
           });
+          await assertHomeHeaderClear(page, testCase.path, caseViewport);
           await assertLocalization(page, testCase, caseViewport);
           if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
           await assertFriendsPresentation(page, testCase.name);

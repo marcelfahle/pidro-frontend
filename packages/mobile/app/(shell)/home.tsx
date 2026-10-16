@@ -122,7 +122,7 @@ export default function HomeScreen() {
         : t('social.start');
 
   const topBar = (
-    <View style={[styles.topBar, tablet && styles.topBarTablet]}>
+    <View testID="home-header" style={[styles.topBar, tablet && styles.topBarTablet]}>
       <PressableFX
         accessibilityRole="button"
         accessibilityLabel={t('social.open_profile')}
@@ -176,7 +176,10 @@ export default function HomeScreen() {
       style={[styles.logoStage, compactLandscape && styles.logoStageLandscape]}
       pointerEvents="box-none">
       <LogoGlow size={tablet ? 700 : compactLandscape ? 360 : 420} />
-      <PidroLogo size="hero" width={tablet ? 440 : compactLandscape ? 270 : 280} />
+      {/* A tight stage lets the mark overflow toward the header; it never takes a tap. */}
+      <View pointerEvents="none">
+        <PidroLogo size="hero" width={tablet ? 440 : compactLandscape ? 270 : 280} />
+      </View>
       <UpdateNoticeSlot style={compactLandscape && styles.noticeLandscape} />
     </View>
   );
@@ -298,7 +301,12 @@ export default function HomeScreen() {
             ) : compactLandscape ? (
               <View style={styles.bodyLandscape}>
                 {logoStage}
-                {actions}
+                <ScrollView
+                  style={styles.actionsScroll}
+                  contentContainerStyle={styles.actionsScrollContent}
+                  showsVerticalScrollIndicator={false}>
+                  {actions}
+                </ScrollView>
               </View>
             ) : (
               <>
@@ -394,6 +402,22 @@ const styles = StyleSheet.create({
   },
   actions: { width: '100%', maxWidth: 340, alignItems: 'stretch', gap: 14, flexShrink: 0 },
   actionsLandscape: { width: 330, gap: 10 },
+  // A guest's column can be taller than the space beside the logo once there are
+  // insets. Bound it there so it scrolls under the header instead of covering it;
+  // the bleed into the gap and the bottom padding keeps the tiles' shadows unclipped
+  // and stops short of the notice.
+  actionsScroll: {
+    alignSelf: 'stretch',
+    flexGrow: 0,
+    marginHorizontal: -PidroSpacing.xs,
+    marginBottom: -PidroSpacing.md,
+  },
+  actionsScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: PidroSpacing.xs,
+    paddingBottom: PidroSpacing.md,
+  },
   actionsTablet: { maxWidth: 480, gap: PidroSpacing.lg },
   tiles: { width: '100%', flexDirection: 'row', gap: PidroSpacing.sm },
   tilesTablet: { gap: PidroSpacing.md },
