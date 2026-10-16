@@ -492,6 +492,14 @@ const allCases = [
     protectNorthSeat: true,
     skipViewports: ['compact-landscape'],
   },
+  // PID-232: a 32-character name in every seat, North dealing, truncates
+  // inside its seat, clear of the other seats and the hand.
+  {
+    name: 'table-long-names',
+    path: '/table-dev?phase=playing&names=max&dealer=north',
+    testId: 'seat-south',
+    longNames: true,
+  },
   {
     name: 'table-hand-log',
     path: '/table-dev?phase=playing',
@@ -799,6 +807,9 @@ async function assertTargetGeometry(page, testCase, viewport) {
 
     if (testCase.name === 'table-playing') {
       await assertSeatPlacement(page, viewport);
+    }
+    if (testCase.longNames) {
+      await assertNamesFit(page, viewport);
     }
 
     if (testCase.sideInsets) {
@@ -2304,6 +2315,48 @@ async function assertSeatPlacement(page, viewport) {
     throw new Error(
       `seat-south is not below the opponent row: south=${JSON.stringify(seats.south)}`
     );
+  }
+}
+
+async function assertNamesFit(page, viewport) {
+  const seats = {};
+  for (const position of ['north', 'east', 'south', 'west']) {
+    const seat = page.getByTestId(`seat-${position}`).first();
+    const box = await getStableBox(seat, page);
+    assertInsideViewport(`seat-${position}`, box, viewport);
+    const spill = await seat.locator('[dir="auto"]').evaluateAll(
+      (nodes, { x, right }) =>
+        nodes
+          .map((node) => node.getBoundingClientRect())
+          .filter((label) => label.width && (label.left < x - 1 || label.right > right + 1))
+          .map((label) => [label.left, label.right]),
+      { x: box.x, right: box.x + box.width }
+    );
+    if (spill.length) {
+      throw new Error(
+        `seat-${position}'s label runs out of its seat in ${viewport.name}: ${JSON.stringify({ box, spill })}`
+      );
+    }
+    seats[position] = box;
+  }
+  const apart = (a, b) =>
+    a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+  const positions = Object.keys(seats);
+  for (const [i, a] of positions.entries()) {
+    for (const b of positions.slice(i + 1)) {
+      if (!apart(seats[a], seats[b])) {
+        throw new Error(`seat-${a} overlaps seat-${b} in ${viewport.name}`);
+      }
+    }
+  }
+  const hand = await getStableBox(page.getByTestId('player-hand-top').first(), page);
+  for (const position of ['north', 'east', 'west']) {
+    if (seats[position].y + seats[position].height > hand.y) {
+      throw new Error(`seat-${position} reaches the hand in ${viewport.name}`);
+    }
+  }
+  if (viewport.width > viewport.height && seats.south.x + seats.south.width > hand.x) {
+    throw new Error(`seat-south runs into the landscape hand in ${viewport.name}`);
   }
 }
 

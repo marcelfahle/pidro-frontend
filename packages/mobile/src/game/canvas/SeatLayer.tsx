@@ -35,15 +35,14 @@ import type { Card } from '@/types/game';
 import {
   AVATAR_SIZE,
   computeLayout,
-  handLeft,
   LANDSCAPE_SOUTH_LEFT,
+  landscapeNameReach,
+  landscapeNorthLeft,
   northBackWidth,
   northFanTop,
-  northFanWidth,
   seatNameGap,
   sideSeatTop,
   sideStacks,
-  SOUTH_NAME_MIN,
   TIGHT_AVATAR,
   TIGHT_SOUTH_SLOT,
   type RelativePosition,
@@ -137,9 +136,10 @@ export function SeatLayer({
   const parts = avatarParts(size);
   // Portrait names sit in a fixed column so a long one truncates instead of
   // pushing the seat off its axis. North and south have the table's width to
-  // themselves; east and west get what North's column leaves them. Landscape
-  // caps the label's reach and leaves the turn light room, as the boards do,
-  // plus room for the dealer chip after the name.
+  // themselves; east and west get what North's column leaves them, their
+  // names kept a step off the screen edge. Landscape caps the label's reach
+  // and leaves the turn light room, as the boards do, plus room for the
+  // dealer chip after the name.
   const gap = seatNameGap(L.profile);
   const centerColumn = tablet ? 200 : 156;
   const sideColumn = Math.min(
@@ -149,12 +149,22 @@ export function SeatLayer({
   // The scoreboard divider is ~70pt from the safe-area edge. Reusing that
   // vertical axis gives the landscape table a deliberate left rail.
   const landscapeSouthLeft = insets.left + LANDSCAPE_SOUTH_LEFT;
-  // Landscape South's name runs toward the hand, so it gets what the hand leaves.
-  const southReach = clamp(
-    handLeft(L, seats.south?.cardCount ?? 9) - (landscapeSouthLeft + size + gap) - PidroSpacing.sm,
-    SOUTH_NAME_MIN,
-    tablet ? 160 : 104
+  // Landscape South's name runs toward the hand and North's toward the menu:
+  // each gets what those leave (`landscapeNameReach`).
+  const northBacks = clamp(
+    seats.north?.revealedCards.length || (seats.north?.cardCount ?? 0),
+    0,
+    9
   );
+  const chip = (rel: RelativePosition) =>
+    dealerRel === rel && rel !== 'south' && parts.dealer ? parts.dealer.size + gap : 0;
+  const reach = (rel: RelativePosition) =>
+    landscapeNameReach(L, rel, {
+      insets,
+      southCards: seats.south?.cardCount ?? 9,
+      northBacks,
+      chip: chip(rel),
+    });
   // The dealer chip faces the table: right of West's name, left of everyone
   // else's. In landscape it takes the name's far end, except South's, which
   // sits behind the avatar, away from the hand.
@@ -173,13 +183,11 @@ export function SeatLayer({
           gap: PidroSpacing.xs,
         }
       : portrait
-        ? { width: rel === 'north' || rel === 'south' ? centerColumn : sideColumn }
+        ? rel === 'north' || rel === 'south'
+          ? { width: centerColumn }
+          : { width: sideColumn, paddingHorizontal: PidroSpacing.xs }
         : {
-            maxWidth:
-              size +
-              gap +
-              (rel === 'south' ? southReach : tablet ? 160 : 104) +
-              (dealerRel === rel && rel !== 'south' && parts.dealer ? parts.dealer.size + gap : 0),
+            maxWidth: size + gap + reach(rel) + chip(rel),
             gap,
           };
   const tableTop = insets.top + topReserve;
@@ -231,6 +239,13 @@ export function SeatLayer({
             size={size}
             label={besideName ? (rel === 'east' ? 'left' : 'right') : 'below'}
             dealerSide={dealerSide(rel)}
+            nameRoom={
+              !portrait
+                ? reach(rel)
+                : rel === 'north' || rel === 'south'
+                  ? centerColumn
+                  : sideColumn - PidroSpacing.xs * 2
+            }
             style={[
               tight && rel === 'south' ? { width: size + PidroSpacing.xs * 2 } : seatWidth(rel),
               data.out && styles.out,
@@ -303,8 +318,6 @@ export function SeatLayer({
           );
         }
         if (rel === 'north') {
-          const northBackCount = clamp(data.revealedCards.length || (data.cardCount ?? 0), 0, 9);
-          const northFan = northFanWidth(L.cardW, northBackCount);
           return (
             <View key={rel} style={StyleSheet.absoluteFill} pointerEvents="box-none">
               <View
@@ -343,7 +356,7 @@ export function SeatLayer({
                       : {
                           position: 'absolute',
                           top: northSeatTop,
-                          left: width / 2 + northFan / 2 + PidroSpacing.md,
+                          left: landscapeNorthLeft(L, northBacks),
                         }
                 }>
                 {avatar}

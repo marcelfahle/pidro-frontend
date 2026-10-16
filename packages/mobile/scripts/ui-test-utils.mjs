@@ -66,6 +66,7 @@ export const UI_VIEWPORTS = [
       'table-trick-points-theirs',
       'table-count-help',
       'table-bot-plays',
+      'table-long-names',
     ],
   },
   {

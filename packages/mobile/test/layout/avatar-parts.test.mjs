@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 import { setLocale } from '@pidro/shared';
-import { avatarLabel, avatarParts } from '../../src/features/avatar';
+import { avatarLabel, avatarParts, nameType } from '../../src/features/avatar';
 
 describe('avatar parts by size', () => {
   it('matches the profile avatar on the board', () => {
@@ -63,6 +63,16 @@ describe('avatar parts by size', () => {
     expect(avatarParts(52, { beside: true }).status.fontSize).toBe(13);
     expect(avatarParts(56).name.fontSize).toBe(13);
     expect(avatarParts(44, { beside: true }).name.fontSize).toBe(13);
+  });
+
+  it('drops a name too long for its room one type step, never below the phone type', () => {
+    const name = 'Alexandria the Long-Named Player';
+    const large = avatarParts(52, { beside: true }).name;
+    expect(nameType(large, name, 104)).toEqual({ fontSize: 13, lineHeight: 16 });
+    expect(nameType(large, 'mfios1', 104)).toBe(large);
+    expect(nameType(large, name, undefined)).toBe(large);
+    const small = avatarParts(56).name;
+    expect(nameType(small, name, 40)).toBe(small);
   });
 
   it('is the ring alone at 24', () => {

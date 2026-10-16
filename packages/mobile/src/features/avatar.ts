@@ -117,9 +117,27 @@ export function avatarParts(size: number, { beside = false } = {}): AvatarParts 
       bottom: Math.round(dealer[2]),
     },
     turn: turn && { radius: half(size / 2 + turn[0]), stroke: half(turn[1]) },
-    name: largeType ? { fontSize: 16, lineHeight: 20 } : { fontSize: 13, lineHeight: 16 },
+    name: largeType ? LARGE_NAME : SMALL_NAME,
     status: largeType ? { fontSize: 13, lineHeight: 17 } : { fontSize: 11, lineHeight: 14 },
   };
+}
+
+const LARGE_NAME = { fontSize: 16, lineHeight: 20 };
+const SMALL_NAME = { fontSize: 13, lineHeight: 16 };
+/** A Nunito 800 name's narrowest likely advance per character, in ems. */
+const NAME_ADVANCE = 0.5;
+
+/**
+ * A name too long for `room` at the large type drops one step, to the phone
+ * type, before it truncates. The phone type is the floor: it never drops.
+ */
+export function nameType(
+  type: AvatarParts['name'],
+  name: string | null | undefined,
+  room: number | undefined
+): AvatarParts['name'] {
+  const long = !!name && room != null && name.length * NAME_ADVANCE * type.fontSize > room;
+  return long && type.fontSize > SMALL_NAME.fontSize ? SMALL_NAME : type;
 }
 
 export type AvatarPin = 'classic' | 'founding_tester';
