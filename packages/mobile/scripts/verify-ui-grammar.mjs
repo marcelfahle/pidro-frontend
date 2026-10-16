@@ -500,6 +500,17 @@ const allCases = [
     testId: 'seat-south',
     longNames: true,
   },
+  // A 640×360 Android phone with a 59pt right inset, North dealing: North's
+  // chip tucks behind its avatar, so its name keeps its first letters.
+  {
+    name: 'table-long-names-inset',
+    path: '/table-dev?phase=playing&names=max&dealer=north&safeArea=island-right',
+    testId: 'seat-south',
+    longNames: true,
+    northNameMin: 76,
+    protectNorthSeat: true,
+    skipViewports: ['portrait', 'landscape', 'compact-landscape'],
+  },
   {
     name: 'table-hand-log',
     path: '/table-dev?phase=playing',
@@ -809,7 +820,7 @@ async function assertTargetGeometry(page, testCase, viewport) {
       await assertSeatPlacement(page, viewport);
     }
     if (testCase.longNames) {
-      await assertNamesFit(page, viewport);
+      await assertNamesFit(page, viewport, testCase.northNameMin);
     }
 
     if (testCase.sideInsets) {
@@ -2318,7 +2329,7 @@ async function assertSeatPlacement(page, viewport) {
   }
 }
 
-async function assertNamesFit(page, viewport) {
+async function assertNamesFit(page, viewport, northNameMin = 0) {
   const seats = {};
   for (const position of ['north', 'east', 'south', 'west']) {
     const seat = page.getByTestId(`seat-${position}`).first();
@@ -2338,6 +2349,14 @@ async function assertNamesFit(page, viewport) {
       );
     }
     seats[position] = box;
+  }
+  const northName = page
+    .getByTestId('seat-north')
+    .first()
+    .getByText('Alexandria the Long-Named Player', { exact: true });
+  const northNameWidth = northNameMin ? (await getStableBox(northName, page)).width : 0;
+  if (northNameWidth < northNameMin) {
+    throw new Error(`seat-north's name is cut to ${northNameWidth}pt in ${viewport.name}`);
   }
   const apart = (a, b) =>
     a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;

@@ -38,7 +38,9 @@ import {
   LANDSCAPE_SOUTH_LEFT,
   landscapeNameReach,
   landscapeNorthLeft,
+  landscapeNorthShift,
   northBackWidth,
+  northChipBehind,
   northFanTop,
   seatNameGap,
   sideSeatTop,
@@ -134,8 +136,8 @@ export function SeatLayer({
   const size = tight ? TIGHT_AVATAR : AVATAR_SIZE[L.profile];
   const tablet = L.profile.startsWith('tablet');
   const parts = avatarParts(size);
-  // Where your landscape line would run into the hand, your seat says its
-  // short line instead, as your tight seat does.
+  // Where a landscape line would run into the hand (yours) or the menu
+  // (North's), the seat says its short line instead, as your tight seat does.
   const besideStatus = avatarParts(size, { beside: true }).status.fontSize;
   // Portrait names sit in a fixed column so a long one truncates instead of
   // pushing the seat off its axis. North and south have the table's width to
@@ -159,8 +161,13 @@ export function SeatLayer({
     0,
     9
   );
+  const chipW = parts.dealer ? parts.dealer.size + gap : 0;
+  // On the narrowest phones North's chip tucks behind its avatar, as South's
+  // does, and its fan and seat move left (`landscapeNorthShift`).
+  const northTucked = !portrait && northChipBehind(L, insets, northBacks, chipW);
+  const northShift = portrait ? 0 : landscapeNorthShift(L, insets, northBacks);
   const chip = (rel: RelativePosition) =>
-    dealerRel === rel && rel !== 'south' && parts.dealer ? parts.dealer.size + gap : 0;
+    dealerRel === rel && rel !== 'south' && !(rel === 'north' && northTucked) ? chipW : 0;
   const reach = (rel: RelativePosition) =>
     landscapeNameReach(L, rel, {
       insets,
@@ -170,10 +177,10 @@ export function SeatLayer({
     });
   // The dealer chip faces the table: right of West's name, left of everyone
   // else's. In landscape it takes the name's far end, except South's, which
-  // sits behind the avatar, away from the hand.
+  // sits behind the avatar, away from the hand (and North's, where tucked).
   const besideName = !portrait || tight;
   const dealerSide = (rel: RelativePosition): 'left' | 'right' =>
-    rel === 'west' || (besideName && rel === 'north') ? 'right' : 'left';
+    rel === 'west' || (besideName && rel === 'north' && !northTucked) ? 'right' : 'left';
   // Tight North's avatar stays on the table's axis, its name running right;
   // East and West run toward each other, each up to the middle.
   const tightNorthLeft = width / 2 - size / 2;
@@ -265,9 +272,9 @@ export function SeatLayer({
                 accessibilityLabel: avatarLabel({ ...seat, level: null, pin: null }),
               })}
             {...(!portrait &&
-              rel === 'south' &&
+              (rel === 'south' || rel === 'north') &&
               line &&
-              !textFits(line.text, besideStatus, reach('south')) && {
+              !textFits(line.text, besideStatus, reach(rel)) && {
                 status: line.short ?? null,
                 accessibilityLabel: avatarLabel(seat),
               })}
@@ -340,6 +347,7 @@ export function SeatLayer({
                   left: 0,
                   right: 0,
                   alignItems: 'center',
+                  transform: [{ translateX: -northShift }],
                 }}>
                 <BacksFan
                   testID={data.revealedCards.length > 0 ? 'seat-north-revealed' : undefined}
@@ -347,6 +355,7 @@ export function SeatLayer({
                   count={data.cardCountConcealed ? 3 : (data.cardCount ?? 0)}
                   cardW={L.cardW}
                   dealing={dealing}
+                  originX={northShift}
                   originY={L.trick.cy - northBackTop}
                   concealed={data.cardCountConcealed}
                 />
@@ -367,7 +376,7 @@ export function SeatLayer({
                       : {
                           position: 'absolute',
                           top: northSeatTop,
-                          left: landscapeNorthLeft(L, northBacks),
+                          left: landscapeNorthLeft(L, insets, northBacks),
                         }
                 }>
                 {avatar}
@@ -437,6 +446,7 @@ function BacksFan({
   faces = [],
   cardW,
   dealing,
+  originX = 0,
   originY,
   concealed = false,
   testID,
@@ -447,6 +457,8 @@ function BacksFan({
   testID?: string;
   cardW: number;
   dealing: boolean;
+  /** How far the felt's center sits right of the fan's own. */
+  originX?: number;
   originY: number;
   concealed?: boolean;
 }) {
@@ -468,7 +480,7 @@ function BacksFan({
           dealing={dealing}
           x={i * overlap}
           y={0}
-          originX={total / 2 - w / 2}
+          originX={total / 2 - w / 2 + originX}
           originY={originY - h / 2}
           w={w}
           h={h}

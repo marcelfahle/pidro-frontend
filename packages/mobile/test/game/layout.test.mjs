@@ -11,7 +11,10 @@ import {
   LANDSCAPE_SOUTH_LEFT,
   landscapeNameReach,
   landscapeNorthLeft,
+  landscapeNorthShift,
   MENU_SLOT,
+  NORTH_NAME_MIN,
+  northChipBehind,
   northBackWidth,
   northFanTop,
   northFanWidth,
@@ -377,6 +380,7 @@ describe('a 32-character name in every seat stays in its own place (PID-232)', (
     [640, 360, { top: 0, bottom: 0, left: 0, right: 0 }],
     [640, 360, { top: 0, bottom: 0, left: 48, right: 0 }],
     [640, 360, { top: 0, bottom: 0, left: 0, right: 48 }],
+    [640, 360, { top: 0, bottom: 21, left: 0, right: 59 }],
     [844, 390, { top: 0, bottom: 21, left: 47, right: 47 }],
     [844, 390, { top: 0, bottom: 0, left: 0, right: 0 }],
     [932, 430, { top: 0, bottom: 21, left: 59, right: 59 }],
@@ -396,14 +400,17 @@ describe('a 32-character name in every seat stays in its own place (PID-232)', (
       };
       for (const dealer of ['north', 'east', 'south', 'west']) {
         for (const n of [1, 6, 9]) {
-          const chip = (rel) => (rel === dealer && rel !== 'south' ? chipW : 0);
+          // A tucked chip sits behind North's avatar, not after its name.
+          const tucked = dealer === 'north' && northChipBehind(L, insets, n, chipW);
+          const chip = (rel) =>
+            rel === dealer && rel !== 'south' && !(rel === 'north' && tucked) ? chipW : 0;
           const seatW = (rel) =>
             size +
             gap +
             landscapeNameReach(L, rel, { insets, southCards: n, northBacks: n, chip: chip(rel) }) +
             chip(rel);
           const southLeft = insets.left + LANDSCAPE_SOUTH_LEFT;
-          const northLeft = landscapeNorthLeft(L, n);
+          const northLeft = landscapeNorthLeft(L, insets, n);
           const eastRight = width - insets.right - 12;
           const seats = {
             south: {
@@ -413,7 +420,7 @@ describe('a 32-character name in every seat stays in its own place (PID-232)', (
               bottom: L.hand.cy + size / 2,
             },
             north: {
-              left: northLeft,
+              left: northLeft - (tucked ? chipW : 0),
               right: northLeft + seatW('north'),
               top: insets.top + 8,
               bottom: insets.top + 8 + size,
@@ -437,6 +444,46 @@ describe('a 32-character name in every seat stays in its own place (PID-232)', (
             `dealer ${dealer}, ${n} cards`
           );
         }
+      }
+    });
+  }
+
+  // A 640×360 Android phone with its nav bar on the right: North's dealer
+  // chip tucks behind the avatar, and its fan moves left, so a long name
+  // still shows its first several letters.
+  for (const right of [48, 59]) {
+    it(`landscape 640×360, ${right}pt right inset, North dealing`, () => {
+      const insets = { top: 0, bottom: 0, left: 0, right };
+      const L = computeLayout(640, 360, insets);
+      const size = AVATAR_SIZE[L.profile];
+      const dealer = avatarParts(size).dealer;
+      const chipW = dealer.size + seatNameGap(L.profile);
+      for (const n of [1, 6, 9]) {
+        const reach = landscapeNameReach(L, 'north', { insets, northBacks: n, chip: chipW });
+        expect(reach).toBeGreaterThanOrEqual(NORTH_NAME_MIN);
+        const northLeft = landscapeNorthLeft(L, insets, n);
+        const labelRight = northLeft + size + seatNameGap(L.profile) + reach;
+        expect(labelRight).toBeLessThanOrEqual(640 - right - MENU_SLOT - 8);
+        if (!northChipBehind(L, insets, n, chipW)) continue;
+        // PlayerAvatar draws a chip behind the avatar 6pt off it, centered on the row.
+        const chip = {
+          left: northLeft - 6 - dealer.size,
+          right: northLeft - 6,
+          top: 8 + size / 2 - dealer.size / 2,
+          bottom: 8 + size / 2 + dealer.size / 2,
+        };
+        const menu = { left: 640 - right - MENU_SLOT, right: 640 - right - 12, top: 8, bottom: 52 };
+        const fanW = northFanWidth(L.cardW, n);
+        const fanLeft = 320 - landscapeNorthShift(L, insets, n) - fanW / 2;
+        const fanTop = northFanTop(L, 0);
+        const fan = {
+          left: fanLeft,
+          right: fanLeft + fanW,
+          top: fanTop,
+          bottom: fanTop + (northBackWidth(L.cardW) * 110) / 78,
+        };
+        expect(overlap(chip, menu)).toBe(false);
+        expect(overlap(chip, fan)).toBe(false);
       }
     });
   }
