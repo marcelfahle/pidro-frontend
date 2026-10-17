@@ -500,12 +500,12 @@ const allCases = [
   },
   {
     name: 'table-trick-points',
-    path: '/table-dev?phase=playing&signals=points&autoplay=true',
+    path: '/table-dev?phase=playing&signals=points&autoplay=true&count=on',
     testId: 'trick-pop-ours',
   },
   {
     name: 'table-trick-points-theirs',
-    path: '/table-dev?phase=playing&signals=points-theirs&autoplay=true',
+    path: '/table-dev?phase=playing&signals=points-theirs&autoplay=true&count=on',
     testId: 'trick-pop-theirs',
   },
   // PID-236: the table dims under the hand's result and the point cards each
@@ -522,7 +522,7 @@ const allCases = [
   // the ticker out (PID-229).
   {
     name: 'table-ticker',
-    path: '/table-dev?phase=playing&ticker=full&names=long',
+    path: '/table-dev?phase=playing&ticker=full&names=long&count=on',
     testId: 'ticker-line-bid-4-south',
     protectNorthSeat: true,
     skipViewports: ['compact-landscape'],
@@ -548,7 +548,7 @@ const allCases = [
   },
   {
     name: 'table-hand-log',
-    path: '/table-dev?phase=playing',
+    path: '/table-dev?phase=playing&count=on',
     open: "Recent table actions. Opens this hand's log.",
     testId: 'hand-log-entry-trump-4',
     skipViewports: ['compact-landscape'],
@@ -588,7 +588,7 @@ const allCases = [
     name: 'table-count-help',
     path: '/table-dev?phase=playing&role=player&out=one&count=on',
     testId: 'last-trick',
-    countHelp: { bidder: 'Jocke', line: 'bid 6 · 2 of 6', out: ['west'], revealed: ['west'] },
+    countHelp: { bidder: 'Jocke', line: 'bid 6', out: ['west'], revealed: ['west'] },
   },
   {
     name: 'table-last-trick',
@@ -635,7 +635,8 @@ const allCases = [
   {
     name: 'table-automatic-dealer-rob',
     path: '/table-dev?phase=auto_rob&role=player&dealer=south',
-    testId: 'automatic-dealer-rob',
+    testId: 'seat-south',
+    verifyDealerOnTable: true,
   },
   // PID-237: the win reveal, the loss that opens on your best hand, and the
   // rematch row in each state, seen from south with Nora as partner.
@@ -739,7 +740,7 @@ allCases.push(
       locale: 'sv',
       countHelp: {
         ...testCase.countHelp,
-        ...(testCase.countHelp.line && { line: 'bjöd 6 · 2 av 6' }),
+        ...(testCase.countHelp.line && { line: 'bjöd 6' }),
         words: { out: 'ute', lone: 'tar resten' },
       },
     }))
@@ -1064,10 +1065,6 @@ const TABLE_MESSAGES = {
     testId: 'hand-result',
     text: 'Nora took their Pidro',
     tapCloses: true,
-  },
-  'table-automatic-dealer-rob': {
-    testId: 'automatic-dealer-rob',
-    text: 'Your cards and the rest of the deck. Keeping the best six.',
   },
 };
 
@@ -2182,7 +2179,9 @@ async function assertDealerSecondDeal(page, testCase, viewport) {
   // Everyone else watches the dealer take the pack on the table: no panel
   // over the felt, the dealer's hand holds the pool.
   if (testCase.verifyDealerOnTable) {
-    if ((await page.getByTestId('dealer-second-deal-status').count()) !== 0) {
+    const panels = ['dealer-second-deal-status', 'automatic-dealer-rob', 'hand-selection-window'];
+    const said = await Promise.all(panels.map((id) => page.getByTestId(id).count()));
+    if (said.some((count) => count !== 0)) {
       throw new Error(`the dealer's pick must play out on the table in ${viewport.name}`);
     }
   }

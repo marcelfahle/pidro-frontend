@@ -71,3 +71,50 @@ describe('the second deal, played out card by card', () => {
     ).toBeNull();
   });
 });
+
+describe('the second deal when you deal', () => {
+  const held = [
+    card(14, 'spades'),
+    card(11, 'spades'),
+    card(13, 'hearts'),
+    card(8, 'diamonds'),
+    card(4, 'clubs'),
+    card(12, 'hearts'),
+    card(7, 'clubs'),
+    card(3, 'diamonds'),
+    card(9, 'hearts'),
+  ];
+  // Your pick: your two trumps and the six the others left in the pack.
+  const pool = [
+    card(14, 'spades'),
+    card(11, 'spades'),
+    card(10, 'spades'),
+    card(5, 'spades'),
+    card(2, 'spades'),
+    card(6, 'hearts'),
+    card(12, 'clubs'),
+    card(7, 'diamonds'),
+  ];
+  const model = {
+    phase: 'playing',
+    dealerRelative: 'south',
+    yourHand: pool,
+    seats: {
+      north: seat(1, 5, 6),
+      east: seat(3, 3, 6),
+      west: seat(4, 2, 6),
+      south: seat(2, null, 6),
+    },
+  };
+
+  it('throws your non-trumps, deals the others, then the rest of the pack lands in your hand', () => {
+    const plan = makePlan(model, held);
+    const last = plan.frames.at(-1);
+    expect(plan.yourThrown).toHaveLength(7);
+    expect(plan.yourDrawn).toEqual([]);
+    expect(last.thrown.south).toBe(7);
+    expect(last.hand.south).toBe(8);
+    expect(last.drawn).toEqual({ west: 2, north: 5, east: 3 });
+    expect(last.pack).toBe(0);
+  });
+});

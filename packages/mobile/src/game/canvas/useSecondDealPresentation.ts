@@ -3,14 +3,14 @@
  * the cards, as at a real table: everyone throws their non-trumps face down
  * in front of them, card by card; the dealer gives each seat its cards one
  * at a time from the pack; then takes the rest and throws down to six. The
- * thrown piles stay until the first card is played. Built only from the
+ * thrown piles clear once the dealer is down to six, before anyone plays. Built only from the
  * server's counts (kept, drawn) and the hands it already sent: a
  * presentation, never game logic.
  */
 import { useEffect, useState } from 'react';
 import { useReducedMotion } from 'react-native-reanimated';
 import type { TableCard, TableModel } from './tableModel';
-import { SECOND_DEAL_START_MS } from './animationTiming';
+import { SECOND_DEAL_SETTLE_MS, SECOND_DEAL_START_MS } from './animationTiming';
 import {
   AFTER,
   BEFORE,
@@ -76,20 +76,29 @@ export function useSecondDealPresentation(model: TableModel): TableModel {
   const atEnd = !!plan && step >= last;
   const frame = plan ? plan.frames[Math.min(step, last)] : null;
   const dealerHolds = frame && dealer ? (frame.hand[dealer] ?? 0) : 0;
-  const dealerKeeps = dealer ? model.seats[dealer]?.cardCount : null;
+  // Your own six arrive as your hand once your pick's moment is over.
+  const dealerKeeps =
+    dealer === 'south' ? model.yourHand.length : dealer ? model.seats[dealer]?.cardCount : null;
   const toTrim =
     atEnd && model.phase !== 'second_deal' && dealerKeeps != null
       ? Math.max(0, dealerHolds - dealerKeeps)
       : 0;
   const trimmed = trim >= toTrim;
-  // Played out: the piles stay until the first card of the hand is played.
-  const resting = atEnd && trimmed && model.phase === 'playing';
+  // Dealing yourself, your pool shows in your hand until your pick's moment
+  // is over; wait for your six before you throw the rest down.
+  const youPicking =
+    dealer === 'south' && atEnd && dealerHolds > 6 && model.yourHand.length === dealerHolds;
+  // Played out: the piles hold a moment, then clear before anyone plays.
+  const resting = atEnd && trimmed && !youPicking && model.phase === 'playing';
 
   useEffect(() => {
     if (!plan || !frame) return;
     if (atEnd) {
-      if (resting) return;
-      if (model.phase === 'second_deal' || dealerKeeps == null) return;
+      if (resting) {
+        const timer = setTimeout(() => setPlan(null), SECOND_DEAL_SETTLE_MS);
+        return () => clearTimeout(timer);
+      }
+      if (model.phase === 'second_deal' || dealerKeeps == null || youPicking) return;
       if (trimmed) return;
       // The dealer throws the extras down in one swoop.
       const timer = setTimeout(() => setTrim(toTrim), SECOND_DEAL_START_MS);
@@ -97,7 +106,7 @@ export function useSecondDealPresentation(model: TableModel): TableModel {
     }
     const timer = setTimeout(() => setStep(step + 1), frame.ms);
     return () => clearTimeout(timer);
-  }, [plan, frame, atEnd, resting, trimmed, toTrim, step, model.phase, dealerKeeps]);
+  }, [plan, frame, atEnd, resting, trimmed, toTrim, step, model.phase, dealerKeeps, youPicking]);
 
   if (!plan || !frame || reducedMotion || !AFTER.has(model.phase) || hasPlay(model)) return model;
 

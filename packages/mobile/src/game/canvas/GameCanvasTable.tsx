@@ -41,7 +41,7 @@ import { SCORE_PLAQUE_HEIGHT, Scoreboard } from './Scoreboard';
 import type { TickerRestingLine } from './ActionTicker';
 import { buildHandLog } from '@/game/handLog';
 import { bidSeatLine } from '@/features/game/bidding';
-import { bidTaken, loneTrumpHolder } from '@/features/game/tableHelp';
+import { loneTrumpHolder } from '@/features/game/tableHelp';
 import { useSettingsStore } from '@/stores/settings';
 import { LastTrick, type LastTrickView } from './LastTrick';
 
@@ -72,8 +72,6 @@ type Props = {
   /** How every hand holds its cards; fixtures try the styles. */
   held?: HeldStyle;
 };
-
-const HIDDEN_PRESENTATION_HAND: Card[] = [];
 
 function cardLabel(card: Card): string {
   return `${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`;
@@ -278,9 +276,11 @@ export function GameCanvasTable({
   const isSpectator = role === 'spectator';
   const textures = useCardTextures();
   const countHelp = useSettingsStore((state) => state.countHelp);
+  // Your own pick from the pack plays out in your hand: the pool lands in it,
+  // and what you keep is what the server sends once the pick is done.
   const serverModel = useTableModel(
     controller,
-    isPrivateDealerRob ? HIDDEN_PRESENTATION_HAND : undefined,
+    isPrivateDealerRob ? dealerRobPresentation.pool : undefined,
     countHelp
   );
   const presented = useSecondDealPresentation(
@@ -377,20 +377,8 @@ export function GameCanvasTable({
         })[0]?.entries[0]
       : undefined;
   const lastResult = handLog[0]?.finished ? handLog[0].entries.at(-1) : undefined;
-  // Count help grows the bid line a meter once the tricks start: "bid 6 · 2 of 6".
-  const taken =
-    countHelp && controller.phase === 'playing' && highBid
-      ? bidTaken(controller.completedTricks, highBid.position)
-      : null;
   const resting: TickerRestingLine | null = bidLine
-    ? {
-        who: bidLine.who,
-        what:
-          taken == null
-            ? bidLine.what
-            : `${bidLine.what} · ${t('game.count_of', { taken, bid: highBid?.amount ?? 0 })}`,
-        ours: bidLine.ours,
-      }
+    ? { who: bidLine.who, what: bidLine.what, ours: bidLine.ours }
     : lastResult
       ? { who: lastResult.who, what: lastResult.what, ours: lastResult.ours }
       : null;
@@ -420,7 +408,9 @@ export function GameCanvasTable({
 
   // A trick's points glow the score column they landed in; their Pidro also lights the seat
   // that took it.
-  const pidro = tablePidro(model.lastTrick, model.seats);
+  // The points as each trick is taken (pops, the score's glow, a Pidro on its
+  // seat) are count help, with the log: off, the table stays as Classic's.
+  const pidro = countHelp ? tablePidro(model.lastTrick, model.seats) : null;
   const trickKey = `${serverState?.hand_number ?? serverState?.round_number ?? 0}:${model.lastTrick?.number}`;
   const statusByRel = viewModel?.players.reduce(
     (acc, player) => {
@@ -466,12 +456,14 @@ export function GameCanvasTable({
         secondDeal={model.secondDealShow}
         held={model.held}
       />
-      <TableSignals
-        model={model}
-        topReserve={topReserve}
-        bottomReserve={bottomReserve}
-        pace={pace}
-      />
+      {countHelp ? (
+        <TableSignals
+          model={model}
+          topReserve={topReserve}
+          bottomReserve={bottomReserve}
+          pace={pace}
+        />
+      ) : null}
 
       <TableChromeBars reserves={reserves} />
       {handResult.result ? (
@@ -515,20 +507,25 @@ export function GameCanvasTable({
           log={handLog}
           resting={resting}
           stateArrived={serverState != null}
-          ticker={tickerPlacement(
-            layout,
-            {
-              tableTop: insets.top + topReserve,
-              plaqueLeft: insets.left + PidroSpacing.sm,
-              plaqueTop: headerTop(insets.top),
-              plaqueBottom: headerTop(insets.top) + SCORE_PLAQUE_HEIGHT + PidroSpacing.xxs,
-            },
+          // The log (ticker and the hand's log behind it) is count help.
+          ticker={
             countHelp
-          )}
+              ? tickerPlacement(
+                  layout,
+                  {
+                    tableTop: insets.top + topReserve,
+                    plaqueLeft: insets.left + PidroSpacing.sm,
+                    plaqueTop: headerTop(insets.top),
+                    plaqueBottom: headerTop(insets.top) + SCORE_PLAQUE_HEIGHT + PidroSpacing.xxs,
+                  },
+                  true
+                )
+              : null
+          }
           tickerPace={pace}
           restingOnly={!fullTicker}
           help={lastTrickView ? <LastTrick trick={lastTrickView} yourTurn={isYourTurn} /> : null}
-          glow={scoreGlow(model.lastTrick, model.seats, trickKey)}
+          glow={countHelp ? scoreGlow(model.lastTrick, model.seats, trickKey) : null}
           delta={handResult.result?.hand.delta ?? null}
           yourTurn={
             isYourTurn && (controller.phase === 'bidding' || controller.phase === 'playing')
@@ -556,31 +553,26 @@ export function GameCanvasTable({
         </>
       )}
 
-      {/* Dealer rob: only the dealer's own pick. Everyone else watches the pack taken on the table. */}
-      {(isSecondDeal || dealerRobPresentation) &&
-        viewModel &&
-        (canSelectHand || isPrivateDealerRob) && (
-          <View
-            style={[
-              isPrivateDealerRob ? styles.robbedCardsOverlay : styles.centerOverlay,
-              isPrivateDealerRob
-                ? { bottom: insets.bottom + bottomReserve + 116 }
-                : {
-                    paddingTop: insets.top + TABLE_HEADER + PidroSpacing.xs,
-                    paddingBottom: insets.bottom + 16,
-                  },
-            ]}
-            pointerEvents="box-none">
-            <DealerSecondDeal
-              viewModel={viewModel}
-              cards={yourHand}
-              trumpSuit={trumpSuit}
-              canSelectHand={canSelectHand}
-              automaticPresentation={dealerRobPresentation}
-              onSelectHand={handleSelectHand}
-            />
-          </View>
-        )}
+      {/* A dealer picking by hand chooses six here. Everything else of the pick plays out on the table, in no words. */}
+      {isSecondDeal && viewModel && canSelectHand && (
+        <View
+          style={[
+            styles.centerOverlay,
+            {
+              paddingTop: insets.top + TABLE_HEADER + PidroSpacing.xs,
+              paddingBottom: insets.bottom + 16,
+            },
+          ]}
+          pointerEvents="box-none">
+          <DealerSecondDeal
+            viewModel={viewModel}
+            cards={yourHand}
+            trumpSuit={trumpSuit}
+            canSelectHand={canSelectHand}
+            onSelectHand={handleSelectHand}
+          />
+        </View>
+      )}
 
       {/* Bidding floats from the bottom; trump is picked in the felt. */}
       <BiddingActions
@@ -637,11 +629,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 12,
-  },
-  robbedCardsOverlay: {
-    position: 'absolute',
-    left: 12,
-    right: 12,
-    alignItems: 'center',
   },
 });

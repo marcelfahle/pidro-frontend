@@ -65,13 +65,17 @@ export function makePlan(model: TableModel, held: TableCard[] | null): Plan | nu
   // Your own cards say what you threw and drew: the ones you held stay.
   let yourThrown: TableCard[] | null = null;
   let yourDrawn: TableCard[] | null = null;
-  if (dealer !== 'south' && held && held.length > 0 && model.yourHand.length > 0) {
+  // Dealing to you, your hand is your new six; dealing yourself, it is your
+  // pool (your trumps and the pack), and the server sends the six you keep
+  // once the pick is done.
+  if (held && held.length > 0 && model.yourHand.length > 0) {
     const now = new Set(model.yourHand.map((card) => card.textureKey));
     const before = new Set(held.map((card) => card.textureKey));
     yourThrown = held.filter((card) => !now.has(card.textureKey));
-    yourDrawn = model.yourHand.filter((card) => !before.has(card.textureKey));
+    yourDrawn =
+      dealer === 'south' ? [] : model.yourHand.filter((card) => !before.has(card.textureKey));
     kept.south = held.length - yourThrown.length;
-    drawn.south = yourDrawn.length;
+    if (dealer !== 'south') drawn.south = yourDrawn.length;
   }
   if (kept.south == null) kept.south = model.seats.south?.secondDeal?.kept ?? DEALT;
 
@@ -85,7 +89,11 @@ export function makePlan(model: TableModel, held: TableCard[] | null): Plan | nu
   // they have picked, the pack is what the others left.
   const dealerSeat = model.seats[dealer];
   const pool =
-    model.phase === 'second_deal' && dealer !== 'south' ? (dealerSeat?.cardCount ?? null) : null;
+    dealer === 'south' && yourThrown
+      ? model.yourHand.length
+      : model.phase === 'second_deal' && dealer !== 'south'
+        ? (dealerSeat?.cardCount ?? null)
+        : null;
   const rob =
     pool != null
       ? Math.max(0, pool - (kept[dealer] ?? 0))

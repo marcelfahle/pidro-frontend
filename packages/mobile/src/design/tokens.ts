@@ -236,16 +236,26 @@ export const PidroFlagColors = {
 export const PidroPersonaColors = {
   skin: '#F3C9A3',
   skinShade: '#DDA27C',
-  cheek: 'rgba(236, 104, 112, 0.5)',
-  hairBrown: '#6B3F1D',
-  hairBlond: '#EBCB7E',
-  hairDark: '#2A1A10',
-  felt: '#EADFC8',
-  feltShade: '#C9B48D',
-  headphones: '#1D2B3F',
-  hoodie: '#2A76D0',
   steam: 'rgba(255, 255, 255, 0.75)',
-  lens: '#0B1726',
+  // After the photos (2026-10-17): Marcel's trucker cap and navy jacket,
+  // Antti's black beanie, red scarf and ginger stubble, Jocke's long wavy
+  // hair, round glasses and waistcoat.
+  capFront: '#F4F1EA',
+  capNavy: '#1E2E4A',
+  capBrim: '#C9443A',
+  hairLight: '#8A6440',
+  stubble: 'rgba(122, 86, 52, 0.4)',
+  ginger: '#C2703C',
+  gingerStubble: 'rgba(194, 112, 60, 0.5)',
+  beanie: '#1B1E24',
+  beanieRib: '#2C313B',
+  scarf: '#D3222E',
+  jacketDark: '#23272F',
+  navy: '#1F2F4D',
+  waistcoat: '#7A5A3C',
+  shirtDark: '#2A2F38',
+  hairWavy: '#6E4A2E',
+  glassTint: 'rgba(255, 255, 255, 0.14)',
 } as const;
 
 export const PidroRadii = {
