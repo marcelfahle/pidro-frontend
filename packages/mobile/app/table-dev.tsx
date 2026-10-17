@@ -25,7 +25,8 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 import { useLocale } from '@/i18n';
 import { useSettingsStore } from '@/stores/settings';
-import { BevelButton } from '@/components/ui/BevelButton';
+import { SecondDealTuner, applyTimingParams } from '@/components/dev/SecondDealTuner';
+import { secondDealDurationMs } from '@/game/canvas/animationTiming';
 import type { HeldStyle } from '@/game/canvas/layout';
 
 // `bids=`: a hand's bids landing one by one against three bots.
@@ -437,6 +438,7 @@ function TableDevHarness() {
   const [waitingLocked, setWaitingLocked] = useState(false);
 
   if (params.deal === 'draw') {
+    applyTimingParams(params as Record<string, string | undefined>);
     return (
       <SafeAreaProvider>
         <FixtureInsets preset={params.safeArea}>
@@ -983,14 +985,20 @@ function RolePreview({
 
 /**
  * `deal=draw`: the second deal on a loop, as the server sends it. Trump is
- * named with everyone holding nine; the next snapshot is the second deal done
- * (the dealer still picking from the pack); then play starts. The table plays
- * the throw, the deal and the dealer's pick out of those three. Then it deals
- * again.
+ * named with everyone holding nine; the next snapshot is the hand ready to
+ * play (the second deal and the dealer's pick done), and play waits for the
+ * table to play the second deal out. Then it deals again. `you=deal` has you
+ * deal. Tune opens the second deal's timings; the link takes them too
+ * (`holdMs=3000&cardMs=230`…).
  */
 function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   const [run, setRun] = useState(0);
+  const counts = youDeal ? DRAW_COUNTS_YOU_DEAL : DRAW_COUNTS;
+  const dealer: Position = youDeal ? 'south' : 'west';
+  const dealt = (['north', 'east', 'south', 'west'] as const)
+    .filter((position) => position !== dealer)
+    .reduce((sum, position) => sum + counts[position].drawn, 0);
   useEffect(() => {
     let active = true;
     loadGameCanvasTable().then((component) => {
@@ -1004,26 +1012,28 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
   useEffect(() => {
     if (!Table) return;
     const store = useGameStore.getState();
-    const counts = youDeal ? DRAW_COUNTS_YOU_DEAL : DRAW_COUNTS;
-    const seats = (
-      hands: Record<Position, Card[] | number>,
-      drawnBy: Position[],
-      keptBy: Position[]
-    ) =>
+    // The server counts only the players dealt to: the dealer's stay theirs.
+    const dealtTo: Position[] = (['north', 'east', 'south', 'west'] as const).filter(
+      (position) => position !== dealer
+    );
+    const seats = (hands: Record<Position, Card[] | number>, counted: boolean) =>
       Object.fromEntries(
         (['north', 'east', 'south', 'west'] as const).map((position) => [
           position,
           {
             hand: hands[position],
-            ...(keptBy.includes(position) && { kept_count: counts[position].kept }),
-            ...(drawnBy.includes(position) && { drawn_count: counts[position].drawn }),
+            ...(counted &&
+              dealtTo.includes(position) && {
+                kept_count: counts[position].kept,
+                drawn_count: counts[position].drawn,
+              }),
           },
         ])
       );
     const base = {
       variant: 'finnish',
       config: { min_bid: 6 },
-      dealer: 'west',
+      dealer,
       hand_number: 3,
       scores: { north_south: 34, east_west: 21 },
       highest_bid: { position: 'north', amount: 9 },
@@ -1037,16 +1047,13 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
       current_trick: [],
       trump: 'spades',
     };
-    const everyone: Position[] = ['north', 'east', 'south', 'west'];
-    const nonDealers: Position[] = ['north', 'east', 'south'];
-    // The dealer's pool while picking: their four trumps and the four left in the pack.
-    const pool = DRAW_COUNTS.west.kept + (16 - 12);
-    const refilled = { north: 6, east: 6, south: DRAW_REFILLED, west: 6 };
+    const yours = youDeal ? DRAW_YOU_KEEP : DRAW_REFILLED;
+    const ready = { north: 6, east: 6, south: yours, west: 6 };
     const trick = (plays: number) => DRAW_FIRST_TRICK.slice(0, plays);
-    const afterPlays = (plays: number) => ({
+    const after = (plays: number) => ({
       north: 6 - (plays > 0 ? 1 : 0),
       east: 6 - (plays > 1 ? 1 : 0),
-      south: plays > 2 ? DRAW_REFILLED.filter((card) => card.rank !== 10) : DRAW_REFILLED,
+      south: plays > 2 ? yours.filter((card) => card.rank !== 10) : yours,
       west: 6 - (plays > 3 ? 1 : 0),
     });
     const playing = (current: Position, plays: number) => ({
@@ -1054,8 +1061,10 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
       phase: 'playing',
       current_player: current,
       current_trick: trick(plays),
-      players: seats(afterPlays(plays), everyone, everyone),
+      players: seats(after(plays), true),
     });
+    // Play waits for the second deal to play out, as the server holds it.
+    const play = 1500 + secondDealDurationMs(dealt) + 800;
     const frames: [number, Record<string, unknown>][] = [
       [
         0,
@@ -1064,62 +1073,15 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
           phase: 'declaring',
           trump: null,
           current_player: 'north',
-          players: seats({ north: 9, east: 9, south: DRAW_DEALT, west: 9 }, [], []),
+          players: seats({ north: 9, east: 9, south: DRAW_DEALT, west: 9 }, false),
         },
       ],
-      [
-        1500,
-        {
-          ...base,
-          phase: 'second_deal',
-          current_player: 'west',
-          players: seats({ ...refilled, west: pool }, nonDealers, everyone),
-        },
-      ],
-      [9500, playing('north', 0)],
-      [12500, playing('east', 1)],
-      [14000, playing('south', 2)],
-      [15500, playing('west', 3)],
-      [17000, playing('north', 4)],
+      [1500, { ...base, phase: 'playing', current_player: 'north', players: seats(ready, true) }],
+      [play, playing('east', 1)],
+      [play + 1500, playing('south', 2)],
+      [play + 3000, playing('west', 3)],
+      [play + 4500, playing('north', 4)],
     ];
-    if (youDeal) {
-      // You deal: the others are dealt, the rest of the pack lands in your
-      // hand while the server shows you your pool, then you keep six.
-      const youBase = { ...base, dealer: 'south' };
-      const keep = { north: 6, east: 6, south: DRAW_YOU_KEEP, west: 6 };
-      frames.length = 0;
-      frames.push(
-        [
-          0,
-          {
-            ...youBase,
-            phase: 'declaring',
-            trump: null,
-            current_player: 'north',
-            players: seats({ north: 9, east: 9, south: DRAW_DEALT, west: 9 }, [], []),
-          },
-        ],
-        [
-          1500,
-          {
-            ...youBase,
-            phase: 'playing',
-            current_player: 'north',
-            players: seats(keep, ['north', 'east', 'west'], everyone),
-          },
-        ],
-        [
-          10500,
-          {
-            ...youBase,
-            phase: 'playing',
-            current_player: 'east',
-            current_trick: trick(1),
-            players: seats({ ...keep, north: 5 }, ['north', 'east', 'west'], everyone),
-          },
-        ]
-      );
-    }
     store.reset();
     store.initFromRoom({ room: DRAW_ROOM, youPlayerId: 'p-south' });
     store.setRole('player');
@@ -1134,7 +1096,7 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
           dealer: 'south',
           automatic: true,
           started_at_ms: Date.now(),
-          ends_at_ms: Date.now() + 5_500,
+          ends_at_ms: Date.now() + 5_000,
           pool: DRAW_YOU_POOL,
           kept: DRAW_YOU_KEEP,
           discarded: DRAW_YOU_POOL.filter((card) => !DRAW_YOU_KEEP.includes(card)),
@@ -1146,11 +1108,11 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
         store.setServerState(state as unknown as ServerGameState);
       }, at)
     );
-    if (youDeal) timers.push(setTimeout(() => store.setPresentation(null), 7_000));
+    if (youDeal) timers.push(setTimeout(() => store.setPresentation(null), 6_500));
     // Hold on the finished trick, then deal again.
-    timers.push(setTimeout(() => setRun((n) => n + 1), 20_000));
+    timers.push(setTimeout(() => setRun((n) => n + 1), play + 7_000));
     return () => timers.forEach(clearTimeout);
-  }, [Table, run, youDeal]);
+  }, [Table, run, youDeal, counts, dealer, dealt]);
 
   return (
     <View style={{ flex: 1 }}>
@@ -1159,14 +1121,7 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
       ) : (
         <Loading />
       )}
-      <View pointerEvents="box-none" style={{ position: 'absolute', left: 16, bottom: 116 }}>
-        <BevelButton
-          size="sm"
-          material="glass"
-          label="Replay"
-          onPress={() => setRun((n) => n + 1)}
-        />
-      </View>
+      <SecondDealTuner dealt={dealt} onReplay={() => setRun((n) => n + 1)} />
     </View>
   );
 }

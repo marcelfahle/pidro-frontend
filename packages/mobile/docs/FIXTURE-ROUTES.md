@@ -46,14 +46,15 @@ Examples: `/ui-dev?state=settings&locale=sv&language=en&deviceLocale=sv-FI`,
 `/table-dev?phase=declaring&locale=sv`, `/auth-flow-dev?locale=sv`.
 
 The second deal loops at `/table-dev?deal=draw`, fed the snapshots the server
-sends (trump named, second deal done, play). The table plays it out in a few
-calm beats, as Classic does: every seat throws its non-trumps face down in
-front of it in one swoop, the dealer gives each seat its cards in one packet
-from the pack in the bottom-right corner, then takes the rest and throws down
-to six. The piles fade once the dealer is down to six, before anyone plays. No counts are written
-anywhere: players count the cards. `hand=still|tilt|fan` tries how hands hold
-their cards (default `tilt`); `you=deal` has you deal, the pack landing in your
-hand before you throw down to six. Replay restarts it.
+sends (trump named, then the hand ready to play, play held while the table
+shows the second deal). It plays at Classic's pace: each player in turn from
+the dealer's left throws their non-trumps face down in front of them, the
+piles hold to be counted and clear, the dealer gives each player their cards
+one at a time and takes the rest unseen. The dealer never shows a discard.
+`you=deal` has you deal; `hand=still|tilt|fan` tries how hands hold their
+cards. **Tune** opens live timings (each change replays); the link takes the
+same keys, e.g. `&holdMs=3000&cardMs=230&throwGapMs=550`. The server's
+`second_deal_transition_delay_ms` must hold play for the whole of it.
 
 PID-214 bid presentation uses `/table-dev?phase=bidding&role=player&bids=round|high&locale=sv`.
 `table-bid-*` and `locale-sv-table-bid-*` check every seat's visible/spoken bid,
