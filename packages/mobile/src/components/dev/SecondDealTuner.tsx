@@ -1,7 +1,8 @@
 /**
- * DEV ONLY (`/table-dev?deal=draw`): tune the second deal's beats live and
- * replay them. Each change replays at once; the link takes the same keys
- * (`startMs=`, `throwGapMs=`, …) so a setting can be shared.
+ * DEV ONLY: tune a table moment's timings live and replay it. Each change
+ * replays at once; the link takes the same keys (`holdMs=3000`, `showMs=6000`,
+ * …) so a setting can be shared. `/table-dev?deal=draw` tunes the second
+ * deal, `/table-dev?deal=hand` the end of a hand.
  */
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -13,8 +14,16 @@ import {
   setSecondDealTiming,
   type SecondDealTiming,
 } from '@/game/canvas/animationTiming';
+import {
+  HAND_RESULT_DEFAULTS,
+  handResultTiming,
+  setHandResultTiming,
+} from '@/features/game/handResult';
 
-const ROWS: { key: keyof SecondDealTiming; label: string; step: number }[] = [
+type Row = { key: string; label: string; step: number };
+type Timing = Record<string, number>;
+
+const SECOND_DEAL_ROWS: Row[] = [
   { key: 'throwGapMs', label: 'Between throws', step: 50 },
   { key: 'holdMs', label: 'Piles to count', step: 250 },
   { key: 'packMs', label: 'Piles clear, pack', step: 50 },
@@ -23,36 +32,82 @@ const ROWS: { key: keyof SecondDealTiming; label: string; step: number }[] = [
   { key: 'robMs', label: 'Dealer takes rest', step: 50 },
   { key: 'startMs', label: 'Before first throw', step: 50 },
 ];
+const HAND_RESULT_ROWS: Row[] = [{ key: 'showMs', label: 'Result on screen', step: 500 }];
 
-/** Applies `key=ms` values from the link to the live timing. */
+/** Applies `key=ms` values from the link to the live timings. */
 export function applyTimingParams(params: Record<string, string | string[] | undefined>) {
-  for (const { key } of ROWS) {
+  const read = (key: string) => {
     const raw = params[key];
     const value = Number(Array.isArray(raw) ? raw[0] : raw);
-    if (raw != null && Number.isFinite(value) && value >= 0) setSecondDealTiming({ [key]: value });
+    return raw != null && Number.isFinite(value) && value >= 0 ? value : null;
+  };
+  for (const { key } of SECOND_DEAL_ROWS) {
+    const value = read(key);
+    if (value != null) setSecondDealTiming({ [key]: value });
   }
+  const show = read('showMs');
+  if (show != null) setHandResultTiming({ showMs: show });
 }
 
 export function SecondDealTuner({ dealt, onReplay }: { dealt: number; onReplay: () => void }) {
+  return (
+    <TimingTuner
+      rows={SECOND_DEAL_ROWS}
+      timing={secondDealTiming as unknown as Timing}
+      set={(next) => setSecondDealTiming(next as Partial<SecondDealTiming>)}
+      reset={resetSecondDealTiming}
+      total={() => `Whole second deal: ${(secondDealDurationMs(dealt) / 1000).toFixed(1)}s`}
+      onReplay={onReplay}
+    />
+  );
+}
+
+export function HandResultTuner({ onReplay }: { onReplay: () => void }) {
+  return (
+    <TimingTuner
+      rows={HAND_RESULT_ROWS}
+      timing={handResultTiming}
+      set={setHandResultTiming}
+      reset={() => setHandResultTiming(HAND_RESULT_DEFAULTS)}
+      total={() => 'Then the next hand is dealt'}
+      onReplay={onReplay}
+    />
+  );
+}
+
+function TimingTuner({
+  rows,
+  timing,
+  set,
+  reset,
+  total,
+  onReplay,
+}: {
+  rows: Row[];
+  timing: Timing;
+  set: (next: Timing) => void;
+  reset: () => void;
+  total: () => string;
+  onReplay: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [, setVersion] = useState(0);
-  const change = (key: keyof SecondDealTiming, delta: number) => {
-    setSecondDealTiming({ [key]: Math.max(0, secondDealTiming[key] + delta) });
+  const change = (key: string, delta: number) => {
+    set({ [key]: Math.max(0, timing[key] + delta) });
     setVersion((v) => v + 1);
     onReplay();
   };
-  const reset = () => {
-    resetSecondDealTiming();
+  const resetAll = () => {
+    reset();
     setVersion((v) => v + 1);
     onReplay();
   };
-  const total = (secondDealDurationMs(dealt) / 1000).toFixed(1);
 
   return (
     <View pointerEvents="box-none" style={styles.wrap}>
       {open ? (
         <View style={styles.panel}>
-          {ROWS.map(({ key, label, step }) => (
+          {rows.map(({ key, label, step }) => (
             <View key={key} style={styles.row}>
               <Text style={styles.label}>{label}</Text>
               <Pressable
@@ -62,7 +117,7 @@ export function SecondDealTuner({ dealt, onReplay }: { dealt: number; onReplay: 
                 style={styles.step}>
                 <Text style={styles.stepText}>−</Text>
               </Pressable>
-              <Text style={styles.value}>{secondDealTiming[key]}</Text>
+              <Text style={styles.value}>{timing[key]}</Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`More ${label}`}
@@ -73,8 +128,8 @@ export function SecondDealTuner({ dealt, onReplay }: { dealt: number; onReplay: 
             </View>
           ))}
           <View style={styles.row}>
-            <Text style={styles.label}>Whole second deal: {total}s</Text>
-            <Pressable accessibilityRole="button" onPress={reset} style={styles.small}>
+            <Text style={styles.label}>{total()}</Text>
+            <Pressable accessibilityRole="button" onPress={resetAll} style={styles.small}>
               <Text style={styles.stepText}>Reset</Text>
             </Pressable>
           </View>
@@ -96,7 +151,15 @@ export function SecondDealTuner({ dealt, onReplay }: { dealt: number; onReplay: 
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: 'absolute', left: 12, right: 12, bottom: 96, alignItems: 'flex-start', gap: 8 },
+  wrap: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 96,
+    alignItems: 'flex-start',
+    gap: 8,
+    zIndex: 60,
+  },
   panel: {
     alignSelf: 'stretch',
     padding: PidroSpacing.sm,

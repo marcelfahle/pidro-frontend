@@ -71,8 +71,8 @@ export const PidroColors = {
   scoreDownEdge: 'rgba(255, 180, 185, 0.6)',
   suitRedOnFelt: '#ff6f7d',
   pointCardShadow: '0px 3px 8px rgba(0,0,0,0.45)',
-  pointCardFiveShadow:
-    '0px 0px 0px 2px #FFD447, 0px 0px 14px rgba(255,212,71,0.6), 0px 3px 8px rgba(0,0,0,0.45)',
+  // A five's solid gold ring glows a little past its edge.
+  pointCardFiveGlow: '0px 0px 12px rgba(255, 212, 71, 0.55)',
   // The table seen from above on Tables and New table: an open chair, a chosen seat.
   chairOpenBorder: 'rgba(139, 234, 255, 0.75)',
   chairSubBorder: 'rgba(255, 184, 107, 0.85)',

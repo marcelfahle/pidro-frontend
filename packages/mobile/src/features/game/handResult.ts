@@ -7,9 +7,18 @@ import type { Card, ServerLastHand, Suit, TeamKey } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { PIDRO_POINTS, type PointsSide } from './points';
 
-/** How long the panel stays: a missed bid of ours is not lingered on. */
-export const HAND_RESULT_MS = 3000;
-export const HAND_MISSED_MS = 2000;
+/**
+ * How long the panel stays before the next hand is dealt: long enough to see
+ * who took what, with no button to press (2026-10-17: 2-3 s was "wicked
+ * fast"). One object so the fixture's tuner can change it live; the server's
+ * hand_transition_delay_ms holds the next hand's bidding for as long, plus
+ * the deal.
+ */
+export const handResultTiming = { showMs: 6000 };
+export const HAND_RESULT_DEFAULTS = { ...handResultTiming };
+export function setHandResultTiming(next: Partial<typeof handResultTiming>) {
+  Object.assign(handResultTiming, next);
+}
 
 export type HandOutcome =
   | 'we-made'
@@ -31,7 +40,10 @@ export type HandResultView = {
   outcome: HandOutcome;
   /** Only our made bid is gold and stamped in; everything else is quiet. */
   loud: boolean;
-  headline: { key: 'game.made_it' } | { key: 'game.missed_by'; n: number };
+  /** Says whose bid it was: ours, theirs, or a team by name for a spectator. */
+  headline:
+    | { key: 'game.we_made_it' | 'game.they_made_it' | 'game.team_made_it' }
+    | { key: 'game.we_missed_by' | 'game.they_missed_by' | 'game.team_missed_by'; n: number };
   bidder: Position;
   bid: number;
   trump: Suit | null;
@@ -73,13 +85,18 @@ export function handResultView(hand: ServerLastHand, viewer: Position | null): H
   return {
     outcome,
     loud: outcome === 'we-made',
-    headline: hand.made ? { key: 'game.made_it' } : { key: 'game.missed_by', n: hand.bid - won },
+    headline: hand.made
+      ? { key: !viewer ? 'game.team_made_it' : ours ? 'game.we_made_it' : 'game.they_made_it' }
+      : {
+          key: !viewer ? 'game.team_missed_by' : ours ? 'game.we_missed_by' : 'game.they_missed_by',
+          n: hand.bid - won,
+        },
     bidder: hand.bidder,
     bid: hand.bid,
     trump: hand.trump ?? null,
     won,
     pidro: ourFive?.position ?? null,
     trays: [tray(us), tray(other(us))],
-    closeMs: outcome === 'we-missed' ? HAND_MISSED_MS : HAND_RESULT_MS,
+    closeMs: handResultTiming.showMs,
   };
 }

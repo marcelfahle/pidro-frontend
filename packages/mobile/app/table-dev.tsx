@@ -25,7 +25,12 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { useGameStore } from '@/stores/game';
 import { useLocale } from '@/i18n';
 import { useSettingsStore } from '@/stores/settings';
-import { SecondDealTuner, applyTimingParams } from '@/components/dev/SecondDealTuner';
+import {
+  HandResultTuner,
+  SecondDealTuner,
+  applyTimingParams,
+} from '@/components/dev/SecondDealTuner';
+import { handResultTiming } from '@/features/game/handResult';
 import { secondDealDurationMs } from '@/game/canvas/animationTiming';
 import type { HeldStyle } from '@/game/canvas/layout';
 
@@ -405,6 +410,7 @@ function TableDevHarness() {
     count?: string;
     hand?: string;
     you?: string;
+    end?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -436,6 +442,23 @@ function TableDevHarness() {
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
   const [waitingLocked, setWaitingLocked] = useState(false);
+
+  if (params.deal === 'hand') {
+    applyTimingParams(params as Record<string, string | undefined>);
+    return (
+      <SafeAreaProvider>
+        <FixtureInsets preset={params.safeArea}>
+          <HandEndPreview
+            result={
+              params.end === 'we-made' || params.end === 'we-missed' || params.end === 'they-missed'
+                ? params.end
+                : 'they-made'
+            }
+          />
+        </FixtureInsets>
+      </SafeAreaProvider>
+    );
+  }
 
   if (params.deal === 'draw') {
     applyTimingParams(params as Record<string, string | undefined>);
@@ -1122,6 +1145,156 @@ function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean
         <Loading />
       )}
       <SecondDealTuner dealt={dealt} onReplay={() => setRun((n) => n + 1)} />
+    </View>
+  );
+}
+
+type HandEnd = 'they-made' | 'we-made' | 'we-missed' | 'they-missed';
+/** `deal=hand`: who bid what, and what each side took, 14 points in all. */
+const HAND_ENDS: Record<HandEnd, { bidder: Position; bid: number; ns: number }> = {
+  'they-made': { bidder: 'east', bid: 6, ns: 8 },
+  'we-made': { bidder: 'north', bid: 8, ns: 8 },
+  'we-missed': { bidder: 'south', bid: 10, ns: 8 },
+  'they-missed': { bidder: 'west', bid: 9, ns: 8 },
+};
+
+/**
+ * `deal=hand`: the last trick of a hand, the result, and the next hand dealt
+ * once the result closes, on a loop. The server sends the next hand with the
+ * one that ended; the table holds the ended hand while its result shows.
+ * `end=they-made|we-made|we-missed|they-missed`; Tune changes how long
+ * the result stays (`showMs=` in the link).
+ */
+function HandEndPreview({ result }: { result: HandEnd }) {
+  const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
+  const [run, setRun] = useState(0);
+  useEffect(() => {
+    let active = true;
+    loadGameCanvasTable().then((component) => {
+      if (active) setTable(() => component);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!Table) return;
+    const store = useGameStore.getState();
+    const end = HAND_ENDS[result];
+    const team = (position: Position) =>
+      position === 'north' || position === 'south' ? 'north_south' : 'east_west';
+    const biddingTeam = team(end.bidder);
+    const captured = { north_south: end.ns, east_west: 14 - end.ns };
+    const made = captured[biddingTeam] >= end.bid;
+    const delta = {
+      north_south: biddingTeam === 'north_south' && !made ? -end.bid : captured.north_south,
+      east_west: biddingTeam === 'east_west' && !made ? -end.bid : captured.east_west,
+    };
+    const before = { north_south: 30, east_west: 21 };
+    const heart = (rank: number): Card => ({ rank, suit: 'hearts' });
+    const scored = (card: Card, points: number, position: Position) => ({
+      card,
+      points,
+      position,
+      team: team(position),
+    });
+    const lastHand = {
+      hand_number: 5,
+      bidding_team: biddingTeam,
+      bidder: end.bidder,
+      bid: end.bid,
+      trump: 'hearts',
+      captured,
+      made,
+      delta,
+      scores: {
+        north_south: before.north_south + delta.north_south,
+        east_west: before.east_west + delta.east_west,
+      },
+      point_cards: [
+        scored(heart(2), 1, 'south'),
+        scored(heart(14), 1, 'east'),
+        scored(heart(10), 1, 'north'),
+        scored(heart(11), 1, 'south'),
+        scored(heart(5), 5, 'west'),
+        scored({ rank: 5, suit: 'diamonds' }, 5, 'north'),
+      ],
+    };
+    const base = {
+      variant: 'finnish',
+      config: { min_bid: 6 },
+      trump: 'hearts',
+      highest_bid: { position: end.bidder, amount: end.bid },
+    };
+    const frames: [number, Record<string, unknown>][] = [
+      [
+        0,
+        {
+          ...base,
+          phase: 'playing',
+          dealer: 'west',
+          hand_number: 5,
+          current_player: 'south',
+          scores: before,
+          tricks: [],
+          current_trick: [
+            { player: 'west', card: heart(5) },
+            { player: 'north', card: { rank: 5, suit: 'diamonds' } },
+            { player: 'east', card: heart(7) },
+          ],
+          players: {
+            north: { hand: 0 },
+            east: { hand: 0 },
+            west: { hand: 0 },
+            south: { hand: [heart(11)] },
+          },
+        },
+      ],
+      [
+        1500,
+        {
+          ...base,
+          phase: 'bidding',
+          trump: null,
+          dealer: 'north',
+          hand_number: 6,
+          current_player: 'east',
+          scores: lastHand.scores,
+          last_hand: lastHand,
+          tricks: [],
+          current_trick: [],
+          bid_order: [],
+          players: {
+            north: { hand: 9 },
+            east: { hand: 9 },
+            west: { hand: 9 },
+            south: { hand: DRAW_DEALT },
+          },
+        },
+      ],
+    ];
+    store.reset();
+    store.initFromRoom({ room: DRAW_ROOM, youPlayerId: 'p-south' });
+    store.setRole('player');
+    store.setYouPosition('south');
+    store.setChannelStatus(true);
+    store.setLegalActions([]);
+    const timers = frames.map(([at, state]) =>
+      setTimeout(() => store.setServerState(state as unknown as ServerGameState), at)
+    );
+    timers.push(setTimeout(() => setRun((n) => n + 1), 1500 + handResultTiming.showMs + 6_000));
+    return () => timers.forEach(clearTimeout);
+  }, [Table, run, result]);
+
+  return (
+    <View style={{ flex: 1 }}>
+      {Table ? (
+        <Table key={run} room={DRAW_ROOM} rulesFixtureSeen onLeave={() => {}} />
+      ) : (
+        <Loading />
+      )}
+      <HandResultTuner onReplay={() => setRun((n) => n + 1)} />
     </View>
   );
 }
