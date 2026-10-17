@@ -4,7 +4,6 @@ import { BevelButton } from '@/components/ui/BevelButton';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
-import { Surface } from '@/components/ui/Surface';
 import { PidroColors, PidroRadii, PidroSpacing } from '@/design/tokens';
 import type { Card, GameViewModel, Suit } from '@/types/game';
 import { getCardImage } from '@/utils/cardImages';
@@ -29,19 +28,8 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
   const youPlayer = viewModel.players.find((player) => player.isYou);
   const isYourTurn = youPlayer?.isCurrentTurn ?? false;
 
-  if (!isYourTurn) {
-    const currentTurnPlayer = viewModel.players.find((player) => player.isCurrentTurn);
-    return (
-      <Surface variant="window" style={styles.waitingWindow}>
-        <PidroText role="label" align="center">
-          {t('game.waiting_for', { name: currentTurnPlayer?.username ?? t('game.dealer') })}
-        </PidroText>
-        <PidroText role="metadata" tone="muted" align="center">
-          {t('game.choosing_keep')}
-        </PidroText>
-      </Surface>
-    );
-  }
+  // Everyone else watches the dealer's pick on the table, in no words.
+  if (!isYourTurn) return null;
 
   const toggleCard = (index: number) => {
     setSelected((previous) => {
@@ -150,12 +138,6 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
 }
 
 const styles = StyleSheet.create({
-  waitingWindow: {
-    width: 'auto',
-    maxWidth: 380,
-    gap: PidroSpacing.xs,
-    padding: PidroSpacing.md,
-  },
   cardRow: {
     alignItems: 'center',
     gap: PidroSpacing.xs,

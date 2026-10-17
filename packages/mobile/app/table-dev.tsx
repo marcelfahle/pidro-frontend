@@ -251,6 +251,23 @@ const DRAW_COUNTS = {
   south: { kept: 2, drawn: 4 },
   west: { kept: 4, drawn: 2 },
 } as const;
+/** `you=deal`: you deal and keep two trumps; the others drew 10, so six are left for you. */
+const DRAW_COUNTS_YOU_DEAL = {
+  north: { kept: 1, drawn: 5 },
+  east: { kept: 3, drawn: 3 },
+  south: { kept: 2, drawn: 0 },
+  west: { kept: 4, drawn: 2 },
+} as const;
+const DRAW_YOU_POOL: Card[] = [
+  ...DRAW_TRUMP_HAND,
+  spade(10),
+  spade(5),
+  spade(2),
+  { rank: 6, suit: 'hearts' },
+  { rank: 12, suit: 'clubs' },
+  { rank: 7, suit: 'diamonds' },
+];
+const DRAW_YOU_KEEP: Card[] = DRAW_YOU_POOL.slice(0, 5).concat([{ rank: 12, suit: 'clubs' }]);
 const DRAW_FIRST_TRICK = [
   { player: 'north', card: spade(13) },
   { player: 'east', card: spade(9) },
@@ -386,6 +403,7 @@ function TableDevHarness() {
     trick?: string;
     count?: string;
     hand?: string;
+    you?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -424,6 +442,7 @@ function TableDevHarness() {
         <FixtureInsets preset={params.safeArea}>
           <DrawCountPreview
             held={params.hand === 'still' || params.hand === 'fan' ? params.hand : 'tilt'}
+            youDeal={params.you === 'deal'}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -969,7 +988,7 @@ function RolePreview({
  * the throw, the deal and the dealer's pick out of those three. Then it deals
  * again.
  */
-function DrawCountPreview({ held }: { held: HeldStyle }) {
+function DrawCountPreview({ held, youDeal }: { held: HeldStyle; youDeal: boolean }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   const [run, setRun] = useState(0);
   useEffect(() => {
@@ -985,6 +1004,7 @@ function DrawCountPreview({ held }: { held: HeldStyle }) {
   useEffect(() => {
     if (!Table) return;
     const store = useGameStore.getState();
+    const counts = youDeal ? DRAW_COUNTS_YOU_DEAL : DRAW_COUNTS;
     const seats = (
       hands: Record<Position, Card[] | number>,
       drawnBy: Position[],
@@ -995,8 +1015,8 @@ function DrawCountPreview({ held }: { held: HeldStyle }) {
           position,
           {
             hand: hands[position],
-            ...(keptBy.includes(position) && { kept_count: DRAW_COUNTS[position].kept }),
-            ...(drawnBy.includes(position) && { drawn_count: DRAW_COUNTS[position].drawn }),
+            ...(keptBy.includes(position) && { kept_count: counts[position].kept }),
+            ...(drawnBy.includes(position) && { drawn_count: counts[position].drawn }),
           },
         ])
       );
@@ -1062,19 +1082,75 @@ function DrawCountPreview({ held }: { held: HeldStyle }) {
       [15500, playing('west', 3)],
       [17000, playing('north', 4)],
     ];
+    if (youDeal) {
+      // You deal: the others are dealt, the rest of the pack lands in your
+      // hand while the server shows you your pool, then you keep six.
+      const youBase = { ...base, dealer: 'south' };
+      const keep = { north: 6, east: 6, south: DRAW_YOU_KEEP, west: 6 };
+      frames.length = 0;
+      frames.push(
+        [
+          0,
+          {
+            ...youBase,
+            phase: 'declaring',
+            trump: null,
+            current_player: 'north',
+            players: seats({ north: 9, east: 9, south: DRAW_DEALT, west: 9 }, [], []),
+          },
+        ],
+        [
+          1500,
+          {
+            ...youBase,
+            phase: 'playing',
+            current_player: 'north',
+            players: seats(keep, ['north', 'east', 'west'], everyone),
+          },
+        ],
+        [
+          10500,
+          {
+            ...youBase,
+            phase: 'playing',
+            current_player: 'east',
+            current_trick: trick(1),
+            players: seats({ ...keep, north: 5 }, ['north', 'east', 'west'], everyone),
+          },
+        ]
+      );
+    }
     store.reset();
     store.initFromRoom({ room: DRAW_ROOM, youPlayerId: 'p-south' });
     store.setRole('player');
     store.setYouPosition('south');
     store.setChannelStatus(true);
     store.setLegalActions([]);
+    // Dealing yourself, the server sends your pool with the snapshot that
+    // ends the deal: both land in the same tick here.
+    const yourPool = () =>
+      store.setPresentation({
+        dealer_rob: {
+          dealer: 'south',
+          automatic: true,
+          started_at_ms: Date.now(),
+          ends_at_ms: Date.now() + 5_500,
+          pool: DRAW_YOU_POOL,
+          kept: DRAW_YOU_KEEP,
+          discarded: DRAW_YOU_POOL.filter((card) => !DRAW_YOU_KEEP.includes(card)),
+        },
+      });
     const timers = frames.map(([at, state]) =>
-      setTimeout(() => store.setServerState(state as unknown as ServerGameState), at)
+      setTimeout(() => {
+        if (youDeal && at === 1500) yourPool();
+        store.setServerState(state as unknown as ServerGameState);
+      }, at)
     );
+    if (youDeal) timers.push(setTimeout(() => store.setPresentation(null), 7_000));
     // Hold on the finished trick, then deal again.
     timers.push(setTimeout(() => setRun((n) => n + 1), 20_000));
     return () => timers.forEach(clearTimeout);
-  }, [Table, run]);
+  }, [Table, run, youDeal]);
 
   return (
     <View style={{ flex: 1 }}>

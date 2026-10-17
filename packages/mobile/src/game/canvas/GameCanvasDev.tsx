@@ -478,7 +478,8 @@ export default function GameCanvasDev({
         currentTurnRelative: turn,
         canPlay,
         getCardCountForPlayer: (abs) => (abs ? (COUNTS[abs] ?? null) : null),
-        // `count=on`: "Help me keep count" lights the card winning the trick.
+        // `count=on`: "Help me keep count": the log, the points as tricks are
+        // taken, and the card winning the trick, as at the real table.
         countHelp: count === 'on',
       }),
     [
@@ -515,7 +516,8 @@ export default function GameCanvasDev({
     [handNumber, bids, trump, tricks, trick, lastHand, players, locale]
   );
 
-  const pidro = tablePidro(model.lastTrick, model.seats);
+  const countHelp = count === 'on';
+  const pidro = countHelp ? tablePidro(model.lastTrick, model.seats) : null;
   const trickKey = `${handNumber}:${model.lastTrick?.number}`;
 
   useEffect(() => {
@@ -536,7 +538,9 @@ export default function GameCanvasDev({
         topReserve={topReserve}
         bottomReserve={bottomReserve}
       />
-      <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
+      {countHelp ? (
+        <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
+      ) : null}
       <SeatLayer
         turnByRel={turnTimer}
         seats={model.seats}
@@ -575,7 +579,7 @@ export default function GameCanvasDev({
             youPosition="south"
             handNumber={4}
             roomCode="DEV01"
-            glow={scoreGlow(model.lastTrick, model.seats, trickKey)}
+            glow={countHelp ? scoreGlow(model.lastTrick, model.seats, trickKey) : null}
             delta={handResult.result?.hand.delta ?? null}
             top={headerTop(insets.top)}
             left={insets.left}
@@ -586,14 +590,19 @@ export default function GameCanvasDev({
                 ? { who: 'Eli', what: t('game.bid', { amount: 6 }), ours: false }
                 : null
             }
-            ticker={tickerPlacement(
-              computeLayout(width, height, insets, topReserve, bottomReserve),
-              {
-                tableTop: insets.top + topReserve,
-                plaqueLeft: insets.left + PidroSpacing.sm,
-                plaqueTop: headerTop(insets.top),
-              }
-            )}
+            ticker={
+              countHelp
+                ? tickerPlacement(
+                    computeLayout(width, height, insets, topReserve, bottomReserve),
+                    {
+                      tableTop: insets.top + topReserve,
+                      plaqueLeft: insets.left + PidroSpacing.sm,
+                      plaqueTop: headerTop(insets.top),
+                    },
+                    true
+                  )
+                : null
+            }
           />
           <TableSettings onLeave={() => {}} />
         </>

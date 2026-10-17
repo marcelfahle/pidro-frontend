@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
 import type { BotPersona } from '@pidro/shared';
-import { PidroBevel, PidroColors, PidroFlagColors, PidroPersonaColors as C } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroPersonaColors as C } from '@/design/tokens';
 
 /**
  * The bot crew, drawn after the three people who run Pidro: Marcel the
- * builder (headphones, coffee, too many cards), Antti in his sauna hat, and
- * Jocke the showman (shades, moustache, a card behind the ear). A 100-unit
+ * builder (trucker cap, coffee, too many cards), Antti in his beanie and red
+ * Liverpool scarf, and Jocke (long wavy hair, round glasses, moustache, a card tucked
+ * in his hair). A 100-unit
  * square that fills the avatar's round face; the face crops it.
  */
 export function BotPersonaFace({ persona }: { persona: BotPersona }) {
@@ -77,32 +78,61 @@ function Card({
 
 const MARCEL: ReactNode = (
   <>
-    <Path d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z" fill={C.hoodie} {...line} />
-    <Path d="M42 74 L50 84 L58 74" fill="none" {...line} strokeWidth={1.8} />
-    <Head />
-    {/* Hair, a little on end */}
+    {/* Navy jacket over a white tee */}
+    <Path d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z" fill={C.navy} {...line} />
     <Path
-      d="M31.5 45 C29 31 39 24 50 24.5 C61 24 71 30 68.5 45 C66 39 62 36 57 37.5 C55 34 50 33.5 46 36 C42 34.5 36 38 31.5 45 Z"
-      fill={C.hairBrown}
+      d="M41 74 Q50 82 59 74 L59 77 Q50 86 41 77 Z"
+      fill={C.capFront}
       {...line}
+      strokeWidth={1.6}
     />
-    {/* Over-ear headphones */}
+    <Path d="M50 84 L50 104" fill="none" stroke={C.capNavy} strokeWidth={1.6} />
+    <Head />
+    {/* Light stubble along the jaw */}
     <Path
-      d="M27 50 C24 21 76 21 73 50"
-      fill="none"
-      stroke={C.headphones}
-      strokeWidth={5}
-      strokeLinecap="round"
+      d="M35.5 56 C37 65 43 69 50 69 C57 69 63 65 64.5 56 C61 62 56 65 50 65 C44 65 39 62 35.5 56 Z"
+      fill={C.stubble}
     />
-    <Rect x={22} y={41} width={10} height={18} rx={4.5} fill={C.headphones} {...line} />
-    <Rect x={68} y={41} width={10} height={18} rx={4.5} fill={C.headphones} {...line} />
-    <Rect x={24.5} y={44} width={3} height={12} rx={1.5} fill={PidroColors.cyan} />
-    <Rect x={72.5} y={44} width={3} height={12} rx={1.5} fill={PidroColors.cyan} />
+    {/* Hair at the temples, under the cap */}
+    <Path
+      d="M31 47 C31 42 32.5 40 34.5 39.5 L35 48 Z"
+      fill={C.hairLight}
+      {...line}
+      strokeWidth={1.4}
+    />
+    <Path
+      d="M69 47 C69 42 67.5 40 65.5 39.5 L65 48 Z"
+      fill={C.hairLight}
+      {...line}
+      strokeWidth={1.4}
+    />
+    {/* Trucker cap: navy back, white front, a little mountain patch, red brim */}
+    <Path d="M29.5 42 C28.5 25 39 18 50 18 C61 18 71.5 25 70.5 42 Z" fill={C.capNavy} {...line} />
+    <Path
+      d="M35.5 41 C35 27 42 20.5 50 20.5 C58 20.5 65 27 64.5 41 Z"
+      fill={C.capFront}
+      {...line}
+      strokeWidth={1.6}
+    />
+    <Rect x={42.5} y={27} width={15} height={7} rx={1.2} fill={C.capNavy} />
+    <Path
+      d="M44 33 L47.5 29 L50 31.5 L52.5 29.5 L56 33"
+      fill="none"
+      stroke={C.capFront}
+      strokeWidth={1.2}
+      strokeLinejoin="round"
+    />
+    <Circle cx={50} cy={18.5} r={1.6} fill={C.capNavy} />
+    <Path
+      d="M27 41 C35 46 65 46 73 41 C67 47.5 33 47.5 27 41 Z"
+      fill={C.capBrim}
+      {...line}
+      strokeWidth={1.8}
+    />
     {/* Face */}
-    <Path d="M39.5 43.5 L45 42.5 M55 42.5 L60.5 43.5" fill="none" {...line} strokeWidth={1.8} />
-    <Circle cx={43} cy={48.5} r={2.3} fill={INK} />
-    <Circle cx={57} cy={48.5} r={2.3} fill={INK} />
-    <Path d="M42.5 57 Q50 64 57.5 57" fill="none" {...line} />
+    <Circle cx={43} cy={51} r={2.2} fill={INK} />
+    <Circle cx={57} cy={51} r={2.2} fill={INK} />
+    <Path d="M43 59 Q50 64.5 57 59" fill="none" {...line} />
     {/* Coffee, steaming */}
     <Path
       d="M15 66 C12 62 18 60 15 55 M21 66 C18 62 24 60 21 55"
@@ -128,67 +158,67 @@ const MARCEL: ReactNode = (
 
 const ANTTI: ReactNode = (
   <>
-    {/* A sauna towel over the shoulders, with a blue stripe */}
-    <Path
-      d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z"
-      fill={PidroColors.leagueCardFace}
-      {...line}
-    />
-    <Path
-      d="M20 90 C30 82 40 80 44 80 M80 90 C70 82 60 80 56 80"
-      fill="none"
-      stroke={PidroFlagColors.finnishCross}
-      strokeWidth={3.5}
-      strokeLinecap="round"
-    />
+    {/* Dark jacket */}
+    <Path d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z" fill={C.jacketDark} {...line} />
     <Head />
-    {/* Blond tufts under the hat */}
+    {/* Ginger stubble */}
     <Path
-      d="M31 46 C30 52 33 54 35 50 M69 46 C70 52 67 54 65 50"
-      fill={C.hairBlond}
-      {...line}
-      strokeWidth={1.6}
+      d="M35 55 C36.5 65 43 69 50 69 C57 69 63.5 65 65 55 C61 61 56 63.5 50 63.5 C44 63.5 39 61 35 55 Z"
+      fill={C.gingerStubble}
     />
-    {/* Felt sauna hat */}
-    <Path d="M27.5 44 C26 27 36 15 50 15 C64 15 74 27 72.5 44 Z" fill={C.felt} {...line} />
+    {/* Black beanie, a ribbed cuff */}
+    <Path d="M29 44 C27.5 25 38 16 50 16 C62 16 72.5 25 71 44 Z" fill={C.beanie} {...line} />
     <Path
-      d="M36 22 C40 26 39 34 38 40 M50 18 L50 40 M64 22 C60 26 61 34 62 40"
+      d="M28 45.5 C35 40.5 65 40.5 72 45.5 L71.5 38.5 C64 34 36 34 28.5 38.5 Z"
+      fill={C.beanieRib}
+      {...line}
+      strokeWidth={1.8}
+    />
+    <Path
+      d="M34 37.5 L34 43 M40 36.5 L40 42 M46 36 L46 41.5 M54 36 L54 41.5 M60 36.5 L60 42 M66 37.5 L66 43"
       fill="none"
-      stroke={C.feltShade}
-      strokeWidth={1.6}
+      stroke={C.beanie}
+      strokeWidth={1.2}
+    />
+    {/* Ginger brows, clear eyes */}
+    <Path
+      d="M39.5 48 L45.5 47.5 M54.5 47.5 L60.5 48"
+      fill="none"
+      stroke={C.ginger}
+      strokeWidth={2.2}
       strokeLinecap="round"
     />
-    <Path d="M23 44 C30 39 70 39 77 44 C70 49 30 49 23 44 Z" fill={C.feltShade} {...line} />
-    <Path d="M47 15 C47 10 53 10 53 15" fill={C.felt} {...line} strokeWidth={1.8} />
-    {/* Calm, unbothered */}
-    <Path d="M39.5 52 Q43 55 46.5 52 M53.5 52 Q57 55 60.5 52" fill="none" {...line} />
-    <Circle cx={38} cy={59} r={4.2} fill={C.cheek} />
-    <Circle cx={62} cy={59} r={4.2} fill={C.cheek} />
-    <Path d="M45 62 Q50 65.5 55 62" fill="none" {...line} />
+    <Circle cx={43} cy={52} r={2.1} fill={INK} />
+    <Circle cx={57} cy={52} r={2.1} fill={INK} />
+    {/* His Liverpool scarf, red with white bands, pulled up to the chin */}
+    <Path d="M29 63 C36 70.5 64 70.5 71 63 L73 78 C64 85 36 85 27 78 Z" fill={C.scarf} {...line} />
+    <Path
+      d="M28 69.5 C36 75.5 64 75.5 72 69.5 M28.8 75 C36 81 64 81 71.2 75"
+      fill="none"
+      stroke={PidroColors.leagueCardFace}
+      strokeWidth={2}
+    />
   </>
 );
 
 const JOCKE: ReactNode = (
   <>
-    {/* Red jacket, white shirt, gold bow tie */}
+    {/* Long wavy hair, down to the shoulders, behind */}
     <Path
-      d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z"
-      fill={PidroColors.leagueCardRed}
+      d="M27 48 C24 30 36 20 50 20 C64 20 76 30 73 48 C75 60 75 72 71 80 C67 76 65 69 64 61 L36 61 C35 69 33 76 29 80 C25 72 25 60 27 48 Z"
+      fill={C.hairWavy}
       {...line}
     />
+    {/* Navy suit, brown waistcoat, dark shirt */}
+    <Path d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z" fill={C.navy} {...line} />
     <Path
-      d="M41 74 L50 92 L59 74 Z"
-      fill={PidroColors.leagueCardFace}
-      {...line}
-      strokeWidth={1.8}
-    />
-    <Path
-      d="M42 74 L50 79 L58 74 L58 84 L50 79 L42 84 Z"
-      fill={PidroBevel.rim}
+      d="M40 75 L45 100 L50 90 L55 100 L60 75 Z"
+      fill={C.waistcoat}
       {...line}
       strokeWidth={1.6}
     />
-    {/* The card tucked behind his ear */}
+    <Path d="M42 74 L50 90 L58 74 Z" fill={C.shirtDark} {...line} strokeWidth={1.6} />
+    {/* The card tucked in his hair */}
     <G transform="rotate(18 72 40)">
       <Rect
         x={66}
@@ -205,32 +235,39 @@ const JOCKE: ReactNode = (
         fill={PidroColors.leagueCardRed}
       />
     </G>
-    <Head />
-    {/* Slick hair with a quiff */}
+    <Head ears={false} />
+    {/* Swept back on top, a wave falling at each side */}
     <Path
-      d="M31.5 46 C29 30 40 22 52 23 C59 21 67 25 66 29 C70 33 70 40 68.5 46 C66 38 60 34 52 35 C44 34 36 38 31.5 46 Z"
-      fill={C.hairDark}
+      d="M30.5 50 C28 31 39 22.5 51 23 C63 22.5 72 31 69.5 50 C67 40 62 34 51 34.5 C41 34 33.5 40 30.5 50 Z"
+      fill={C.hairWavy}
       {...line}
     />
-    {/* Shades */}
-    <Path d="M35 45.5 L65 45.5" fill="none" {...line} />
-    <Rect x={35} y={44} width={13} height={9} rx={3.5} fill={C.lens} {...line} strokeWidth={1.8} />
-    <Rect x={52} y={44} width={13} height={9} rx={3.5} fill={C.lens} {...line} strokeWidth={1.8} />
     <Path
-      d="M38 46.5 L41.5 46.5 M55 46.5 L58.5 46.5"
+      d="M40 27 C44 30 47 30 50 27 M53 26.5 C56 29.5 60 30 63 28"
       fill="none"
-      stroke={PidroColors.text}
-      strokeWidth={1.4}
+      stroke={PidroColors.ink}
+      strokeWidth={1.2}
       strokeLinecap="round"
     />
-    {/* The moustache, and the grin under it */}
-    <Path d="M44.5 64 Q50 68 55.5 64" fill="none" {...line} />
+    {/* Round glasses */}
+    <Circle cx={43} cy={49} r={5.4} fill={C.glassTint} stroke={INK} strokeWidth={2} />
+    <Circle cx={57} cy={49} r={5.4} fill={C.glassTint} stroke={INK} strokeWidth={2} />
     <Path
-      d="M50 57.5 C45 54 37 55 33 61 C36 60 38.5 62 42 62.5 C45.5 62.5 48 61 50 59.5 C52 61 54.5 62.5 58 62.5 C61.5 62 64 60 67 61 C63 55 55 54 50 57.5 Z"
-      fill={C.hairDark}
+      d="M48.4 48.5 Q50 47 51.6 48.5 M37.6 47.5 L32 46.5 M62.4 47.5 L68 46.5"
+      fill="none"
       {...line}
-      strokeWidth={1.6}
+      strokeWidth={1.8}
     />
+    <Circle cx={43} cy={49.5} r={1.8} fill={INK} />
+    <Circle cx={57} cy={49.5} r={1.8} fill={INK} />
+    {/* The moustache, and a steady look under it */}
+    <Path
+      d="M50 58.5 C46 56.5 41.5 57.5 39.5 60.5 C42.5 60 45.5 60.5 50 60 C54.5 60.5 57.5 60 60.5 60.5 C58.5 57.5 54 56.5 50 58.5 Z"
+      fill={C.hairWavy}
+      {...line}
+      strokeWidth={1.4}
+    />
+    <Path d="M45 64 Q50 66 55 64" fill="none" {...line} />
   </>
 );
 

@@ -11,6 +11,7 @@
 import { useEffect, useMemo, useRef } from 'react';
 import Animated, {
   Easing,
+  FadeOut,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -665,10 +666,11 @@ function ThrownPile({
   const sideways = rel === 'east' || rel === 'west';
   const step = cardW * 0.44;
   return (
-    <View
+    <Animated.View
       testID={`second-deal-thrown-${rel}`}
       accessibilityElementsHidden
       pointerEvents="none"
+      exiting={FadeOut.duration(SECOND_DEAL_FLIGHT_MS)}
       style={StyleSheet.absoluteFill}>
       {Array.from({ length: count }, (_, i) => {
         const off = (i - (count - 1) / 2) * step;
@@ -686,7 +688,7 @@ function ThrownPile({
           />
         );
       })}
-    </View>
+    </Animated.View>
   );
 }
 
