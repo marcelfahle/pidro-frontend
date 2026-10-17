@@ -49,10 +49,7 @@ export type TableSeat = {
   isConnected: boolean;
   seatStatus: SeatStatus;
   isCurrentTurn: boolean;
-  /**
-   * Cards in hand, as the server counts them. The dealer's pool shows while
-   * they pick from the pack: at a real table everyone sees the pack taken.
-   */
+  /** Cards in hand, as the server counts them; a dealer picking shows nine. */
   cardCount: number | null;
   lastPlayedCard: TableCard | null;
   /** Out of trumps for the rest of the hand, as the server says. */
@@ -61,7 +58,7 @@ export type TableSeat = {
   revealedCards: TableCard[];
   /**
    * The second deal as the server tells it: trumps kept after the discard,
-   * cards drawn to refill. The dealer's drawn is null while they pick.
+   * cards drawn to refill. Never the dealer's: that stays the dealer's.
    */
   secondDeal: { kept: number; drawn: number | null } | null;
 };
@@ -113,6 +110,8 @@ export type TrickResult = {
 };
 
 const REL: RelativePosition[] = ['north', 'east', 'south', 'west'];
+/** A hand as dealt. */
+const DEALT_HAND = 9;
 
 export type TableModelInput = {
   phase: GamePhase;
@@ -333,7 +332,12 @@ export function buildTableModel(input: TableModelInput): TableModel {
           isConnected: p.isConnected,
           seatStatus: p.seatStatus,
           isCurrentTurn: p.isCurrentTurn,
-          cardCount: input.getCardCountForPlayer(p.absolutePosition),
+          // A dealer picking from the pack holds their nine as far as anyone
+          // can see: how many trumps they kept is the dealer's edge.
+          cardCount:
+            input.phase === 'second_deal' && input.dealerRelative === rel && !p.isYou
+              ? DEALT_HAND
+              : input.getCardCountForPlayer(p.absolutePosition),
           secondDeal: secondDealOf(p.absolutePosition),
           lastPlayedCard: currentTrick[rel] ?? null,
           out: outOf(p.absolutePosition),

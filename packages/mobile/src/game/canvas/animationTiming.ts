@@ -32,15 +32,50 @@ export function dealAnimationDurationMs(cardCount: number): number {
   return (cardCount - 1) * DEAL_CARD_STAGGER_MS + DEAL_CARD_TRAVEL_MS;
 }
 
-// The second deal in a few calm beats, as Classic plays it: everyone throws
-// their non-trumps face down in one swoop; the dealer gives each seat its
-// cards in one packet; then takes the rest of the pack and throws down to six.
-export const SECOND_DEAL_START_MS = 450;
-export const SECOND_DEAL_THROW_MS = 1_000;
-export const SECOND_DEAL_PACK_MS = 500;
-export const SECOND_DEAL_CARD_MS = 750;
-export const SECOND_DEAL_ROB_CARD_MS = 750;
-export const SECOND_DEAL_SETTLE_MS = 700;
+// The second deal at Classic's pace (from a recording of it): after trump,
+// each player in turn from the dealer's left throws their non-trumps face
+// down in front of them; the piles stay long enough to count; they clear;
+// the dealer gives each player their cards one at a time; the dealer takes
+// the rest unseen. One object so the fixture's tuner can change it live;
+// the server's second_deal_transition_delay_ms holds play for as long.
+export const secondDealTiming = {
+  /** Before the first throw. */
+  startMs: 400,
+  /** Between one player's throw and the next. */
+  throwGapMs: 550,
+  /** The piles on the felt, to count, after the last throw. */
+  holdMs: 3_000,
+  /** The piles clear and the pack lands in its corner. */
+  packMs: 500,
+  /** Between one dealt card and the next. */
+  cardMs: 230,
+  /** Between one player's cards and the next player's. */
+  seatGapMs: 250,
+  /** The rest of the pack to the dealer, then the hands settle. */
+  robMs: 700,
+};
+export type SecondDealTiming = typeof secondDealTiming;
+export const SECOND_DEAL_DEFAULTS: SecondDealTiming = { ...secondDealTiming };
+/** Dev tuning only: change the live timing, or put the defaults back. */
+export function setSecondDealTiming(next: Partial<SecondDealTiming>) {
+  Object.assign(secondDealTiming, next);
+}
+export function resetSecondDealTiming() {
+  Object.assign(secondDealTiming, SECOND_DEAL_DEFAULTS);
+}
+
+/** How long the whole second deal plays, for `n` cards dealt. */
+export function secondDealDurationMs(dealt: number, timing: SecondDealTiming = secondDealTiming) {
+  return (
+    timing.startMs +
+    2 * timing.throwGapMs +
+    timing.holdMs +
+    timing.packMs +
+    dealt * timing.cardMs +
+    2 * timing.seatGapMs +
+    timing.robMs
+  );
+}
 /** Cards in one swoop leave a hair apart, so it reads as a handful. */
 export const SECOND_DEAL_SWOOP_STAGGER_MS = 35;
 /** A thrown or dealt card's flight. */

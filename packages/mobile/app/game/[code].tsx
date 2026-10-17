@@ -47,7 +47,6 @@ import {
   friendSeatTitle,
 } from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
-import { shouldAutoReadySolo } from '@/features/game/soloReadiness';
 import { readingTimeMs } from '@/features/game/readingTime';
 import { t, useTranslation } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
@@ -365,24 +364,8 @@ export default function GameScreen() {
     authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
   const { notice, addNotice: handleSeatEvent, dismissNotice, clearNotices } = useTableNotices(code);
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
-  const autoReadyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (
-      origin !== 'single-player' ||
-      !isChannelJoined ||
-      !shouldAutoReadySolo(readiness, youPositionAbs)
-    ) {
-      return;
-    }
-    const key = `${readiness!.room_id}:${readiness!.ready_epoch}`;
-    if (autoReadyRef.current === key) return;
-    autoReadyRef.current = key;
-    void handleReady().catch(() => {
-      autoReadyRef.current = null;
-      handleSeatEvent({ key: 'game.solo_failed', variant: 'warning' });
-    });
-  }, [handleReady, handleSeatEvent, isChannelJoined, origin, readiness, youPositionAbs]);
+  // A solo table waits for you to say you are ready, as Classic's "Tap to
+  // start the game" does: the bots sit ready, and nothing deals until you do.
 
   const handleProgressionSummary = useCallback(
     (summary: ProgressionSummary) => {

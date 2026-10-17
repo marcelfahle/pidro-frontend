@@ -1,16 +1,16 @@
 /**
- * The second deal, played out on the table so every count can be read off
- * the cards, as at a real table: everyone throws their non-trumps face down
- * in front of them, card by card; the dealer gives each seat its cards one
- * at a time from the pack; then takes the rest and throws down to six. The
- * thrown piles clear once the dealer is down to six, before anyone plays. Built only from the
- * server's counts (kept, drawn) and the hands it already sent: a
- * presentation, never game logic.
+ * The second deal, played out on the table at Classic's pace so the counts
+ * can be read off the cards: each player in turn throws their non-trumps
+ * face down in front of them, the piles hold to be counted and clear, the
+ * dealer gives each player their cards one at a time and takes the rest
+ * unseen. The dealer's discard never shows, the dealer's edge at a real
+ * table. Built only from the server's counts and the hands it already sent:
+ * a presentation, never game logic. The server holds play for as long
+ * (second_deal_transition_delay_ms).
  */
 import { useEffect, useState } from 'react';
 import { useReducedMotion } from 'react-native-reanimated';
 import type { TableCard, TableModel } from './tableModel';
-import { SECOND_DEAL_SETTLE_MS, SECOND_DEAL_START_MS } from './animationTiming';
 import {
   AFTER,
   BEFORE,
@@ -45,8 +45,6 @@ export function useSecondDealPresentation(model: TableModel): TableModel {
   const [armed, setArmed] = useState(false);
   const [plan, setPlan] = useState<Plan | null>(null);
   const [step, setStep] = useState(0);
-  // The dealer's last throw, once the pick is in: frames past the plan.
-  const [trim, setTrim] = useState(0);
 
   if (previous !== signature) {
     setPrevious(signature);
@@ -58,79 +56,45 @@ export function useSecondDealPresentation(model: TableModel): TableModel {
       if (plan) setPlan(null);
       if (armed) setArmed(false);
     } else if (plan && hasPlay(model)) {
-      // The first card of the hand is down: the thrown piles make way.
       setPlan(null);
     } else if (armed && !plan && !reducedMotion) {
       const next = makePlan(model, held);
       if (next) {
         setPlan(next);
         setStep(0);
-        setTrim(0);
         setArmed(false);
       }
     }
   }
 
-  const dealer = model.dealerRelative;
-  const last = plan ? plan.frames.length - 1 : 0;
-  const atEnd = !!plan && step >= last;
-  const frame = plan ? plan.frames[Math.min(step, last)] : null;
-  const dealerHolds = frame && dealer ? (frame.hand[dealer] ?? 0) : 0;
-  // Your own six arrive as your hand once your pick's moment is over.
-  const dealerKeeps =
-    dealer === 'south' ? model.yourHand.length : dealer ? model.seats[dealer]?.cardCount : null;
-  const toTrim =
-    atEnd && model.phase !== 'second_deal' && dealerKeeps != null
-      ? Math.max(0, dealerHolds - dealerKeeps)
-      : 0;
-  const trimmed = trim >= toTrim;
-  // Dealing yourself, your pool shows in your hand until your pick's moment
-  // is over; wait for your six before you throw the rest down.
-  const youPicking =
-    dealer === 'south' && atEnd && dealerHolds > 6 && model.yourHand.length === dealerHolds;
-  // Played out: the piles hold a moment, then clear before anyone plays.
-  const resting = atEnd && trimmed && !youPicking && model.phase === 'playing';
+  const frame = plan ? plan.frames[Math.min(step, plan.frames.length - 1)] : null;
+  const atEnd = !!plan && step >= plan.frames.length - 1;
 
   useEffect(() => {
     if (!plan || !frame) return;
-    if (atEnd) {
-      if (resting) {
-        const timer = setTimeout(() => setPlan(null), SECOND_DEAL_SETTLE_MS);
-        return () => clearTimeout(timer);
-      }
-      if (model.phase === 'second_deal' || dealerKeeps == null || youPicking) return;
-      if (trimmed) return;
-      // The dealer throws the extras down in one swoop.
-      const timer = setTimeout(() => setTrim(toTrim), SECOND_DEAL_START_MS);
-      return () => clearTimeout(timer);
-    }
-    const timer = setTimeout(() => setStep(step + 1), frame.ms);
+    const timer = setTimeout(() => (atEnd ? setPlan(null) : setStep(step + 1)), frame.ms);
     return () => clearTimeout(timer);
-  }, [plan, frame, atEnd, resting, trimmed, toTrim, step, model.phase, dealerKeeps, youPicking]);
+  }, [plan, frame, atEnd, step]);
 
   if (!plan || !frame || reducedMotion || !AFTER.has(model.phase) || hasPlay(model)) return model;
 
-  const thrown = { ...frame.thrown };
-  if (dealer && atEnd) thrown[dealer] = (thrown[dealer] ?? 0) + Math.min(trim, toTrim);
-  const show: SecondDealShow = { pack: frame.pack, thrown };
-  if (resting) return { ...model, secondDealShow: show };
-
+  const dealer = model.dealerRelative;
+  const show: SecondDealShow = { pack: frame.pack, thrown: frame.thrown };
   const seats = { ...model.seats };
   for (const rel of CLOCKWISE) {
     const seat = seats[rel];
     if (!seat) continue;
-    const count =
-      rel === dealer && atEnd
-        ? dealerHolds - Math.min(trim, toTrim)
-        : (frame.hand[rel] ?? seat.cardCount);
-    seats[rel] = { ...seat, cardCount: count, isCurrentTurn: false };
+    seats[rel] = { ...seat, cardCount: frame.hand[rel] ?? seat.cardCount, isCurrentTurn: false };
   }
-  // Your hand follows the same beats: the cards you throw leave one by one,
-  // the ones you are given arrive one by one.
+  // Your hand follows the same beats: what you throw leaves in your turn to
+  // throw, what you are given arrives one card at a time. Dealing yourself,
+  // you hold your nine until you take the pack.
   let yourHand = model.yourHand;
-  if (plan.yourThrown && plan.yourDrawn && !atEnd) {
+  if (dealer === 'south') {
+    if (held && !atEnd) yourHand = held;
+  } else if (plan.yourThrown && plan.yourDrawn) {
     const gone = new Set(
-      plan.yourThrown.slice(0, frame.thrown.south ?? 0).map((card) => card.textureKey)
+      plan.yourThrown.slice(0, frame.out.south ?? 0).map((card) => card.textureKey)
     );
     const stillHeld = (held ?? []).filter((card) => !gone.has(card.textureKey));
     const keptKeys = new Set(stillHeld.map((card) => card.textureKey));
