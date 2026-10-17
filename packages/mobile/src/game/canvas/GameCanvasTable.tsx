@@ -73,6 +73,13 @@ type Props = {
   held?: HeldStyle;
 };
 
+/** `value` as it was when `hold` began, for as long as it holds. */
+function useHeldWhile<T>(value: T, hold: boolean): T {
+  const [kept, setKept] = useState(value);
+  if (!hold && kept !== value) setKept(value);
+  return hold ? kept : value;
+}
+
 function cardLabel(card: Card): string {
   return `${getRankLabel(card.rank)}${SUIT_SYMBOLS[card.suit]}`;
 }
@@ -283,8 +290,35 @@ export function GameCanvasTable({
     isPrivateDealerRob ? dealerRobPresentation.pool : undefined,
     countHelp
   );
+  const pace = useSettingsStore((state) => state.pace);
+  // A hand scored while watching dims the table until its result closes.
+  const handResult = useHandResult(
+    controller.serverState ? (controller.serverState.last_hand ?? null) : undefined,
+    viewerOf(serverModel.seats),
+    pace
+  );
+  // The server sends the next hand with the one that ended: the table holds
+  // the hand that ended while its result shows, and deals once it closes.
+  const holding = handResult.result != null || handResult.opening;
+  const heldModel = useHeldWhile(serverModel, holding);
+  // Under the result the hand is played out: no trick, no cards left in hand.
+  const tableModel = useMemo(
+    () =>
+      holding
+        ? {
+            ...heldModel,
+            yourHand: [],
+            currentTrick: {},
+            playedCards: {},
+            latestPlayKey: null,
+            winningKey: null,
+            trickPoints: null,
+          }
+        : heldModel,
+    [holding, heldModel]
+  );
   const presented = useSecondDealPresentation(
-    useDealPresentation(serverModel, controller.viewModel?.dealerRelative ?? null)
+    useDealPresentation(tableModel, controller.viewModel?.dealerRelative ?? null)
   );
   const model = useMemo(() => (held ? { ...presented, held } : presented), [presented, held]);
   useTableHaptics(model);
@@ -302,13 +336,6 @@ export function GameCanvasTable({
   );
   const { width, height } = useWindowDimensions();
   const layout = computeLayout(width, height, insets, topReserve, bottomReserve);
-  const pace = useSettingsStore((state) => state.pace);
-  // A hand scored while watching dims the table until its result closes.
-  const handResult = useHandResult(
-    controller.serverState ? (controller.serverState.last_hand ?? null) : undefined,
-    viewerOf(model.seats),
-    pace
-  );
 
   const {
     trumpSuit,
@@ -508,8 +535,9 @@ export function GameCanvasTable({
           resting={resting}
           stateArrived={serverState != null}
           // The log (ticker and the hand's log behind it) is count help.
+          // While a hand's result shows, its panel says it all: no ticker.
           ticker={
-            countHelp
+            countHelp && !handResult.result
               ? tickerPlacement(
                   layout,
                   {

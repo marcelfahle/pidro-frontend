@@ -258,7 +258,8 @@ const styles = StyleSheet.create({
   pillWraps: { flexWrap: 'wrap', borderRadius: PidroRadii.panel },
   pillOurs: { borderColor: PidroColors.goldSoft },
   text: { fontWeight: '800' },
-  // The name gives way first; the card, amount or points always show.
-  who: { flexShrink: 1 },
+  // The name gives way first, never all the way: "We" or the start of a
+  // name stays. The card, amount or points always show.
+  who: { flexShrink: 1, minWidth: 26 },
   what: { flexShrink: 0 },
 });

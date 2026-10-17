@@ -56,7 +56,7 @@ describe('the end-of-hand panel', () => {
     const view = handResultView(eastMade, 'west');
     expect(view.outcome).toBe('we-made');
     expect(view.loud).toBe(true);
-    expect(view.headline).toEqual({ key: 'game.made_it' });
+    expect(view.headline).toEqual({ key: 'game.we_made_it' });
     expect(view).toMatchObject({ bidder: 'east', bid: 9, trump: 'hearts', won: 13, pidro: null });
     expect(view.trays[0]).toEqual({
       team: 'east_west',
@@ -76,45 +76,46 @@ describe('the end-of-hand panel', () => {
       points: 1,
       cards: [{ card: card(10, 'hearts'), points: 1 }],
     });
-    expect(view.closeMs).toBe(3000);
+    expect(view.closeMs).toBe(6000);
   });
 
-  it('says quietly by how much we missed, and closes sooner', () => {
+  it('says quietly by how much we missed, and stays as long', () => {
     const view = handResultView(westMissed, 'east');
     expect(view.outcome).toBe('we-missed');
     expect(view.loud).toBe(false);
-    expect(view.headline).toEqual({ key: 'game.missed_by', n: 5 });
+    expect(view.headline).toEqual({ key: 'game.we_missed_by', n: 5 });
     // Their five is not ours to point at.
     expect(view.pidro).toBeNull();
-    expect(view.closeMs).toBe(2000);
+    expect(view.closeMs).toBe(6000);
   });
 
-  it('keeps their made bid quiet', () => {
+  it('keeps their made bid quiet, and says it was theirs', () => {
     const view = handResultView(eastMade, 'south');
     expect(view.outcome).toBe('they-made');
     expect(view.loud).toBe(false);
-    expect(view.headline).toEqual({ key: 'game.made_it' });
+    expect(view.headline).toEqual({ key: 'game.they_made_it' });
     expect(view.trays.map((tray) => [tray.team, tray.side, tray.points])).toEqual([
       ['north_south', 'ours', 1],
       ['east_west', 'theirs', 13],
     ]);
-    expect(view.closeMs).toBe(3000);
+    expect(view.closeMs).toBe(6000);
   });
 
   it('names who took their Pidro when they missed', () => {
     const view = handResultView(westMissed, 'south');
     expect(view.outcome).toBe('they-missed');
     expect(view.loud).toBe(false);
-    expect(view.headline).toEqual({ key: 'game.missed_by', n: 5 });
+    expect(view.headline).toEqual({ key: 'game.they_missed_by', n: 5 });
     expect(view.pidro).toBe('north');
     expect(view.trays[0].cards.map((c) => c.points)).toEqual([5, 1, 1]);
-    expect(view.closeMs).toBe(3000);
+    expect(view.closeMs).toBe(6000);
   });
 
   it('takes no side for a spectator: N/S first, nobody loud, no Pidro line', () => {
     const made = handResultView(eastMade, null);
     expect(made.outcome).toBe('made');
     expect(made.loud).toBe(false);
+    expect(made.headline).toEqual({ key: 'game.team_made_it' });
     expect(made.trays.map((tray) => [tray.team, tray.side])).toEqual([
       ['north_south', 'neutral'],
       ['east_west', 'neutral'],
@@ -122,7 +123,8 @@ describe('the end-of-hand panel', () => {
     const missed = handResultView(westMissed, null);
     expect(missed.outcome).toBe('missed');
     expect(missed.pidro).toBeNull();
-    expect(missed.closeMs).toBe(3000);
+    expect(missed.headline).toEqual({ key: 'game.team_missed_by', n: 5 });
+    expect(missed.closeMs).toBe(6000);
   });
 
   it('shows empty trays for a server that sends no point cards', () => {

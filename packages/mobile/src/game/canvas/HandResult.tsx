@@ -68,10 +68,13 @@ export function useHandResult(
   hand: ServerLastHand | null | undefined,
   viewer: Position | null,
   pace: TablePace
-): { result: HandResultState | null; close: () => void } {
+): { result: HandResultState | null; opening: boolean; close: () => void } {
   const handNumber = hand === undefined ? undefined : (hand?.hand_number ?? null);
   const [seen, setSeen] = useState(handNumber);
   const [shown, setShown] = useState<number | null>(null);
+  // A result about to open: true on the very render its hand arrives, before
+  // `shown` catches up, so whatever holds for it holds from the start.
+  const opening = handNumber !== seen && seen !== undefined && handNumber != null;
   if (handNumber !== seen) {
     setSeen(handNumber);
     if (seen !== undefined && handNumber != null) setShown(handNumber);
@@ -87,7 +90,7 @@ export function useHandResult(
     const timer = setTimeout(() => setShown(null), closeMs);
     return () => clearTimeout(timer);
   }, [shown, closeMs]);
-  return { result, close: () => setShown(null) };
+  return { result, opening, close: () => setShown(null) };
 }
 
 type Tone = { label: string; figure: string; tray: string; edge: string };
@@ -146,10 +149,11 @@ export function HandResultPanel({
     spectator
       ? t(tray.team === 'north_south' ? 'game.ns_short' : 'game.ew_short')
       : t(tray.side === 'ours' ? 'game.us' : 'game.them').toLocaleUpperCase();
-  const headline =
-    view.headline.key === 'game.made_it'
-      ? t('game.made_it')
-      : t('game.missed_by', { n: view.headline.n });
+  const bidders = t(result.hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew');
+  const headline = t(view.headline.key, {
+    team: bidders,
+    n: 'n' in view.headline ? view.headline.n : 0,
+  });
   const pidroLine = view.pidro ? t('game.took_their_pidro', { name: name(view.pidro) }) : null;
   const bidLine = t('game.bid_took', { bid: view.bid, captured: formatNumber(view.won) });
   const spoken = (
@@ -162,7 +166,6 @@ export function HandResultPanel({
       missed: 'game.team_set',
     } as const
   )[view.outcome];
-  const bidders = t(result.hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew');
   const [us, them] = view.trays;
 
   // Phones lay the panel out to their width; an iPad draws the phone's panel at 1.25×.
@@ -418,14 +421,11 @@ function PointCard({
     <Animated.View
       style={[
         styles.card,
-        {
-          width,
-          height: width * CARD_RATIO,
-          boxShadow:
-            points >= PIDRO_POINTS ? PidroColors.pointCardFiveShadow : PidroColors.pointCardShadow,
-        },
+        { width, height: width * CARD_RATIO, boxShadow: PidroColors.pointCardShadow },
         style,
       ]}>
+      {/* A five's gold ring: solid, behind the card and its chip, never over them. */}
+      {points >= PIDRO_POINTS ? <View pointerEvents="none" style={styles.fiveRing} /> : null}
       <Image
         source={getCardImage(card)}
         accessibilityIgnoresInvertColors
@@ -493,9 +493,20 @@ const styles = StyleSheet.create({
   figure: { fontWeight: '900', fontSize: 26, lineHeight: 34 },
   cards: { flexDirection: 'row', gap: PidroSpacing.xs },
   card: { borderRadius: PidroRadii.tight },
+  fiveRing: {
+    position: 'absolute',
+    left: -3,
+    right: -3,
+    top: -3,
+    bottom: -3,
+    borderRadius: PidroRadii.tight + 3,
+    backgroundColor: PidroBevel.textGold,
+    boxShadow: PidroColors.pointCardFiveGlow,
+  },
   cardImage: { width: '100%', height: '100%', borderRadius: PidroRadii.tight },
   chip: {
     position: 'absolute',
+    zIndex: 2,
     right: -8,
     top: -9,
     minWidth: 24,

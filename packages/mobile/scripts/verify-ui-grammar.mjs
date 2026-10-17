@@ -1059,8 +1059,8 @@ const TABLE_MESSAGES = {
     text: 'Nora lost connection. A bot is playing for now.',
     tapCloses: true,
   },
-  'table-hand-made': { testId: 'hand-result', text: 'Made it', tapCloses: true },
-  'table-hand-set': { testId: 'hand-result', text: 'Missed by 3', tapCloses: true },
+  'table-hand-made': { testId: 'hand-result', text: 'We made it', tapCloses: true },
+  'table-hand-set': { testId: 'hand-result', text: 'We missed by 3', tapCloses: true },
   'table-hand-they-set': {
     testId: 'hand-result',
     text: 'Nora took their Pidro',

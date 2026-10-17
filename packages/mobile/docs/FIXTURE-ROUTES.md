@@ -56,6 +56,13 @@ cards. **Tune** opens live timings (each change replays); the link takes the
 same keys, e.g. `&holdMs=3000&cardMs=230&throwGapMs=550`. The server's
 `second_deal_transition_delay_ms` must hold play for the whole of it.
 
+The end of a hand loops at `/table-dev?deal=hand`: the last trick, the
+hand's result, and the next hand dealt once it closes (the server sends the
+next hand with the one that ended; the table holds the ended hand meanwhile).
+`end=they-made|we-made|we-missed|they-missed`; **Tune** changes how long the
+result stays (`showMs=` in the link). The server's `hand_transition_delay_ms`
+must cover the result and the deal.
+
 PID-214 bid presentation uses `/table-dev?phase=bidding&role=player&bids=round|high&locale=sv`.
 `table-bid-*` and `locale-sv-table-bid-*` check every seat's visible/spoken bid,
 the high-bid tone and compact south status without changing bid event identities.
