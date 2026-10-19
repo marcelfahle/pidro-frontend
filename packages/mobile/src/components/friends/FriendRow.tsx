@@ -21,8 +21,10 @@ export interface FriendRowProps {
   avatarUrl?: string | null;
   ring?: AvatarRing;
   row: FriendRowState;
-  /** Opens the friend's sheet. */
+  /** Opens the friend's sheet, or picks them for a seat. */
   onPress?: () => void;
+  accessibilityLabel?: string;
+  selected?: boolean;
   trailing?: ReactNode | 'chevron' | 'sent' | 'friends';
   /** Greyed and inert, as a busy friend in the seat picker. */
   dimmed?: boolean;
@@ -40,6 +42,8 @@ export function FriendRow({
   ring = 'glass',
   row,
   onPress,
+  accessibilityLabel,
+  selected = false,
   trailing,
   dimmed = false,
 }: FriendRowProps) {
@@ -79,12 +83,14 @@ export function FriendRow({
         row.variant === 'request' && styles.request,
         row.variant === 'sent' && styles.sent,
         row.variant === 'fresh' && styles.fresh,
+        selected && styles.selected,
         dimmed && styles.dimmed,
       ]}>
       {onPress && !dimmed ? (
         <PressableFX
           accessibilityRole="button"
-          accessibilityLabel={t('friends.view_profile', { name })}
+          accessibilityLabel={accessibilityLabel ?? t('friends.view_profile', { name })}
+          accessibilityState={{ selected }}
           accessibilityHint={row.line}
           onPress={onPress}
           style={styles.identity}>
@@ -93,8 +99,10 @@ export function FriendRow({
       ) : (
         <View
           accessible
+          accessibilityRole={dimmed ? 'button' : undefined}
           accessibilityLabel={`${name}, ${row.line}`}
           accessibilityState={{ disabled: dimmed }}
+          aria-disabled={dimmed || undefined}
           style={styles.identity}>
           {identity}
         </View>
@@ -143,6 +151,7 @@ const styles = StyleSheet.create({
   },
   sent: { borderStyle: 'dashed', backgroundColor: PidroColors.friendSentBg },
   fresh: { borderWidth: 1.5, borderColor: PidroColors.presenceOnline },
+  selected: { borderColor: PidroBevel.rim, backgroundColor: PidroColors.goldSoft },
   dimmed: { opacity: 0.5 },
   identity: {
     flex: 1,
