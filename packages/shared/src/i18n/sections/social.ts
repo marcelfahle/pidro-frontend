@@ -253,7 +253,6 @@ export const en = {
   "social.or_bots": "Or play a quick game with bots",
   "social.join_failed": "Could not join",
   "social.watch_failed": "Could not watch",
-  "social.create_failed": "Could not create table",
   "social.account_error":
     "Your account could not be confirmed. Please try again.",
   "social.seat_error": "That seat may no longer be available.",
@@ -261,8 +260,6 @@ export const en = {
   "social.create_error": "We could not create the table. Please try again.",
   "social.already_table":
     "You are already at a table. Rejoin it or leave before creating another table.",
-  "social.previous_table":
-    "The server still has you at another table. Refresh the lobby, then rejoin or leave it before creating a new table.",
   "social.current_table": "Current table",
   "social.at_table": "You are already at a table.",
   "social.vs": "vs",
@@ -636,15 +633,12 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "social.or_bots": "Eller spela ett snabbspel med bottar",
   "social.join_failed": "Kunde inte gå med",
   "social.watch_failed": "Kunde inte titta",
-  "social.create_failed": "Kunde inte skapa bordet",
   "social.account_error": "Ditt konto kunde inte bekräftas. Försök igen.",
   "social.seat_error": "Platsen kanske inte längre är ledig.",
   "social.watch_error": "Bordet kanske inte längre är tillgängligt.",
   "social.create_error": "Vi kunde inte skapa bordet. Försök igen.",
   "social.already_table":
     "Du sitter redan vid ett bord. Återvänd dit eller lämna det innan du skapar ett nytt bord.",
-  "social.previous_table":
-    "Servern har dig fortfarande vid ett annat bord. Uppdatera bordslistan och återvänd till eller lämna bordet innan du skapar ett nytt.",
   "social.current_table": "Nuvarande bord",
   "social.at_table": "Du sitter redan vid ett bord.",
   "social.vs": "mot",
