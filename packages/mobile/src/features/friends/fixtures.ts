@@ -6,7 +6,12 @@ import type {
   FriendResult,
 } from '@pidro/shared';
 
-export const FRIENDS_FIXTURE_NOW = new Date('2026-10-19T12:00:00Z');
+/** Dated from now, so the words read the same on every day; months need a fixed date. */
+function daysAgo(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() - days);
+  return date.toISOString();
+}
 
 const players: FriendResult[] = [
   { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'online', relation: 'none' },
@@ -70,30 +75,62 @@ export function friendsFixture(value?: string): FriendLists | undefined {
   )
     return;
   if (value === 'link-profile') return { friends: players.slice(1, 3), added_you: [] };
+  const nora: FriendResult = {
+    ...players[0],
+    presence: 'at_table',
+    table_company: 'people',
+    join_as: 'partner',
+    table_open_seats: 1,
+    table_hand: 2,
+  };
+  const kalle: FriendResult = {
+    ...players[3],
+    presence: 'at_table',
+    table_company: 'people',
+    join_as: null,
+    table_open_seats: 0,
+    table_hand: 4,
+  };
+  const maija: FriendResult = { ...players[0], user_id: 'maija', display_name: 'Maija' };
+  const hanna: FriendResult = {
+    ...players[2],
+    user_id: 'hanna',
+    display_name: 'Hanna',
+    played_together_at: daysAgo(1),
+  };
+  const eero = {
+    ...players[3],
+    user_id: 'eero',
+    display_name: 'Eero',
+    requested_at: daysAgo(2),
+  };
+  const pekka = { ...players[1], requested_at: daysAgo(0) };
   if (value === 'all')
     return {
-      friends: [
-        { ...players[0], presence: 'at_table', join_as: 'partner', table_open_seats: 1 },
-        { ...players[3], presence: 'at_table', table_company: 'people', table_hand: 4 },
-        { ...players[0], user_id: 'maija', display_name: 'Maija' },
-        {
-          ...players[2],
-          user_id: 'hanna',
-          display_name: 'Hanna',
-          played_together_at: '2026-10-18T12:00:00Z',
-        },
-      ],
-      added_you: [{ ...players[1], requested_at: '2026-10-19T08:00:00Z' }],
+      friends: [nora, kalle, maija, hanna],
+      added_you: [pekka],
       requests_waiting: 1,
-      requested: [
+      requested: [eero],
+      classic: { not_here: 38 },
+    };
+  if (value === 'list')
+    return {
+      friends: [
+        nora,
+        kalle,
+        maija,
+        hanna,
+        { ...hanna, user_id: 'mikko', display_name: 'Mikko', played_together_at: daysAgo(8) },
         {
-          ...players[3],
-          user_id: 'eero',
-          display_name: 'Eero',
-          requested_at: '2026-10-17T12:00:00Z',
+          ...hanna,
+          user_id: 'sanna',
+          display_name: 'Sanna',
+          played_together_at: '2026-09-12T12:00:00Z',
         },
       ],
-      classic: { not_here: 38 },
+      added_you: [pekka, { ...players[2], requested_at: daysAgo(3) }],
+      requests_waiting: 2,
+      requested: [eero],
     };
   return {
     friends: ['empty', 'loading', 'error'].includes(value ?? '') ? [] : players.slice(0, 3),
@@ -111,18 +148,35 @@ export function linkProfileFixture(value?: string): FriendPlayer | null {
 
 export function discoveryFixture(value?: string): FriendResult[] | undefined {
   if (!__DEV__ || !['recent', 'results', 'empty'].includes(value ?? '')) return;
+  const sanna = {
+    ...players[0],
+    user_id: 'sanna',
+    display_name: 'Sanna',
+    played_together_at: daysAgo(0),
+  };
+  const erkki = {
+    ...players[0],
+    user_id: 'erkki',
+    display_name: 'Erkki',
+    presence: 'offline' as const,
+    played_together_at: daysAgo(1),
+  };
   if (value === 'empty')
     return [
-      { ...players[0], user_id: 'sanna', display_name: 'Sanna' },
-      { ...players[0], user_id: 'erkki', display_name: 'Erkki', presence: 'offline' },
-      { ...players[0], user_id: 'ville', display_name: 'Ville', presence: 'offline' },
+      sanna,
+      erkki,
+      { ...erkki, user_id: 'ville', display_name: 'Ville', played_together_at: daysAgo(2) },
+    ];
+  if (value === 'recent')
+    return [
+      sanna,
+      { ...players[1], display_name: 'Nora', played_together_at: daysAgo(1) },
+      { ...players[2], display_name: 'Pekka', played_together_at: daysAgo(2) },
+      { ...players[3], display_name: 'Eero', played_together_at: daysAgo(3) },
     ];
   return players.map((player, index) => ({
     ...player,
-    display_name:
-      value === 'results'
-        ? ['Nora', 'Norbert', 'Noreen', 'Norman'][index]
-        : ['Sanna', 'Nora', 'Pekka', 'Eero'][index],
+    display_name: ['Nora', 'Norbert', 'Noreen', 'Norman'][index],
   }));
 }
 
@@ -153,12 +207,10 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
     ].includes(value ?? '')
   )
     return;
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
   const request: FriendNotice = {
     kind: 'request',
     player: players[1],
-    played_together_at: yesterday.toISOString(),
+    played_together_at: daysAgo(1),
   };
   const accepted: FriendNotice = { kind: 'accepted', player: players[0], source: 'accept' };
   const seat: FriendNotice = {

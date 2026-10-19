@@ -65,6 +65,8 @@ export function friendSheetState(entry: FriendEntry, relation: FriendRelation = 
     return {
       ...row,
       action,
+      dot: 'table' as const,
+      tone: 'gold' as const,
       line: t(
         entry.join_as === 'partner' ? 'friend_sheet.partner_status' : 'friend_sheet.opponent_status'
       ),
@@ -155,8 +157,30 @@ export function linkProfileAction(
   return lists.requested?.some((p) => p.user_id === playerId) ? 'sent' : 'add';
 }
 
-export function discoveryRowState(player: FriendResult): FriendRowState {
-  const row = friendRowState(player, player.relation);
+/**
+ * A row on Add a friend or the empty Friends screen. A recent player you
+ * have no relation with says when you last played: "Played together
+ * yesterday" on Add, the bare "Yesterday" on the empty screen.
+ */
+export function discoveryRowState(
+  player: FriendResult,
+  form: 'together' | 'day' = 'together',
+  now: Date = new Date()
+): FriendRowState {
+  const row = friendRowState(player, player.relation, now);
+  const day =
+    player.relation === 'none' && player.played_together_at
+      ? relativeDay(player.played_together_at, now)
+      : null;
+  if (day)
+    return {
+      ...row,
+      line:
+        form === 'day'
+          ? day.charAt(0).toLocaleUpperCase() + day.slice(1)
+          : t('friends.played_together', { when: day }),
+      tone: 'quiet',
+    };
   if (player.relation === 'added')
     return { ...row, line: t('friends.waiting_accept', { name: player.display_name }) };
   if (player.relation === 'friend')
@@ -205,6 +229,8 @@ function presenceStatus(entry: FriendEntry, now: Date): Omit<FriendRowState, 'va
       busy: false,
     };
   }
+  if (company === 'bots')
+    return { dot: 'online', line: t('friends.with_bots'), tone: 'green', busy: false };
   if (join_as) {
     const seats = entry.table_open_seats ?? entry.seats_open;
     return {
@@ -216,8 +242,6 @@ function presenceStatus(entry: FriendEntry, now: Date): Omit<FriendRowState, 'va
       busy: false,
     };
   }
-  if (company === 'bots')
-    return { dot: 'online', line: t('friends.with_bots'), tone: 'green', busy: false };
   const busy = company === 'people';
   const hand = entry.table_hand ?? entry.hand;
   if (hand)

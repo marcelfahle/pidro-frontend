@@ -14,11 +14,14 @@ import { FriendRow } from './FriendRow';
 export function FriendDiscovery({
   query = '',
   preview,
+  dayOnly = false,
   onStart,
   onSent,
 }: {
   query?: string;
   preview?: FriendResult[];
+  /** Recent rows say only when, as "Yesterday" on the empty Friends screen. */
+  dayOnly?: boolean;
   onStart?: () => void;
   onSent: (name: string) => void;
 }) {
@@ -136,7 +139,7 @@ export function FriendDiscovery({
               key={player.user_id}
               name={player.display_name}
               avatarUrl={player.avatar_url}
-              row={discoveryRowState(player)}
+              row={discoveryRowState(player, dayOnly ? 'day' : 'together')}
               trailing={
                 player.relation === 'friend' ? (
                   'friends'

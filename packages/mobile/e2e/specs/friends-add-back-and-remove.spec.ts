@@ -219,6 +219,7 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   expect(incoming.status).toBe(200);
   const accept = page.getByRole('button', { name: `Accept ${otherPlayer.name}`, exact: true });
   await accept.waitFor();
+  await expect(page.getByText('Asked today', { exact: true })).toBeVisible();
   // A failed event refetch must not discard the mutation's successful full list.
   await page.route('**/api/v1/friends', (route) =>
     route.fulfill({ status: 503, json: { error: 'UNAVAILABLE' } })
