@@ -28,7 +28,6 @@ export interface FriendLists {
   waiting_for_you?: number;
   /** Requests you sent that have no answer yet, newest first (PID-245). */
   requested?: RequestedFriendPlayer[];
-  requests_waiting?: number;
   classic?: { not_here: number };
 }
 

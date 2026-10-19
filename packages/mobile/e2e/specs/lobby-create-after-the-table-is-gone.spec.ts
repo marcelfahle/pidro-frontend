@@ -83,4 +83,15 @@ test('creating a table never leaves an unknown or live multiplayer table', async
     expect(leaves).toEqual([]);
     await page.unroute('**/api/v1/lobby');
   }
+  // The cached room is still seated; the fresh, real lobby now says it is gone.
+  await page.unroute('**/api/v1/rooms');
+  let refused = false;
+  await page.route('**/api/v1/rooms', (route) => {
+    if (route.request().method() !== 'POST' || refused) return route.continue();
+    refused = true;
+    return route.fulfill({ status: 422, json: { error: 'ALREADY_IN_ROOM' } });
+  });
+  await form.getByRole('button', { name: 'Open the table', exact: true }).click();
+  await page.waitForURL(/\/game\/[A-Z0-9]+/);
+  expect(leaves).toHaveLength(1);
 });

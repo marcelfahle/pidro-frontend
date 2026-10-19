@@ -434,7 +434,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           return;
         }
         setLobby(current.lobby);
-        if (activeRoom || current.lobby.my_rejoinable.length) {
+        if (current.lobby.my_rejoinable.length) {
           reportFailure('social.already_table');
         } else {
           try {
