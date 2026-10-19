@@ -26,7 +26,10 @@ const friends: FriendPlayer[] = [
 export function NewTableGallery({ fixture = 'setup' }: { fixture?: string }) {
   const [ready, setReady] = useState<Position[]>(['east', 'west', 'south']);
   const [share, setShare] = useState(false);
-  const [opened, setOpened] = useState(['opened', 'ready', 'guest'].includes(fixture));
+  const [opened, setOpened] = useState(['opened', 'ready', 'guest', 'declined'].includes(fixture));
+  const [declined, setDeclined] = useState(
+    fixture === 'declined' ? { position: 'south' as const, user: friends[0] } : null
+  );
   const draft: TableDraft = {
     seats:
       fixture === 'bots'
@@ -68,7 +71,8 @@ export function NewTableGallery({ fixture = 'setup' }: { fixture?: string }) {
               username: ['Bertil', 'Kalle', 'Maija', 'Hanna'][seat_index],
             }
           : null,
-      held_for: position === 'south' && fixture !== 'ready' ? friends[0] : null,
+      held_for:
+        position === 'south' && fixture !== 'ready' && fixture !== 'declined' ? friends[0] : null,
       password: position === 'west' && fixture !== 'ready',
     })),
   });
@@ -88,6 +92,8 @@ export function NewTableGallery({ fixture = 'setup' }: { fixture?: string }) {
         onLeave={() => {}}
         onSubmit={() => setOpened(true)}
         onOpenInvite={() => setShare(true)}
+        declined={declined}
+        onDismissDeclined={() => setDeclined(null)}
         readyPlayers={ready}
         readyDisabled={false}
         onReady={async () => {

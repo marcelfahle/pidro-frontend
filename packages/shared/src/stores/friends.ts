@@ -1,12 +1,19 @@
 import { create } from 'zustand';
 import type { BlockedPlayers, FriendLists } from '../api/friends';
-import { enqueueFriendNotice, friendNoticeId, type FriendNotice } from '../features/friendNotices';
+import {
+  enqueueFriendNotice,
+  friendNoticeId,
+  lateSeatNotice,
+  type FriendNotice,
+} from '../features/friendNotices';
+import type { SeatInvitation } from '../types/lobby';
 
 interface FriendsState extends FriendLists, BlockedPlayers {
   notices: FriendNotice[];
   seenNotices: string[];
   queueNotice: (notice: FriendNotice) => void;
   dismissNotice: (id: string) => void;
+  lateSeat: (invitation: SeatInvitation) => void;
   isLoading: boolean;
   error: unknown;
   setLists: (lists: FriendLists | BlockedPlayers) => void;
@@ -33,6 +40,8 @@ export const useFriendsStore = create<FriendsState>((set) => ({
   ...initialState,
   queueNotice: (notice) =>
     set((state) => enqueueFriendNotice(state.notices, state.seenNotices, notice)),
+  lateSeat: (invitation) =>
+    set((state) => lateSeatNotice(state.notices, state.seenNotices, invitation)),
   dismissNotice: (id) =>
     set((state) => ({
       notices: state.notices.filter((notice) => friendNoticeId(notice) !== id),

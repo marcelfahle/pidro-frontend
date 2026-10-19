@@ -8,7 +8,7 @@ import {
   type FriendNotice,
 } from '@pidro/shared';
 import { NoticeCard } from '@/components/friends/NoticeCard';
-import { joinSeatInvitation } from '@/components/invites/SeatInvitations';
+import { declineSeatInvitation, joinSeatInvitation } from '@/components/invites/SeatInvitations';
 import { friendNoticeFixture } from '@/features/friends/fixtures';
 import { relativeDay } from '@/features/relativeDay';
 import { useTranslation } from '@/i18n';
@@ -59,7 +59,7 @@ export function FriendNoticeHost({
     dismissRef.current = dismiss;
   }, [dismiss]);
   useEffect(() => {
-    if (notice.kind !== 'accepted' || fixture) return;
+    if ((notice.kind !== 'accepted' && notice.kind !== 'too_late') || fixture) return;
     const timer = setTimeout(() => dismissRef.current(), 4000);
     return () => clearTimeout(timer);
   }, [notice.kind, fixture]);
@@ -96,10 +96,11 @@ export function FriendNoticeHost({
     }
   };
 
+  const asks = notice.kind === 'request' || notice.kind === 'seat';
   const name =
-    notice.kind === 'seat'
-      ? notice.invitation.host?.display_name || t('social.player')
-      : notice.player.display_name;
+    'player' in notice
+      ? notice.player.display_name
+      : notice.invitation.host?.display_name || t('social.player');
   const when =
     notice.kind === 'request' && notice.played_together_at
       ? relativeDay(notice.played_together_at)
@@ -125,10 +126,10 @@ export function FriendNoticeHost({
         )}
         body={body}
         avatarUrl={
-          notice.kind === 'seat' ? notice.invitation.host?.avatar_url : notice.player.avatar_url
+          'player' in notice ? notice.player.avatar_url : notice.invitation.host?.avatar_url
         }
         primary={
-          notice.kind !== 'accepted'
+          asks
             ? {
                 label: t(notice.kind === 'seat' ? 'seat_invitation.sit' : 'friend_notice.accept'),
                 loading,
@@ -137,11 +138,14 @@ export function FriendNoticeHost({
             : undefined
         }
         secondary={
-          notice.kind !== 'accepted'
+          asks
             ? {
                 label: t('friend_notice.not_now'),
                 onPress: () => {
-                  if (!busy.current) dismiss();
+                  if (busy.current) return;
+                  if (notice.kind === 'seat' && !fixture)
+                    void declineSeatInvitation(notice.invitation);
+                  dismiss();
                 },
               }
             : undefined

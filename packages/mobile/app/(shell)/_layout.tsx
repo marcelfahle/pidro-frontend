@@ -177,7 +177,9 @@ function Shell({
             friend.fixture
               ? fixture === 'friend-queue'
                 ? 2
-                : 1
+                : fixture === 'friend-too-late'
+                  ? 0
+                  : 1
               : (fixtureInvitationCount ?? invitationCount)
           }
           onSelect={handleSelect}

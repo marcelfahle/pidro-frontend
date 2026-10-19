@@ -253,6 +253,9 @@ export default function GameScreen() {
   const [controlsBusy, setControlsBusy] = useState(false);
   const controlsBusyRef = useRef(false);
   const [joiningName, setJoiningName] = useState<string | null>(null);
+  const [declined, setDeclined] = useState<
+    (Extract<WaitingRoomEvent, { kind: 'declined' }> & { roomCode: string }) | null
+  >(null);
   const joiningNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waitingRoomExitRef = useRef(false);
   const activeRoomCodeRef = useRef(code);
@@ -412,7 +415,9 @@ export default function GameScreen() {
         router.replace('/lobby');
         return;
       }
-      if (event.joiningName) {
+      if (event.kind === 'declined') {
+        if (code) setDeclined({ ...event, roomCode: code });
+      } else if (event.joiningName) {
         setJoiningName(event.joiningName);
         if (joiningNoticeTimerRef.current) clearTimeout(joiningNoticeTimerRef.current);
         joiningNoticeTimerRef.current = setTimeout(
@@ -804,6 +809,8 @@ export default function GameScreen() {
         onSeatBot={handleSeatBot}
         notice={notice}
         onDismissNotice={dismissNotice}
+        declined={declined?.roomCode === code && room.host_id === youPlayerId ? declined : null}
+        onDismissDeclined={() => setDeclined(null)}
       />
       {canManage && shareOpen ? (
         <InviteLinkModal key={room.code} roomCode={room.code} onClose={() => setShareOpen(false)} />

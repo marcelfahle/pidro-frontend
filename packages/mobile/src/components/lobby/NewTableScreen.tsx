@@ -2,7 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { CreateRoomRequest, FriendPlayer, Position, Room, RuleSet } from '@pidro/shared';
+import type {
+  CreateRoomRequest,
+  FriendPlayer,
+  HeldPlayer,
+  Position,
+  Room,
+  RuleSet,
+} from '@pidro/shared';
+import { NoticeCard } from '@/components/friends/NoticeCard';
 import { SeatPickerContainer } from '@/components/invites/SeatPickerContainer';
 import type { ChoiceSection } from '@/components/invites/ChoiceList';
 import { BackButton } from '@/components/ui/BackButton';
@@ -75,6 +83,9 @@ interface Props {
   rulesFixtureSeen?: boolean;
   notice?: TableNotice | null;
   onDismissNotice?: () => void;
+  /** The host's: an invited friend said Not now or sat down elsewhere. */
+  declined?: { position: Position; user: HeldPlayer } | null;
+  onDismissDeclined?: () => void;
 }
 
 /** The draft and the server room share their furniture, never their state. */
@@ -105,6 +116,8 @@ export function NewTableScreen({
   rulesFixtureSeen,
   notice,
   onDismissNotice,
+  declined,
+  onDismissDeclined,
 }: Props) {
   const { t } = useTranslation();
   const router = useRouter();
@@ -118,6 +131,7 @@ export function NewTableScreen({
   const [draft, setDraft] = useState<TableDraft>(initialDraft ?? { seats: { ...defaultSeats } });
   const [draftRules, setDraftRules] = useState(initialRuleSet ?? preferred);
   const [selected, setSelected] = useState<Position | null>(initialPicker ? 'south' : null);
+  const [pickerPage, setPickerPage] = useState(initialPicker);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [prefilled, setPrefilled] = useState(false);
@@ -178,6 +192,13 @@ export function NewTableScreen({
             passwordRequired: seat.password,
           };
   };
+  // Until that seat is taken or held for someone else; the refresh may still be on its way.
+  const declinedSeat = declined ? liveSeat(declined.position) : undefined;
+  const showDeclined =
+    !!declined &&
+    editable &&
+    !declinedSeat?.player &&
+    (!declinedSeat?.held_for || declinedSeat.held_for.user_id === declined.user.user_id);
   const selectedLive = selected ? liveSeat(selected) : undefined;
   if (room && selected && selectedPlayerId !== (selectedLive?.player?.id ?? null)) {
     setSelected(null);
@@ -307,12 +328,35 @@ export function NewTableScreen({
         if (!busy && !controlsBusy) {
           setQuery('');
           setSelectedPlayerId(liveSeat(position)?.player?.id ?? null);
+          setPickerPage(undefined);
           setSelected(position);
         }
       }}
     />
   );
   const kickPlayer = selectedLive?.player;
+  // A small phone has no room above the seats: the card takes the share button's place
+  // and says what the status line would.
+  const declinedCard = showDeclined && (
+    <NoticeCard
+      testID="seat-declined-notice"
+      variant="cant_come"
+      title={t('friend_notice.cant_come', { name: declined.user.display_name })}
+      body={t('friend_notice.seat_open_again')}
+      avatarUrl={declined.user.avatar_url}
+      secondary={{
+        label: t('friend_notice.invite_someone_else'),
+        onPress: () => {
+          if (busy || controlsBusy) return;
+          onDismissDeclined?.();
+          setQuery('');
+          setSelectedPlayerId(null);
+          setPickerPage('friends');
+          setSelected(declined.position);
+        },
+      }}
+    />
+  );
   return (
     <>
       <ScreenShell
@@ -338,6 +382,7 @@ export function NewTableScreen({
             )}
           </View>
         </View>
+        {!compact && declinedCard}
         {!room && (
           <View style={styles.rules}>
             <View
@@ -398,6 +443,8 @@ export function NewTableScreen({
               disabled={readyDisabled || isYouReady || readyBusy}
               onPress={() => void confirmReady()}
             />
+          ) : compact && declinedCard ? (
+            declinedCard
           ) : !isSpectator && editable && !full ? (
             <BevelButton
               label={t('new_table.share')}
@@ -408,13 +455,15 @@ export function NewTableScreen({
               onPress={onOpenInvite}
             />
           ) : null}
-          <PidroText role="metadata" tone="soft" align="center" accessibilityLiveRegion="polite">
-            {!room
-              ? tableFooter(draft)
-              : full
-                ? t('game.ready_count', { count: readyPlayers.length })
-                : waitingFooter(room, editable)}
-          </PidroText>
+          {!(compact && declinedCard) && (
+            <PidroText role="metadata" tone="soft" align="center" accessibilityLiveRegion="polite">
+              {!room
+                ? tableFooter(draft)
+                : full
+                  ? t('game.ready_count', { count: readyPlayers.length })
+                  : waitingFooter(room, editable)}
+            </PidroText>
+          )}
           {error || readyError ? (
             <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
               {error || localizedError(readyError, 'game.ready_failed')}
@@ -437,7 +486,7 @@ export function NewTableScreen({
           key={selected}
           title={t(selected === order[1] ? 'social.partner_seat' : 'social.opponent')}
           subtitle={t(selected === order[1] ? 'new_table.partner_help' : 'new_table.opponent_help')}
-          initialPage={initialPicker}
+          initialPage={pickerPage}
           choices={{ sections, selectedId, onSelect: choose }}
           friends={{
             friends: pickerFriends(

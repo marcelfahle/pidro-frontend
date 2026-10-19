@@ -140,6 +140,11 @@ export function createLobbyApi(api: ApiClient) {
       return normalizeRoom(response.data?.data?.room ?? response.data?.room);
     },
 
+    /** Not now on a seat invitation: the host's hold at that seat opens again. */
+    declineSeatInvitation: async (code: string, position: Position): Promise<void> => {
+      await api.post(`/api/v1/rooms/${code}/seats/${position}/decline`);
+    },
+
     releaseHold: async (code: string, position: Position): Promise<Room> => {
       const response = await api.delete<GetRoomResponse>(`/api/v1/rooms/${code}/seats/${position}/hold`);
       return normalizeRoom(response.data?.data?.room ?? response.data?.room);

@@ -204,7 +204,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | URL                                                                     | Shows                                                                                                                                                                                       |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ui-dev?state=components`                                              | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow, friend rows, info cards and notices (`ui-friend-rows-panel`, `ui-friend-notices-panel`). testID `ui-foundation-panel` |
-| `/ui-dev?state=new-table&fixture=setup\|partner\|bots\|opened\|ready\|louisiana\|requirement\|password\|picker\|friends\|guest` | Shared setup/live team list. Setup testID `new-table-screen`; live (`opened`, `ready`, `guest`) `waiting-table`. Rows `new-table-seat-north/south/east/west`; south is Partner, east/west opponents. `guest` is a nonhost, not an anonymous account. |
+| `/ui-dev?state=new-table&fixture=setup\|partner\|bots\|opened\|ready\|louisiana\|requirement\|password\|picker\|friends\|guest\|declined` | Shared setup/live team list. Setup testID `new-table-screen`; live (`opened`, `ready`, `guest`, `declined`) `waiting-table`. Rows `new-table-seat-north/south/east/west`; south is Partner, east/west opponents. `guest` is a nonhost, not an anonymous account. `declined` (PID-254): Maija said Not now, so south is open and the host sees "Can't come" (`seat-declined-notice`) at the top, in the footer on a small phone; Invite someone else opens the friend picker for south. |
 | `/ui-dev?state=progression`                                             | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
 | `/ui-dev?state=avatars`                                                 | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 | `/ui-dev?state=seat-rows&fixture=setup\|setup-open\|opened\|opened-more` | New table seat rows (PID-243): every state before and after the table opens, four seats at a time; landscape puts the teams side by side. testID `ui-seat-rows-panel` |
@@ -258,9 +258,12 @@ areas or keyboard avoidance; responsive layout refinements belong to PID-257.
 
 ## Shell friend notices
 
-`/home?fixture=friend-request|friend-accepted|friend-seat|friend-queue` shows the
-real shell notice and Friends badge without a backend. Accepted stays visible in
-the fixture for capture; live notices disappear after four seconds. The queue
+`/home?fixture=friend-request|friend-accepted|friend-seat|friend-queue|friend-too-late` shows the
+real shell notice and Friends badge without a backend. Accepted and too late stay visible in
+the fixture for capture; live ones disappear after four seconds. Too late (PID-254)
+replaces a seat notice whose seat went because the game started, the host let it go or
+the room closed, and after a refused Sit down; it has no buttons and no badge.
+On a seat notice Not now declines the seat for real. The queue
 fixture starts with a seat, then a request, then accepted. Not now closes only the
 prompt, keeping the badge. These fixtures also work on other shell tabs. Grammar
 cases `friend-notice-*` check containment, touch targets, tab clearance and queue

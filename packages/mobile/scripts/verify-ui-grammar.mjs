@@ -56,7 +56,7 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
-  ...['request', 'accepted', 'seat', 'queue'].map((kind) => ({
+  ...['request', 'accepted', 'seat', 'queue', 'too-late'].map((kind) => ({
     name: `friend-notice-${kind}`,
     path: `/home?fixture=friend-${kind}`,
     testId: 'friend-notice',
@@ -444,10 +444,13 @@ const allCases = [
     'picker',
     'friends',
     'guest',
+    'declined',
   ].map((fixture) => ({
     name: `new-table-${fixture}`,
     path: `/ui-dev?state=new-table&fixture=${fixture}`,
-    testId: ['opened', 'ready', 'guest'].includes(fixture) ? 'waiting-table' : 'new-table-screen',
+    testId: ['opened', 'ready', 'guest', 'declined'].includes(fixture)
+      ? 'waiting-table'
+      : 'new-table-screen',
     newTableFixture: fixture,
   })),
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
@@ -1179,12 +1182,14 @@ async function assertNothingUnderNotice(page, screen, viewport) {
 async function assertFriendNotice(page, name, viewport) {
   if (!name.startsWith('friend-notice-')) return;
   const notice = page.getByTestId('friend-notice');
-  const count = name.endsWith('queue') ? 2 : 1;
+  const count = name.endsWith('queue') ? 2 : name.endsWith('too-late') ? 0 : 1;
   assert.equal(await notice.count(), 1);
-  assert.equal(await page.getByTestId('friends-invitation-count').innerText(), String(count));
-  await page
-    .getByRole('button', { name: `Friends, ${count} waiting for your answer`, exact: true })
-    .waitFor();
+  if (count) {
+    assert.equal(await page.getByTestId('friends-invitation-count').innerText(), String(count));
+    await page
+      .getByRole('button', { name: `Friends, ${count} waiting for your answer`, exact: true })
+      .waitFor();
+  } else assert.equal(await page.getByTestId('friends-invitation-count').count(), 0);
   await assertNothingUnderNotice(page, 'Home', viewport);
   const pill = await page.getByTestId('tab-pill').boundingBox();
   const card = await notice.boundingBox();
@@ -1200,6 +1205,9 @@ async function assertFriendNotice(page, name, viewport) {
     await notice.getByRole('button', { name: 'Not now', exact: true }).click();
     await page.getByText("Nora accepted. You're friends now.", { exact: true }).waitFor();
     assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
+  } else if (name.endsWith('too-late')) {
+    assert.equal(await notice.innerText(), "Kalle's game started without you");
+    assert.equal(await notice.getByRole('button').count(), 0);
   } else if (!name.endsWith('accepted')) {
     await notice.getByRole('button', { name: 'Not now', exact: true }).click();
     await notice.waitFor({ state: 'detached' });
@@ -1965,6 +1973,16 @@ async function assertCreationPresentation(page, testCase) {
   }
   if (fixture === 'picker') await page.getByTestId('seat-picker-container').waitFor();
   if (fixture === 'friends') await page.getByTestId('friend-picker').waitFor();
+  if (fixture === 'declined') {
+    const card = page.getByTestId('seat-declined-notice');
+    await card.getByText("Maija can't come right now", { exact: true }).waitFor();
+    await card.getByText('The seat is open again', { exact: true }).waitFor();
+    assert.match(await page.getByTestId('new-table-seat-south').innerText(), /Waiting…/);
+    await card.getByRole('button', { name: 'Invite someone else', exact: true }).click();
+    await page.getByTestId('friend-picker').waitFor();
+    assert.match(await page.getByTestId('seat-picker-container').innerText(), /Partner/);
+    await card.waitFor({ state: 'detached' });
+  }
   assert.equal(await page.getByTestId('create-room-window').count(), 0);
   assert.equal(
     await page.getByRole('button', { name: /^(Manage |Move to |Lock joins|Unlock joins)/ }).count(),

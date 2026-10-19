@@ -4,7 +4,8 @@ import type { SeatInvitation } from '../types/lobby';
 export type FriendNotice =
   | { kind: 'request'; player: FriendPlayer; played_together_at: string | null }
   | { kind: 'accepted'; player: FriendPlayer; source: 'accept' | 'link' }
-  | { kind: 'seat'; invitation: SeatInvitation };
+  | { kind: 'seat'; invitation: SeatInvitation }
+  | { kind: 'too_late'; invitation: SeatInvitation };
 
 function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -44,9 +45,10 @@ export function isFriendAccepted(
 
 export function isSeatInvitationGone(
   value: unknown
-): value is Pick<SeatInvitation, 'code' | 'position'> {
+): value is Pick<SeatInvitation, 'code' | 'position'> & { reason?: string } {
   return (
     object(value) &&
+    (value.reason === undefined || typeof value.reason === 'string') &&
     typeof value.code === 'string' &&
     value.code.length > 0 &&
     typeof value.position === 'string' &&
@@ -72,9 +74,18 @@ export function isSeatInvitation(value: unknown): value is SeatInvitation {
   );
 }
 
+/**
+ * A seat that went because the game started, the host let it go or the room
+ * closed was missed, so it is said. `declined` is the invitee's own answer and
+ * a missing or unknown reason is an older server: both go quietly.
+ */
+export function seatGoneIsLate(reason: unknown): boolean {
+  return reason === 'started' || reason === 'released' || reason === 'closed';
+}
+
 export function friendNoticeId(notice: FriendNotice): string {
-  return notice.kind === 'seat'
-    ? `seat:${notice.invitation.code}:${notice.invitation.position}:${notice.invitation.held_since ?? ''}`
+  return notice.kind === 'seat' || notice.kind === 'too_late'
+    ? `${notice.kind}:${notice.invitation.code}:${notice.invitation.position}:${notice.invitation.held_since ?? ''}`
     : `${notice.kind}:${notice.player.user_id}`;
 }
 
@@ -82,6 +93,25 @@ export function enqueueFriendNotice(queue: FriendNotice[], seen: string[], notic
   const id = friendNoticeId(notice);
   if (seen.includes(id)) return { notices: queue, seenNotices: seen };
   return { notices: [...queue, notice], seenNotices: [...seen, id] };
+}
+
+/** The seat notice becomes "too late" where it stood, once per invitation. */
+export function lateSeatNotice(queue: FriendNotice[], seen: string[], invitation: SeatInvitation) {
+  const late: FriendNotice = { kind: 'too_late', invitation };
+  const id = friendNoticeId(late);
+  const index = queue.findIndex((notice) => sameSeat(notice, invitation));
+  const notices = queue.filter((notice) => !sameSeat(notice, invitation));
+  if (seen.includes(id)) return { notices, seenNotices: seen };
+  notices.splice(index < 0 ? notices.length : index, 0, late);
+  return { notices, seenNotices: [...seen, id] };
+}
+
+function sameSeat(notice: FriendNotice, seat: Pick<SeatInvitation, 'code' | 'position'>) {
+  return (
+    notice.kind === 'seat' &&
+    notice.invitation.code === seat.code &&
+    notice.invitation.position === seat.position
+  );
 }
 
 export function liveFriendNotices(
@@ -107,6 +137,7 @@ export function nextFriendNotice(
 ): FriendNotice | undefined {
   return (
     queue.find((notice) => friendNoticeId(notice) === currentId) ??
+    queue.find((notice) => notice.kind === 'too_late') ??
     queue.find((notice) => notice.kind === 'seat') ??
     queue.find((notice) => notice.kind === 'request') ??
     queue[0]
