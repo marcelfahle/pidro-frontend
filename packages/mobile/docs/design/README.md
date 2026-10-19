@@ -1,6 +1,6 @@
 # Design boards
 
-The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202), and the end-of-hand, game-over and share boards were added on 2026-10-16. The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
+The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202), and the end-of-hand, game-over and share boards were added on 2026-10-16. The Friends and New table boards were added on 2026-10-19 (epics PID-239 and PID-240). The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
 
 - `boards/<Name>.png`: what it should look like. Phone boards are at 2×, wide boards at 1×.
 - `source/<Name>.html`: the same board as plain HTML and CSS. Open it in a browser, or read it for exact sizes, offsets and colours. The shared classes are in `source/pidro-ds-v2.css`.
@@ -27,8 +27,17 @@ Initials stand in for photos on the boards. In the app the avatar is the player'
 | `Lobby-Empty` | Tables with nobody playing: four empty chairs, Start a table | Tables (PID-203) |
 | `Lobby-List` | Tables, phone portrait: rows of chairs grouped in four categories, tap an open chair to sit | Tables (PID-203) |
 | `Lobby-Landscape`, `Lobby-iPad-Portrait`, `Lobby-iPad-Landscape` | The same row in two columns (phone landscape, iPad portrait) and three (iPad landscape) | Tables (PID-203) |
-| `Create-Table` | Start a table: rules, then the seats with Open / Bot / Friend; Open flips in place to Anyone / 100+ / 1000+ | Start a table (PID-204, PID-206) |
-| `Create-Seat` | The friend sheet behind Friend on a seat | Start a table (PID-208) |
+| `Create-Table` | Superseded by `New-Table` (PID-255). Start a table: rules, then the seats with Open / Bot / Friend | Start a table (PID-204, PID-206) |
+| `Create-Seat` | Superseded by `New-Table-Seat` and `New-Table-Friends` (PID-256). The friend sheet behind Friend on a seat | Start a table (PID-208) |
+| `Friends` | The Friends tab: requests to answer on top, Online now (Join / Play), Not online, Waiting for an answer, the Classic card; action pill, ×, count badge | Friends screen (PID-248), components (PID-241, PID-242) |
+| `Friend-Sheet` | Tapping a friend: a short profile with one main button, then profile, remove, block (with in-sheet confirms) | Friend sheet (PID-249) |
+| `Friends-Add`, `Friends-Empty` | Add a friend (rows stay and say Sent) and Friends with nobody yet | Add and empty (PID-250) |
+| `Friend-Notice`, `Friend-Notices` | The notice above the tabs, and every notice: request, accepted, seat held, can't come, too late; the badge | Notices (PID-246, PID-254), notice card (PID-242) |
+| `Invite-Solo` | A seat invitation arriving during a game with bots, at the top of the table | PID-258 |
+| `New-Table`, `New-Table-Open` | New table as one screen: Your team vs Opponents, one row per seat; the same screen once opened | New table (PID-255), seat row (PID-243) |
+| `New-Table-Seat`, `New-Table-Friends` | Tapping a seat: one choice in two groups, then the full-height friend list | Seat picker (PID-256), components (PID-244) |
+| `New-Table-Landscape`, `New-Table-Landscape-Picker` | Phone landscape: the teams side by side; the picker full screen, friends in two columns | PID-257 |
+| `New-Table-iPad`, `New-Table-iPad-Landscape`, `New-Table-iPad-Picker` | iPad portrait and landscape; the picker as a centered panel | PID-257 |
 | `Hand-Made`, `Hand-Missed`, `Hand-Landscape` | After a hand: the table dims, one panel with the bid result and the point cards each team took; closes by itself | End of hand (PID-236) |
 | `Win-Reveal`, `Lose-Reveal`, `Win-Compact`, `Win-Landscape` | Game over, won and lost, on a phone, a small phone (375×667) and in landscape. iPad uses the phone layouts at 1.25×, centred | Game over (PID-237) |
 | `Win-Beats` | The win beat by beat: picture, sound and haptic, Reduce Motion, the quieter loss | Game over (PID-237) |

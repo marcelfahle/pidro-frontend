@@ -1,0 +1,112 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #FFD447;outline-offset:2px}
+:where(button.wood){padding:0;border:none;background:none;font:inherit;cursor:pointer}
+.ip-pill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;height:48px;padding:0 22px;border-radius:999px;background:rgba(139,234,255,0.1);border:1.5px solid rgba(139,234,255,0.45);color:#CFEFFF;font-family:"Nunito",sans-serif;font-weight:800;font-size:17px;cursor:pointer}
+.ip-pill.on{background:rgba(226,175,69,0.2);border-color:#E2AF45;color:#FFD447}
+.ip-row{box-sizing:border-box;display:flex;align-items:center;gap:16px;width:100%;height:80px;padding:10px 16px;border-radius:16px;background:rgba(18,74,119,0.58);border:1px solid rgba(184,225,246,0.22);color:#ffffff;font-family:"Nunito",sans-serif;text-align:left;cursor:pointer}
+.ip-row:hover{background:rgba(18,74,119,0.85)}
+.ip-row.host{cursor:default;background:rgba(7,45,82,0.5)}
+.ip-tok{position:relative;width:56px;height:56px;flex-shrink:0}
+.ip-halo{position:absolute;left:-6px;top:-6px;width:68px;height:68px;border-radius:999px;border:2px dashed #E2AF45;box-sizing:border-box}
+.ip-badge{position:absolute;right:-6px;bottom:-4px;box-sizing:border-box;min-width:26px;height:22px;padding:0 6px;border-radius:999px;background:#0A2340;border:1.5px solid #86CFEE;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:10px;color:#ffffff}
+.ip-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.ip-t{font-weight:800;font-size:19px;line-height:24px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ip-s{font-weight:700;font-size:15px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ip-meta{margin:0;font-weight:700;font-size:15px;line-height:21px;color:rgba(239,249,255,0.78)}
+.ip-scrim{position:absolute;left:0;top:0;right:0;bottom:0;width:100%;padding:0;border:none;background:rgba(2,14,30,0.62);cursor:pointer}
+.ip-opt{box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:6px 14px;border:none;border-radius:12px;background:none;color:#ffffff;font-family:"Nunito",sans-serif;text-align:left;cursor:pointer}
+.ip-opt:hover{background:rgba(139,234,255,0.08)}
+.ip-opt.on{background:rgba(226,175,69,0.12)}
+.ip-radio{box-sizing:border-box;width:24px;height:24px;border-radius:999px;border:2px solid rgba(184,225,246,0.6);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.ip-radio.on{border-color:#E2AF45}
+.ip-radio.on::after{content:"";width:12px;height:12px;border-radius:999px;background:#FFD447}
+.ip-group{display:flex;flex-direction:column;border-radius:14px;background:rgba(18,74,119,0.45);border:1px solid rgba(184,225,246,0.18);padding:4px}
+.ip-pick{box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;height:64px;padding:8px 12px;border:none;border-radius:12px;background:rgba(18,74,119,0.45);color:#ffffff;font-family:"Nunito",sans-serif;text-align:left;cursor:pointer}
+.ip-pick:hover{background:rgba(18,74,119,0.85)}
+.ip-pick.cur{box-shadow:inset 0 0 0 2px #E2AF45;background:rgba(107,73,11,0.4)}
+.ip-pick.off{opacity:0.5;cursor:default}
+.ip-dot{position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:999px;border:2px solid #0A2340;box-sizing:border-box}
+.ip-x{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:999px;border:none;background:rgba(139,234,255,0.1);color:#CFEFFF;cursor:pointer;flex-shrink:0}
+</style>
+</head><body>
+
+<main class="felt" style="width: 1194px; height: 834px; box-sizing: border-box; position: relative">
+<div style="position: absolute; left: 97px; top: 48px; width: 1000px; bottom: 40px; display: flex; flex-direction: column; gap: 18px">
+
+<header style="display: flex; align-items: center; gap: 14px">
+<a class="glass" href="#" aria-label="Back to Tables" style="width: 48px; height: 48px; flex-shrink: 0"><span class="face"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></span></a>
+<h1 class="display" style="font-size: 30px; line-height: 36px; flex: 1 1 auto">New table</h1>
+<div role="radiogroup" aria-label="Rules" style="display: flex; gap: 8px">
+
+<button type="button" role="radio" aria-checked="true" class="ip-pill on">Finnish</button>
+
+<button type="button" role="radio" aria-checked="false" class="ip-pill">Louisiana</button>
+
+</div>
+</header>
+<p class="ip-meta" style="text-align: right; margin-top: -10px">Trumps only · bids from 6</p>
+
+<div style="display: flex; flex-direction: row; gap: 24px; align-items: flex-start; margin-top: 10px">
+<section aria-label="Your team" style="flex: 1 1 0; display: flex; flex-direction: column; gap: 10px">
+<p class="eyebrow" style="padding: 0 4px; color: #FFD447">Your team</p>
+<div class="ip-row host"><span class="ip-tok"><span class="ring" style="width: 56px; height: 56px; padding: 3px"><span class="face-initial" style="font-size: 24px">B</span></span></span><span class="ip-txt"><span class="ip-t" style="color: #FFD447">You</span><span class="ip-s" style="color: #FFD447">Host</span></span></div>
+
+<button type="button" class="ip-row" aria-label="Partner: Maija, Invited when you open the table. Change">
+<span class="ip-tok">
+
+
+<span class="ip-halo" aria-hidden="true"></span><span class="ring" style="width: 56px; height: 56px; padding: 3px; opacity: 0.6"><span class="face-initial" style="font-size: 24px">M</span></span>
+
+</span>
+<span class="ip-txt"><span class="ip-t" style="color: #FFD447">Maija</span><span class="ip-s" style="color: #FFD447">Invited when you open the table</span></span>
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+
+</section>
+
+<span class="display" aria-hidden="true" style="align-self: center; font-size: 22px; line-height: 26px; color: #FFD447; padding: 96px 0 0">vs</span>
+
+<section aria-label="Opponents" style="flex: 1 1 0; display: flex; flex-direction: column; gap: 10px">
+<p class="eyebrow" style="padding: 0 4px">Opponents</p>
+
+<button type="button" class="ip-row" aria-label="Opponent: Open seat, 100+ games played. Change">
+<span class="ip-tok">
+<span class="chair-open" style="width: 56px; height: 56px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></span>
+
+
+<span class="ip-badge">100</span>
+</span>
+<span class="ip-txt"><span class="ip-t" style="color: #8beaff">Open seat</span><span class="ip-s" style="color: rgba(239, 249, 255, 0.75)">100+ games played</span></span>
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+
+<button type="button" class="ip-row" aria-label="Opponent: Bot, Plays right away. Change">
+<span class="ip-tok">
+
+<span class="ring glass-ring" style="width: 56px; height: 56px; padding: 3px"><span class="face-initial bot"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="8" width="14" height="11" rx="3"></rect><path d="M12 8V5.5"></path><circle cx="12" cy="4.2" r="1.2"></circle><path d="M9.5 12.5v2M14.5 12.5v2"></path></svg></span></span>
+
+
+</span>
+<span class="ip-txt"><span class="ip-t" style="color: #ffffff">Bot</span><span class="ip-s" style="color: rgba(239, 249, 255, 0.75)">Plays right away</span></span>
+<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+
+</section>
+</div>
+
+<span style="flex-grow: 1"></span>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 10px">
+<button type="button" class="wood" style="width: 420px; height: 66px"><span class="face" style="font-size: 25px">Open the table</span></button>
+<p class="ip-meta" style="text-align: center">Open seats are listed in Tables. Maija gets an invitation.</p>
+</div>
+</div>
+
+
+</main>
+
+</body></html>

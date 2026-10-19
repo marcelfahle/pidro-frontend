@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #FFD447;outline-offset:2px}
+:where(button.wood,button.glass){padding:0;border:none;background:none;font:inherit;cursor:pointer}
+.el-pill{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 14px;border-radius:999px;background:rgba(139,234,255,0.1);border:1.5px solid rgba(139,234,255,0.45);color:#CFEFFF;font-family:"Nunito",sans-serif;font-weight:800;font-size:15px;white-space:nowrap;cursor:pointer}
+.el-pill:hover{background:rgba(139,234,255,0.2)}
+.el-pill.on{background:rgba(226,175,69,0.2);border-color:#E2AF45;color:#FFD447}
+.el-row{box-sizing:border-box;display:flex;align-items:center;gap:14px;width:100%;min-height:70px;padding:10px 12px;border-radius:14px;background:rgba(18,74,119,0.58);border:1px solid rgba(184,225,246,0.22);color:#ffffff;font-family:"Nunito",sans-serif;text-align:left;cursor:pointer}
+.el-row:hover{background:rgba(18,74,119,0.85);border-color:rgba(184,225,246,0.45)}
+.el-row.host{cursor:default;background:rgba(7,45,82,0.5)}
+.el-tok{position:relative;width:48px;height:48px;flex-shrink:0}
+.el-halo{position:absolute;left:-5px;top:-5px;width:58px;height:58px;border-radius:999px;border:2px dashed #E2AF45;box-sizing:border-box}
+.el-badge{position:absolute;right:-5px;bottom:-4px;box-sizing:border-box;min-width:22px;height:22px;padding:0 5px;border-radius:999px;background:#0A2340;border:1.5px solid #86CFEE;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:9px;color:#ffffff}
+.el-badge.gold{border-color:#E2AF45}
+.el-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 auto}
+.el-t{font-weight:800;font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.el-s{font-weight:700;font-size:14px;line-height:18px}
+.el-meta{margin:0;font-weight:700;font-size:13px;line-height:18px;color:rgba(239,249,255,0.75)}
+.el-vs{display:flex;align-items:center;gap:12px;padding:2px 8px}
+.el-vs span.l{height:1px;flex:1;background:linear-gradient(90deg,rgba(226,175,69,0),rgba(226,175,69,0.7))}
+.el-vs span.r{height:1px;flex:1;background:linear-gradient(90deg,rgba(226,175,69,0.7),rgba(226,175,69,0))}
+.el-scrim{position:absolute;left:0;top:0;right:0;bottom:0;width:100%;padding:0;border:none;background:rgba(2,14,30,0.62);cursor:pointer}
+.el-opt{box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:6px 14px 6px 12px;border:none;border-radius:12px;background:none;color:#ffffff;font-family:"Nunito",sans-serif;text-align:left;cursor:pointer}
+.el-opt:hover{background:rgba(139,234,255,0.08)}
+.el-opt.on{background:rgba(226,175,69,0.12)}
+.el-oi{box-sizing:border-box;width:36px;height:36px;border-radius:999px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(139,234,255,0.12);color:#CFEFFF}
+.el-radio{box-sizing:border-box;width:24px;height:24px;border-radius:999px;border:2px solid rgba(184,225,246,0.6);flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.el-radio.on{border-color:#E2AF45}
+.el-radio.on::after{content:"";width:12px;height:12px;border-radius:999px;background:#FFD447}
+.el-group{display:flex;flex-direction:column;border-radius:14px;background:rgba(18,74,119,0.45);border:1px solid rgba(184,225,246,0.18);padding:4px}
+.el-sep{height:1px;margin:0 12px;background:rgba(184,225,246,0.14)}
+.el-pick{box-sizing:border-box;display:flex;align-items:center;gap:12px;width:100%;min-height:62px;padding:8px 12px;border:none;border-radius:12px;background:none;color:#ffffff;font-family:"Nunito",sans-serif;text-align:left;cursor:pointer;flex-shrink:0}
+.el-pick:hover{background:rgba(139,234,255,0.08)}
+.el-pick.off{opacity:0.5;cursor:default}
+.el-pick.cur{background:rgba(226,175,69,0.14)}
+.el-dot{position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:999px;border:2px solid #0A2340;box-sizing:border-box}
+.el-dot.online{background:#4fd37a}.el-dot.table{background:#FFD447}
+.el-fs{font-weight:700;font-size:13px;line-height:17px;color:rgba(239,249,255,0.75)}
+.el-fs.online{color:#92e6b2}.el-fs.table{color:#FFD447}
+.el-back{box-sizing:border-box;display:inline-flex;align-items:center;gap:4px;height:44px;padding:0 10px 0 4px;border:none;background:none;border-radius:10px;color:#8beaff;font-family:"Nunito",sans-serif;font-weight:800;font-size:15px;cursor:pointer}
+</style>
+</head><body>
+
+<main class="felt" style="width: 390px; height: 844px; box-sizing: border-box; padding: 59px 20px 34px; display: flex; flex-direction: column; gap: 12px; position: relative">
+
+<header style="display: flex; align-items: center; gap: 12px">
+<a class="glass" href="#" aria-label="Leave the table" style="width: 44px; height: 44px; flex-shrink: 0"><span class="face"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></span></a>
+<div style="flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px">
+<h1 class="display" style="font-size: 24px; line-height: 30px">Your table</h1>
+<p class="el-meta">Listed in Tables · Finnish</p>
+</div>
+</header>
+
+
+
+<section aria-label="Your team" style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px">
+<p class="eyebrow" style="padding: 0 4px; color: #FFD447">Your team</p>
+<div class="el-row host">
+<span class="el-tok"><span class="ring" style="width: 48px; height: 48px; padding: 2.5px"><span class="face-initial" style="font-size: 21px">B</span></span></span>
+<span class="el-txt"><span class="el-t" style="color: #FFD447">You</span><span class="el-s" style="color: #FFD447">Host</span></span>
+</div>
+
+<button type="button" class="el-row" aria-label="Partner: Maija, Invited · waiting for an answer. Change">
+<span class="el-tok">
+
+
+<span class="el-halo" aria-hidden="true"></span><span class="ring" style="width: 48px; height: 48px; padding: 2.5px; opacity: 0.6"><span class="face-initial" style="font-size: 21px">M</span></span>
+
+</span>
+<span class="el-txt"><span class="el-t" style="color: #FFD447">Maija</span><span class="el-s" style="color: #FFD447">Invited · waiting for an answer</span></span>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+
+</section>
+
+<div class="el-vs" aria-hidden="true"><span class="l"></span><span class="display" style="font-size: 18px; line-height: 22px; color: #FFD447">vs</span><span class="r"></span></div>
+
+<section aria-label="Opponents" style="display: flex; flex-direction: column; gap: 8px">
+<p class="eyebrow" style="padding: 0 4px">Opponents</p>
+
+<button type="button" class="el-row" aria-label="Opponent: Kalle, Ready. Change">
+<span class="el-tok">
+
+
+<span class="ring glass-ring" style="width: 48px; height: 48px; padding: 2.5px; opacity: 1"><span class="face-initial" style="font-size: 21px">K</span></span>
+
+</span>
+<span class="el-txt"><span class="el-t" style="color: #ffffff">Kalle</span><span class="el-s" style="color: #92e6b2">Ready</span></span>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+
+<button type="button" class="el-row" aria-label="Opponent: Open seat, Waiting… · password 4821. Change">
+<span class="el-tok">
+<span class="chair-open" style="width: 48px; height: 48px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 6v12M6 12h12"></path></svg></span>
+
+
+<span class="el-badge gold"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#FFD447" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg></span>
+</span>
+<span class="el-txt"><span class="el-t" style="color: #8beaff">Open seat</span><span class="el-s" style="color: #FFD447">Waiting… · password 4821</span></span>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0"><path d="M9 5l7 7-7 7"></path></svg>
+</button>
+
+</section>
+
+<span style="flex-grow: 1"></span>
+
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+
+<a class="glass" href="#" style="width: 350px; height: 52px"><span class="face" style="font-size: 16px">Share the table link</span></a>
+<p class="el-meta" style="text-align: center">Waiting for Maija. Tap a seat to change it.</p>
+</div>
+
+
+</main>
+
+</body></html>
