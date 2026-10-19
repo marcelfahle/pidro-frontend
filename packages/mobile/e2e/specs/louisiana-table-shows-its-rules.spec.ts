@@ -11,7 +11,8 @@ async function createLouisianaTable(page: Page, token: string) {
     .getByRole('button', { name: 'Start a table', exact: true })
     .first()
     .click();
-  const create = page.getByTestId('create-room-window');
+  await expect(page).toHaveURL(/\/new-table$/);
+  const create = page.getByTestId('new-table-screen');
   const rules = create.getByRole('radiogroup', { name: 'Rules', exact: true });
   await rules.getByRole('radio', { name: 'Louisiana', exact: true }).click();
   await expect(rules.getByRole('radio', { name: 'Louisiana', exact: true })).toHaveAttribute(

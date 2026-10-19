@@ -13,6 +13,10 @@ export type SeatView = {
   min_games?: number;
   /** The table's password, when the seat asks for one. */
   password?: string | null;
+  passwordRequired?: boolean;
+  host?: boolean;
+  ready?: boolean;
+  editable?: boolean;
   held_for?: HeldPlayer | null;
   presence?: FriendPlayer['presence'] | null;
   player?: (Pick<Player, 'username'> & Partial<Player>) | null;
@@ -43,14 +47,17 @@ export function seatRow(seat: SeatView): SeatRowWords {
     ...words,
     // Open seats are cyan; names on your team are gold.
     nameTone: words.token.kind === 'open' ? 'cyan' : seat.team === 'opponent' ? 'default' : 'gold',
-    tappable: !you,
-    label: you
-      ? t('social.host_you')
-      : t('seat_row.label', {
-          seat: t(seat.team === 'partner' ? 'social.partner' : 'social.opponent'),
-          name: words.name,
-          status: words.status,
-        }),
+    tappable: !you && seat.editable !== false,
+    label:
+      seat.editable === false
+        ? `${words.name}, ${words.status}`
+        : you
+          ? t('social.host_you')
+          : t('seat_row.label', {
+              seat: t(seat.team === 'partner' ? 'social.partner' : 'social.opponent'),
+              name: words.name,
+              status: words.status,
+            }),
   };
 }
 
@@ -60,8 +67,10 @@ function describe(seat: SeatView): Omit<SeatRowWords, 'nameTone' | 'tappable' | 
     return {
       token: { kind: 'player', uri: player?.avatar_url ?? null },
       name: t('social.you'),
-      status: t('social.host'),
-      statusTone: 'gold',
+      status: t(
+        seat.host !== false ? 'social.host' : seat.ready ? 'seat_row.ready' : 'game.not_ready'
+      ),
+      statusTone: seat.host !== false ? 'gold' : seat.ready ? 'ready' : 'soft',
     };
   if (player) {
     const bot = !!player.is_bot || player.id?.startsWith('bot_');
@@ -70,8 +79,8 @@ function describe(seat: SeatView): Omit<SeatRowWords, 'nameTone' | 'tappable' | 
         ? { kind: 'bot', persona: player.bot_persona ?? null }
         : { kind: 'player', uri: player.avatar_url ?? null },
       name: seatName(player, t('social.player'), bot),
-      status: t('seat_row.ready'),
-      statusTone: 'ready',
+      status: t(seat.ready === false ? 'game.not_ready' : 'seat_row.ready'),
+      statusTone: seat.ready === false ? 'soft' : 'ready',
     };
   }
   if (seat.type === 'ai')
@@ -93,28 +102,31 @@ function describe(seat: SeatView): Omit<SeatRowWords, 'nameTone' | 'tappable' | 
       statusTone: 'gold',
     };
   const games = seat.min_games ?? 0;
+  const locked = !!password || !!seat.passwordRequired;
   return {
     token: {
       kind: 'open',
-      badge: password
+      badge: locked
         ? null
         : games >= 1000
           ? `${formatNumber(games / 1000)}k`
           : games > 0
             ? formatNumber(games)
             : null,
-      locked: !!password,
+      locked,
     },
     name: t('seat_row.open'),
     status: seat.opened
       ? password
         ? t('seat_row.waiting_password', { code: password })
         : t('seat_row.waiting')
-      : password
-        ? t('seat_row.password', { code: password })
+      : locked
+        ? password
+          ? t('seat_row.password', { code: password })
+          : t('new_table.password')
         : games > 0
           ? t('seat_row.games', { number: formatNumber(games, { useGrouping: false }) })
           : t('seat_row.anyone'),
-    statusTone: password ? 'gold' : 'soft',
+    statusTone: locked ? 'gold' : 'soft',
   };
 }

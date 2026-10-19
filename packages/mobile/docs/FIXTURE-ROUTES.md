@@ -74,12 +74,12 @@ query parameters. `locale-sv-friends-*` checks list/empty/loading/error, add-bac
 recent/search results, profile/removal and the guest-save gate alongside the
 existing English Friends cases.
 
-Friend seats use `/ui-dev?state=create&fixture=sheet-empty|sheet-friends|sheet-picked|sheet-assigned`
-and `fixture=invited` for the committed draft row. `/lobby?fixture=held` and
+New table seats use `/ui-dev?state=new-table&fixture=picker|friends` for PID-244's
+choice list and deeper friend picker. `/lobby?fixture=held` and
 `/table-dev?phase=waiting-host&fixture=held` show server-held seats. Invitation rows
 stack at `/home?fixture=invitations` (including the Friends count badge) and
 `/lobby?fixture=invitations`. The old `table-invite` fixture now shows only the
-seat-bound share link, without a name or seat-preference form.
+table share link (Copy/Share), without a position or seat-preference form.
 
 Grammar cases `locale-{en,sv}-settings-{system,en,sv}` and
 `locale-{en,sv}-{waiting,bidding,trump,hand-selection,game-over,dealer,playing}`
@@ -107,10 +107,10 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 
 | Value              | Shows                             | testID                  |
 | ------------------ | --------------------------------- | ----------------------- |
-| `waiting`          | WaitingTable, 3 seated + 1 free   | `waiting-table`         |
-| `waiting-host`     | …with host controls (Manage/Lock) | `waiting-table`         |
+| `waiting`          | Shared new-table team list, 3 seated + 1 free | `waiting-table` |
+| `waiting-host`     | Host team list; tap a seat to invite or kick, no Manage/Lock panel | `waiting-table` |
 | `ready`            | Full table, ready-up flow         | `waiting-table`         |
-| `ready-host`       | Full table + host controls        | `waiting-table`         |
+| `ready-host`       | Full team list; occupied rows open kick confirmation | `waiting-table` |
 | `ready-solo`       | You + three ready bots            | `waiting-table`         |
 | `dealer_selection` | Skia table, dealer cut cards      | `seat-north`            |
 | `playing`          | Skia table + trick overlay        | `seat-north`            |
@@ -204,8 +204,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | URL                                                                     | Shows                                                                                                                                                                                       |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ui-dev?state=components`                                              | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow, friend rows, info cards and notices (`ui-friend-rows-panel`, `ui-friend-notices-panel`). testID `ui-foundation-panel` |
-| `/ui-dev?state=create`                                                  | CreateRoomModal over the gallery. testID `create-room-window`                                                                                                                               |
-| `/ui-dev?state=create&fixture=default\|open\|requirement\|bots\|friend` | Inline creation: defaults, Open question, 100+ picked, all bots, Friend selected. testID `create-room-window`; editable rows `create-seat_3`, `create-seat_2`, `create-seat_4`.             |
+| `/ui-dev?state=new-table&fixture=setup\|partner\|bots\|opened\|ready\|louisiana\|requirement\|password\|picker\|friends\|guest` | Shared setup/live team list. Setup testID `new-table-screen`; live (`opened`, `ready`, `guest`) `waiting-table`. Rows `new-table-seat-north/south/east/west`; south is Partner, east/west opponents. `guest` is a nonhost, not an anonymous account. |
 | `/ui-dev?state=progression`                                             | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
 | `/ui-dev?state=avatars`                                                 | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 | `/ui-dev?state=seat-rows&fixture=setup\|setup-open\|opened\|opened-more` | New table seat rows (PID-243): every state before and after the table opens, four seats at a time; landscape puts the teams side by side. testID `ui-seat-rows-panel` |
@@ -227,30 +226,35 @@ state. `groupPickerFriends` only groups and name-filters those entries. Neither
 list fetches or reads server presence. The container calls the selection callback
 then `onClose`; a deeper row opens the full-height friend page on portrait phones.
 Use that row's subtitle for the chosen friend's name, and remount the container
-for a new presentation. Existing creation and invitation screens are unchanged.
+for a new presentation. The new-table screen consumes these same primitives.
 
 `/ui-dev?state=lobby-seats` shows lobby seat requirement samples using the same
 seat payload as the live lobby.
 `node scripts/verify-lobby.mjs` checks the real lobby with mocked API responses at
-four phone sizes, including direct seat joins, search, create, error states, the
+six viewport sizes, including direct seat joins, search, create, error states, the
 empty Tables screen (start a table, join with a code, the quick game Home also starts)
 and the badge gallery. Captures go to `/tmp/pidro-lobby` (or `UI_SHOT_DIR`).
 
-`node scripts/verify-create-room.mjs` checks creation at the same four phone sizes:
-the default table name, the seat sheet (open, bot, invite a friend), partner-to-south
-mapping, an invite seat sent as an open seat, reset on dismissal, keyboard Done,
-touch targets and horizontal containment. API responses are mocked; captures go
-to `/tmp/pidro-create` (or `UI_SHOT_DIR`). These browser checks do not verify native
-keyboard avoidance or safe-area behavior. `/ui-dev?state=create` is interactive,
-but its Create and Back callbacks intentionally do nothing.
-
-`/ui-dev?state=create-safe-area&safeArea=island` tests the real creation form with
-synthetic **browser-only** insets. Presets: `island`, `island-left`, `island-right`,
-`legacy`, `android-buttons`, `android-right`, `android-gesture`. The creation script
-checks all of these plus a reduced-height input-entry case. These numbers are test
-inputs, not a device database or production padding. Native opens the real modal
-without overrides. The unit test `create-modal-safe-area.test.mjs` separately guards
-provider placement inside that native modal; neither test replaces device testing.
+`node scripts/verify-create-room.mjs` covers all eleven new-table fixtures at
+390×844, 375×667, 844×390 and 768×1024. Grammar case names are `new-table-setup`,
+`new-table-partner`, `new-table-bots`, `new-table-opened`, `new-table-ready`,
+`new-table-louisiana`, `new-table-requirement`, `new-table-password`,
+`new-table-picker`, `new-table-friends` and `new-table-guest`.
+The root is a centered column (maxWidth 436); only phone landscape scrolls.
+Setup seats are all open, with Finnish/Louisiana ActionPill radios. Footer actions
+are Open the table, Start the game (three bots), Share the table link (opened),
+and I'm ready (full). The picker has five subtitle-named radios: Anyone, Bot,
+100+ games played, 1000+ games played, With password, plus the deeper A friend row.
+Live vacant seats offer A friend/Bot; held seats offer Anyone. Occupied rows open
+kick confirmation, never move/lock controls. `waiting-rule-set`,
+`waiting-rules-menu` and the Louisiana explainer remain supported.
+The creation script also drives the real lobby entry with mocked API responses,
+checks all-open defaults, Partner → `seat_3`, requirement payloads and retry after
+a refused creation. Locale waiting cases now use `state=new-table&fixture=opened`.
+The old `create-*`, `friend-seat-*` and `create-safe-area` fixtures are retired,
+including the modal-only safe-area structure test. Captures go to
+`/tmp/pidro-create` (or `UI_SHOT_DIR`). Browser checks do not certify native safe
+areas or keyboard avoidance; responsive layout refinements belong to PID-257.
 
 ## Shell friend notices
 
@@ -420,10 +424,12 @@ Authenticated fixtures: `empty`, `filled`, `loading`, `error`. The filled list
 has no presence labels; Unblock is inert in fixtures. Grammar cases are
 `blocked-empty`, `blocked-filled`, `blocked-loading`, and `blocked-error`.
 `friends-block` opens the confirmation from a friend profile. The
-`block-profile-playing`, `block-profile-waiting`, and `block-profile-game_over`
+`block-profile-playing` and `block-profile-game_over`
 cases open a human profile through `/table-dev?phase=<phase>&role=player`, mocking
 only the profile response. `block-profile-guest` checks that guests see no Block
 action in the post-game sheet.
+The old waiting profile-entry case is retired: occupied new-table rows open kick
+confirmation, not a profile.
 
 ## Rule-set fixtures
 
@@ -434,7 +440,7 @@ with an authenticated fixture.
 
 | URL                                                            | Shows                                                            |
 | -------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `/ui-dev?state=create&fixture=finnish` / `fixture=louisiana`   | Selected creation rules and description                          |
+| `/ui-dev?state=new-table&fixture=setup` / `fixture=louisiana` | Selected setup rule radios |
 | `/ui-dev?state=settings&fixture=finnish` / `fixture=louisiana` | Preferred rules selector                                         |
 | `/join/7KQ4M2XB?fixture=finnish` / `fixture=louisiana`         | Rules badge in guest preview or authenticated confirmation       |
 | `/join/7KQ4M2XB?source=typed&fixture=louisiana`                | Manual-code arrival at the same confirmation                     |
@@ -450,13 +456,14 @@ The actual `/join-code` form routes to `/join/7KQ4M2XB?source=typed`;
 confirmation as an invite link, not a separate manual-code confirmation screen.
 `join-code-louisiana-confirm` exercises that form with a mocked Louisiana preview.
 
-Grammar cases: `create-table-finnish`, `create-table-louisiana`,
+Grammar cases: `new-table-setup`, `new-table-louisiana`,
 `settings-finnish`, `settings-louisiana`,
 `join-finnish-preview`, `join-finnish-confirm`, `join-louisiana-preview`,
 `join-louisiana-confirm`, `join-louisiana-manual-confirm`, `join-code-louisiana-confirm`,
 `table-finnish`, `table-louisiana`, `table-louisiana-bidding`, `table-louisiana-explainer`, `table-louisiana-game-over`,
 `table-louisiana-waiting`, `table-louisiana-waiting-explainer`.
-All run at 390×844, 844×390 and 667×375. Finnish playing, waiting and
+New-table cases use the four sizes documented above; other rule cases run at
+390×844, 844×390 and 667×375. Finnish playing, waiting and
 game-over cases also check badges; playing/waiting reopen the rules from the menu
 and capture an additional `-rules-reopened.png` screenshot.
 
@@ -474,7 +481,7 @@ UI_SHOT_DIR=/tmp/shots bun run test:ui           # where screenshots land
 UI_PARTITION=1/5 UI_REPORT_PATH=/tmp/ui-report.json bun run test:ui  # one CI-sized batch
 node scripts/verify-ui-grammar.mjs --list        # selected viewport/case IDs, no browser
 MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-seat-decisions.mjs
-node scripts/verify-waiting-seats.mjs   # 6 viewports incl. safeArea variants
+node scripts/verify-waiting-seats.mjs   # 4 target sizes; shared list, readiness, kick and live choices
 node scripts/verify-profile.mjs
 node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/bidding timing, reconnect, reduced motion
 ```
@@ -494,8 +501,8 @@ cases so future tuning can use measured costs.
 
 `UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby-list` `lobby-empty` `lobby-rejoin` `lobby-open` `lobby-substitute` `lobby-watch` `lobby-search-empty` `login` `register` `register-password`
 `register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
-`ui-components` `create-table` `create-table-open` `create-table-requirement` `create-table-bots` `create-table-friend` `table-waiting` `table-ready` `table-ready-host`
-`table-host-controls` `table-invite` `table-waiting-notice` `table-playing` `table-notice`
+`ui-components` `new-table-setup` `new-table-partner` `new-table-bots` `new-table-opened` `new-table-ready` `new-table-louisiana` `new-table-requirement` `new-table-password` `new-table-picker` `new-table-friends` `new-table-guest` `table-waiting` `table-ready` `table-ready-host`
+`table-waiting-host` `table-invite` `table-waiting-notice` `table-playing` `table-notice`
 `table-reconnecting-banner` `table-dealer-selection`
 `table-completed-trick` `table-bidding` `table-trump` `table-hand-selection`
 `table-game-over`

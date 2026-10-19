@@ -11,7 +11,7 @@ import { FixtureInsets } from '@/components/dev/FixtureInsets';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Redirect, useLocalSearchParams } from 'expo-router';
-import { WaitingTable } from '@/components/game/WaitingTable';
+import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { BOT_CREW } from '@/features/lobby/fixtures';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
@@ -441,7 +441,6 @@ function TableDevHarness() {
   );
   const [waitingPositions, setWaitingPositions] = useState<Room['positions']>();
   const [inviteOpen, setInviteOpen] = useState(params.invite === 'true');
-  const [waitingLocked, setWaitingLocked] = useState(false);
 
   if (params.deal === 'hand') {
     applyTimingParams(params as Record<string, string | undefined>);
@@ -534,29 +533,34 @@ function TableDevHarness() {
     let bot = 0;
     const fixtureRoom = {
       ...waitingRoom,
-      locked: waitingLocked,
+      host_id: `p-${viewerPosition}`,
       positions: waitingPositions ?? waitingRoom.positions,
       seats: waitingRoom.seats?.map((seat) =>
-        phase === 'ready-solo' && seat.player
-          ? {
-              ...seat,
-              player:
-                seat.position === viewerPosition
-                  ? { id: seat.player.id, username: 'Alex' }
-                  : { id: seat.player.id, is_bot: true, ...BOT_CREW[bot++ % 3] },
-            }
-          : params.names === 'long' && seat.player?.id === 'p-west'
-            ? { ...seat, player: { ...seat.player, username: 'Alexandria the Long-Named Player' } }
-            : params.fixture === 'held' && seat.position === 'east'
-              ? { ...seat, held_for: { user_id: 'nora', display_name: 'Nora', avatar_url: null } }
-              : seat
+        waitingPositions && seat.position && !waitingPositions[seat.position]
+          ? { ...seat, status: 'free' as const, player: null }
+          : phase === 'ready-solo' && seat.player
+            ? {
+                ...seat,
+                player:
+                  seat.position === viewerPosition
+                    ? { id: seat.player.id, username: 'Alex' }
+                    : { id: seat.player.id, is_bot: true, ...BOT_CREW[bot++ % 3] },
+              }
+            : params.names === 'long' && seat.player?.id === 'p-west'
+              ? {
+                  ...seat,
+                  player: { ...seat.player, username: 'Alexandria the Long-Named Player' },
+                }
+              : params.fixture === 'held' && seat.position === 'east'
+                ? { ...seat, held_for: { user_id: 'nora', display_name: 'Nora', avatar_url: null } }
+                : seat
       ),
     };
     return (
       <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#081422' }}>
         <SafeAreaProvider>
           <FixtureInsets preset={params.safeArea}>
-            <WaitingTable
+            <NewTableScreen
               room={
                 fixture
                   ? {
@@ -584,17 +588,6 @@ function TableDevHarness() {
               onLeave={() => {}}
               canManage={hostControls}
               onOpenInvite={() => setInviteOpen(true)}
-              onToggleLock={() => setWaitingLocked((locked) => !locked)}
-              onMovePlayer={(playerId, target) => {
-                const positions = { ...fixtureRoom.positions! };
-                const source = (Object.keys(positions) as Position[]).find(
-                  (position) => positions[position] === playerId
-                )!;
-                positions[source] = positions[target];
-                positions[target] = playerId;
-                setWaitingPositions(positions);
-                setReadyPlayers(['north']);
-              }}
               onKickPlayer={(position) => {
                 setWaitingPositions({ ...fixtureRoom.positions!, [position]: null });
                 setReadyPlayers(['north']);
@@ -616,7 +609,6 @@ function TableDevHarness() {
           </FixtureInsets>
           {hostControls && inviteOpen ? (
             <InviteLinkModal
-              position="south"
               roomCode={WAITING_ROOM.code}
               onClose={() => setInviteOpen(false)}
               fixture={INVITE_FIXTURE}

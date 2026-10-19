@@ -30,9 +30,8 @@ import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
 import { AuthSheet } from '@/components/auth/AuthSheet';
-import { WaitingTable } from '@/components/game/WaitingTable';
+import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
-import { FriendSeatSheet } from '@/components/invites/FriendSeatSheet';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
@@ -40,12 +39,7 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
-import {
-  assignedRoomPlayerIds,
-  canManageRoom,
-  firstUnfilledSeat,
-  friendSeatTitle,
-} from '@/features/invites/hostControls';
+import { canManageRoom } from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
 import { readingTimeMs } from '@/features/game/readingTime';
 import { t, useTranslation } from '@/i18n';
@@ -173,8 +167,7 @@ export default function GameScreen() {
     code,
     origin: originParam,
     fixture,
-    invite,
-  } = useLocalSearchParams<{ code: string; origin?: string; fixture?: string; invite?: string }>();
+  } = useLocalSearchParams<{ code: string; origin?: string; fixture?: string }>();
   const origin = parseGameOrigin(originParam);
   const exitPath = gameExitPath(origin);
   const router = useRouter();
@@ -235,6 +228,13 @@ export default function GameScreen() {
   const room =
     rooms.find((candidate) => candidate.code === code) ??
     (roomLookup?.roomCode === code ? roomLookup.room : undefined);
+  // Public refreshes omit the host's password. Keep only the private server answer,
+  // scoped to this room and host, for the lifetime of this screen.
+  const [hostPassword, setHostPassword] = useState(() =>
+    room?.seat_password && room.host_id === youPlayerId
+      ? { code: room.code, host: youPlayerId, value: room.seat_password }
+      : null
+  );
 
   useEffect(() => {
     if (!room) return;
@@ -248,13 +248,7 @@ export default function GameScreen() {
     progressionResult?.roomCode === code ? progressionResult.summary : null;
   const [restoreFailureCode, setRestoreFailureCode] = useState<string | null>(null);
   const [restoreAttempt, setRestoreAttempt] = useState(0);
-  const [inviteSeat, setInviteSeat] = useState<Position | null>(null);
-  const [shareSeats, setShareSeats] = useState<Position[]>(() =>
-    (invite ?? '')
-      .split(',')
-      .filter((seat): seat is Position => ['north', 'east', 'south', 'west'].includes(seat))
-  );
-  const shareSeat = shareSeats[0];
+  const [shareOpen, setShareOpen] = useState(false);
   const [controlsBusy, setControlsBusy] = useState(false);
   const controlsBusyRef = useRef(false);
   const [joiningName, setJoiningName] = useState<string | null>(null);
@@ -284,9 +278,15 @@ export default function GameScreen() {
         return;
       }
       setRoomLookup({ roomCode: requestedCode, room: fetchedRoom });
+      if (fetchedRoom.seat_password && fetchedRoom.host_id === youPlayerId)
+        setHostPassword({
+          code: requestedCode,
+          host: youPlayerId,
+          value: fetchedRoom.seat_password,
+        });
       updateRoom(fetchedRoom);
     },
-    [updateRoom]
+    [updateRoom, youPlayerId]
   );
 
   // Hide status bar when entering game
@@ -593,25 +593,12 @@ export default function GameScreen() {
     [applyRoomSnapshot, handleSeatEvent]
   );
 
-  const handleToggleLock = useCallback(() => {
-    if (!room || !canManage) return;
-    void runRoomControl(() => lobbyApi.setRoomLocked(room.code, !room.locked));
-  }, [canManage, room, runRoomControl]);
-
-  const handleMovePlayer = useCallback(
-    (userId: string, position: Position) => {
-      if (!room || !canManage) return;
-      void runRoomControl(() => lobbyApi.movePlayer(room.code, position, userId));
-    },
-    [canManage, room, runRoomControl]
-  );
-
   const handleSeatBot = useCallback(
     (position: Position) => {
-      if (!room) return;
+      if (!room || !canManage) return;
       void runRoomControl(() => lobbyApi.seatBot(room.code, position));
     },
-    [room, runRoomControl]
+    [canManage, room, runRoomControl]
   );
 
   const handleKickPlayer = useCallback(
@@ -785,8 +772,16 @@ export default function GameScreen() {
   const waitingRoom = readiness ? roomWithReadiness(room, readiness) : room;
   return (
     <>
-      <WaitingTable
-        room={waitingRoom}
+      <NewTableScreen
+        room={{
+          ...waitingRoom,
+          seat_password:
+            hostPassword?.code === code &&
+            hostPassword.host === youPlayerId &&
+            room.host_id === youPlayerId
+              ? hostPassword.value
+              : undefined,
+        }}
         youPlayerId={role === 'player' ? youPlayerId : ''}
         isSpectator={role === 'spectator'}
         readyPlayers={readiness?.ready_players}
@@ -796,43 +791,21 @@ export default function GameScreen() {
         canManage={canManage && origin !== 'single-player'}
         joiningName={joiningName}
         controlsBusy={controlsBusy}
-        onOpenInvite={() => setInviteSeat(firstUnfilledSeat(waitingRoom) ?? null)}
-        onToggleLock={handleToggleLock}
-        onMovePlayer={handleMovePlayer}
+        onOpenInvite={() => setShareOpen(true)}
+        onHoldSeat={(position, friend) => {
+          if (canManage)
+            void runRoomControl(() => lobbyApi.holdSeat(room.code, position, friend.user_id));
+        }}
+        onReleaseHold={(position) => {
+          if (canManage) void runRoomControl(() => lobbyApi.releaseHold(room.code, position));
+        }}
         onKickPlayer={handleKickPlayer}
         onSeatBot={handleSeatBot}
         notice={notice}
         onDismissNotice={dismissNotice}
       />
-      {canManage && inviteSeat ? (
-        <FriendSeatSheet
-          key={`${room.code}-${inviteSeat}`}
-          title={friendSeatTitle(waitingRoom, inviteSeat)}
-          unavailableIds={assignedRoomPlayerIds(waitingRoom)}
-          onClose={() => setInviteSeat(null)}
-          onInvite={async (friend) => {
-            roomRequestGenerationRef.current += 1;
-            const updated = await lobbyApi.holdSeat(room.code, inviteSeat, friend.user_id);
-            applyRoomSnapshot(room.code, ++roomRequestGenerationRef.current, updated);
-            setInviteSeat(null);
-          }}
-          onShare={() => {
-            setShareSeats([inviteSeat]);
-            setInviteSeat(null);
-          }}
-          onAddFriends={() => {
-            setInviteSeat(null);
-            router.push('/friends');
-          }}
-        />
-      ) : null}
-      {canManage && shareSeat ? (
-        <InviteLinkModal
-          key={`${room.code}-${shareSeat}`}
-          position={shareSeat}
-          roomCode={room.code}
-          onClose={() => setShareSeats((seats) => seats.slice(1))}
-        />
+      {canManage && shareOpen ? (
+        <InviteLinkModal key={room.code} roomCode={room.code} onClose={() => setShareOpen(false)} />
       ) : null}
     </>
   );

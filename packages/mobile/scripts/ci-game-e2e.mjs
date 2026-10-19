@@ -203,11 +203,13 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
 
   await page.getByTestId('waiting-table').waitFor({ timeout: 60_000 });
   if (!sameRoom()) throw new Error(`the open seat navigated away from the room: ${page.url()}`);
-  const seatBot = page.getByTestId('waiting-seat-bot');
-  await seatBot.waitFor({ timeout: 15_000 });
+  // The original host occupied north; its departure leaves that row vacant.
+  const openSeat = page.getByTestId('new-table-seat-north');
+  await openSeat.waitFor({ timeout: 15_000 });
   await shot('seat-open');
 
-  await seatBot.click();
+  await openSeat.click();
+  await page.getByTestId('seat-picker-container').getByRole('radio', { name: /^Bot,/ }).click();
   const ready = page.getByRole('button', { name: 'Jag är redo' });
   await ready.waitFor({ timeout: 15_000 });
   await shot('seat-filled');
@@ -298,7 +300,6 @@ async function stageTwoMultiplayerVideo() {
   log(`room ${roomCode} created (seat_3 open for the invite guest)`);
 
   const minted = await api(`/api/v1/rooms/${roomCode}/invites`, 'POST', hostToken, {
-    seat_hint: null,
     label: 'CI guest',
     platform: 'web',
   });

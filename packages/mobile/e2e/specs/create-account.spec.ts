@@ -59,18 +59,23 @@ test('a new account opens a Finnish table that another player can find with two 
   await expect(new HomeScreen(page).root).toBeVisible();
   await page.goto('/lobby');
   await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-  const form = page.getByTestId('create-room-window');
-  for (const [name, choice] of [
-    ['Rules', 'Finnish'],
-    ['Partner seat', 'Open'],
-    ['Left opponent seat', 'Open'],
-    ['Right opponent seat', 'Bot'],
-  ]) {
-    await expect(
-      form
-        .getByRole('radiogroup', { name, exact: true })
-        .getByRole('radio', { name: choice, exact: true })
-    ).toHaveAttribute('aria-checked', 'true');
+  await expect(page).toHaveURL(/\/new-table$/);
+  const form = page.getByTestId('new-table-screen');
+  await expect(
+    form
+      .getByRole('radiogroup', { name: 'Rules', exact: true })
+      .getByRole('radio', { name: 'Finnish', exact: true })
+  ).toHaveAttribute('aria-checked', 'true');
+  await expect(form.getByTestId('new-table-seat-north')).toHaveText('YouHost');
+  await expect(form.getByTestId('new-table-seat-south')).toHaveAccessibleName(
+    'Partner: Open seat, Anyone can sit. Change'
+  );
+  for (const position of ['south', 'east', 'west']) {
+    await form.getByTestId(`new-table-seat-${position}`).click();
+    const picker = page.getByTestId('seat-picker-container');
+    await expect(picker.getByRole('radio', { name: /^Anyone,/ })).toBeChecked();
+    await picker.getByRole('radio', { name: position === 'west' ? /^Bot,/ : /^Anyone,/ }).click();
+    await expect(picker).toBeHidden();
   }
   const created = page.waitForResponse(
     (response) =>

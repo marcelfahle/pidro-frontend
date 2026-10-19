@@ -85,11 +85,16 @@ test('a 1000+ chair explains the local lock and the server refusal @responsive',
     await startSignedIn(hostPage, host);
     await hostPage.goto('/lobby');
     await hostPage.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-    const form = hostPage.getByTestId('create-room-window');
-    const partner = form.getByTestId('create-seat_3');
-    await partner.getByRole('radio', { name: 'Open', exact: true }).click();
-    await partner.getByRole('radio', { name: '1,000+', exact: true }).click();
-    await expect(partner.getByTestId('seat-requirement')).toHaveText('1,000+');
+    await expect(hostPage).toHaveURL(/\/new-table$/);
+    const form = hostPage.getByTestId('new-table-screen');
+    const partner = form.getByTestId('new-table-seat-south');
+    await expect(partner).toHaveAccessibleName('Partner: Open seat, Anyone can sit. Change');
+    await partner.click();
+    await hostPage
+      .getByTestId('seat-picker-container')
+      .getByRole('radio', { name: /^1000\+ games played,/ })
+      .click();
+    await expect(hostPage.getByTestId('seat-picker-container')).toBeHidden();
     const created = hostPage.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === '/api/v1/rooms' &&

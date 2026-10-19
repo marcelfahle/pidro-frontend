@@ -1,12 +1,9 @@
 import { Redirect, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { SafeAreaInsetsContext, type EdgeInsets } from 'react-native-safe-area-context';
-import { CreateRoomForm, CreateRoomModal } from '@/components/lobby/CreateRoomModal';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { NewTableGallery } from '@/components/dev/NewTableGallery';
 import { RoomCard } from '@/components/lobby/RoomCard';
-import { ruleSetFixture } from '@/features/rules/fixtures';
-import { BOT_CREW, createTableFixture } from '@/features/lobby/fixtures';
-import { friendsFixture } from '@/features/friends/fixtures';
+import { BOT_CREW } from '@/features/lobby/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
@@ -576,33 +573,8 @@ function UiDevHarness() {
   if (state === 'lobby-seats') return <LobbySeatGallery />;
   if (state === 'seat-rows') return <SeatRowGallery fixture={params.fixture} />;
   if (state === 'seat-picker') return <SeatPickerGallery fixture={params.fixture} />;
-  if (state === 'create-safe-area') {
-    // Browser-only layout simulation, not evidence of native modal inset measurement.
-    // Native checks must use the real Modal + its real provider without fake metrics.
-    if (Platform.OS !== 'web') {
-      return <CreateRoomModal isOpen onClose={noop} onSubmit={noop} username="Alex" />;
-    }
-    const presets: Record<string, EdgeInsets> = {
-      island: { top: 59, bottom: 34, left: 0, right: 0 },
-      'island-left': { top: 0, bottom: 21, left: 59, right: 0 },
-      'island-right': { top: 0, bottom: 21, left: 0, right: 59 },
-      legacy: { top: 20, bottom: 0, left: 0, right: 0 },
-      'android-buttons': { top: 24, bottom: 48, left: 0, right: 0 },
-      'android-right': { top: 24, bottom: 0, left: 0, right: 48 },
-      'android-gesture': { top: 24, bottom: 24, left: 0, right: 0 },
-    };
-    const insets = presets[params.safeArea ?? 'island'] ?? presets.island;
-    return (
-      <SafeAreaInsetsContext.Provider value={insets}>
-        <CreateRoomForm
-          isOpen
-          onClose={noop}
-          onSubmit={noop}
-          username="Alexandria the Long-Named Player"
-        />
-      </SafeAreaInsetsContext.Provider>
-    );
-  }
+  if (state === 'new-table')
+    return <NewTableGallery key={params.fixture} fixture={params.fixture} />;
 
   return (
     <>
@@ -793,21 +765,6 @@ function UiDevHarness() {
           </Surface>
         </DecisionWindow>
       </ScreenShell>
-
-      <CreateRoomModal
-        isOpen={state === 'create'}
-        initialDraft={createTableFixture(params.fixture)}
-        key={params.fixture}
-        initialRuleSet={ruleSetFixture(params.fixture)}
-        fixtureFriends={
-          friendsFixture(params.fixture === 'sheet-empty' ? 'empty' : 'list')?.friends
-        }
-        initialFriendSeat={params.fixture?.startsWith('sheet-') ? 'seat_3' : undefined}
-        initialFriendId={params.fixture === 'sheet-picked' ? 'nora' : undefined}
-        onClose={noop}
-        onSubmit={noop}
-        username="Alexandria the Long-Named Player"
-      />
     </>
   );
 }

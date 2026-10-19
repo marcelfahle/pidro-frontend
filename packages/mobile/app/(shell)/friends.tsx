@@ -25,6 +25,7 @@ import {
   friendsMeta,
 } from '@/features/friends';
 import { friendsFixture, FRIENDS_FIXTURE_NOW } from '@/features/friends/fixtures';
+import { roomHasUser } from '@/features/lobby/newTable';
 import { useAuthStore } from '@/stores/auth';
 import {
   addFriend,
@@ -259,11 +260,23 @@ export default function FriendsScreen() {
                             loading={pending === player.user_id}
                             onPress={() => {
                               if (action === 'join') void act('join', player);
-                              else if (!preview)
-                                router.push({
-                                  pathname: '/lobby',
-                                  params: { partner: player.user_id },
-                                });
+                              else if (!preview) {
+                                const { lobby, rooms } = useLobbyStore.getState();
+                                const userId = useAuthStore.getState().user?.id;
+                                if (
+                                  lobby.my_rejoinable.length ||
+                                  rooms.some(
+                                    (room) =>
+                                      room.status !== 'finished' && roomHasUser(room, userId)
+                                  )
+                                )
+                                  router.push('/lobby');
+                                else
+                                  router.push({
+                                    pathname: '/new-table',
+                                    params: { partner: player.user_id },
+                                  });
+                              }
                             }}
                           />
                         ) : undefined

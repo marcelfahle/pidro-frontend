@@ -3,7 +3,7 @@ import { Modal, Share, StyleSheet, useWindowDimensions, View } from 'react-nativ
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import QRCode from 'react-native-qrcode-svg';
-import type { Invite, Position } from '@pidro/shared';
+import type { Invite } from '@pidro/shared';
 import { invitesApi } from '@/api/invites';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
@@ -17,13 +17,12 @@ import { localizedError } from '@/utils/apiErrors';
 
 interface Props {
   roomCode: string;
-  position: Position;
   onClose: () => void;
   fixture?: Invite;
 }
 
-/** The seat supplies the recipient and position; only sharing remains. */
-export function InviteLinkModal({ roomCode, position, onClose, fixture }: Props) {
+/** One link to the table, without reserving a seat. */
+export function InviteLinkModal({ roomCode, onClose, fixture }: Props) {
   const { t } = useTranslation();
   const { height } = useWindowDimensions();
   const [invite, setInvite] = useState<Invite | null>(fixture ?? null);
@@ -51,7 +50,7 @@ export function InviteLinkModal({ roomCode, position, onClose, fixture }: Props)
 
   const mint = () =>
     run(async () => {
-      setInvite(await invitesApi.mint(roomCode, { position, platform: invitePlatform() }));
+      setInvite(await invitesApi.mint(roomCode, { platform: invitePlatform() }));
     }, 'invite.host.createError');
 
   return (
@@ -72,13 +71,10 @@ export function InviteLinkModal({ roomCode, position, onClose, fixture }: Props)
         <SafeAreaView style={styles.backdrop}>
           <DecisionWindow
             testID="invite-window"
-            title={t('seat_friend.share')}
+            title={t('new_table.share')}
             scrollable
             style={styles.window}>
             <View style={styles.section}>
-              <PidroText role="label" align="center">
-                {t(`social.${position}`)}
-              </PidroText>
               {invite ? (
                 <>
                   <Surface variant="subtle" padded style={styles.linkCard}>

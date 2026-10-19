@@ -1,104 +1,123 @@
-import type { FriendPlayer, Position, RuleSet } from '@pidro/shared';
-import { t, formatNumber } from '@pidro/shared';
-import type { CreateRoomRequest } from '@/types/lobby';
+import {
+  t,
+  type CreateRoomRequest,
+  type FriendPlayer,
+  type Position,
+  type Room,
+  type RuleSet,
+  type SeatType,
+} from '@pidro/shared';
+import type { PickerFriend } from './friendPicker';
 
-/** The three seats a host fills on New table: left opponent, partner, right opponent. */
 export type SeatKey = 'seat_2' | 'seat_3' | 'seat_4';
-
-/** Friend seats hold a selected friend, or share a seat-bound link after creation. */
-export type SeatChoice = 'open' | 'ai' | 'invite';
-
-export type SeatRequirement = 0 | 100 | 1000;
-export type TableDraft = {
-  seats: Record<SeatKey, SeatChoice>;
-  /** Games played an open seat asks for; 0 or missing means anyone may sit. */
-  requirements: Partial<Record<SeatKey, SeatRequirement>>;
-  invited?: Partial<Record<SeatKey, FriendPlayer>>;
-};
+export type DraftSeat =
+  Exclude<SeatType, { type: 'held'; user_id: string }> | { type: 'held'; friend: FriendPlayer };
+export type TableDraft = { seats: Record<SeatKey, DraftSeat> };
 
 export const seatPositions: Record<SeatKey, Position> = {
   seat_2: 'east',
   seat_3: 'south',
   seat_4: 'west',
 };
+export const defaultSeats: TableDraft['seats'] = { seat_2: 'open', seat_3: 'open', seat_4: 'open' };
 
-export const defaultSeats: Record<SeatKey, SeatChoice> = {
-  seat_3: 'open',
-  seat_2: 'open',
-  seat_4: 'ai',
-};
+export function roomHasUser(room: Room, userId?: string | null): boolean {
+  if (!userId) return false;
+  if (room.player_ids?.includes(userId)) return true;
+  if (room.positions && Object.values(room.positions).includes(userId)) return true;
+  return (
+    room.seats?.some((seat) => seat.player?.id === userId || seat.player_id === userId) ?? false
+  );
+}
 
-/** One tap commits the seat. Leaving Open drops that seat's requirement. */
-export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: SeatChoice): TableDraft {
-  return {
-    seats: { ...draft.seats, [seat]: choice },
-    requirements: choice === 'open' ? draft.requirements : { ...draft.requirements, [seat]: 0 },
-    ...(draft.invited && { invited: { ...draft.invited, [seat]: undefined } }),
-  };
+export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: DraftSeat): TableDraft {
+  return { seats: { ...draft.seats, [seat]: choice } };
 }
 
 export function chooseFriend(draft: TableDraft, seat: SeatKey, friend: FriendPlayer): TableDraft {
-  return { ...chooseSeat(draft, seat, 'invite'), invited: { ...draft.invited, [seat]: friend } };
+  return chooseSeat(draft, seat, { type: 'held', friend });
 }
 
 export function assignedFriendIds(draft: TableDraft, current: SeatKey): string[] {
-  return Object.entries(draft.invited ?? {}).flatMap(([seat, friend]) =>
-    seat !== current && friend ? [friend.user_id] : []
+  return Object.entries(draft.seats).flatMap(([key, seat]) =>
+    key !== current && typeof seat === 'object' && seat.type === 'held' ? [seat.friend.user_id] : []
   );
 }
 
-export function findFriends(friends: FriendPlayer[], query: string): FriendPlayer[] {
-  const search = query.normalize('NFKC').trim().toLocaleLowerCase();
-  return friends.filter((friend) =>
-    friend.display_name.normalize('NFKC').toLocaleLowerCase().includes(search)
+export function isPractice(draft: TableDraft): boolean {
+  return Object.values(draft.seats).every((seat) => seat === 'ai');
+}
+
+export function tableFooter(draft: TableDraft): string {
+  if (isPractice(draft)) return t('new_table.practice');
+  const seats = Object.values(draft.seats);
+  const open = seats.some(
+    (seat) => seat === 'open' || (typeof seat === 'object' && seat.type === 'open')
   );
+  if (!open) return t('new_table.invite_only_help');
+  const names = seats.flatMap((seat) =>
+    typeof seat === 'object' && seat.type === 'held' ? [seat.friend.display_name] : []
+  );
+  return [
+    t('new_table.listed_help'),
+    ...names.map((name) => t('new_table.invitation', { name })),
+  ].join(' ');
 }
 
-/** Only an open seat can ask for games played. */
-export function chooseRequirement(
-  draft: TableDraft,
-  seat: SeatKey,
-  games: SeatRequirement
-): TableDraft {
-  if (draft.seats[seat] !== 'open') return draft;
-  return { ...draft, requirements: { ...draft.requirements, [seat]: games } };
-}
-
-export function tableFooter(seats: Record<SeatKey, SeatChoice>): string {
-  const open = Object.values(seats).filter((seat) => seat === 'open').length;
-  return open === 0
-    ? t('social.footer_friends')
-    : t('social.footer_open', { count: open, number: formatNumber(open) });
-}
-
-export function newTableRequest(
-  ruleSet: RuleSet,
-  seats: Record<SeatKey, SeatChoice>,
-  requirements: TableDraft['requirements'] = {},
-  invited: TableDraft['invited'] = {}
-): { request: CreateRoomRequest; invite: Position[] } {
-  const serverSeat = (key: SeatKey) => {
-    const choice = seats[key];
-    const min_games = requirements[key] ?? 0;
-    if (choice === 'invite' && invited[key])
-      return { type: 'held' as const, user_id: invited[key].user_id };
-    return choice === 'ai'
-      ? 'ai'
-      : choice === 'open' && min_games > 0
-        ? { type: 'open' as const, min_games }
-        : 'open';
+export function newTableRequest(ruleSet: RuleSet, draft: TableDraft): CreateRoomRequest {
+  const entry = (key: SeatKey): SeatType => {
+    const seat = draft.seats[key];
+    return typeof seat === 'object' && seat.type === 'held'
+      ? { type: 'held', user_id: seat.friend.user_id }
+      : seat;
   };
   return {
-    request: {
-      rule_set: ruleSet,
-      seats: {
-        seat_2: serverSeat('seat_2'),
-        seat_3: serverSeat('seat_3'),
-        seat_4: serverSeat('seat_4'),
-      },
-    },
-    invite: (Object.keys(seats) as SeatKey[])
-      .filter((key) => seats[key] === 'invite' && !invited[key])
-      .map((key) => seatPositions[key]),
+    rule_set: ruleSet,
+    seats: { seat_2: entry('seat_2'), seat_3: entry('seat_3'), seat_4: entry('seat_4') },
   };
+}
+
+export function tableHeader(room: Room): string {
+  const listed = room.seats?.some(
+    (seat) => !seat.player && !seat.held_for && seat.status === 'free'
+  );
+  return t(listed ? 'new_table.listed' : 'new_table.invite_only', {
+    rules: t(`social.${room.config?.rule_set ?? 'finnish'}`),
+  });
+}
+
+export function waitingFooter(room: Room, canManage: boolean): string {
+  const names =
+    room.seats?.flatMap((seat) => (seat.held_for ? [seat.held_for.display_name] : [])) ?? [];
+  const waiting = names.length
+    ? t('new_table.waiting_for', { names: names.join(', ') })
+    : t('new_table.waiting_players');
+  return canManage ? `${waiting} ${t('new_table.change_seat')}` : waiting;
+}
+
+export function pickerFriends(
+  friends: FriendPlayer[],
+  selectedId?: string,
+  unavailableIds: string[] = []
+): PickerFriend[] {
+  return friends.map((friend) => {
+    const busy = friend.presence === 'at_table' && friend.table_company !== 'bots';
+    return {
+      id: friend.user_id,
+      name: friend.display_name,
+      avatarUrl: friend.avatar_url,
+      section: busy ? 'busy' : friend.presence === 'offline' ? 'offline' : 'online',
+      availability: unavailableIds.includes(friend.user_id)
+        ? 'taken'
+        : selectedId === friend.user_id
+          ? 'selected'
+          : busy
+            ? 'others'
+            : friend.table_company === 'bots' && friend.presence === 'at_table'
+              ? 'bots'
+              : friend.presence === 'offline'
+                ? 'offline'
+                : 'online',
+    };
+  });
 }

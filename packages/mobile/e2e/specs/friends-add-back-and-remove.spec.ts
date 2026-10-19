@@ -360,16 +360,15 @@ test('Play opens New table with the friend already assigned as Partner and creat
       route.fulfill({ status: 503, json: { error: 'UNAVAILABLE' } })
     );
     const unavailable = page.waitForResponse('**/api/v1/friends');
-    await page.goto(`/lobby?partner=${friend.user.id}`);
+    await page.goto(`/new-table?partner=${friend.user.id}`);
     expect((await unavailable).status()).toBe(503);
-    // A failed cold lookup keeps the intent, even while the lobby remains usable.
-    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-    await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`/lobby\\?partner=${friend.user.id}$`));
+    // A failed cold lookup keeps the intent while the setup remains usable.
+    await expect(page.getByTestId('new-table-screen')).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/new-table\\?partner=${friend.user.id}$`));
     await page.unroute('**/api/v1/friends');
     await page.reload();
     await expect(
-      page.getByTestId('create-seat_3').getByText(friendPlayer.name, { exact: true })
+      page.getByTestId('new-table-seat-south').getByText(friendPlayer.name, { exact: true })
     ).toBeVisible();
     await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
     // Warm a known current table, then enter through Friends instead of New table.
@@ -396,24 +395,21 @@ test('Play opens New table with the friend already assigned as Partner and creat
       .click();
     await page.waitForURL('**/lobby');
     await expect(page.getByRole('button', { name: 'Rejoin', exact: true })).toBeVisible();
-    await expect(page.getByTestId('create-room-window')).toBeHidden();
+    await expect(page.getByTestId('new-table-screen')).toBeHidden();
     await page.unroute('**/api/v1/lobby');
     await page.goto('/friends');
     await page
       .getByRole('button', { name: `Start a table with ${friendPlayer.name}`, exact: true })
       .click();
-    await page.waitForURL('**/lobby');
-    const form = page.getByTestId('create-room-window');
+    await page.waitForURL(new RegExp(`/new-table\\?partner=${friend.user.id}$`));
+    const form = page.getByTestId('new-table-screen');
     await expect(form).toBeVisible();
-    const partner = form.getByTestId('create-seat_3');
+    const partner = form.getByTestId('new-table-seat-south');
     await expect(partner.getByText(friendPlayer.name, { exact: true })).toBeVisible();
-    await expect(partner.getByText('Invited', { exact: true })).toBeVisible();
     await expect(
-      partner
-        .getByRole('radiogroup', { name: 'Partner seat', exact: true })
-        .getByRole('radio', { name: 'Friend', exact: true })
-    ).toHaveAttribute('aria-checked', 'true');
-    await expect(page.getByTestId('friend-seat-sheet')).toBeHidden();
+      partner.getByText('Invited when you open the table', { exact: true })
+    ).toBeVisible();
+    await expect(page.getByTestId('seat-picker-container')).toBeHidden();
     const created = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname === '/api/v1/rooms' &&

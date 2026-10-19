@@ -11,7 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
 import { lobbyFixture, seatInvitationsFixture } from '@/features/lobby/fixtures';
-import { chooseFriend, defaultSeats, type TableDraft } from '@/features/lobby/newTable';
+import { roomHasUser } from '@/features/lobby/newTable';
 import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
 import {
   emptyEntry,
@@ -20,11 +20,9 @@ import {
   type PasswordEntry,
 } from '@/features/lobby/passwordSeat';
 import { pickProfile } from '@/game/canvas/layout';
-import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
-import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
 import { PasswordKeypadSheet } from '@/components/lobby/PasswordKeypadSheet';
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { SeatInvitations } from '@/components/invites/SeatInvitations';
@@ -43,9 +41,8 @@ import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tok
 import { useQuickGame } from '@/hooks/useQuickGame';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { useAuthStore } from '@/stores/auth';
-import { refreshFriends, useFriendsStore } from '@/stores/friends';
 import { useLobbyStore } from '@/stores/lobby';
-import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
+import type { Position, Room } from '@/types/lobby';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import { useTranslation, formatNumber, type TranslationKey } from '@/i18n';
 
@@ -57,15 +54,6 @@ function failureText(failure?: LobbyFailure): string | undefined {
   return 'minimum' in failure
     ? seatRequirementMessage(failure.minimum, failure.played)
     : localizedError(failure.error, failure.fallback);
-}
-
-function roomHasUser(room: Room, userId?: string | null): boolean {
-  if (!userId) return false;
-  if (room.player_ids?.includes(userId)) return true;
-  if (room.positions && Object.values(room.positions).includes(userId)) return true;
-  return (
-    room.seats?.some((seat) => seat.player?.id === userId || seat.player_id === userId) ?? false
-  );
 }
 
 function uniqueRooms(rooms: Room[]): Room[] {
@@ -89,10 +77,7 @@ function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
 
 function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
   const { t } = useTranslation();
-  const { fixture: fixtureParam, partner } = useLocalSearchParams<{
-    fixture?: string;
-    partner?: string;
-  }>();
+  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const profile = pickProfile(width, height);
@@ -100,7 +85,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const columns = portraitPhone ? 1 : profile === 'tablet-landscape' ? 3 : 2;
   const tablet = profile.startsWith('tablet');
   const user = useAuthStore((state) => state.user);
-  const playerName = publicPlayerName(user?.username, t('social.player'), user?.display_name);
   const {
     rooms: storedRooms,
     lobby: storedLobby,
@@ -131,10 +115,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     const room = fixture?.lobby.open_tables.find((table) => table.code === seat?.code);
     return seat && room ? { ...seat, words: passwordSeatWords(room, seat.position) } : null;
   });
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [initialDraft, setInitialDraft] = useState<TableDraft>();
-  const [isCreating, setIsCreating] = useState(false);
-  const [createError, setCreateError] = useState<LobbyFailure | null>(null);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
   const pendingAccountActionRef = useRef<(() => Promise<void>) | null>(null);
   const realtimeRevisionRef = useRef(0);
@@ -193,7 +173,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
 
   const requestAccount = useCallback((retry: () => Promise<void>) => {
     pendingAccountActionRef.current = retry;
-    setIsCreateModalOpen(false);
     setAccountSheetOpen(true);
   }, []);
 
@@ -361,132 +340,17 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     [fixture, router, handleWatchRoom]
   );
 
-  const handleCreateRoom = async (
-    data: CreateRoomRequest,
-    invite: Position[] = [],
-    mayRequestAccount = true,
-    showFailureAlert = false
-  ) => {
+  const handleNewTable = () => {
     if (fixture) return;
-    const openTable = (code: string) =>
-      router.replace(invite.length ? `/game/${code}?invite=${invite.join(',')}` : `/game/${code}`);
-    const reportFailure = (fallback: TranslationKey, error?: unknown) => {
-      if (showFailureAlert) Alert.alert(t('social.create_failed'), localizedError(error, fallback));
-      else setCreateError({ error, fallback });
-    };
-    setIsCreating(true);
-    setCreateError(null);
-    try {
-      const response = await lobbyApi.createRoom(data);
-      if (!response?.code) throw new Error('No room code returned');
-      captureAnalytics('room_created', {
-        creation_source: 'lobby',
-        has_bots: Object.values(data.seats ?? {}).some((seat) => seat === 'ai'),
-      });
-      if (response.room) upsertLobbyRoom(response.room, 'my_rejoinable');
-      setIsCreateModalOpen(false);
-      openTable(response.code);
-    } catch (createRoomError: unknown) {
-      const { code } = apiErrorInfo(createRoomError);
-      if (code === 'ACCOUNT_REQUIRED') {
-        if (mayRequestAccount) {
-          requestAccount(() => handleCreateRoom(data, invite, false, true));
-        } else {
-          reportFailure('social.account_error', createRoomError);
-        }
-        return;
-      }
-      if (code === 'ALREADY_IN_ROOM') {
-        const current = await lobbyApi.listLobby().catch(() => null);
-        if (!current) {
-          reportFailure('social.quick_unknown');
-          return;
-        }
-        setLobby(current.lobby);
-        if (current.lobby.my_rejoinable.length) {
-          reportFailure('social.already_table');
-        } else {
-          try {
-            // No table left to leave is the state the lobby wanted.
-            await lobbyApi.leaveRoom('current').catch(() => undefined);
-            const retryResponse = await lobbyApi.createRoom(data);
-            if (!retryResponse?.code) throw new Error('No room code returned after retry');
-            captureAnalytics('room_created', {
-              creation_source: 'lobby_retry',
-              has_bots: Object.values(data.seats ?? {}).some((seat) => seat === 'ai'),
-            });
-            if (retryResponse.room) {
-              upsertLobbyRoom(retryResponse.room, 'my_rejoinable');
-            }
-            setIsCreateModalOpen(false);
-            openTable(retryResponse.code);
-            return;
-          } catch (retryError) {
-            const retryInfo = apiErrorInfo(retryError);
-            if (retryInfo.code === 'ACCOUNT_REQUIRED') {
-              if (mayRequestAccount) {
-                requestAccount(() => handleCreateRoom(data, invite, false, true));
-              } else {
-                reportFailure('social.account_error', retryError);
-              }
-              return;
-            }
-            reportFailure('social.previous_table', retryError);
-          }
-        }
-      } else {
-        reportFailure('social.create_error', createRoomError);
-      }
-    } finally {
-      setIsCreating(false);
+    if (activeRoom) {
+      Alert.alert(t('social.current_table'), t('social.at_table'), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
+      ]);
+      return;
     }
+    router.push('/new-table');
   };
-
-  const handleNewTable = useCallback(
-    (draft?: TableDraft) => {
-      if (fixture) return;
-      if (activeRoom) {
-        Alert.alert(t('social.current_table'), t('social.at_table'), [
-          { text: t('common.cancel'), style: 'cancel' },
-          { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
-        ]);
-        return;
-      }
-      setInitialDraft(draft);
-      setCreateError(null);
-      setIsCreateModalOpen(true);
-    },
-    [fixture, activeRoom, router, t]
-  );
-
-  useEffect(() => {
-    if (fixture || !partner || !user?.id) return;
-    let active = true;
-    const resolvePartner = async () => {
-      const findPartner = () =>
-        useFriendsStore.getState().friends.find((friend) => friend.user_id === partner);
-      let friend = findPartner();
-      if (!friend) {
-        try {
-          await refreshFriends();
-        } catch {
-          return;
-        }
-        friend = findPartner();
-      }
-      if (!active) return;
-      // Consume even an unavailable friend; a later New table must start fresh.
-      router.setParams({ partner: undefined });
-      if (!friend) return;
-      handleNewTable(
-        chooseFriend({ seats: { ...defaultSeats }, requirements: {} }, 'seat_3', friend)
-      );
-    };
-    void resolvePartner();
-    return () => {
-      active = false;
-    };
-  }, [fixture, partner, router, user?.id, handleNewTable]);
 
   const search = (
     <View style={!portraitPhone && styles.search}>
@@ -536,7 +400,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           size={portraitPhone ? 'icon' : 'sm'}
           label={portraitPhone ? undefined : t('social.start')}
           accessibilityLabel={t('social.start')}
-          onPress={() => handleNewTable()}>
+          onPress={handleNewTable}>
           <Icon name="plus" size={22} />
         </BevelButton>
       </View>
@@ -576,7 +440,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           />
         ) : isEmptyLobby ? (
           <EmptyLobby
-            onStart={() => handleNewTable()}
+            onStart={handleNewTable}
             onJoinCode={() => router.push('/join-code')}
             onQuickGame={quickGame.start}
             quickGameLoading={quickGame.loading}
@@ -653,12 +517,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
               styles.pinned,
               gradientBg(`linear-gradient(180deg, transparent 0%, ${PidroColors.feltBottom} 45%)`),
             ]}>
-            <BevelButton
-              label={t('social.start')}
-              size="lg"
-              fullWidth
-              onPress={() => handleNewTable()}
-            />
+            <BevelButton label={t('social.start')} size="lg" fullWidth onPress={handleNewTable} />
           </View>
         ) : null}
       </View>
@@ -673,20 +532,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           onClose={() => setPasswordSeat(null)}
         />
       ) : null}
-      <CreateRoomModal
-        isOpen={isCreateModalOpen}
-        initialDraft={initialDraft}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setInitialDraft(undefined);
-          setCreateError(null);
-        }}
-        onSubmit={handleCreateRoom}
-        isLoading={isCreating}
-        username={playerName}
-        avatarUrl={user?.avatar_url}
-        error={failureText(createError ?? undefined)}
-      />
       <AuthSheet
         isOpen={accountSheetOpen}
         reason="multiplayer"

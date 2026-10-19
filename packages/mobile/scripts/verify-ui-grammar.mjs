@@ -99,16 +99,6 @@ const allCases = [
     testId: 'waiting-table',
     authenticated: true,
   },
-  ...['empty', 'friends', 'picked', 'assigned'].map((fixture) => ({
-    name: `friend-seat-${fixture}`,
-    path: `/ui-dev?state=create&fixture=sheet-${fixture}`,
-    testId: 'friend-seat-sheet',
-  })),
-  {
-    name: 'create-invited',
-    path: '/ui-dev?state=create&fixture=invited',
-    testId: 'create-room-window',
-  },
   ...['empty', 'list', 'all', 'added-you', 'loading', 'error', 'classic'].map((fixture) => ({
     name: `friends-${fixture}`,
     path: `/friends?fixture=${fixture}`,
@@ -128,12 +118,12 @@ const allCases = [
     testId: 'blocked-players-screen',
     authenticated: true,
   })),
-  ...['playing', 'game_over', 'waiting'].map((phase) => ({
+  ...['playing', 'game_over'].map((phase) => ({
     name: `block-profile-${phase}`,
     path: `/table-dev?phase=${phase}&role=player`,
     testId: 'player-profile-modal',
     authenticated: true,
-    open: phase === 'waiting' ? /^mfios1,.*View profile$/ : /^View mfios1's profile/,
+    open: /^View mfios1's profile/,
     playerProfile: true,
   })),
   {
@@ -233,13 +223,6 @@ const allCases = [
     lobbyFixture: fixture,
   })),
   ...['finnish', 'louisiana'].flatMap((ruleSet) => [
-    {
-      name: `create-table-${ruleSet}`,
-      path: `/ui-dev?state=create&fixture=${ruleSet}`,
-      testId: 'create-room-window',
-      ruleSet,
-      rulesSelector: 'create-rule-set',
-    },
     {
       name: `settings-${ruleSet}`,
       path: `/ui-dev?state=settings&fixture=${ruleSet}`,
@@ -441,11 +424,23 @@ const allCases = [
     path: `/ui-dev?state=seat-rows&fixture=${fixture}`,
     testId: 'ui-seat-rows-panel',
   })),
-  ...['default', 'open', 'requirement', 'bots', 'friend'].map((fixture) => ({
-    name: fixture === 'default' ? 'create-table' : `create-table-${fixture}`,
-    path: `/ui-dev?state=create&fixture=${fixture}`,
-    testId: 'create-room-window',
-    createFixture: fixture,
+  ...[
+    'setup',
+    'partner',
+    'bots',
+    'opened',
+    'ready',
+    'louisiana',
+    'requirement',
+    'password',
+    'picker',
+    'friends',
+    'guest',
+  ].map((fixture) => ({
+    name: `new-table-${fixture}`,
+    path: `/ui-dev?state=new-table&fixture=${fixture}`,
+    testId: ['opened', 'ready', 'guest'].includes(fixture) ? 'waiting-table' : 'new-table-screen',
+    newTableFixture: fixture,
   })),
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
   {
@@ -467,7 +462,7 @@ const allCases = [
     verifyReadiness: true,
   },
   {
-    name: 'table-host-controls',
+    name: 'table-waiting-host',
     path: '/table-dev?phase=waiting-host',
     testId: 'waiting-table',
   },
@@ -735,7 +730,6 @@ const localizationCases = ['en', 'sv'].flatMap((locale) => [
     language,
   })),
   ...[
-    ['waiting', 'waiting', 'waiting-table'],
     ['bidding', 'bidding', 'bidding-window'],
     ['trump', 'declaring', 'trump-picker'],
     ['hand-selection', 'second_deal&role=player&dealer=south', 'hand-selection-window'],
@@ -749,6 +743,12 @@ const localizationCases = ['en', 'sv'].flatMap((locale) => [
     locale,
     protectNorthSeat: ['bidding', 'trump', 'hand-selection'].includes(name),
   })),
+  {
+    name: `locale-${locale}-waiting`,
+    path: `/ui-dev?state=new-table&fixture=opened&locale=${locale}&language=${locale}`,
+    testId: 'waiting-table',
+    locale,
+  },
 ]);
 allCases.push(...localizationCases);
 allCases.push(
@@ -936,11 +936,14 @@ async function assertTargetGeometry(page, testCase, viewport) {
     await page.getByText(testCase.text, { exact: true }).first().waitFor({ timeout: 15_000 });
   }
 
-  if (testCase.name === 'table-waiting' || testCase.name === 'table-host-controls') {
-    if (await page.getByRole('button', { name: /(Bot|Marcel).*View profile/ }).count()) {
-      throw new Error(`${testCase.name} exposes a bot profile action in ${viewport.name}`);
-    }
-    await page.getByRole('button', { name: /, You, .*View profile$/ }).waitFor();
+  if (['table-waiting', 'table-waiting-host'].includes(testCase.name)) {
+    await page.getByTestId('new-table-seat-north').waitFor();
+    assert.equal(
+      await page
+        .getByRole('button', { name: /^(Manage |Move to |Lock joins|Unlock joins)/ })
+        .count(),
+      0
+    );
   }
 
   await assertMinimumTouchTargets(page, testCase.name, viewport, { checkInputs: true });
@@ -1054,9 +1057,9 @@ async function visibleBox(page, locator) {
 // The header (score plaque and menu, or the waiting toolbar) and a protected
 // window must never cover the north seat or its cards, nor the window the header.
 async function assertNorthClear(page, testCase, viewport, windowBox) {
-  const waiting = (await page.getByTestId('waiting-seat-north').count()) > 0;
+  const waiting = (await page.getByTestId('new-table-seat-north').count()) > 0;
   const north = waiting
-    ? { 'north seat': page.getByTestId('waiting-seat-north') }
+    ? { 'north seat': page.getByTestId('new-table-seat-north') }
     : {
         'north seat': page.getByTestId('seat-north'),
         'north cards': page.getByTestId('seat-north-cards').locator(':scope > div'),
@@ -1064,7 +1067,7 @@ async function assertNorthClear(page, testCase, viewport, windowBox) {
   if (!waiting && windowBox)
     await north['north seat'].first().waitFor({ state: 'visible', timeout: 20_000 });
   const header = waiting
-    ? { toolbar: page.getByTestId('waiting-toolbar') }
+    ? { rules: page.getByTestId('waiting-rule-set') }
     : {
         'score plaque': page.getByRole('button', { name: /Recent scores\.|Senaste poäng\./ }),
         menu: page.getByRole('button', { name: /^(Table settings|Bordsinställningar)$/ }),
@@ -1348,17 +1351,19 @@ async function assertRulePresentation(page, testCase) {
   if (badge && !testCase.rulesExplainer) {
     await page.getByTestId(badge).waitFor();
     assert.ok(
-      (await page.getByTestId(badge).getAttribute('aria-label')).includes(ruleLabels[ruleSet])
+      (badge === 'waiting-rule-set'
+        ? await page.getByTestId(badge).innerText()
+        : await page.getByTestId(badge).getAttribute('aria-label')
+      ).includes(ruleLabels[ruleSet])
     );
   }
   if (testCase.rulesSelector) {
     const selector = page.getByTestId(testCase.rulesSelector);
     await selector.waitFor();
-    const creation = testCase.rulesSelector === 'create-rule-set';
     assert.equal(
       await selector
-        .getByRole(creation ? 'radio' : 'button', { name: new RegExp(ruleLabels[ruleSet]) })
-        .getAttribute(creation ? 'aria-checked' : 'aria-selected'),
+        .getByRole('button', { name: new RegExp(ruleLabels[ruleSet]) })
+        .getAttribute('aria-selected'),
       'true'
     );
   }
@@ -1806,68 +1811,20 @@ async function assertPasswordKeypad(page, testCase, viewport) {
 async function assertCreationPresentation(page, testCase) {
   if (testCase.name === 'table-invite') {
     const dialog = page.getByTestId('invite-window');
-    await dialog.getByText('south', { exact: true }).waitFor();
+    await dialog.getByRole('button', { name: /^Copy/ }).waitFor();
+    await dialog.getByRole('button', { name: /^Share/ }).waitFor();
+    assert.equal(await dialog.getByText(/^(north|south|east|west)$/i).count(), 0);
     await dialog.getByRole('button', { name: 'Done', exact: true }).click();
     await dialog.waitFor({ state: 'hidden' });
     return;
-  }
-  if (testCase.name.startsWith('friend-seat-')) {
-    const sheet = page.getByTestId('friend-seat-sheet');
-    await sheet.getByText('Partner', { exact: true }).waitFor();
-    if (testCase.name === 'friend-seat-empty') {
-      await sheet.getByText('No friends yet', { exact: true }).waitFor();
-      assert.equal(await sheet.getByRole('radio').count(), 0);
-      await sheet.getByRole('link', { name: 'Add friends', exact: true }).waitFor();
-    } else if (testCase.name === 'friend-seat-assigned') {
-      const nora = sheet.getByRole('radio', { name: 'Nora, Already has a seat', exact: true });
-      assert.equal(await nora.getAttribute('aria-disabled'), 'true');
-      assert.equal(
-        await sheet.getByRole('button', { name: 'Choose a friend', exact: true }).isDisabled(),
-        true
-      );
-      await sheet.getByRole('radio', { name: 'Pekka, At a table', exact: true }).click();
-      await sheet.getByRole('button', { name: 'Invite Pekka', exact: true }).click();
-      await page.getByTestId('create-seat_3').getByText('Pekka', { exact: true }).waitFor();
-      await page.getByTestId('create-seat_2').getByText('Nora', { exact: true }).waitFor();
-      await page
-        .getByTestId('create-seat_2')
-        .getByRole('radio', { name: 'Friend', exact: true })
-        .click();
-      assert.equal(
-        await sheet
-          .getByRole('radio', { name: 'Nora, Online', exact: true })
-          .getAttribute('aria-checked'),
-        'true'
-      );
-      assert.equal(
-        await sheet.getByRole('button', { name: 'Invite Nora', exact: true }).isEnabled(),
-        true
-      );
-    } else {
-      assert.equal(await sheet.getByRole('radio').count(), 3);
-      const nora = sheet.getByRole('radio', { name: 'Nora, Online', exact: true });
-      assert.equal(
-        await nora.getAttribute('aria-checked'),
-        testCase.name === 'friend-seat-picked' ? 'true' : 'false'
-      );
-      await sheet.getByRole('textbox', { name: 'Find a friend', exact: true }).fill('nOr');
-      assert.equal(await sheet.getByRole('radio').count(), 1);
-      await nora.click();
-      await sheet.getByRole('button', { name: 'Invite Nora', exact: true }).click();
-      await page.getByTestId('create-seat_3').getByText('Invited', { exact: true }).waitFor();
-    }
-    return;
-  }
-  if (testCase.name === 'create-invited') {
-    await page.getByTestId('create-seat_3').getByText('Nora', { exact: true }).waitFor();
-    await page.getByTestId('create-seat_3').getByText('Invited', { exact: true }).waitFor();
   }
   if (testCase.name === 'lobby-held') {
     const row = page.getByTestId('lobby-table-OPEN1');
     await row.getByText('Invited', { exact: true }).waitFor();
     assert.equal(await row.getByRole('button', { name: /^Join south seat/ }).count(), 0);
   }
-  if (testCase.name === 'waiting-held') await page.getByText('Invited', { exact: true }).waitFor();
+  if (testCase.name === 'waiting-held')
+    await page.getByText('Invited · not online yet', { exact: true }).waitFor();
   if (testCase.name.endsWith('-invitations')) {
     const inbox = page.getByTestId('seat-invitations');
     await inbox.getByText('Nora is holding a seat for you', { exact: true }).waitFor();
@@ -1880,75 +1837,59 @@ async function assertCreationPresentation(page, testCase) {
         .waitFor();
     }
   }
-  const fixture = testCase.createFixture;
+  const fixture = testCase.newTableFixture;
   if (!fixture) return;
-  const form = page.getByTestId('create-room-window');
-  assert.equal(await form.getByRole('textbox').count(), 0);
-  const partner = form.getByTestId('create-seat_3');
-  const radio = (name) => partner.getByRole('radio', { name, exact: true });
-  const height = async () => Math.round((await partner.boundingBox()).height);
-  // An open seat shows its games-played line under it: a 44 pt row plus a 48 pt line.
-  const seatHeight = fixture === 'bots' || fixture === 'friend' ? 44 : 92;
-  assert.equal(await height(), seatHeight);
-  const selected = fixture === 'bots' ? 'Bot' : fixture === 'friend' ? 'Friend' : 'Open';
-  assert.equal(await radio(selected).getAttribute('aria-checked'), 'true');
-  if (fixture === 'open') {
-    for (const key of ['seat_2', 'seat_3', 'seat_4']) {
-      const seat = form.getByTestId(`create-${key}`);
-      assert.deepEqual(await seat.getByRole('radio').allTextContents(), [
-        'Open',
-        'Bot',
-        'Friend',
-        'Anyone',
-        '100+',
-        '1,000+',
-      ]);
-      await seat.getByText('games played', { exact: true }).waitFor();
-    }
+  const boxes = [];
+  for (const position of ['north', 'south', 'east', 'west']) {
+    const row = page.getByTestId(`new-table-seat-${position}`);
+    await row.waitFor();
+    const box = await row.boundingBox();
+    assert.ok(box && box.width <= 437 && box.width > 100, 'team column maxWidth 436');
+    assert.ok(
+      Math.abs(box.x + box.width / 2 - page.viewportSize().width / 2) <= 2,
+      'centered team list'
+    );
+    boxes.push(box);
   }
-  if (fixture === 'requirement') {
-    assert.equal(await form.getByTestId('seat-requirement').innerText(), '100+');
+  boxes.sort((a, b) => a.y - b.y);
+  for (let i = 1; i < boxes.length; i++)
+    assert.ok(
+      boxes[i].y >= boxes[i - 1].y + boxes[i - 1].height - 1,
+      'single list without overlap'
+    );
+  if (fixture === 'setup')
+    assert.equal(await page.getByText('Anyone can sit', { exact: true }).count(), 3);
+  const footer = {
+    setup: 'Open the table',
+    bots: 'Start the game',
+    opened: 'Share the table link',
+    ready: "I'm ready",
+  }[fixture];
+  if (footer) await page.getByRole('button', { name: footer, exact: true }).waitFor();
+  if (fixture === 'setup' || fixture === 'louisiana') {
+    const selected = page.getByRole('radio', {
+      name: fixture === 'louisiana' ? 'Louisiana' : 'Finnish',
+      exact: true,
+    });
+    assert.equal(await selected.getAttribute('aria-checked'), 'true');
   }
+  if (fixture === 'picker') await page.getByTestId('seat-picker-container').waitFor();
+  if (fixture === 'friends') await page.getByTestId('friend-picker').waitFor();
+  assert.equal(await page.getByTestId('create-room-window').count(), 0);
   assert.equal(
-    await form.getByTestId('create-footer').innerText(),
-    fixture === 'bots'
-      ? 'The game starts when your friends sit down.'
-      : fixture === 'friend'
-        ? 'One open seat is listed for everyone.'
-        : fixture === 'open'
-          ? '3 open seats are listed for everyone.'
-          : '2 open seats are listed for everyone.'
+    await page.getByRole('button', { name: /^(Manage |Move to |Lock joins|Unlock joins)/ }).count(),
+    0
   );
-  if (fixture !== 'default') return;
-  // One tap sets the requirement; the seat stays open and the badge lands on the chair.
-  await radio('100+').click();
-  assert.equal(await radio('100+').getAttribute('aria-checked'), 'true');
-  assert.equal(await partner.getByTestId('seat-requirement').innerText(), '100+');
-  // Leaving Open folds the line away; coming back folds it in at Anyone.
-  await radio('Bot').click();
-  await page.waitForTimeout(400);
-  assert.equal(await radio('Anyone').count(), 0);
-  assert.equal(await height(), 44);
-  await radio('Open').click();
-  await page.waitForTimeout(400);
-  assert.equal(await radio('Anyone').getAttribute('aria-checked'), 'true');
-  assert.equal(await height(), 92);
-  await radio('Friend').click();
-  const friendSheet = page.getByTestId('friend-seat-sheet');
-  await friendSheet.waitFor();
-  await friendSheet.getByRole('link', { name: 'Cancel', exact: true }).click();
-  assert.equal(await radio('Open').getAttribute('aria-checked'), 'true');
 }
 
 async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
   if (testCase.rulesSelector) {
     const other = testCase.ruleSet === 'finnish' ? 'louisiana' : 'finnish';
-    const creation = testCase.rulesSelector === 'create-rule-set';
     const button = page
       .getByTestId(testCase.rulesSelector)
-      .getByRole(creation ? 'radio' : 'button', { name: new RegExp(ruleLabels[other]) });
+      .getByRole('button', { name: new RegExp(ruleLabels[other]) });
     await button.click();
-    assert.equal(await button.getAttribute(creation ? 'aria-checked' : 'aria-selected'), 'true');
+    assert.equal(await button.getAttribute('aria-selected'), 'true');
   }
   const waiting =
     testCase.name === 'table-waiting' ||
@@ -1962,11 +1903,11 @@ async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
   if (testCase.rulesExplainer) {
     await page.getByTestId('rules-done').click();
     await page.getByTestId(testCase.rulesBadge).waitFor();
-    // At the table the badge is the flag alone, in the header: it says its rules aloud.
     assert.ok(
-      (await page.getByTestId(testCase.rulesBadge).getAttribute('aria-label')).includes(
-        ruleLabels[testCase.ruleSet]
-      )
+      (waiting
+        ? await page.getByTestId(testCase.rulesBadge).innerText()
+        : await page.getByTestId(testCase.rulesBadge).getAttribute('aria-label')
+      ).includes(ruleLabels[testCase.ruleSet])
     );
   }
   if (waiting) await page.getByTestId('waiting-rules-menu').click();
@@ -3018,6 +2959,10 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
+        if (testCase.newTableFixture)
+          return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
+            viewport.name
+          );
         if (
           viewport.cases &&
           !viewport.cases.includes(testCase.name) &&
@@ -3329,7 +3274,7 @@ async function main() {
             await page.getByTestId('auth-sheet').waitFor();
             await waitForScreenshotReady(page);
           }
-          if (testCase.name.startsWith('friend-seat-') || testCase.testId === 'password-keypad') {
+          if (testCase.newTableFixture || testCase.testId === 'password-keypad') {
             await page.getByTestId(testCase.testId).waitFor();
             await waitForScreenshotReady(page);
           }
@@ -3418,9 +3363,12 @@ async function main() {
           await assertFriendComponents(page, testCase.name, screenshotDir);
           await assertRuleInteractions(page, testCase, viewport, screenshotDir);
           if (testCase.verifyReadiness) {
-            const panel = await getStableBox(page.getByTestId('readiness-panel'), page);
+            const panel = await getStableBox(
+              page.getByRole('button', { name: "I'm ready", exact: true }),
+              page
+            );
             for (const position of ['north', 'east', 'south', 'west']) {
-              const seat = await getStableBox(page.getByTestId(`waiting-seat-${position}`), page);
+              const seat = await getStableBox(page.getByTestId(`new-table-seat-${position}`), page);
               if (!panel || !seat || boxesOverlap(panel, seat)) {
                 throw new Error(`Readiness panel overlaps ${position} in ${viewport.name}`);
               }
