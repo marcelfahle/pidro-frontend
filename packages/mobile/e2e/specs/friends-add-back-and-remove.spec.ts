@@ -356,6 +356,22 @@ test('Play opens New table with the friend already assigned as Partner and creat
       )
       .toBe('online');
     await startSignedIn(page, account);
+    await page.route('**/api/v1/friends', (route) =>
+      route.fulfill({ status: 503, json: { error: 'UNAVAILABLE' } })
+    );
+    const unavailable = page.waitForResponse('**/api/v1/friends');
+    await page.goto(`/lobby?partner=${friend.user.id}`);
+    expect((await unavailable).status()).toBe(503);
+    // A failed cold lookup keeps the intent, even while the lobby remains usable.
+    await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
+    await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
+    await expect(page).toHaveURL(new RegExp(`/lobby\\?partner=${friend.user.id}$`));
+    await page.unroute('**/api/v1/friends');
+    await page.reload();
+    await expect(
+      page.getByTestId('create-seat_3').getByText(friendPlayer.name, { exact: true })
+    ).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
     await page.goto('/friends');
     await page
       .getByRole('button', { name: `Start a table with ${friendPlayer.name}`, exact: true })

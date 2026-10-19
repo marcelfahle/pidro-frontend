@@ -1525,42 +1525,93 @@ async function assertFriendsPresentation(page, name) {
         })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
   if (name === 'friends-all') {
-    for (const text of [
-      '4 friends · 3 online',
-      'Want to be friends',
-      'Online now',
-      'Not online',
-      'Waiting for an answer',
-      'Request sent 2 days ago',
-      "38 of your Classic friends aren't here yet",
-    ])
+    for (const text of swedish
+      ? [
+          '4 vänner · 3 online',
+          'Vill bli vänner',
+          'Online nu',
+          'Inte online',
+          'Väntar på svar',
+          'Förfrågan skickad för 2 dagar sedan',
+          '38 av dina Classic-vänner är inte här ännu',
+        ]
+      : [
+          '4 friends · 3 online',
+          'Want to be friends',
+          'Online now',
+          'Not online',
+          'Waiting for an answer',
+          'Request sent 2 days ago',
+          "38 of your Classic friends aren't here yet",
+        ])
       await page.getByText(text, { exact: true }).first().waitFor();
     assert.equal(
-      await page.getByRole('button', { name: "Join Nora's table", exact: true }).count(),
-      1
-    );
-    assert.equal(
-      await page.getByRole('button', { name: 'Start a table with Maija', exact: true }).count(),
+      await page
+        .getByRole('button', {
+          name: swedish ? 'Gå med vid Noras bord' : "Join Nora's table",
+          exact: true,
+        })
+        .count(),
       1
     );
     assert.equal(
       await page
-        .getByRole('button', { name: /(?:Join Kalle|Start a table with Kalle|Watch)/ })
+        .getByRole('button', {
+          name: swedish ? 'Starta ett bord med Maija' : 'Start a table with Maija',
+          exact: true,
+        })
+        .count(),
+      1
+    );
+    assert.equal(
+      await page
+        .getByRole('button', {
+          name: swedish
+            ? /(?:Gå med vid Kalles|Starta ett bord med Kalle|Titta)/
+            : /(?:Join Kalle|Start a table with Kalle|Watch)/,
+        })
         .count(),
       0
     );
-    await page.getByRole('button', { name: "Ignore Pekka's request", exact: true }).click();
-    assert.equal(await page.getByRole('button', { name: 'Accept Pekka', exact: true }).count(), 0);
-    const toast = page.getByTestId('toast');
-    await toast.getByText("Request hidden. Pekka won't be told.", { exact: true }).waitFor();
-    assertInsideViewport('toast', await toast.boundingBox(), page.viewportSize());
-    await page.getByRole('button', { name: 'Undo', exact: true }).click();
-    await page.getByRole('button', { name: 'Accept Pekka', exact: true }).waitFor();
+    const accept = page.getByRole('button', {
+      name: swedish ? 'Acceptera Pekka' : 'Accept Pekka',
+      exact: true,
+    });
+    const undo = page.getByRole('button', { name: swedish ? 'Ångra' : 'Undo', exact: true });
     await page
-      .getByRole('button', { name: 'Cancel your friend request to Eero', exact: true })
+      .getByRole('button', {
+        name: swedish ? 'Dölj förfrågan från Pekka' : "Ignore Pekka's request",
+        exact: true,
+      })
       .click();
-    await toast.getByText("Request cancelled. Eero won't be told.", { exact: true }).waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Undo', exact: true }).count(), 0);
+    assert.equal(await accept.count(), 0);
+    const toast = page.getByTestId('toast');
+    await toast
+      .getByText(
+        swedish
+          ? 'Förfrågan dold. Pekka får inget meddelande.'
+          : "Request hidden. Pekka won't be told.",
+        { exact: true }
+      )
+      .waitFor();
+    assertInsideViewport('toast', await toast.boundingBox(), page.viewportSize());
+    await undo.click();
+    await accept.waitFor();
+    await page
+      .getByRole('button', {
+        name: swedish ? 'Avbryt din vänförfrågan till Eero' : 'Cancel your friend request to Eero',
+        exact: true,
+      })
+      .click();
+    await toast
+      .getByText(
+        swedish
+          ? 'Förfrågan avbruten. Eero får inget meddelande.'
+          : "Request cancelled. Eero won't be told.",
+        { exact: true }
+      )
+      .waitFor();
+    assert.equal(await undo.count(), 0);
     assert.equal(await page.getByTestId('friends-sent').count(), 0);
     await toast.waitFor({ state: 'hidden', timeout: 6000 });
   }

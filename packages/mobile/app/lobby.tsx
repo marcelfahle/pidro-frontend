@@ -155,7 +155,11 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         useFriendsStore.getState().friends.find((friend) => friend.user_id === partner);
       let friend = findPartner();
       if (!friend) {
-        await refreshFriends().catch(() => undefined);
+        try {
+          await refreshFriends();
+        } catch {
+          return;
+        }
         friend = findPartner();
       }
       if (!active) return;
