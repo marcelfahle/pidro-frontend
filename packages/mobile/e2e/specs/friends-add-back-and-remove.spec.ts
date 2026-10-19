@@ -372,6 +372,32 @@ test('Play opens New table with the friend already assigned as Partner and creat
       page.getByTestId('create-seat_3').getByText(friendPlayer.name, { exact: true })
     ).toBeVisible();
     await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
+    // Warm a known current table, then enter through Friends instead of New table.
+    await page.route('**/api/v1/lobby', (route) =>
+      route.fulfill({
+        status: 200,
+        json: {
+          data: {
+            my_rejoinable: [{ code: 'MINE01', name: 'My table', status: 'playing', seats: [] }],
+            open_tables: [],
+            substitute_needed: [],
+            spectatable: [],
+          },
+        },
+      })
+    );
+    await page.goto('/home');
+    await page.getByTestId('home-play-online').click();
+    await expect(page.getByText('Your table', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Go back', exact: true }).click();
+    await page.getByRole('button', { name: 'Friends', exact: true }).click();
+    await page
+      .getByRole('button', { name: `Start a table with ${friendPlayer.name}`, exact: true })
+      .click();
+    await page.waitForURL('**/lobby');
+    await expect(page.getByRole('button', { name: 'Rejoin', exact: true })).toBeVisible();
+    await expect(page.getByTestId('create-room-window')).toBeHidden();
+    await page.unroute('**/api/v1/lobby');
     await page.goto('/friends');
     await page
       .getByRole('button', { name: `Start a table with ${friendPlayer.name}`, exact: true })

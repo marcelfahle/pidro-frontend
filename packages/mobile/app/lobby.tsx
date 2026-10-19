@@ -147,37 +147,6 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       ? record?.games
       : undefined;
 
-  useEffect(() => {
-    if (fixture || !partner || !user?.id) return;
-    let active = true;
-    const resolvePartner = async () => {
-      const findPartner = () =>
-        useFriendsStore.getState().friends.find((friend) => friend.user_id === partner);
-      let friend = findPartner();
-      if (!friend) {
-        try {
-          await refreshFriends();
-        } catch {
-          return;
-        }
-        friend = findPartner();
-      }
-      if (!active) return;
-      // Consume even an unavailable friend; a later New table must start fresh.
-      router.setParams({ partner: undefined });
-      if (!friend) return;
-      setInitialDraft(
-        chooseFriend({ seats: { ...defaultSeats }, requirements: {} }, 'seat_3', friend)
-      );
-      setCreateError(null);
-      setIsCreateModalOpen(true);
-    };
-    void resolvePartner();
-    return () => {
-      active = false;
-    };
-  }, [fixture, partner, router, user?.id]);
-
   useFocusEffect(
     useCallback(() => {
       if (fixture || !user?.id) return;
@@ -473,19 +442,51 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     }
   };
 
-  const handleNewTable = () => {
-    if (fixture) return;
-    if (activeRoom) {
-      Alert.alert(t('social.current_table'), t('social.at_table'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
-      ]);
-      return;
-    }
-    setInitialDraft(undefined);
-    setCreateError(null);
-    setIsCreateModalOpen(true);
-  };
+  const handleNewTable = useCallback(
+    (draft?: TableDraft) => {
+      if (fixture) return;
+      if (activeRoom) {
+        Alert.alert(t('social.current_table'), t('social.at_table'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
+        ]);
+        return;
+      }
+      setInitialDraft(draft);
+      setCreateError(null);
+      setIsCreateModalOpen(true);
+    },
+    [fixture, activeRoom, router, t]
+  );
+
+  useEffect(() => {
+    if (fixture || !partner || !user?.id) return;
+    let active = true;
+    const resolvePartner = async () => {
+      const findPartner = () =>
+        useFriendsStore.getState().friends.find((friend) => friend.user_id === partner);
+      let friend = findPartner();
+      if (!friend) {
+        try {
+          await refreshFriends();
+        } catch {
+          return;
+        }
+        friend = findPartner();
+      }
+      if (!active) return;
+      // Consume even an unavailable friend; a later New table must start fresh.
+      router.setParams({ partner: undefined });
+      if (!friend) return;
+      handleNewTable(
+        chooseFriend({ seats: { ...defaultSeats }, requirements: {} }, 'seat_3', friend)
+      );
+    };
+    void resolvePartner();
+    return () => {
+      active = false;
+    };
+  }, [fixture, partner, router, user?.id, handleNewTable]);
 
   const search = (
     <View style={!portraitPhone && styles.search}>
@@ -535,7 +536,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           size={portraitPhone ? 'icon' : 'sm'}
           label={portraitPhone ? undefined : t('social.start')}
           accessibilityLabel={t('social.start')}
-          onPress={handleNewTable}>
+          onPress={() => handleNewTable()}>
           <Icon name="plus" size={22} />
         </BevelButton>
       </View>
@@ -575,7 +576,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           />
         ) : isEmptyLobby ? (
           <EmptyLobby
-            onStart={handleNewTable}
+            onStart={() => handleNewTable()}
             onJoinCode={() => router.push('/join-code')}
             onQuickGame={quickGame.start}
             quickGameLoading={quickGame.loading}
@@ -652,7 +653,12 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
               styles.pinned,
               gradientBg(`linear-gradient(180deg, transparent 0%, ${PidroColors.feltBottom} 45%)`),
             ]}>
-            <BevelButton label={t('social.start')} size="lg" fullWidth onPress={handleNewTable} />
+            <BevelButton
+              label={t('social.start')}
+              size="lg"
+              fullWidth
+              onPress={() => handleNewTable()}
+            />
           </View>
         ) : null}
       </View>
