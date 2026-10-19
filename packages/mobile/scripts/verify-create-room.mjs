@@ -22,7 +22,11 @@ const fixtures = [
   'picker',
   'friends',
   'guest',
+  'live-picker',
+  'live-friends',
+  'live-error',
 ];
+const pickerFixtures = ['picker', 'friends', 'live-picker', 'live-friends', 'live-error'];
 const browser = await chromium.launch({ headless: true });
 await mkdir(output, { recursive: true });
 try {
@@ -35,7 +39,7 @@ try {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 2 });
     for (const fixture of fixtures) {
       await page.goto(`${baseUrl}/ui-dev?state=new-table&fixture=${fixture}`);
-      const live = ['opened', 'ready', 'guest'].includes(fixture);
+      const live = ['opened', 'ready', 'guest'].includes(fixture) || fixture.startsWith('live-');
       const screen = page.getByTestId(live ? 'waiting-table' : 'new-table-screen');
       await screen.waitFor();
       await suppressDevOverlays(page);
@@ -57,7 +61,7 @@ try {
           boxes[i].y >= boxes[i - 1].y + boxes[i - 1].height - 1,
           'single team list, no overlap'
         );
-      if (!['picker', 'friends'].includes(fixture)) {
+      if (!pickerFixtures.includes(fixture)) {
         for (const position of ['north', 'south', 'east', 'west']) {
           const row = page.getByTestId(`new-table-seat-${position}`);
           if (viewport.width > viewport.height) await row.scrollIntoViewIfNeeded();
@@ -135,6 +139,7 @@ try {
         path: resolve(output, `new-table-${fixture}-${viewport.width}x${viewport.height}.png`),
       });
       console.log(`new-table-${fixture}: ${viewport.width}x${viewport.height}`);
+      if (fixture.startsWith('live-')) await assertLivePicker(page, fixture, viewport);
     }
 
     // Keep real creation payload/error recovery coverage, independent of fixture callbacks.
@@ -212,4 +217,62 @@ try {
   }
 } finally {
   await browser.close();
+}
+
+/** After opening, each choice is one call; the fixture server answers and the rows show it. */
+async function assertLivePicker(page, fixture, viewport) {
+  const picker = page.getByTestId('seat-picker-container');
+  const radio = (name) =>
+    picker.getByRole('radio', { name: new RegExp(`^${name.replace(/[+]/g, '\\+')}, .+`) });
+  const checked = async (name) =>
+    assert.equal(await radio(name).getAttribute('aria-checked'), 'true', `${name} is the choice`);
+  const row = (position) => page.getByTestId(`new-table-seat-${position}`);
+  const choose = async (position, name, expected) => {
+    await radio(name).click();
+    await picker.waitFor({ state: 'detached' });
+    for (let tries = 0; !expected.test(await row(position).innerText()); tries++) {
+      assert.ok(tries < 50, `${position} reads ${expected} after ${name}`);
+      await page.waitForTimeout(100);
+    }
+    await row(position).click();
+    await checked(name);
+  };
+  const split = viewport.width > viewport.height || viewport.width >= 600;
+  if (fixture === 'live-picker') {
+    await checked('With password 4821');
+    await choose('west', 'Bot', /^Bot\n/);
+    await choose('west', '1000+ games played', /Waiting…$/);
+    await choose('west', 'With password 4821', /password 4821$/);
+    await choose('west', 'Anyone', /Waiting…$/);
+    await picker.getByRole('button', { name: 'Cancel', exact: true }).first().click();
+    await picker.waitFor({ state: 'detached' });
+    await row('south').click();
+    if (!split) await picker.getByRole('button', { name: /^A friend, Maija/ }).waitFor();
+    else await picker.getByLabel('Maija', { exact: true }).waitFor();
+    await choose('south', 'Bot', /^Bot\n/);
+  }
+  if (fixture === 'live-friends') {
+    const friends = page.getByTestId('friend-picker');
+    await friends.getByLabel('Maija', { exact: true }).waitFor();
+    for (const label of ['Nora, In a game with others']) {
+      const greyed = friends.getByLabel(label, { exact: true });
+      assert.equal(await greyed.getAttribute('aria-disabled'), 'true', `${label} is not tappable`);
+    }
+    await friends.getByRole('button', { name: 'Invite Pekka', exact: true }).click();
+    await picker.waitFor({ state: 'detached' });
+    for (
+      let tries = 0;
+      !/Pekka\nInvited · waiting for an answer/.test(await row('south').innerText());
+      tries++
+    ) {
+      assert.ok(tries < 50, 'south reads Pekka, invited');
+      await page.waitForTimeout(100);
+    }
+  }
+  if (fixture === 'live-error') {
+    await radio('Bot').click();
+    await picker.getByRole('alert').getByText('Someone sat down in this seat.').waitFor();
+    await checked('With password 4821');
+    assert.match(await row('west').innerText(), /password 4821/);
+  }
 }

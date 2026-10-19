@@ -5,8 +5,10 @@ import {
   type Position,
   type Room,
   type RuleSet,
+  type Seat,
   type SeatType,
 } from '@pidro/shared';
+import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import type { PickerFriend } from './friendPicker';
 
 export type SeatKey = 'seat_2' | 'seat_3' | 'seat_4';
@@ -28,6 +30,51 @@ export function roomHasUser(room: Room, userId?: string | null): boolean {
   return (
     room.seats?.some((seat) => seat.player?.id === userId || seat.player_id === userId) ?? false
   );
+}
+
+/** One row of the seat picker. A friend is chosen on the friend list; the rest are entries. */
+export type SeatChoice = 'friend' | 'ai' | 'open' | '100' | '1000' | 'password';
+
+/** The entry a choice stands for, the same before opening (into the draft) and after (to the server). */
+export function seatEntry(
+  choice: Exclude<SeatChoice, 'friend'>
+): Exclude<DraftSeat, { type: 'held' }> {
+  if (choice === 'ai' || choice === 'open') return choice;
+  return choice === 'password'
+    ? { type: 'open', min_games: 0, password: true }
+    : { type: 'open', min_games: choice === '1000' ? 1000 : 100 };
+}
+
+/** The choice a seat is on: the draft's before opening, the server's after. */
+export function seatChoice(seat: DraftSeat | Seat | undefined): SeatChoice {
+  if (!seat || seat === 'open') return 'open';
+  if (seat === 'ai') return 'ai';
+  if ('type' in seat)
+    return seat.type === 'held'
+      ? 'friend'
+      : seat.password
+        ? 'password'
+        : seat.min_games
+          ? (String(seat.min_games) as SeatChoice)
+          : 'open';
+  if (seat.held_for) return 'friend';
+  // The picker opens only on a seat without a person, so a player there is a bot.
+  if (seat.player) return 'ai';
+  if (seat.password) return 'password';
+  return seat.min_games === 1000 ? '1000' : seat.min_games === 100 ? '100' : 'open';
+}
+
+/** A person sits there. Only those seats are not the picker's: the host may only ask them to leave. */
+export function seatedHuman(seat?: Seat): boolean {
+  return !!seat?.player && !seat.player.is_bot && !seat.player.id?.startsWith('bot_');
+}
+
+/** What the picker says when the server refused a seat change, in the picker's own words. */
+export function seatError(error: unknown): string {
+  const code = apiErrorInfo(error).code?.toUpperCase();
+  if (code === 'ALREADY_SEATED') return t('new_table.friend_seated');
+  if (code === 'SEAT_NOT_VACANT') return t('new_table.seat_filled');
+  return localizedError(error, 'new_table.seat_error');
 }
 
 export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: DraftSeat): TableDraft {

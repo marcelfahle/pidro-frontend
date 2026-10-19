@@ -445,12 +445,15 @@ const allCases = [
     'friends',
     'guest',
     'declined',
+    'live-picker',
+    'live-friends',
   ].map((fixture) => ({
     name: `new-table-${fixture}`,
     path: `/ui-dev?state=new-table&fixture=${fixture}`,
-    testId: ['opened', 'ready', 'guest', 'declined'].includes(fixture)
-      ? 'waiting-table'
-      : 'new-table-screen',
+    testId:
+      ['opened', 'ready', 'guest', 'declined'].includes(fixture) || fixture.startsWith('live-')
+        ? 'waiting-table'
+        : 'new-table-screen',
     newTableFixture: fixture,
   })),
   { name: 'table-waiting', path: '/table-dev?phase=waiting', testId: 'waiting-table' },
@@ -2070,8 +2073,16 @@ async function assertCreationPresentation(page, testCase) {
     });
     assert.equal(await selected.getAttribute('aria-checked'), 'true');
   }
-  if (fixture === 'picker') await page.getByTestId('seat-picker-container').waitFor();
-  if (fixture === 'friends') await page.getByTestId('friend-picker').waitFor();
+  if (fixture === 'picker' || fixture === 'live-picker')
+    await page.getByTestId('seat-picker-container').waitFor();
+  if (fixture === 'live-picker')
+    assert.equal(
+      await page.getByRole('radio', { name: /^With password 4821, / }).getAttribute('aria-checked'),
+      'true',
+      'the live picker reopens on the seat as the server has it'
+    );
+  if (fixture === 'friends' || fixture === 'live-friends')
+    await page.getByTestId('friend-picker').waitFor();
   if (fixture === 'declined') {
     const card = page.getByTestId('seat-declined-notice');
     await card.getByText("Maija can't come right now", { exact: true }).waitFor();

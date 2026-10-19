@@ -9,6 +9,7 @@ import type {
   Position,
   Room,
   RuleSet,
+  SeatType,
 } from '@pidro/shared';
 import { NoticeCard } from '@/components/friends/NoticeCard';
 import { SeatPickerContainer } from '@/components/invites/SeatPickerContainer';
@@ -33,10 +34,14 @@ import {
   isPractice,
   newTableRequest,
   pickerFriends,
+  seatChoice,
+  seatedHuman,
+  seatEntry,
+  seatError,
   tableFooter,
   tableHeader,
   waitingFooter,
-  type DraftSeat,
+  type SeatChoice,
   type SeatKey,
   type TableDraft,
 } from '@/features/lobby/newTable';
@@ -61,6 +66,7 @@ interface Props {
   initialDraft?: TableDraft;
   initialRuleSet?: RuleSet;
   initialPicker?: 'choices' | 'friends';
+  initialSeat?: Position;
   partner?: string;
   fixtureFriends?: FriendPlayer[];
   youPlayerId?: string;
@@ -76,9 +82,8 @@ interface Props {
   readyDisabled?: boolean;
   onReady?: () => Promise<void>;
   onOpenInvite?: () => void;
-  onSeatBot?: (position: Position) => void;
-  onHoldSeat?: (position: Position, friend: FriendPlayer) => void;
-  onReleaseHold?: (position: Position) => void;
+  /** After opening, every choice is one seat entry; the screen then renders the server's room. */
+  onSetSeat?: (position: Position, seat: SeatType) => Promise<void>;
   onKickPlayer?: (position: Position) => void;
   rulesFixtureSeen?: boolean;
   notice?: TableNotice | null;
@@ -94,6 +99,7 @@ export function NewTableScreen({
   initialDraft,
   initialRuleSet,
   initialPicker,
+  initialSeat = 'south',
   partner,
   fixtureFriends,
   youPlayerId,
@@ -109,9 +115,7 @@ export function NewTableScreen({
   readyDisabled = true,
   onReady,
   onOpenInvite,
-  onSeatBot,
-  onHoldSeat,
-  onReleaseHold,
+  onSetSeat,
   onKickPlayer,
   rulesFixtureSeen,
   notice,
@@ -130,10 +134,11 @@ export function NewTableScreen({
   const preferred = useSettingsStore((state) => state.preferredRuleSet);
   const [draft, setDraft] = useState<TableDraft>(initialDraft ?? { seats: { ...defaultSeats } });
   const [draftRules, setDraftRules] = useState(initialRuleSet ?? preferred);
-  const [selected, setSelected] = useState<Position | null>(initialPicker ? 'south' : null);
+  const [selected, setSelected] = useState<Position | null>(initialPicker ? initialSeat : null);
   const [pickerPage, setPickerPage] = useState(initialPicker);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const [pickerError, setPickerError] = useState<string>();
   const [prefilled, setPrefilled] = useState(false);
   useEffect(() => {
     if (!fixtureFriends && user && !user.guest) void refreshFriends().catch(() => undefined);
@@ -210,16 +215,8 @@ export function NewTableScreen({
     : typeof selectedDraft === 'object' && selectedDraft.type === 'held'
       ? selectedDraft.friend
       : undefined;
-  const occupied = !!selectedLive?.player;
-  const selectedId = heldFriend
-    ? 'friend'
-    : selectedDraft === 'ai'
-      ? 'ai'
-      : typeof selectedDraft === 'object' && selectedDraft.type === 'open'
-        ? selectedDraft.password
-          ? 'password'
-          : String(selectedDraft.min_games)
-        : 'open';
+  const occupied = seatedHuman(selectedLive);
+  const selectedId = seatChoice(room ? selectedLive : selectedDraft);
   const sections: ChoiceSection[] = [
     {
       title: t('new_table.fill'),
@@ -231,73 +228,61 @@ export function NewTableScreen({
           subtitle: heldFriend?.display_name ?? t('new_table.choose_friend'),
           icon: 'person-plus',
         },
-        ...(!room || !selectedLive?.held_for
-          ? [
-              {
-                id: 'ai',
-                title: t('social.bot'),
-                subtitle: t('seat_row.right_away'),
-                icon: 'bot' as const,
-              },
-            ]
-          : []),
+        { id: 'ai', title: t('social.bot'), subtitle: t('seat_row.right_away'), icon: 'bot' },
       ],
     },
-    ...(!room || selectedLive?.held_for
-      ? [
-          {
-            title: t('new_table.leave_open'),
-            items: [
-              {
-                id: 'open',
-                title: t('social.anyone'),
-                subtitle: t('new_table.anyone_help'),
-                icon: 'plus' as const,
-              },
-              ...(!room
-                ? [
-                    {
-                      id: '100',
-                      title: t('seat_row.games', { number: '100' }),
-                      subtitle: t('new_table.experience'),
-                      badge: '100',
-                    },
-                    {
-                      id: '1000',
-                      title: t('seat_row.games', { number: '1000' }),
-                      subtitle: t('new_table.experienced'),
-                      badge: '1k',
-                    },
-                    {
-                      id: 'password',
-                      title: t('new_table.with_password'),
-                      subtitle: t('new_table.password_help'),
-                      icon: 'lock' as const,
-                    },
-                  ]
-                : []),
-            ],
-          },
-        ]
-      : []),
+    {
+      title: t('new_table.leave_open'),
+      items: [
+        {
+          id: 'open',
+          title: t('social.anyone'),
+          subtitle: t('new_table.anyone_help'),
+          icon: 'plus',
+        },
+        {
+          id: '100',
+          title: t('seat_row.games', { number: '100' }),
+          subtitle: t('new_table.experience'),
+          badge: '100',
+        },
+        {
+          id: '1000',
+          title: t('seat_row.games', { number: '1000' }),
+          subtitle: t('new_table.experienced'),
+          badge: '1k',
+        },
+        {
+          id: 'password',
+          // Only the server draws the password; until it has, the choice has no digits.
+          title: room?.seat_password
+            ? t('new_table.with_password_code', { code: room.seat_password })
+            : t('new_table.with_password'),
+          subtitle: t('new_table.password_help'),
+          icon: 'lock',
+        },
+      ],
+    },
   ];
+  const open = (position: Position) => {
+    setQuery('');
+    setSelectedPlayerId(liveSeat(position)?.player?.id ?? null);
+    setSelected(position);
+  };
+  // The picker has already closed; a refusal opens it again on the seat as the server has it.
+  const send = (position: Position, seat: SeatType) =>
+    void onSetSeat?.(position, seat).catch((caught) => {
+      open(position);
+      setPickerError(seatError(caught));
+    });
   const choose = (id: string) => {
     if (!selected || busy || controlsBusy) return;
+    const seat = seatEntry(id as Exclude<SeatChoice, 'friend'>);
     if (room) {
-      if (!editable) return;
-      if (id === 'ai') onSeatBot?.(selected);
-      if (id === 'open') onReleaseHold?.(selected);
+      if (editable) send(selected, seat);
     } else {
       if (selected === 'south') setPrefilled(true);
-      const choice: DraftSeat =
-        id === 'ai' || id === 'open'
-          ? id
-          : {
-              type: 'open',
-              min_games: id === '100' ? 100 : id === '1000' ? 1000 : 0,
-              ...(id === 'password' && { password: true }),
-            };
-      setDraft(chooseSeat(draft, seatKeys[selected]!, choice));
+      setDraft(chooseSeat(draft, seatKeys[selected]!, seat));
     }
   };
   const full = !!room && positions.every((position) => !!room.positions?.[position]);
@@ -326,11 +311,10 @@ export function NewTableScreen({
       row={seatRow(view(position, index))}
       onPress={() => {
         if (!busy && !controlsBusy) {
-          setQuery('');
-          setSelectedPlayerId(liveSeat(position)?.player?.id ?? null);
+          setPickerError(undefined);
           setPickerPage(undefined);
           if (position === declined?.position) onDismissDeclined?.();
-          setSelected(position);
+          open(position);
         }
       }}
     />
@@ -488,6 +472,7 @@ export function NewTableScreen({
           title={t(selected === order[1] ? 'social.partner_seat' : 'social.opponent')}
           subtitle={t(selected === order[1] ? 'new_table.partner_help' : 'new_table.opponent_help')}
           initialPage={pickerPage}
+          error={pickerError}
           choices={{ sections, selectedId, onSelect: choose }}
           friends={{
             friends: pickerFriends(
@@ -502,8 +487,9 @@ export function NewTableScreen({
             onInvite: (entry) => {
               const friend = friends.find((candidate) => candidate.user_id === entry.id);
               if (!friend || busy || controlsBusy) return;
-              if (room) onHoldSeat?.(selected, friend);
-              else {
+              if (room) {
+                if (editable) send(selected, { type: 'held', user_id: friend.user_id });
+              } else {
                 if (selected === 'south') setPrefilled(true);
                 setDraft(chooseFriend(draft, seatKeys[selected]!, friend));
               }
@@ -513,7 +499,10 @@ export function NewTableScreen({
               router.push('/friends');
             },
           }}
-          onClose={() => setSelected(null)}
+          onClose={() => {
+            setPickerError(undefined);
+            setSelected(null);
+          }}
         />
       )}
       <Modal
