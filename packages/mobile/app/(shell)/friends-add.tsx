@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Toast } from '@/components/ui/Toast';
-import { PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroFonts, PidroSpacing } from '@/design/tokens';
 import { friendLinkMessage } from '@/features/friends';
 import { discoveryFixture } from '@/features/friends/fixtures';
 import { useAuthStore } from '@/stores/auth';
@@ -123,6 +123,8 @@ const styles = StyleSheet.create({
     fontSize: 26,
     lineHeight: 32,
     fontWeight: '400',
+    color: PidroBevel.textGold,
+    ...PidroBevel.labelShadow,
   },
   landscape: { flexDirection: 'row', gap: 20 },
   sidebar: { flex: 1, minWidth: 0 },

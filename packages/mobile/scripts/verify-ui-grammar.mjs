@@ -1753,6 +1753,23 @@ async function assertFriendsPresentation(page, name) {
           'friends-guest': ['Save your player', 'Save account'],
         })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
+  if (name === 'friends-empty') {
+    // As on the board: help, recent players and the Classic card, on one screen
+    // from a 375×667 phone up (a 360×640 phone in Swedish scrolls a little).
+    assert.equal(await page.getByTestId('friends-link-card').count(), 0);
+    const { width, height } = page.viewportSize();
+    const overflow = await page.evaluate(() =>
+      [...document.querySelectorAll('*')]
+        .filter(
+          (el) =>
+            el.scrollHeight > el.clientHeight + 2 &&
+            ['auto', 'scroll'].includes(getComputedStyle(el).overflowY)
+        )
+        .map((el) => el.scrollHeight - el.clientHeight)
+    );
+    if (Math.min(width, height) >= 375 && Math.max(width, height) >= 667)
+      assert.deepEqual(overflow, [], 'empty Friends must not scroll');
+  }
   if (['friends-recent', 'friends-results', 'friends-empty'].includes(name)) {
     const list = page.getByTestId('friend-discovery');
     const before = await list.innerText();

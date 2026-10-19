@@ -48,7 +48,6 @@ export function friendAction(friend: FriendEntry): 'join' | 'play' | null {
   if (friend.join_as) return 'join';
   if (
     friend.presence === 'online' ||
-    friend.presence === 'with_bots' ||
     (friend.presence === 'at_table' && friend.table_company === 'bots')
   )
     return 'play';
@@ -64,6 +63,7 @@ export function friendSheetState(
   const params = { name: entry.display_name };
   if (relation === 'added_you')
     return { ...row, action: 'accept' as const, label: t('friends.accept'), hint: null };
+  if (relation === 'added') return { ...row, action: null, label: null, hint: null };
   const action = friendAction(entry);
   if (action === 'join')
     return {
@@ -103,10 +103,6 @@ export function classicFriendsMessage(lists: FriendLists): string | null {
   return count > 0 ? t('friends.classic_not_here', { count, number: formatNumber(count) }) : null;
 }
 
-export function presenceLabel(presence: FriendPlayer['presence']) {
-  return t(`friends.${presence}`);
-}
-
 export function canSearch(query: string) {
   // Hermes has no Segmenter. The server checks the exact grapheme minimum.
   return Array.from(query.normalize('NFKC').trim()).length >= 3;
@@ -122,20 +118,9 @@ export function canViewPlayer(player: Pick<RelativePlayerView, 'playerId' | 'sea
   );
 }
 
-/**
- * A friends-list entry as a row reads it. Everything past the name is
- * optional, so an older server works: `table_company` and `join_as` arrive
- * with PID-251 and PID-253, `requested_at` with PID-245, and `with_bots` /
- * `with_others` are the other presence form PID-251 considered. Fields
- * from older fixtures remain accepted alongside the wire names.
- */
+/** A friends-list entry as a row reads it. Everything past the name is optional. */
 export type FriendEntry = Omit<FriendPlayer, 'presence'> & {
-  presence?: FriendPlayer['presence'] | 'with_bots' | 'with_others';
-  requested_at?: string;
-  seats_open?: number;
-  hand?: number;
-  last_played_at?: string;
-  asked_at?: string;
+  presence?: FriendPlayer['presence'];
 };
 
 /** Where the entry stands with you: as `FriendResult.relation`, plus a friend made just now. */
@@ -197,13 +182,11 @@ export interface FriendRowState {
   dot: 'online' | 'table' | null;
   line: string;
   tone: 'green' | 'gold' | 'quiet';
-  /** At a table with other people and no seat for you: the seat picker greys it. */
-  busy: boolean;
 }
 
 function dated(
   key: 'friends.played' | 'friends.asked' | 'friends.request_sent_when',
-  date: string | undefined,
+  date: string | null | undefined,
   now: Date
 ) {
   const day = date ? relativeDay(date, now) : null;
@@ -212,52 +195,35 @@ function dated(
 
 function presenceStatus(entry: FriendEntry, now: Date): Omit<FriendRowState, 'variant'> {
   const { presence, join_as } = entry;
-  const company =
-    presence === 'with_bots'
-      ? 'bots'
-      : presence === 'with_others'
-        ? 'people'
-        : presence === 'at_table'
-          ? entry.table_company
-          : undefined;
-  const seated = presence === 'at_table' || company !== undefined;
   if (presence === 'online')
-    return { dot: 'online', line: t('friends.free_to_play'), tone: 'green', busy: false };
-  if (!seated) {
+    return { dot: 'online', line: t('friends.free_to_play'), tone: 'green' };
+  if (presence !== 'at_table')
     return {
       dot: null,
-      line:
-        dated('friends.played', entry.played_together_at ?? entry.last_played_at, now) ??
-        t('friends.not_online'),
+      line: dated('friends.played', entry.played_together_at, now) ?? t('friends.not_online'),
       tone: 'quiet',
-      busy: false,
     };
-  }
-  if (company === 'bots')
-    return { dot: 'online', line: t('friends.with_bots'), tone: 'green', busy: false };
+  if (entry.table_company === 'bots')
+    return { dot: 'online', line: t('friends.with_bots'), tone: 'green' };
   if (join_as) {
-    const seats = entry.table_open_seats ?? entry.seats_open;
+    const seats = entry.table_open_seats;
     return {
       dot: 'table',
       line: seats
         ? `${t('friends.at_table')} · ${t('social.seats_open', { count: seats, number: formatNumber(seats) })}`
         : t('friends.at_table'),
       tone: 'gold',
-      busy: false,
     };
   }
-  const busy = company === 'people';
-  const hand = entry.table_hand ?? entry.hand;
-  if (hand)
+  if (entry.table_hand)
     return {
       dot: 'table',
-      line: t('friends.at_table_hand', { number: formatNumber(hand) }),
+      line: t('friends.at_table_hand', { number: formatNumber(entry.table_hand) }),
       tone: 'gold',
-      busy,
     };
-  return busy
-    ? { dot: 'table', line: t('friends.with_others'), tone: 'quiet', busy }
-    : { dot: 'table', line: t('friends.at_table'), tone: 'gold', busy };
+  return entry.table_company === 'people'
+    ? { dot: 'table', line: t('friends.with_others'), tone: 'quiet' }
+    : { dot: 'table', line: t('friends.at_table'), tone: 'gold' };
 }
 
 /** The row's look and its one status line, from the entry alone. Screens use this, not their own rules. */
@@ -267,13 +233,12 @@ export function friendRowState(
   now: Date = new Date()
 ): FriendRowState {
   if (relation === 'added_you') {
-    const asked = dated('friends.asked', entry.requested_at ?? entry.asked_at, now);
+    const asked = dated('friends.asked', entry.requested_at, now);
     return {
       variant: 'request',
       dot: null,
       line: asked ?? t('friends.wants_to_be_friends'),
       tone: asked ? 'quiet' : 'gold',
-      busy: false,
     };
   }
   if (relation === 'added') {
@@ -283,7 +248,6 @@ export function friendRowState(
       line:
         dated('friends.request_sent_when', entry.requested_at, now) ?? t('friends.request_sent'),
       tone: 'quiet',
-      busy: false,
     };
   }
   const status = presenceStatus(entry, now);

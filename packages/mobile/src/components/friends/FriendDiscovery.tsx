@@ -105,7 +105,7 @@ export function FriendDiscovery({
   const loading = !preview && loadedQuery !== search;
   return (
     <View style={styles.section} testID="friend-discovery">
-      <PidroText role="label" tone="soft" accessibilityRole="header">
+      <PidroText role="metadata" tone="cyan" accessibilityRole="header" style={styles.eyebrow}>
         {t(search ? 'friends.results' : 'friends.recent')}
       </PidroText>
       {!eligible ? (
@@ -174,4 +174,13 @@ export function FriendDiscovery({
   );
 }
 
-const styles = StyleSheet.create({ section: { gap: 8 } });
+const styles = StyleSheet.create({
+  section: { gap: 8 },
+  eyebrow: {
+    paddingHorizontal: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: '900',
+    fontSize: 11,
+  },
+});

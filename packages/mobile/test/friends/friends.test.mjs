@@ -15,7 +15,6 @@ import {
   friendSections,
   friendSheetState,
   friendsMeta,
-  presenceLabel,
   discoveryRowState,
   friendLinkMessage,
   friendLinkRequest,
@@ -30,22 +29,27 @@ afterEach(() => {
 describe('Friends presentation', () => {
   test('the short profile offers the one next step, using only the server seat permission', () => {
     const nora = { user_id: 'nora', display_name: 'Nora', avatar_url: null };
-    for (const presence of ['at_table', 'with_others', 'with_bots']) {
-      expect(friendSheetState({ ...nora, presence, join_as: 'partner' })).toMatchObject({
+    for (const table_company of [undefined, 'people', 'bots']) {
+      const presence = 'at_table';
+      expect(
+        friendSheetState({ ...nora, presence, table_company, join_as: 'partner' })
+      ).toMatchObject({
         action: 'join',
         label: "Join Nora's table",
         line: 'At a table · partner seat free',
         hint: "You'll play as Nora's partner.",
         tone: 'gold',
       });
-      expect(friendSheetState({ ...nora, presence, join_as: 'opponent' })).toMatchObject({
+      expect(
+        friendSheetState({ ...nora, presence, table_company, join_as: 'opponent' })
+      ).toMatchObject({
         action: 'join',
         hint: "You'll play against Nora.",
       });
     }
     for (const entry of [
       { presence: 'at_table', table_open_seats: 3 },
-      { presence: 'with_others' },
+      { presence: 'at_table', table_company: 'people' },
       { presence: 'at_table', table_company: 'people', join_as: null },
     ])
       expect(friendSheetState({ ...nora, ...entry })).toMatchObject({
@@ -54,11 +58,7 @@ describe('Friends presentation', () => {
         hint: null,
         line: 'At a table · no free seats',
       });
-    for (const entry of [
-      { presence: 'online' },
-      { presence: 'with_bots' },
-      { presence: 'at_table', table_company: 'bots' },
-    ])
+    for (const entry of [{ presence: 'online' }, { presence: 'at_table', table_company: 'bots' }])
       expect(friendSheetState({ ...nora, ...entry })).toMatchObject({
         action: 'play',
         label: 'Play together',
@@ -76,6 +76,14 @@ describe('Friends presentation', () => {
       label: 'Accept',
       hint: null,
     });
+    // A request you sent is theirs to answer: nothing to start with them yet.
+    for (const presence of ['online', 'offline'])
+      expect(friendSheetState({ ...nora, presence }, 'added')).toMatchObject({
+        action: null,
+        label: null,
+        hint: null,
+        line: 'Request sent',
+      });
     setLocale('sv');
     expect(friendSheetState({ ...nora, presence: 'at_table', join_as: 'opponent' })).toMatchObject({
       label: 'Gå med vid Noras bord',
@@ -167,7 +175,6 @@ describe('Friends presentation', () => {
           : ['Want to be friends', 'Online now', 'Not online', 'Waiting for an answer']
       );
       expect(sections[1].players[0].display_name).toBe('Zoe');
-      expect(presenceLabel('at_table')).toBe(locale === 'sv' ? 'Vid ett bord' : 'At a table');
       expect(useFriendsStore.getState().error).toBe(cause);
       expect(localizedError(cause, 'friends.update_failed')).toBe(
         locale === 'sv'
@@ -180,19 +187,15 @@ describe('Friends presentation', () => {
   test('Join needs server permission; only free players and bot company offer Play', () => {
     for (const join_as of ['partner', 'opponent']) {
       expect(friendAction({ presence: 'at_table', table_company: 'people', join_as })).toBe('join');
-      expect(friendAction({ presence: 'with_bots', join_as })).toBe('join');
+      expect(friendAction({ presence: 'at_table', table_company: 'bots', join_as })).toBe('join');
     }
-    for (const entry of [
-      { presence: 'online' },
-      { presence: 'with_bots' },
-      { presence: 'at_table', table_company: 'bots' },
-    ])
+    for (const entry of [{ presence: 'online' }, { presence: 'at_table', table_company: 'bots' }])
       expect(friendAction(entry)).toBe('play');
     for (const entry of [
       {},
       { presence: 'offline' },
       { presence: 'at_table', table_open_seats: 3 },
-      { presence: 'with_others' },
+      { presence: 'at_table', table_company: 'people' },
       { presence: 'at_table', table_company: 'people', join_as: null },
     ])
       expect(friendAction(entry)).toBeNull();

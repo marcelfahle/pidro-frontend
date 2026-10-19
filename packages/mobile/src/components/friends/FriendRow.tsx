@@ -3,7 +3,7 @@
  * empty state and the seat picker. The avatar and name are one tap target
  * that opens the friend's sheet; one control trails it: an action pill or
  * × passed in (a request has both, as on the board), a quiet "Sent" /
- * "Friends" label, or a chevron.
+ * "Friends" label, or a chevron. Blocked players have no status line.
  * Presentational: the look comes from `friendRowState`.
  */
 import type { ReactNode } from 'react';
@@ -63,13 +63,15 @@ export function FriendRow({
         <PidroText role="label" numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.name}>
           {name}
         </PidroText>
-        <PidroText
-          role="metadata"
-          numberOfLines={dense ? 1 : 2}
-          maxFontSizeMultiplier={1.3}
-          style={[styles.line, { color: LINE_COLOR[row.tone] }]}>
-          {row.line}
-        </PidroText>
+        {row.line ? (
+          <PidroText
+            role="metadata"
+            numberOfLines={dense ? 1 : 2}
+            maxFontSizeMultiplier={1.3}
+            style={[styles.line, { color: LINE_COLOR[row.tone] }]}>
+            {row.line}
+          </PidroText>
+        ) : null}
       </View>
       {trailing === 'chevron' ? (
         <View style={styles.chevron}>
@@ -95,7 +97,7 @@ export function FriendRow({
           accessibilityRole="button"
           accessibilityLabel={accessibilityLabel ?? t('friends.view_profile', { name })}
           accessibilityState={{ selected }}
-          accessibilityHint={row.line}
+          accessibilityHint={row.line || undefined}
           onPress={onPress}
           style={[styles.identity, dense && styles.denseIdentity]}>
           {identity}
@@ -104,7 +106,7 @@ export function FriendRow({
         <View
           accessible
           accessibilityRole={dimmed ? 'button' : undefined}
-          accessibilityLabel={`${name}, ${row.line}`}
+          accessibilityLabel={row.line ? `${name}, ${row.line}` : name}
           accessibilityState={{ disabled: dimmed }}
           aria-disabled={dimmed || undefined}
           style={[styles.identity, dense && styles.denseIdentity]}>

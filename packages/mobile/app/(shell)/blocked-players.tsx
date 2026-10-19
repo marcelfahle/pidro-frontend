@@ -2,13 +2,14 @@ import { useCallback, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { localizedError } from '@pidro/shared';
+import { FriendRow } from '@/components/friends/FriendRow';
 import { usePillClearance } from '@/components/shell/TabPill';
+import { ActionPill } from '@/components/ui/ActionPill';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { PidroSpacing } from '@/design/tokens';
-import { FriendRow } from '@/features/friends/FriendRow';
 import { blockedFixture } from '@/features/friends/fixtures';
 import { useAuthStore } from '@/stores/auth';
 import { refreshBlockedPlayers, unblockPlayer, useFriendsStore } from '@/stores/friends';
@@ -68,12 +69,13 @@ export default function BlockedPlayersScreen() {
       {players.map((player) => (
         <FriendRow
           key={player.user_id}
-          player={player}
-          action={
-            <BevelButton
+          name={player.display_name}
+          avatarUrl={player.avatar_url}
+          row={{ variant: 'friend', dot: null, line: '', tone: 'quiet' }}
+          trailing={
+            <ActionPill
               label={t('blocks.unblock')}
               accessibilityLabel={t('blocks.unblock_player', { name: player.display_name })}
-              size="sm"
               loading={pending === player.user_id}
               disabled={pending !== null}
               onPress={async () => {

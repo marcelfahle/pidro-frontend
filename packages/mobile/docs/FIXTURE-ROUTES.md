@@ -268,8 +268,8 @@ real shell notice and Friends badge without a backend. Accepted and too late sta
 the fixture for capture; live ones disappear after four seconds. Too late (PID-254)
 replaces a seat notice whose seat went because the game started, the host let it go or
 the room closed, and after a refused Sit down; it has no buttons and no badge.
-Linked (PID-247) is the notice after signing up through someone's own link, which sends them
-a friend request: "Request sent. You'll be friends once Nora accepts.", with no buttons.
+Linked (PID-247) is the green notice after signing up through someone's own link, which
+sends them a friend request: "Request sent. You'll be friends once Nora accepts.", with no buttons.
 On a seat notice Not now declines the seat for real. The queue
 fixture starts with a seat, then a request, then accepted. Not now closes only the
 prompt, keeping the badge. These fixtures also work on other shell tabs. Grammar

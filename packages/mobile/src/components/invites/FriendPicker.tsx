@@ -128,7 +128,6 @@ export function FriendPicker({
                             : state === 'online' || state === 'bots'
                               ? 'green'
                               : 'quiet',
-                          busy: unavailable,
                         }}
                       />
                     </View>

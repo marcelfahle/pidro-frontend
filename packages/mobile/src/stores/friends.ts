@@ -1,5 +1,5 @@
 import {
-  isFriendAccepted,
+  isFriendPlayer,
   useFriendsStore,
   type BlockedPlayers,
   type FriendLists,
@@ -54,9 +54,8 @@ export async function blockPlayer(id: string) {
   void refreshFriends().catch(() => undefined);
 }
 
-/** A sign-up through someone's link sends them a friend request: "Request sent. You'll be friends once Bertil accepts." */
+/** A sign-up through someone's link sends them a request: "Request sent. You'll be friends once Bertil accepts." */
 export function queueLinkedFriend(friend: FriendPlayer | undefined) {
-  const accepted = { player: friend, source: 'link' };
-  if (isFriendAccepted(accepted))
-    useFriendsStore.getState().queueNotice({ ...accepted, kind: 'accepted' });
+  if (isFriendPlayer(friend))
+    useFriendsStore.getState().queueNotice({ kind: 'sent', player: friend });
 }

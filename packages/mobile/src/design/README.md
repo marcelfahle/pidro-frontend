@@ -131,7 +131,7 @@ Table names are generated at creation, not an extra form step.
 ## Friends
 
 A person with a status line is one `FriendRow` (`components/friends/`): on
-Friends, Add a friend, the empty state and the seat picker. Its look and line come
+Friends, Add a friend, the empty state, the seat picker and Blocked players. Its look and line come
 from `friendRowState` in `features/friends`, and every "yesterday" or "in
 September" from `relativeDay`, so screens never word a status themselves. A quiet
 card among the rows is an `InfoCard`; a friend notice is a `NoticeCard`, which
