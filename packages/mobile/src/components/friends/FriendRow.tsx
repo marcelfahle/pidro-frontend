@@ -1,8 +1,9 @@
 /**
  * One person with one status line, the same on Friends, Add a friend, the
  * empty state and the seat picker. The avatar and name are one tap target
- * that opens the friend's sheet; at most one control trails it: an action
- * pill or × passed in, a quiet "Sent" / "Friends" label, or a chevron.
+ * that opens the friend's sheet; one control trails it: an action pill or
+ * × passed in (a request has both, as on the board), a quiet "Sent" /
+ * "Friends" label, or a chevron.
  * Presentational: the look comes from `friendRowState`.
  */
 import type { ReactNode } from 'react';
