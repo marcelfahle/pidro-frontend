@@ -119,11 +119,13 @@ and disabled on/off examples. Focus the interactive examples to inspect the ring
 
 ## Team matchups
 
-Group the host and partner together, opposite the two opponents. Keep the lobby's
-quiet lowercase `vs` between teams: `PidroText` metadata, muted tone, no badge or
-ornamental plaque. In stacked portrait layouts it separates the groups vertically;
-in landscape it sits between columns. Creation labels the groups `Your team` and
-`Opponents`, uses read-only avatars, and makes each editable seat one row target.
+Group the host and partner together, opposite the two opponents. On Tables the
+`vs` stays quiet: `PidroText` metadata, muted tone, no badge or ornamental plaque.
+New table uses `TeamSection` and `VsDivider` (`components/lobby/SeatRow.tsx`): a
+gold Bree Serif `vs`, on a fading gold line when stacked on a phone, the word
+alone between columns and on iPad. The groups are `Your team` (gold) and
+`Opponents`, and each seat is one `SeatRow`, whose words come from
+`features/lobby/seatRow.ts` (sheet: `/ui-dev?state=seat-rows`).
 Table names are generated at creation, not an extra form step.
 
 ## Motion

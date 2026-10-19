@@ -208,6 +208,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | `/ui-dev?state=create&fixture=default\|open\|requirement\|bots\|friend` | Inline creation: defaults, Open question, 100+ picked, all bots, Friend selected. testID `create-room-window`; editable rows `create-seat_3`, `create-seat_2`, `create-seat_4`.             |
 | `/ui-dev?state=progression`                                             | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
 | `/ui-dev?state=avatars`                                                 | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
+| `/ui-dev?state=seat-rows&fixture=setup\|setup-open\|opened\|opened-more` | New table seat rows (PID-243): every state before and after the table opens, four seats at a time; landscape puts the teams side by side. testID `ui-seat-rows-panel` |
 
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.

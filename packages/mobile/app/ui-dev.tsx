@@ -10,6 +10,7 @@ import { friendsFixture } from '@/features/friends/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
+import { SeatRowGallery } from '@/components/dev/SeatRowGallery';
 import FriendsScreen from './(shell)/friends';
 import AddFriendScreen from './(shell)/friends-add';
 import BlockedPlayersScreen from './(shell)/blocked-players';
@@ -571,6 +572,7 @@ function UiDevHarness() {
   if (state === 'progression') return <ProgressionGallery />;
   if (state === 'avatars') return <AvatarGallery />;
   if (state === 'lobby-seats') return <LobbySeatGallery />;
+  if (state === 'seat-rows') return <SeatRowGallery fixture={params.fixture} />;
   if (state === 'create-safe-area') {
     // Browser-only layout simulation, not evidence of native modal inset measurement.
     // Native checks must use the real Modal + its real provider without fake metrics.
