@@ -90,6 +90,14 @@ export const PidroColors = {
   leagueCardInk: '#1b1b1b',
   leagueCardRed: '#c3172f',
   leagueCardEdge: 'rgba(0, 0, 0, 0.3)',
+  // Row controls (PID-241): the light action pill, its gold answer, the red count.
+  actionPill: 'rgba(139, 234, 255, 0.12)',
+  actionPillPressed: 'rgba(139, 234, 255, 0.22)',
+  actionPillBorder: 'rgba(139, 234, 255, 0.5)',
+  actionPillGold: 'rgba(226, 175, 69, 0.2)',
+  actionPillGoldPressed: 'rgba(226, 175, 69, 0.32)',
+  countBadge: '#d9412f',
+  focusRing: '0px 0px 0px 3px rgba(139,234,255,0.8)',
 } as const;
 
 /**

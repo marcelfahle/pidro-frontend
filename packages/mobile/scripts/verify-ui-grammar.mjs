@@ -2635,6 +2635,35 @@ async function assertSwitchInteractions(page, name, screenshotDir) {
   }
 }
 
+// The light row controls (PID-241): the × always names its row, a rules chip
+// is one radio of a pair, the count stops at 99+, and the sm pill keeps 44pt.
+async function assertRowControls(page, name, screenshotDir) {
+  if (name !== 'ui-components') return;
+  const panel = page.getByTestId('ui-row-controls-panel');
+  const dismiss = page.getByRole('button', { name: "Ignore Pekka's request", exact: true });
+  const box = await dismiss.boundingBox();
+  assert.ok(box.width >= 44 && box.height >= 44, 'The dismiss × is a 44pt target');
+  const sm = await page
+    .getByTestId('ui-pills-sm')
+    .getByRole('button', { name: 'Join', exact: true })
+    .boundingBox();
+  assert.ok(sm.height >= 44, 'The sm pill keeps a 44pt target');
+  assert.equal(await panel.getByRole('button', { name: 'Adding' }).isDisabled(), true);
+  const finnish = page.getByRole('radio', { name: 'Finnish', exact: true });
+  const louisiana = page.getByRole('radio', { name: 'Louisiana', exact: true });
+  assert.equal(await finnish.getAttribute('aria-checked'), 'true');
+  await louisiana.click();
+  assert.equal(await louisiana.getAttribute('aria-checked'), 'true');
+  assert.equal(await finnish.getAttribute('aria-checked'), 'false');
+  assert.deepEqual(
+    await page.getByTestId('ui-count-badges').locator('[dir="auto"]').allInnerTexts(),
+    ['1', '12', '99', '99+', '3', '99+'],
+    'A zero count hides; past 99 reads 99+'
+  );
+  await panel.getByRole('button', { name: 'Add', exact: true }).first().focus();
+  await panel.screenshot({ path: resolve(screenshotDir, 'ui-row-controls-focus.png') });
+}
+
 async function main() {
   const cases = selectCases();
   const matrix = selectViewports().flatMap((viewport) =>
@@ -3029,6 +3058,7 @@ async function main() {
           await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
+          await assertRowControls(page, testCase.name, screenshotDir);
           await assertRuleInteractions(page, testCase, viewport, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);

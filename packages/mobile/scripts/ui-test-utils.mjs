@@ -103,6 +103,7 @@ export const UI_VIEWPORTS = [
     width: 768,
     height: 1024,
     cases: [
+      'ui-components',
       'table-bidding',
       'table-count-help',
       'update-notice',

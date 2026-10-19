@@ -168,6 +168,9 @@ Table names are generated at creation, not an extra form step.
 | Account-flow screen            | `AuthFlowScreen` + `AuthFlowWindow`, `AuthFlowButton`, `AuthFlowNotice` |
 | Back out of a sub-screen       | `BackButton` (round glass, 44 on phones, 48 on tablets)                 |
 | Quiet text action              | `TextLink` (cyan, 800, always a 44px target)                            |
+| Row action, rules choice chip  | `ActionPill` (light cyan; `gold` answers someone; `selected` for chips) |
+| Remove a row                   | `DismissButton` (borderless 44px ×; label names what it dismisses)      |
+| A count on a tab or a title    | `CountBadge` (red; hides at 0, `99+` past 99)                           |
 | Choice with confirm/cancel     | `DecisionWindow` / `Modal`                                              |
 | Home navigation                | `HomeTabBar` (bottom bar portrait, right rail landscape)                |
 | Player identity                | `PlayerAvatar` (ring, pin, level, turn light, dealer; sizes drop parts) |
