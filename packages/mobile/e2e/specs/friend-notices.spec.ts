@@ -229,3 +229,76 @@ test('PID-254: Not now and sitting down elsewhere open the seat again and tell t
     await friendContext.close();
   }
 });
+
+test('PID-258: a seat held for you reaches your game with the bots; Not now tells the host, Join sits you there and costs nothing', async ({
+  page,
+  player,
+}) => {
+  const you = await register(player);
+  const hostPlayer = newPlayer();
+  const host = await register(hostPlayer);
+  for (const [caller, target] of [
+    [you, host],
+    [host, you],
+  ]) {
+    expect(
+      (await api(`/api/v1/friends/${target.user.id}`, { method: 'PUT', token: caller.token }))
+        .status
+    ).toBe(200);
+  }
+  const stats = async () => {
+    const result = await api('/api/v1/users/me/stats', { token: you.token });
+    expect(result.status).toBe(200);
+    const { games_played, games_abandoned } = result.payload.data;
+    return { games_played, games_abandoned };
+  };
+  await homeAfterLobbyJoin(page, you);
+  await page.getByTestId('home-quick-game').click();
+  await page.waitForURL(/\/game\/[A-Z0-9]+/);
+  const solo = /\/game\/([A-Z0-9]+)/.exec(page.url())![1];
+  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+  await expect(page.getByTestId('game-table')).toBeVisible();
+  const before = await stats();
+  const card = page.getByTestId('table-invitation');
+  await expect(card).toHaveCount(0);
+
+  const created = await api('/api/v1/rooms', {
+    method: 'POST',
+    token: host.token,
+    body: { seats: { seat_2: 'ai', seat_3: { type: 'held', user_id: you.user.id }, seat_4: 'ai' } },
+  });
+  expect(created.status).toBe(201);
+  const code = created.payload.data.code;
+  await expect(card).toBeVisible({ timeout: 1_000 });
+  await expect(card).toContainText(`${hostPlayer.name} is holding a seat for you`);
+  await expect(card).toContainText(`as ${hostPlayer.name}'s partner`);
+  await expect(card).toContainText('Joining ends your game with the bots.');
+
+  await card.getByRole('button', { name: 'Not now', exact: true }).click();
+  await expect(card).toHaveCount(0);
+  await expect
+    .poll(
+      async () => (await api('/api/v1/auth/me', { token: you.token })).payload.data.seat_invitations
+    )
+    .toEqual([]);
+  await expect(page.getByTestId('game-table')).toBeVisible();
+  expect(page.url()).toContain(`/game/${solo}`);
+
+  // Asked again, Join leaves the bots and sits down in the held seat.
+  expect(
+    (
+      await api(`/api/v1/rooms/${code}/seats/south/hold`, {
+        method: 'PUT',
+        token: host.token,
+        body: { user_id: you.user.id },
+      })
+    ).status
+  ).toBe(200);
+  await expect(card).toBeVisible({ timeout: 1_000 });
+  await card.getByRole('button', { name: `Join ${hostPlayer.name}`, exact: true }).click();
+  await page.waitForURL(new RegExp(`/game/${code}$`));
+  await expect(page.getByTestId('new-table-seat-south')).toContainText(player.name);
+  await expect(page.getByText(/started without you/)).toHaveCount(0);
+  expect((await api(`/api/v1/rooms/${solo}`, { token: you.token })).status).toBe(404);
+  expect(await stats()).toEqual(before);
+});

@@ -32,6 +32,8 @@ export interface NoticeCardProps {
   secondary?: NoticeAction;
   /** A small centred line under the buttons. */
   footnote?: string;
+  /** One row, the words and then the buttons, no avatar: for a short landscape screen. */
+  row?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -45,6 +47,7 @@ export function NoticeCard({
   primary,
   secondary,
   footnote,
+  row = false,
   style,
   testID,
 }: NoticeCardProps) {
@@ -59,11 +62,13 @@ export function NoticeCard({
       exiting={reduceMotion ? undefined : FadeOutDown.duration(160)}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
-      style={[styles.card, styles[variant], style]}>
-      <View style={styles.person}>
-        <View style={(late || variant === 'cant_come') && styles.dim}>
-          <PlayerAvatar size={44} uri={avatarUrl} ring={ring} />
-        </View>
+      style={[styles.card, row && styles.row, styles[variant], style]}>
+      <View style={[styles.person, row && styles.grow]}>
+        {row ? null : (
+          <View style={(late || variant === 'cant_come') && styles.dim}>
+            <PlayerAvatar size={44} uri={avatarUrl} ring={ring} />
+          </View>
+        )}
         <View style={styles.copy}>
           <PidroText role="label" style={[styles.title, late && styles.lateTitle]}>
             {title}
@@ -73,10 +78,15 @@ export function NoticeCard({
               {body}
             </PidroText>
           ) : null}
+          {row && footnote ? (
+            <PidroText role="metadata" style={styles.body}>
+              {footnote}
+            </PidroText>
+          ) : null}
         </View>
       </View>
       {actions ? (
-        <View style={styles.actions}>
+        <View style={[styles.actions, row && styles.rowActions]}>
           {primary ? (
             <BevelButton
               label={primary.label}
@@ -99,7 +109,7 @@ export function NoticeCard({
           ) : null}
         </View>
       ) : null}
-      {footnote ? (
+      {footnote && !row ? (
         <PidroText role="metadata" align="center" style={styles.body}>
           {footnote}
         </PidroText>
@@ -128,6 +138,8 @@ const styles = StyleSheet.create({
     borderColor: PidroColors.noticeQuietBorder,
     backgroundColor: PidroColors.friendSentBg,
   },
+  row: { maxWidth: '100%', flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
+  grow: { flex: 1, minWidth: 0 },
   person: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   dim: { opacity: 0.6 },
   copy: { flex: 1, minWidth: 0, gap: 1 },
@@ -135,5 +147,7 @@ const styles = StyleSheet.create({
   lateTitle: { color: PidroColors.textSoft },
   body: { fontSize: 13, lineHeight: 17, letterSpacing: 0, color: PidroColors.textSoft },
   actions: { flexDirection: 'row', gap: 8 },
-  action: { flex: 1 },
+  rowActions: { minWidth: 248 },
+  // Each label first, then the rest shared: a long name never clips the wood.
+  action: { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' },
 });
