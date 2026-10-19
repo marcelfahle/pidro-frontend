@@ -2645,7 +2645,7 @@ async function assertSwitchInteractions(page, name, screenshotDir) {
 async function assertRowControls(page, name, screenshotDir) {
   if (name !== 'ui-components') return;
   const panel = page.getByTestId('ui-row-controls-panel');
-  const dismiss = page.getByRole('button', { name: "Ignore Pekka's request", exact: true });
+  const dismiss = panel.getByRole('button', { name: "Ignore Pekka's request", exact: true });
   const box = await dismiss.boundingBox();
   assert.ok(box.width >= 44 && box.height >= 44, 'The dismiss × is a 44pt target');
   const sm = await page
@@ -2667,6 +2667,47 @@ async function assertRowControls(page, name, screenshotDir) {
   );
   await panel.getByRole('button', { name: 'Add', exact: true }).first().focus();
   await panel.screenshot({ path: resolve(screenshotDir, 'ui-row-controls-focus.png') });
+}
+
+// Friend rows and notices (PID-242): a name never wraps, the row is one
+// labelled target that opens the sheet, and every control keeps 44pt.
+async function assertFriendComponents(page, name, screenshotDir) {
+  if (name !== 'ui-components') return;
+  const rows = page.getByTestId('ui-friend-rows-panel');
+  const notices = page.getByTestId('ui-friend-notices-panel');
+  const long = rows.getByRole('button', {
+    name: "View Alexandria the Long-Named Player of Helsinki's profile",
+    exact: true,
+  });
+  const hit = await long.boundingBox();
+  assert.ok(hit.height >= 48, 'A friend row opens the sheet from a 48pt target');
+  const nameBox = await long
+    .getByText('Alexandria the Long-Named Player of Helsinki', { exact: true })
+    .boundingBox();
+  assert.ok(nameBox.height <= 24, 'A long name stays on one line');
+  assert.ok(nameBox.x + nameBox.width <= hit.x + hit.width + 1, 'A long name is truncated');
+  for (const box of await rows.getByRole('button').evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().toJSON())
+  )) {
+    assert.ok(box.width >= 44 && box.height >= 44, 'Every friend row control is a 44pt target');
+  }
+  for (const box of await notices.getByRole('button').evaluateAll((nodes) =>
+    nodes.map((node) => node.getBoundingClientRect().toJSON())
+  )) {
+    assert.ok(box.height >= 44, 'Every notice button is a 44pt target');
+  }
+  // The panels are taller than a phone, and the gallery scrolls inside the
+  // window: grow the window, keep its width, so each panel is captured whole.
+  const viewport = page.viewportSize();
+  await page.setViewportSize({ width: viewport.width, height: 3200 });
+  await rows.screenshot({ path: resolve(screenshotDir, 'ui-friend-rows.png') });
+  await notices.screenshot({ path: resolve(screenshotDir, 'ui-friend-notices.png') });
+  await page.setViewportSize(viewport);
+  const solo = page.getByTestId('ui-friend-notice-solo');
+  await solo.getByRole('button', { name: 'Not now', exact: true }).click();
+  await solo.waitFor({ state: 'detached' });
+  await notices.getByRole('button', { name: 'Show the notice', exact: true }).click();
+  await solo.waitFor();
 }
 
 async function main() {
@@ -3064,6 +3105,7 @@ async function main() {
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
           await assertRowControls(page, testCase.name, screenshotDir);
+          await assertFriendComponents(page, testCase.name, screenshotDir);
           await assertRuleInteractions(page, testCase, viewport, screenshotDir);
           if (testCase.verifyReadiness) {
             const panel = await getStableBox(page.getByTestId('readiness-panel'), page);

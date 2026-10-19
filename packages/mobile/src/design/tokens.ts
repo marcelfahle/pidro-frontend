@@ -102,6 +102,16 @@ export const PidroColors = {
   actionPillGoldPressed: 'rgba(226, 175, 69, 0.32)',
   countBadge: '#d9412f',
   focusRing: '0px 0px 0px 3px rgba(139,234,255,0.8)',
+  // Friends (PID-242): the presence dot, a request row, a sent one, and the
+  // floating notice card with its edges.
+  presenceOnline: '#4fd37a',
+  friendAskBg: 'rgba(107, 73, 11, 0.4)',
+  friendAskBorder: 'rgba(226, 175, 69, 0.8)',
+  friendSentBg: 'rgba(7, 45, 82, 0.6)',
+  noticeFace: '#0b2c4f',
+  noticeCyanBorder: 'rgba(91, 221, 255, 0.55)',
+  noticeQuietBorder: 'rgba(184, 225, 246, 0.35)',
+  noticeShadow: '0px 12px 28px rgba(0, 0, 0, 0.55)',
 } as const;
 
 /**
