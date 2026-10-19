@@ -328,3 +328,50 @@ test('Play on a friend prefills Partner; requirements and a server password surv
     `Waiting… · password ${password}`
   );
 });
+
+test('a delayed partner lookup preserves an explicit seat choice and a cold entry can go back', async ({
+  page,
+  player,
+}) => {
+  const host = await register(player);
+  const friendPlayer = newPlayer();
+  const friend = await register(friendPlayer);
+  for (const [caller, target] of [
+    [host, friend],
+    [friend, host],
+  ]) {
+    expect(
+      (await api(`/api/v1/friends/${target.user.id}`, { method: 'PUT', token: caller.token }))
+        .status
+    ).toBe(200);
+  }
+  await startSignedIn(page, host);
+  for (const choice of ['Bot', 'Anyone']) {
+    let release!: () => void;
+    const delayed = new Promise<void>((resolve) => (release = resolve));
+    await page.route('**/api/v1/friends', async (route) => {
+      const response = await route.fetch();
+      await delayed;
+      await route.fulfill({ response });
+    });
+    await page.goto(`/new-table?partner=${friend.user.id}`);
+    const partner = page.getByTestId('new-table-seat-south');
+    await partner.click();
+    const picker = page.getByTestId('seat-picker-container');
+    await picker.getByRole('radio', { name: new RegExp(`^${choice},`) }).click();
+    release();
+    // Seeing the friend in another seat's picker proves the delayed list reached the UI.
+    await page.getByTestId('new-table-seat-west').click();
+    await picker.getByRole('button', { name: /^A friend,/ }).click();
+    await expect(
+      picker.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true })
+    ).toBeVisible();
+    await cancelPicker(page);
+    await expect(partner).not.toContainText(friendPlayer.name);
+    if (choice === 'Anyone') await expect(partner).toContainText('Open seat');
+    else await expect(partner).toContainText('Plays right away');
+    await page.unroute('**/api/v1/friends');
+  }
+  await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
+  await expect(page).toHaveURL(/\/lobby$/);
+});

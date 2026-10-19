@@ -267,6 +267,7 @@ export function NewTableScreen({
       if (id === 'ai') onSeatBot?.(selected);
       if (id === 'open') onReleaseHold?.(selected);
     } else {
+      if (selected === 'south') setPrefilled(true);
       const choice: DraftSeat =
         id === 'ai' || id === 'open'
           ? id
@@ -452,7 +453,10 @@ export function NewTableScreen({
               const friend = friends.find((candidate) => candidate.user_id === entry.id);
               if (!friend || busy || controlsBusy) return;
               if (room) onHoldSeat?.(selected, friend);
-              else setDraft(chooseFriend(draft, seatKeys[selected]!, friend));
+              else {
+                if (selected === 'south') setPrefilled(true);
+                setDraft(chooseFriend(draft, seatKeys[selected]!, friend));
+              }
             },
             onAddFriends: () => {
               setSelected(null);

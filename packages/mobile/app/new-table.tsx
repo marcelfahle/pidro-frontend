@@ -71,7 +71,7 @@ export default function NewTableRoute() {
       <NewTableScreen
         partner={partner}
         onSubmit={(request) => void create(request)}
-        onLeave={() => router.back()}
+        onLeave={() => (router.canGoBack() ? router.back() : router.replace('/lobby'))}
         busy={busy}
         error={failure ? localizedError(failure.error, failure.key) : undefined}
       />
