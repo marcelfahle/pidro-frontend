@@ -143,7 +143,16 @@ async function main() {
     await page.goto(`${mobileBaseUrl}/(auth)/login`, {
       waitUntil: 'domcontentloaded',
     });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => {
+      localStorage.clear();
+      localStorage.setItem(
+        'age-gate-storage',
+        JSON.stringify({
+          state: { ageBand: '18_plus', termsVersion: '1' },
+          version: 0,
+        })
+      );
+    });
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.getByLabel('Email or username', { exact: true }).fill(username);
     await page.getByLabel('Password', { exact: true }).fill(password);
@@ -186,10 +195,12 @@ async function main() {
       throw new Error(`New table setup still visible after submit: ${gameBody}`);
     }
 
-    await page.getByText('Leave').waitFor({ timeout: 15_000 });
+    await page
+      .getByRole('button', { name: 'Leave table', exact: true })
+      .waitFor({ timeout: 15_000 });
     captures.push(...(await captureCurrentScreen(page, 'waiting-table-live', 'waiting-table')));
 
-    await page.getByText('Leave').click({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Leave table', exact: true }).click({ timeout: 5_000 });
     await page.waitForURL(/\/lobby$/, { timeout: 10_000 });
 
     await leaveAnyCurrentRoom(token);
@@ -204,7 +215,10 @@ async function main() {
     });
     await page.getByTestId('game-table').waitFor({ state: 'visible', timeout: 20_000 });
     captures.push(...(await captureCurrentScreen(page, 'game-table-live', 'game-table')));
-    await page.getByText('Leave').click({ timeout: 5_000 });
+    await page.getByRole('button', { name: 'Table settings', exact: true }).click();
+    await page.getByRole('button', { name: 'Leave table', exact: true }).click();
+    await page.getByText('Leave table?', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'Leave table', exact: true }).click();
     await page.waitForURL(/\/lobby$/, { timeout: 10_000 });
 
     const unexpectedFailedResponses = failedResponses.filter(

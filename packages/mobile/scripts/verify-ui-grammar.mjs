@@ -1903,11 +1903,11 @@ async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
   if (testCase.rulesExplainer) {
     await page.getByTestId('rules-done').click();
     await page.getByTestId(testCase.rulesBadge).waitFor();
-    // At the table the badge is the flag alone, in the header: it says its rules aloud.
     assert.ok(
-      (await page.getByTestId(testCase.rulesBadge).getAttribute('aria-label')).includes(
-        ruleLabels[testCase.ruleSet]
-      )
+      (waiting
+        ? await page.getByTestId(testCase.rulesBadge).innerText()
+        : await page.getByTestId(testCase.rulesBadge).getAttribute('aria-label')
+      ).includes(ruleLabels[testCase.ruleSet])
     );
   }
   if (waiting) await page.getByTestId('waiting-rules-menu').click();

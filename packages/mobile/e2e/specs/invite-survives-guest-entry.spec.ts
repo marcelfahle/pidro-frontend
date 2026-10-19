@@ -21,7 +21,8 @@ test('an invite survives guest entry and ends at that table', async ({ page }) =
   for (const position of ['north', 'south', 'east', 'west']) {
     await expect(page.getByTestId(`new-table-seat-${position}`)).toBeVisible();
   }
-  await expect(
-    page.getByRole('button', { name: 'Share the table link', exact: true })
-  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Share the table link', exact: true })).toHaveCount(
+    0
+  );
+  await expect(page.getByTestId('waiting-table').getByText('You', { exact: true })).toBeVisible();
 });

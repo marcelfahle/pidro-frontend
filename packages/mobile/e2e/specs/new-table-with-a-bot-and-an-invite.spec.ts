@@ -1,7 +1,15 @@
+import type { Page } from '@playwright/test';
 import { test, expect } from '../fixtures';
 import { api, register } from '../support/api';
 import { startSignedIn } from '../support/session';
 import { AGE_ANSWERED, newPlayer } from '../support/player';
+
+async function cancelPicker(page: Page) {
+  const picker = page.getByTestId('seat-picker-container');
+  const back = picker.getByRole('link', { name: /^‹ / });
+  if (await back.isVisible()) await back.click();
+  await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+}
 
 test('a bot and two open seats share a table link without a name form or seat binding', async ({
   page,
@@ -41,7 +49,7 @@ test('a bot and two open seats share a table link without a name form or seat bi
         await picker.getByRole('button', { name: /^A friend,/ }).click();
       }
       await expect(picker.getByText('No friends yet', { exact: true })).toBeVisible();
-      await picker.getByRole('button', { name: 'Cancel', exact: true }).click();
+      await cancelPicker(page);
     }
     await expect(picker).toBeHidden();
   }
@@ -153,10 +161,10 @@ test('picked friends become holds only on Open; invitations arrive live, recover
         created++;
     });
     await openFriends('west');
-    await sheet.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await cancelPicker(page);
     await form.getByTestId('new-table-seat-west').click();
     await expect(sheet.getByRole('radio', { name: /^Anyone,/ })).toBeChecked();
-    await sheet.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await cancelPicker(page);
     await openFriends('west');
     await friends
       .getByRole('textbox', { name: 'Find a friend', exact: true })
@@ -166,14 +174,17 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     await expect(form.getByTestId('new-table-seat-west')).toContainText(friendPlayer.name);
     await openFriends('south');
     await expect(
-      friends.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true })
+      friends.getByRole('button', {
+        name: `${friendPlayer.name}, Already invited to another seat`,
+        exact: true,
+      })
     ).toBeDisabled();
-    await sheet.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await cancelPicker(page);
     await openFriends('west');
     await expect(
       friends.getByRole('button', { name: friendPlayer.name, exact: true })
     ).toBeEnabled();
-    await sheet.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await cancelPicker(page);
     expect(created).toBe(0);
     await form.getByRole('button', { name: 'Open the table', exact: true }).click();
     await page.waitForURL(/\/game\/[A-Z0-9]+$/);
@@ -184,9 +195,12 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     ).toBe(friend.user.id);
     await openFriends('south');
     await expect(
-      friends.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true })
+      friends.getByRole('button', {
+        name: `${friendPlayer.name}, Already invited to another seat`,
+        exact: true,
+      })
     ).toBeDisabled();
-    await sheet.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await cancelPicker(page);
     const inbox = receiver.getByTestId('seat-invitations');
     await expect(
       inbox.getByText(`${player.name} is holding a seat for you`, { exact: true })
@@ -244,14 +258,17 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     ).toEqual([]);
     await openFriends('east');
     await expect(
-      friends.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true })
+      friends.getByRole('button', {
+        name: `${friendPlayer.name}, Already invited to another seat`,
+        exact: true,
+      })
     ).toBeDisabled();
   } finally {
     await receiverContext.close();
   }
 });
 
-test('Play on a friend prefills Partner; requirements and a server password survive opening and rejoining', async ({
+test('Play on a friend prefills Partner; requirements and a server password survive public room updates', async ({
   page,
   player,
 }) => {
@@ -296,7 +313,17 @@ test('Play on a friend prefills Partner; requirements and a server password surv
   await expect(page.getByTestId('new-table-seat-west')).toContainText(
     `Waiting… · password ${password}`
   );
-  await page.reload();
+  const code = new URL(page.url()).pathname.split('/').pop();
+  expect(
+    (
+      await api(`/api/v1/rooms/${code}/join`, {
+        method: 'POST',
+        token: friend.token,
+        body: { position: 'south' },
+      })
+    ).status
+  ).toBe(200);
+  await expect(partner).toContainText('Not ready');
   await expect(page.getByTestId('new-table-seat-west')).toContainText(
     `Waiting… · password ${password}`
   );

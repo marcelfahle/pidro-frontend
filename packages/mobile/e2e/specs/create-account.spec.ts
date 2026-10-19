@@ -66,8 +66,10 @@ test('a new account opens a Finnish table that another player can find with two 
       .getByRole('radiogroup', { name: 'Rules', exact: true })
       .getByRole('radio', { name: 'Finnish', exact: true })
   ).toHaveAttribute('aria-checked', 'true');
-  await expect(form.getByTestId('new-table-seat-north')).toContainText(player.name);
-  await expect(form.getByTestId('new-table-seat-south')).toContainText('Partner');
+  await expect(form.getByTestId('new-table-seat-north')).toHaveText('YouHost');
+  await expect(form.getByTestId('new-table-seat-south')).toHaveAccessibleName(
+    'Partner: Open seat, Anyone can sit. Change'
+  );
   for (const position of ['south', 'east', 'west']) {
     await form.getByTestId(`new-table-seat-${position}`).click();
     const picker = page.getByTestId('seat-picker-container');

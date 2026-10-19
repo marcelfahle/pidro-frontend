@@ -53,7 +53,8 @@ function room(code: string, names: (string | null)[], louisiana = false, playing
       player: name
         ? {
             id: `${code}-${positions[index]}`,
-            ...(name === 'Bot' ? { is_bot: true, ...BOT_CREW[bots++ % 3] } : { username: name }),
+            username: name,
+            ...(name === 'Bot' ? { is_bot: true, ...BOT_CREW[bots++ % 3] } : {}),
           }
         : null,
     })),

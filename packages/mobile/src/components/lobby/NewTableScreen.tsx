@@ -109,6 +109,7 @@ export function NewTableScreen({
   const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
+  const compact = width < height && height < 700;
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const friendStore = useFriendsStore();
@@ -316,7 +317,7 @@ export function NewTableScreen({
       <ScreenShell
         testID={room ? 'waiting-table' : 'new-table-screen'}
         scroll={width > height && height < 600}
-        contentStyle={styles.screen}>
+        contentStyle={[styles.screen, compact && styles.compact]}>
         <View testID="waiting-toolbar" style={styles.header}>
           <BackButton
             accessibilityLabel={t(
@@ -358,7 +359,7 @@ export function NewTableScreen({
             </PidroText>
           </View>
         )}
-        <View style={styles.teams}>
+        <View style={[styles.teams, compact && styles.compactTeams]}>
           <TeamSection team="yours">
             {order.slice(0, 2).map((position, index) => row(position, index))}
           </TeamSection>
@@ -489,6 +490,8 @@ export function NewTableScreen({
 
 const styles = StyleSheet.create({
   screen: { maxWidth: 436, gap: 12, paddingHorizontal: 20, paddingVertical: 16 },
+  compact: { gap: 8, paddingVertical: 8 },
+  compactTeams: { gap: 8 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heading: { flex: 1, minWidth: 0, gap: 2 },
   title: { fontFamily: PidroFonts.display, fontSize: 24, lineHeight: 32 },

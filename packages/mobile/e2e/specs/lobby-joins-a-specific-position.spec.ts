@@ -88,7 +88,7 @@ test('a 1000+ chair explains the local lock and the server refusal @responsive',
     await expect(hostPage).toHaveURL(/\/new-table$/);
     const form = hostPage.getByTestId('new-table-screen');
     const partner = form.getByTestId('new-table-seat-south');
-    await expect(partner).toContainText('Partner');
+    await expect(partner).toHaveAccessibleName('Partner: Open seat, Anyone can sit. Change');
     await partner.click();
     await hostPage
       .getByTestId('seat-picker-container')
