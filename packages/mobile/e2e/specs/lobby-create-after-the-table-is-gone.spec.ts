@@ -40,7 +40,7 @@ test('creating a table never leaves an unknown or live multiplayer table', async
   await startSignedIn(page, await register(player));
   await page.goto('/lobby');
   await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-  const form = page.getByTestId('create-room-window');
+  const form = page.getByTestId('new-table-screen');
   await expect(form).toBeVisible();
   await page.route('**/api/v1/rooms', (route) =>
     route.request().method() === 'POST'
