@@ -10,10 +10,14 @@ export const usePendingFriendLinkStore = createPendingFriendLinkStore({
 });
 
 /** The link has done its work once the session is an account, friendship or not. */
-authStore.subscribe((state) => {
+function clearOnceRegistered() {
+  const user = authStore.getState().user;
   const { pendingFriendLink, clearPendingFriendLink } = usePendingFriendLinkStore.getState();
-  if (pendingFriendLink && state.user && !state.user.guest) clearPendingFriendLink();
-});
+  if (pendingFriendLink && user && !user.guest) clearPendingFriendLink();
+}
+authStore.subscribe(clearOnceRegistered);
+usePendingFriendLinkStore.subscribe(clearOnceRegistered);
+clearOnceRegistered();
 
 /** Held only for someone without an account: a player who has one is already here. */
 export function holdFriendLink(slug: string, displayName?: string | null) {

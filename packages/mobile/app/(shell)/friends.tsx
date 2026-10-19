@@ -127,8 +127,11 @@ export default function FriendsScreen() {
       .then((player) => {
         if (active) setLinked(player.user_id);
       })
-      .catch(() => undefined);
-    router.setParams({ player: undefined });
+      .catch(() => undefined)
+      // Cleared once answered: clearing it earlier reruns this effect and drops the answer.
+      .finally(() => {
+        if (active) router.setParams({ player: undefined });
+      });
     return () => {
       active = false;
     };
