@@ -64,12 +64,9 @@ export function TableInvitation({
       setLoading(false);
       return;
     }
-    try {
-      if (await joinSeatInvitation(invitation)) router.replace(`/game/${invitation.code}`);
-    } catch {
-      // This game is over. Tables says the seat is gone, or still offers it.
-      router.replace('/lobby');
-    }
+    // This game is over either way. Tables says the seat is gone, or still offers it.
+    const joined = await joinSeatInvitation(invitation).catch(() => false);
+    router.replace(joined ? `/game/${invitation.code}` : '/lobby');
   };
 
   if (hidden || (row && choosing && !loading)) return null;
