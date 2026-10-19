@@ -333,9 +333,7 @@ test('Join seats the player at a real friend table and opens its game', async ({
         response.url().endsWith(`/api/v1/friends/${host.user.id}/join`) &&
         response.request().method() === 'POST'
     );
-    await page
-      .getByRole('button', { name: `Join ${hostPlayer.name}'s table`, exact: true })
-      .click();
+    await join.click();
     const response = await joined;
     expect(response.status()).toBe(200);
     expect((await response.json()).data).toMatchObject({
