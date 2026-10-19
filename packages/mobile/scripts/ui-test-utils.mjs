@@ -326,10 +326,14 @@ export async function assertTeamLayout(page, viewport, label) {
     assertInsideViewport(`${label} ${position}`, box, viewport);
     boxes.push(box);
   }
-  assert.ok(
-    await page.evaluate(() => document.scrollingElement.scrollHeight <= innerHeight + 1),
-    `${label}: the screen does not scroll`
-  );
+  // A notice slides in from below; judge the page once it has landed.
+  const fits = await page
+    .waitForFunction(() => document.scrollingElement.scrollHeight <= innerHeight + 1, null, {
+      timeout: 5000,
+    })
+    .then(() => true)
+    .catch(() => false);
+  assert.ok(fits, `${label}: the screen does not scroll`);
   const centre = (box) => box.x + box.width / 2;
   if (viewport.width > viewport.height) {
     boxes.sort((a, b) => a.x - b.x || a.y - b.y);
