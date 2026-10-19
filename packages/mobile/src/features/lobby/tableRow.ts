@@ -32,6 +32,7 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
           ? 'sub'
           : 'open';
     const minGames = kind === 'open' ? (seat?.min_games ?? 0) : 0;
+    const password = kind === 'open' && !!seat?.password;
     return {
       position,
       id,
@@ -47,6 +48,7 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
       avatarUrl: kind === 'held' ? seat!.held_for!.avatar_url : player?.avatar_url,
       persona: kind === 'bot' ? (player?.bot_persona ?? null) : null,
       minGames,
+      password,
       requirementReason:
         kind === 'open' &&
         category === 'open_tables' &&

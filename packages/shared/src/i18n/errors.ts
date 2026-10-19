@@ -18,6 +18,7 @@ export function errorPayload(error: unknown): Body {
 // Explicit stable legacy identifiers, not English sentences or slugified text.
 const legacy: Record<string, string> = {
   SEAT_REQUIRES_GAMES: "seat_requires_games",
+  SEAT_REQUIRES_PASSWORD: "seat_requires_password",
   PROFILE_UNAVAILABLE: "profile_unavailable",
   SEAT_TAKEN: "seat_taken",
   TEAM_FULL: "team_full",

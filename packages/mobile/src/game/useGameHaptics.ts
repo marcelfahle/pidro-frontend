@@ -25,6 +25,15 @@ export function playActionHaptic() {
   );
 }
 
+/** A wrong answer, such as a seat password: a light buzz. */
+export function playWrongHaptic() {
+  runHaptic(() =>
+    Platform.OS === 'android'
+      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Reject)
+      : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
+  );
+}
+
 /** A choice settled in a set of options: the lightest tick. */
 export function playSelectionHaptic() {
   runHaptic(() =>

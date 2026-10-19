@@ -101,6 +101,13 @@ export const PidroColors = {
   actionPillGold: 'rgba(226, 175, 69, 0.2)',
   actionPillGoldPressed: 'rgba(226, 175, 69, 0.32)',
   countBadge: '#d9412f',
+  // The password keypad (PID-259): carved digit boxes, the next one ringed gold, a wrong try warm.
+  digitBox: '#08243d',
+  digitBoxBorder: 'rgba(184, 225, 246, 0.28)',
+  digitBoxFilled: 'rgba(139, 234, 255, 0.7)',
+  digitBoxWrong: 'rgba(255, 207, 138, 0.85)',
+  digitBoxNextRing: '0px 0px 0px 3px rgba(226, 175, 69, 0.22)',
+  keypadNotice: '#ffcf8a',
   focusRing: '0px 0px 0px 3px rgba(139,234,255,0.8)',
   // Friends (PID-242): the presence dot, a request row, a sent one, and the
   // floating notice card with its edges.

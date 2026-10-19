@@ -69,6 +69,24 @@ const allCases = [
     authenticated: true,
   },
   { name: 'lobby-held', path: '/lobby?fixture=held', testId: 'lobby-screen', authenticated: true },
+  ...['password', 'password-keypad', 'password-typed', 'password-wrong', 'password-wait'].map(
+    (fixture) => ({
+      name: `lobby-${fixture}`,
+      path: `/lobby?fixture=${fixture}`,
+      testId: fixture === 'password' ? 'lobby-screen' : 'password-keypad',
+      authenticated: true,
+      lobbyFixture: fixture,
+    })
+  ),
+  // Both landscape directions: the panel stays clear of the camera side and the home bar.
+  ...['island-left', 'island-right'].map((safeArea) => ({
+    name: `lobby-password-${safeArea}`,
+    path: `/lobby?fixture=password-typed&safeArea=${safeArea}`,
+    testId: 'password-keypad',
+    authenticated: true,
+    skipViewports: ['portrait'],
+    insets: safeArea === 'island-left' ? { left: 59, right: 0 } : { left: 0, right: 59 },
+  })),
   {
     name: 'waiting-held',
     path: '/table-dev?phase=waiting-host&fixture=held',
@@ -1572,6 +1590,69 @@ async function assertLobbyPresentation(page, testCase) {
   await row('OPEN1').waitFor();
 }
 
+// The password keypad (PID-259): the chair opens it, four digits send it, the
+// answer clears the boxes, a wait dims the keys, and × closes it at any point.
+async function assertPasswordKeypad(page, testCase, viewport) {
+  if (!testCase.name.startsWith('lobby-password')) return;
+  const keypad = page.getByTestId('password-keypad');
+  const typed = (count) =>
+    keypad.getByLabel(`Password, ${count} of 4 numbers typed`, { exact: true }).waitFor();
+  const key = (name) => keypad.getByRole('button', { name, exact: true });
+  if (testCase.insets) {
+    const box = await getStableBox(keypad, page);
+    assert.ok(box.x >= testCase.insets.left, `${testCase.name}: panel clears the left inset`);
+    assert.ok(
+      box.x + box.width <= viewport.width - testCase.insets.right,
+      `${testCase.name}: panel clears the right inset`
+    );
+    assert.ok(box.y + box.height <= viewport.height - 21, `${testCase.name}: clears the home bar`);
+  }
+  if (testCase.name === 'lobby-password') {
+    const row = page.getByTestId('lobby-table-LOCK');
+    await row.getByText('Bertil', { exact: true }).waitFor();
+    await row
+      .getByRole('button', { name: 'Join south seat, needs a password', exact: true })
+      .click();
+    await keypad.waitFor();
+    await keypad.getByText('This seat needs a password', { exact: true }).waitFor();
+    for (const name of ['1', '0', 'Delete the last number']) {
+      const box = await key(name).boundingBox();
+      assert.ok(box.height >= 64, `${testCase.name}: key ${name} is at least 64pt tall`);
+    }
+    await keypad.getByText('Bertil’s table', { exact: true }).waitFor();
+    await keypad.getByText('Finnish · Bertil’s partner', { exact: true }).waitFor();
+    await keypad.getByText('Type the four numbers Bertil gave you.', { exact: true }).waitFor();
+    // The fixture answers every password wrong.
+    for (const digit of '4821') await key(digit).click();
+    await keypad
+      .getByText('That’s not it. Ask Bertil for the password.', { exact: true })
+      .waitFor();
+    await typed(0);
+    await page.getByRole('button', { name: 'Close', exact: true }).last().click();
+    await keypad.waitFor({ state: 'detached' });
+    return;
+  }
+  if (testCase.name === 'lobby-password-wait') {
+    await keypad.getByText('Try again in a minute.', { exact: true }).waitFor();
+    await typed(0);
+    for (const name of ['1', '0', 'Delete the last number'])
+      assert.equal(await key(name).isDisabled(), true, `${name} waits`);
+  } else if (testCase.name === 'lobby-password-wrong') {
+    await keypad
+      .getByText('That’s not it. Ask Bertil for the password.', { exact: true })
+      .waitFor();
+    await key('7').click();
+    await typed(1);
+    await keypad.getByText('Type the four numbers Bertil gave you.', { exact: true }).waitFor();
+  } else if (testCase.name !== 'lobby-password-keypad') {
+    await typed(2);
+    await key('Delete the last number').click();
+    await typed(1);
+  }
+  await keypad.getByRole('button', { name: 'Close', exact: true }).click();
+  await keypad.waitFor({ state: 'detached' });
+}
+
 async function assertCreationPresentation(page, testCase) {
   if (testCase.name === 'table-invite') {
     const dialog = page.getByTestId('invite-window');
@@ -3026,8 +3107,8 @@ async function main() {
             await page.getByTestId('auth-sheet').waitFor();
             await waitForScreenshotReady(page);
           }
-          if (testCase.name.startsWith('friend-seat-')) {
-            await page.getByTestId('friend-seat-sheet').waitFor();
+          if (testCase.name.startsWith('friend-seat-') || testCase.testId === 'password-keypad') {
+            await page.getByTestId(testCase.testId).waitFor();
             await waitForScreenshotReady(page);
           }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
@@ -3094,6 +3175,7 @@ async function main() {
           if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
           await assertFriendsPresentation(page, testCase.name);
           await assertCreationPresentation(page, testCase);
+          await assertPasswordKeypad(page, testCase, caseViewport);
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);

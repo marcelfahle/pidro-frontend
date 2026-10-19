@@ -339,6 +339,16 @@ export const en = {
   "social.quick_clear":
     "We could not clear your previous solo table. Please try again.",
   "social.quick_error": "We could not start a solo game. Please try again.",
+  "social.password_seat": "%{seat}, needs a password",
+  "social.password_title": "This seat needs a password",
+  "social.password_table": "%{name}’s table",
+  "social.password_partner": "%{rules} · %{name}’s partner",
+  "social.password_opponent": "%{rules} · %{name}’s opponent",
+  "social.password_help": "Type the four numbers %{name} gave you.",
+  "social.password_wrong": "That’s not it. Ask %{name} for the password.",
+  "social.password_wait": "Try again in a minute.",
+  "social.password_typed": "Password, %{number} of 4 numbers typed",
+  "social.password_delete": "Delete the last number",
 } as const;
 export const sv: Record<keyof typeof en, TranslationEntry> = {
   "social.player": "Spelare",
@@ -684,4 +694,14 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "social.quick_clear":
     "Vi kunde inte avsluta ditt tidigare solobord. Försök igen.",
   "social.quick_error": "Vi kunde inte starta ett solospel. Försök igen.",
+  "social.password_seat": "%{seat}, kräver lösenord",
+  "social.password_title": "Platsen kräver ett lösenord",
+  "social.password_table": "%{name}s bord",
+  "social.password_partner": "%{rules} · %{name}s partner",
+  "social.password_opponent": "%{rules} · %{name}s motståndare",
+  "social.password_help": "Skriv de fyra siffror du fick av %{name}.",
+  "social.password_wrong": "Det stämmer inte. Fråga %{name} efter lösenordet.",
+  "social.password_wait": "Försök igen om en minut.",
+  "social.password_typed": "Lösenord, %{number} av 4 siffror skrivna",
+  "social.password_delete": "Radera den sista siffran",
 };

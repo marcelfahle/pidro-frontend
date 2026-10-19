@@ -9,7 +9,7 @@ import { BevelPressable } from '@/components/ui/Bevel';
 import { Surface } from '@/components/ui/Surface';
 import { RuleSetChip } from '@/components/rules/RuleSet';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
-import { OpenChair } from './OpenChair';
+import { ChairLock, OpenChair } from './OpenChair';
 import { SeatRequirementBadge } from './SeatRequirementBadge';
 import { useTranslation, formatNumber } from '@/i18n';
 
@@ -22,6 +22,7 @@ export const RoomCard = memo(function RoomCard({
   pending,
   gamesPlayed,
   onLocked,
+  onPassword,
 }: {
   room: Room;
   category?: LobbyCategoryKey;
@@ -31,6 +32,7 @@ export const RoomCard = memo(function RoomCard({
   pending?: boolean;
   gamesPlayed?: number;
   onLocked?: (code: string, minimum: number, played: number) => void;
+  onPassword?: (code: string, position: Position) => void;
 }) {
   const { t } = useTranslation();
   const row = tableRow(room, category, gamesPlayed);
@@ -84,6 +86,7 @@ export const RoomCard = memo(function RoomCard({
                 {seat.kind === 'open' || seat.kind === 'sub' ? (
                   <View style={seat.requirementReason ? styles.lockedChair : undefined}>
                     <OpenChair size={44} substitute={seat.kind === 'sub'} />
+                    {seat.password ? <ChairLock /> : null}
                   </View>
                 ) : (
                   <PlayerAvatar
@@ -114,6 +117,10 @@ export const RoomCard = memo(function RoomCard({
               ) : null}
             </>
           );
+          const join = t(seat.kind === 'sub' ? 'social.sub_seat' : 'social.join_seat', {
+            position: t(`social.${seat.position}`),
+          });
+          const label = seat.password ? t('social.password_seat', { seat: join }) : join;
           return (
             <Fragment key={seat.position}>
               {index === 2 ? (
@@ -132,20 +139,18 @@ export const RoomCard = memo(function RoomCard({
                         })
                       : seat.minGames > 0
                         ? t('social.seat_minimum', {
-                            seat: t(seat.kind === 'sub' ? 'social.sub_seat' : 'social.join_seat', {
-                              position: t(`social.${seat.position}`),
-                            }),
+                            seat: label,
                             minimum: formatNumber(seat.minGames),
                           })
-                        : t(seat.kind === 'sub' ? 'social.sub_seat' : 'social.join_seat', {
-                            position: t(`social.${seat.position}`),
-                          })
+                        : label
                   }
                   disabled={pending}
                   onPress={() =>
                     seat.requirementReason
                       ? onLocked?.(room.code, seat.minGames, gamesPlayed ?? 0)
-                      : onJoin(room.code, seat.position)
+                      : seat.password && onPassword
+                        ? onPassword(room.code, seat.position)
+                        : onJoin(room.code, seat.position)
                   }
                   style={styles.seat}>
                   {content}

@@ -64,6 +64,7 @@ export const en = {
   "error.not_spectating": "You are not watching a room.",
   "error.seat_requires_games":
     "This seat requires %{min_games} completed games. You have played %{games_played}.",
+  "error.seat_requires_password": "That’s not it. Ask the host for the password.",
   "error.profile_unavailable":
     "Your eligibility could not be checked. Please try again shortly.",
   "error.seat_taken": "This seat is occupied.",
@@ -208,6 +209,7 @@ export const sv: Record<keyof typeof en, string> = {
   "error.not_spectating": "Du tittar inte på något rum.",
   "error.seat_requires_games":
     "Platsen kräver %{min_games} avslutade spel. Du har spelat %{games_played}.",
+  "error.seat_requires_password": "Det stämmer inte. Fråga värden efter lösenordet.",
   "error.profile_unavailable":
     "Din behörighet kunde inte kontrolleras. Försök igen om en stund.",
   "error.seat_taken": "Platsen är upptagen.",

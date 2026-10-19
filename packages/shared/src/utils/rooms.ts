@@ -38,6 +38,7 @@ function normalizeSeat(raw: any, fallbackIndex: number): Seat {
     player: player ?? null,
     player_id: raw?.player_id ?? player?.id ?? null,
     min_games: raw?.min_games ?? 0,
+    password: raw?.password === true,
     vacated_by: raw?.vacated_by,
     held_for: raw?.held_for,
   };
@@ -102,6 +103,7 @@ function seatsFromPositionMap(rawSeats: Record<string, any>): any[] {
           : null,
       player_id: playerId,
       min_games: value?.min_games,
+      password: value?.password === true,
       vacated_by: value?.vacated_by,
       held_for: value?.held_for,
     };
