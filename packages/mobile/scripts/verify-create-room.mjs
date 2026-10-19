@@ -271,8 +271,20 @@ async function assertLivePicker(page, fixture, viewport) {
   }
   if (fixture === 'live-error') {
     await radio('Bot').click();
-    await picker.getByRole('alert').getByText('Someone sat down in this seat.').waitFor();
+    await picker
+      .getByRole('alert')
+      .getByText('This seat could not be changed. Please try again.')
+      .waitFor();
     await checked('With password 4821');
     assert.match(await row('west').innerText(), /password 4821/);
+    // A person took the seat meanwhile: the picker closes and the reason stays on the screen.
+    await radio('Anyone').click();
+    await page
+      .getByTestId('waiting-table')
+      .getByRole('alert')
+      .getByText('Someone sat down in this seat.')
+      .waitFor();
+    await picker.waitFor({ state: 'detached' });
+    assert.match(await row('west').innerText(), /^Eli/);
   }
 }

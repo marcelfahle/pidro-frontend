@@ -205,6 +205,7 @@ export function NewTableScreen({
     !declinedSeat?.player &&
     (!declinedSeat?.held_for || declinedSeat.held_for.user_id === declined.user.user_id);
   const selectedLive = selected ? liveSeat(selected) : undefined;
+  // Someone sat down: the picker closes, and a refusal it showed stays in the footer.
   if (room && selected && selectedPlayerId !== (selectedLive?.player?.id ?? null)) {
     setSelected(null);
   }
@@ -449,9 +450,10 @@ export function NewTableScreen({
                   : waitingFooter(room, editable)}
             </PidroText>
           )}
-          {error || readyError ? (
+          {error || readyError || (!selected && pickerError) ? (
             <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
-              {error || localizedError(readyError, 'game.ready_failed')}
+              {error ||
+                (readyError ? localizedError(readyError, 'game.ready_failed') : pickerError)}
             </PidroText>
           ) : null}
         </View>

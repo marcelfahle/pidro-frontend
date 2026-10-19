@@ -113,8 +113,19 @@ export function NewTableGallery({ fixture = 'setup' }: { fixture?: string }) {
         initialSeat={fixture === 'live-friends' ? 'south' : live ? 'west' : undefined}
         onSetSeat={async (position, entry) => {
           await new Promise((resolve) => setTimeout(resolve, 200));
-          if (fixture === 'live-error')
+          // Bot fails outright; anything else finds that someone sat down meanwhile.
+          if (fixture === 'live-error' && entry === 'ai') throw new Error('offline');
+          if (fixture === 'live-error') {
+            setRoom((current) => ({
+              ...current,
+              seats: current.seats?.map((seat) =>
+                seat.position === position
+                  ? { ...seat, status: 'occupied', player: { id: 'eli', username: 'Eli' } }
+                  : seat
+              ),
+            }));
             throw { response: { status: 422, data: { errors: [{ code: 'SEAT_NOT_VACANT' }] } } };
+          }
           setRoom((current) => ({
             ...current,
             seats: current.seats?.map((seat) =>
