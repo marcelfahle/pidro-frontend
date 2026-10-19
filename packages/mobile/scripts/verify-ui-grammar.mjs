@@ -108,10 +108,18 @@ const allCases = [
   ...['profile', 'remove', 'block'].map((state) => ({
     name: `friends-${state}`,
     path: '/friends?fixture=list',
-    testId: 'player-profile-modal',
+    testId: state === 'profile' ? 'player-profile-modal' : 'friend-sheet',
     authenticated: true,
     open: "View Nora's profile",
   })),
+  ...['partner', 'opponent', 'full', 'online', 'bots', 'offline', 'request', 'remove', 'block'].map(
+    (state) => ({
+      name: `friends-sheet-${state}`,
+      path: `/friends?fixture=sheet-${state}`,
+      testId: 'friend-sheet',
+      authenticated: true,
+    })
+  ),
   ...['empty', 'filled', 'loading', 'error'].map((fixture) => ({
     name: `blocked-${fixture}`,
     path: `/blocked-players?fixture=${fixture}`,
@@ -1431,6 +1439,82 @@ async function assertFriendsPresentation(page, name) {
     return;
   }
   if (!name.startsWith('friends-')) return;
+  if (name.startsWith('friends-sheet-')) {
+    const state = name.slice('friends-sheet-'.length);
+    const sheet = page.getByTestId('friend-sheet');
+    const words = swedish
+      ? {
+          partner: ['Vid ett bord · partnerplats ledig', 'Du spelar som partner till Nora.'],
+          opponent: ['Vid ett bord · motståndarplats ledig', 'Du spelar mot Nora.'],
+          full: ['Vid ett bord · inga lediga platser'],
+          online: ['Spela tillsammans', 'Startar ett nytt bord med Nora som din partner.'],
+          bots: ['Spela tillsammans', 'Startar ett nytt bord med Nora som din partner.'],
+          offline: ['Spela tillsammans', 'Din inbjudan väntar på Nora i Pidro.'],
+          request: ['Acceptera'],
+          remove: [
+            'Ta bort Nora från dina vänner?',
+            'Ni tas bort från varandras vänlistor. Nora får inget meddelande.',
+            'Behåll Nora',
+          ],
+          block: [
+            'Blockera Nora?',
+            'Nora kan inte hitta dig, lägga till dig eller sätta sig vid dina bord, och ni är inte längre vänner. Du kan avblockera Nora när som helst i Profil.',
+          ],
+        }
+      : {
+          partner: ['At a table · partner seat free', "You'll play as Nora's partner."],
+          opponent: ['At a table · opponent seat free', "You'll play against Nora."],
+          full: ['At a table · no free seats'],
+          online: ['Play together', 'Starts a new table with Nora as your partner.'],
+          bots: ['Play together', 'Starts a new table with Nora as your partner.'],
+          offline: ['Play together', 'Your invitation waits for Nora in Pidro.'],
+          request: ['Accept'],
+          remove: [
+            'Remove Nora from your friends?',
+            "You'll leave each other's friends lists. Nora won't be told.",
+            'Keep Nora',
+          ],
+          block: [
+            'Block Nora?',
+            "Nora won't be able to find you, add you or sit at your tables, and you won't be friends anymore. You can unblock Nora any time in Profile.",
+          ],
+        };
+    for (const word of words[state]) await sheet.getByText(word, { exact: true }).waitFor();
+    if (state === 'full')
+      assert.equal(
+        await sheet.getByRole('button', { name: /^(Join|Play|Gå med|Spela)/ }).count(),
+        0
+      );
+    const overflow = await sheet.evaluate(
+      (root) =>
+        [...root.querySelectorAll('*')].filter(
+          (el) => el.scrollHeight > el.clientHeight + 2 && getComputedStyle(el).overflowY === 'auto'
+        ).length
+    );
+    assert.equal(overflow, 0, `${name}: the short profile must not scroll`);
+    if (state === 'remove' || state === 'block') {
+      await sheet
+        .getByRole('button', {
+          name:
+            state === 'remove'
+              ? swedish
+                ? 'Behåll Nora'
+                : 'Keep Nora'
+              : swedish
+                ? 'Avbryt'
+                : 'Cancel',
+          exact: true,
+        })
+        .click();
+      await sheet
+        .getByRole('button', {
+          name: swedish ? 'Visa hela profilen' : 'See full profile',
+          exact: true,
+        })
+        .waitFor();
+    }
+    return;
+  }
   if (name === 'friends-classic') {
     const footer = page.getByTestId('friends-classic-count');
     await footer
@@ -1504,12 +1588,9 @@ async function assertFriendsPresentation(page, name) {
           'friends-error': ['Kunde inte uppdatera Vänner. Försök igen.', 'Försök igen'],
           'friends-recent': ['Spelat med nyligen', 'Nora', 'Kalle', 'Tillagd'],
           'friends-results': ['Sökresultat', 'Vän', 'Har lagt till dig', 'Tillagd'],
-          'friends-profile': ['Spelarprofil', 'Nora', 'Ta bort vän', 'Blockera'],
-          'friends-remove': ['Ta bort Nora som vän?', 'Avbryt'],
-          'friends-block': [
-            'Blockera Nora? Ni kommer inte att se varandra i Vänner eller sökningar, och spelaren kan inte sätta sig vid dina bord.',
-            'Avbryt',
-          ],
+          'friends-profile': ['Spelarprofil', 'Nora'],
+          'friends-remove': ['Ta bort Nora från dina vänner?', 'Behåll Nora'],
+          'friends-block': ['Blockera Nora?', 'Avbryt'],
           'friends-guest': ['Spara din spelare', 'Spara konto'],
         }
       : {
@@ -1520,12 +1601,9 @@ async function assertFriendsPresentation(page, name) {
           'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
           'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
           'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
-          'friends-profile': ['Player profile', 'Nora', 'Remove friend', 'Block'],
-          'friends-remove': ['Remove Nora as a friend?', 'Cancel'],
-          'friends-block': [
-            'Block Nora? You will not see each other in Friends or search, and they cannot sit at your tables.',
-            'Cancel',
-          ],
+          'friends-profile': ['Player profile', 'Nora'],
+          'friends-remove': ['Remove Nora from your friends?', 'Keep Nora'],
+          'friends-block': ['Block Nora?', 'Cancel'],
           'friends-guest': ['Save your player', 'Save account'],
         })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
@@ -1640,7 +1718,19 @@ async function assertFriendsPresentation(page, name) {
     );
   }
   if (name === 'friends-remove' || name === 'friends-block') {
-    await page.getByRole('button', { name: swedish ? 'Avbryt' : 'Cancel', exact: true }).click();
+    await page
+      .getByRole('button', {
+        name:
+          name === 'friends-remove'
+            ? swedish
+              ? 'Behåll Nora'
+              : 'Keep Nora'
+            : swedish
+              ? 'Avbryt'
+              : 'Cancel',
+        exact: true,
+      })
+      .click();
     await page.getByRole('button', { name: swedish ? 'Stäng' : 'Close', exact: true }).click();
     await page
       .getByRole('button', { name: swedish ? 'Visa profilen för Nora' : "View Nora's profile" })
@@ -3257,14 +3347,21 @@ async function main() {
             if (testCase.name.endsWith('friends-block'))
               await page
                 .getByRole('button', {
-                  name: testCase.locale === 'sv' ? 'Blockera' : 'Block',
+                  name: testCase.locale === 'sv' ? 'Blockera Nora' : 'Block Nora',
                   exact: true,
                 })
                 .click();
             if (testCase.name.endsWith('friends-remove'))
               await page
                 .getByRole('button', {
-                  name: testCase.locale === 'sv' ? 'Ta bort vän' : 'Remove friend',
+                  name: testCase.locale === 'sv' ? 'Ta bort från vänner' : 'Remove from friends',
+                  exact: true,
+                })
+                .click();
+            if (testCase.name.endsWith('friends-profile'))
+              await page
+                .getByRole('button', {
+                  name: testCase.locale === 'sv' ? 'Visa hela profilen' : 'See full profile',
                   exact: true,
                 })
                 .click();
@@ -3274,7 +3371,11 @@ async function main() {
             await page.getByTestId('auth-sheet').waitFor();
             await waitForScreenshotReady(page);
           }
-          if (testCase.newTableFixture || testCase.testId === 'password-keypad') {
+          if (
+            testCase.newTableFixture ||
+            testCase.testId === 'password-keypad' ||
+            testCase.testId === 'friend-sheet'
+          ) {
             await page.getByTestId(testCase.testId).waitFor();
             await waitForScreenshotReady(page);
           }

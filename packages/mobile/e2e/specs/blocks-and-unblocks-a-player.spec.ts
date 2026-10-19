@@ -24,15 +24,25 @@ test('blocking removes the friendship; unblocking restores nothing @responsive',
   await startSignedIn(page, account);
   await page.goto('/friends');
   await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
-  await page.getByRole('button', { name: 'Block', exact: true }).click();
+  const sheet = page.getByTestId('friend-sheet');
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: `Block ${otherPlayer.name}`, exact: true }).click();
+  await expect(page.getByText(`Block ${otherPlayer.name}?`, { exact: true })).toBeVisible();
   await expect(
     page.getByText(
-      `Block ${otherPlayer.name}? You will not see each other in Friends or search, and they cannot sit at your tables.`
+      `${otherPlayer.name} won't be able to find you, add you or sit at your tables, and you won't be friends anymore. You can unblock ${otherPlayer.name} any time in Profile.`,
+      { exact: true }
     )
   ).toBeVisible();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    sheet.getByRole('button', { name: `Block ${otherPlayer.name}`, exact: true })
+  ).toBeVisible();
   expect((await api('/api/v1/blocks', { token: account.token })).payload.data.blocked).toEqual([]);
-  await page.getByRole('button', { name: 'Block', exact: true }).click();
+  expect(
+    (await api('/api/v1/friends', { token: account.token })).payload.data.friends
+  ).toHaveLength(1);
+  await sheet.getByRole('button', { name: `Block ${otherPlayer.name}`, exact: true }).click();
   await page.route(`**/api/v1/blocks/${other.user.id}`, (route) =>
     route.fulfill({ status: 503, json: { error: 'UNAVAILABLE' } })
   );
@@ -40,9 +50,14 @@ test('blocking removes the friendship; unblocking restores nothing @responsive',
   await expect(
     page.getByText('Could not block this player. Please try again.').last()
   ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Block', exact: true })).toBeEnabled();
+  expect((await api('/api/v1/blocks', { token: account.token })).payload.data.blocked).toEqual([]);
+  expect(
+    (await api('/api/v1/friends', { token: account.token })).payload.data.friends
+  ).toHaveLength(1);
   await page.unroute(`**/api/v1/blocks/${other.user.id}`);
   await page.getByRole('button', { name: 'Block', exact: true }).click();
-  await expect(page.getByTestId('player-profile-modal')).toBeHidden();
+  await expect(sheet).toBeHidden();
   await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
   expect((await api('/api/v1/friends', { token: other.token })).payload.data.friends).toEqual([]);
   expect(

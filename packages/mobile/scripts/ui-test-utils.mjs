@@ -7,6 +7,17 @@ const seatPickerCases = ['choices', 'friends', 'many', 'empty', 'sv'].map(
 const friendNoticeCases = ['request', 'accepted', 'seat', 'queue'].map(
   (kind) => `friend-notice-${kind}`
 );
+const friendSheetCases = [
+  'partner',
+  'opponent',
+  'full',
+  'online',
+  'bots',
+  'offline',
+  'request',
+  'remove',
+  'block',
+].map((state) => `friends-sheet-${state}`);
 
 const lobbyCases = [
   'list',
@@ -68,6 +79,7 @@ export const UI_VIEWPORTS = [
       ...passwordCases,
       ...seatPickerCases,
       ...friendNoticeCases,
+      ...friendSheetCases,
     ],
   },
   {
@@ -138,6 +150,7 @@ export const UI_VIEWPORTS = [
       'table-game-over',
       'table-game-over-loss',
       ...friendNoticeCases,
+      ...friendSheetCases,
     ],
   },
   {

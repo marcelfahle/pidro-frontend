@@ -407,9 +407,14 @@ Use an authenticated fixture. Friends has `empty`, `list` (all three presences),
 and sent requests, last played and Classic. Ignore/Undo, Accept and cancel work
 locally in this fixture. `friends-all` checks it at 390×844, 375×667, 844×390 and
 768×1024, including toast dismissal. Long lists scroll clear of the tab pill.
-Tap a row in `list` for the real profile sheet
-with a fixture identity; Remove friend opens its confirmation without a backend
-write. Add a friend has `recent` and `results` (all four server relation labels).
+Tap a row in `list` for the short friend sheet, with a fixture profile level.
+See full profile opens the profile without Remove or Block; table profiles keep
+their existing actions. `sheet-partner`, `sheet-opponent`, `sheet-full`,
+`sheet-online`, `sheet-bots`, `sheet-offline`, and `sheet-request` open each
+situation directly. `sheet-remove` and `sheet-block` open the inline confirms.
+The `friends-sheet-*` grammar cases cover these at 390×844, 375×667, 844×390
+and 768×1024, plus Swedish previews through `/ui-dev?state=friends&fixture=sheet-partner&locale=sv`.
+No sheet fixture writes to the backend. Add a friend has `recent` and `results` (all four server relation labels).
 The guest route opens the account sheet and continues on Friends after saving.
 
 Grammar cases: `friends-empty`, `friends-list`, `friends-added-you`,
@@ -423,7 +428,7 @@ payload, including share failure and retry; it never opens a real share sheet.
 Authenticated fixtures: `empty`, `filled`, `loading`, `error`. The filled list
 has no presence labels; Unblock is inert in fixtures. Grammar cases are
 `blocked-empty`, `blocked-filled`, `blocked-loading`, and `blocked-error`.
-`friends-block` opens the confirmation from a friend profile. The
+`friends-block` opens the confirmation from the short friend sheet. The
 `block-profile-playing` and `block-profile-game_over`
 cases open a human profile through `/table-dev?phase=<phase>&role=player`, mocking
 only the profile response. `block-profile-guest` checks that guests see no Block

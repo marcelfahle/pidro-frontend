@@ -14,33 +14,38 @@ import { useTranslation } from '@/i18n';
 interface PlayerProfileProps {
   playerId: string | null;
   onClose: () => void;
-  onRemove?: () => Promise<void>;
+  hideActions?: boolean;
   fixture?: ProfileIdentity;
 }
 
-export function PlayerProfileModal({ playerId, onClose, onRemove, fixture }: PlayerProfileProps) {
+export function PlayerProfileModal({
+  playerId,
+  onClose,
+  hideActions,
+  fixture,
+}: PlayerProfileProps) {
   return playerId ? (
     <PlayerProfileContent
       key={playerId}
       playerId={playerId}
       onClose={onClose}
-      onRemove={onRemove}
+      hideActions={hideActions}
       fixture={__DEV__ ? fixture : undefined}
     />
   ) : null;
 }
 
-function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerProfileProps) {
+function PlayerProfileContent({ playerId, onClose, hideActions, fixture }: PlayerProfileProps) {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<ProfileIdentity | null>(fixture ?? null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
-  const [confirm, setConfirm] = useState<'remove' | 'block' | null>(null);
+  const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
-  const canBlock = !!user && !user.guest && user.id !== playerId;
-  const confirming = (confirm === 'remove' && !!onRemove) || (confirm === 'block' && canBlock);
+  const canBlock = !hideActions && !!user && !user.guest && user.id !== playerId;
+  const confirming = confirm && canBlock;
   useEffect(() => {
     if (fixture) return;
     let active = true;
@@ -102,7 +107,7 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
             {confirming ? (
               <>
                 <PidroText role="body">
-                  {t(confirm === 'block' ? 'blocks.confirm' : 'friends.remove_confirm', {
+                  {t('blocks.confirm', {
                     name: publicPlayerName(
                       profile.username,
                       t('social.player'),
@@ -112,25 +117,18 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
                 </PidroText>
                 {actionError ? (
                   <PidroText role="body" tone="danger" accessibilityRole="alert">
-                    {localizedError(
-                      actionError,
-                      confirm === 'block' ? 'blocks.block_failed' : 'friends.remove_failed'
-                    )}
+                    {localizedError(actionError, 'blocks.block_failed')}
                   </PidroText>
                 ) : null}
                 <BevelButton
-                  label={t(confirm === 'block' ? 'blocks.block' : 'friends.remove')}
+                  label={t('blocks.block')}
                   loading={busy}
                   onPress={async () => {
                     setBusy(true);
                     setActionError(null);
                     try {
-                      if (confirm === 'block') {
-                        if (!fixture) await blockPlayer(profile.user_id);
-                        onClose();
-                      } else {
-                        await onRemove?.();
-                      }
+                      if (!fixture) await blockPlayer(profile.user_id);
+                      onClose();
                     } catch (error) {
                       setActionError(error ?? true);
                     } finally {
@@ -143,25 +141,18 @@ function PlayerProfileContent({ playerId, onClose, onRemove, fixture }: PlayerPr
                   material="glass"
                   disabled={busy}
                   onPress={() => {
-                    setConfirm(null);
+                    setConfirm(false);
                     setActionError(null);
                   }}
                 />
               </>
             ) : (
               <>
-                {onRemove ? (
-                  <BevelButton
-                    label={t('friends.remove')}
-                    material="glass"
-                    onPress={() => setConfirm('remove')}
-                  />
-                ) : null}
                 {canBlock ? (
                   <BevelButton
                     label={t('blocks.block')}
                     material="glass"
-                    onPress={() => setConfirm('block')}
+                    onPress={() => setConfirm(true)}
                   />
                 ) : null}
               </>

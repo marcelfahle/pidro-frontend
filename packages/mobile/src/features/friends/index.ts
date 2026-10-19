@@ -53,6 +53,35 @@ export function friendAction(friend: FriendEntry): 'join' | 'play' | null {
   return null;
 }
 
+export function friendSheetState(entry: FriendEntry, relation: FriendRelation = 'friend') {
+  const row = friendRowState(entry, relation);
+  const params = { name: entry.display_name };
+  if (relation === 'added_you')
+    return { ...row, action: 'accept' as const, label: t('friends.accept'), hint: null };
+  const action = friendAction(entry);
+  if (action === 'join')
+    return {
+      ...row,
+      action,
+      line: t(
+        entry.join_as === 'partner' ? 'friend_sheet.partner_status' : 'friend_sheet.opponent_status'
+      ),
+      label: t('friend_sheet.join', params),
+      hint: t(
+        entry.join_as === 'partner' ? 'friend_sheet.partner_hint' : 'friend_sheet.opponent_hint',
+        params
+      ),
+    };
+  if (action === 'play' || !isOnline(entry))
+    return {
+      ...row,
+      action: 'play' as const,
+      label: t('friend_sheet.play'),
+      hint: t(isOnline(entry) ? 'friend_sheet.online_hint' : 'friend_sheet.offline_hint', params),
+    };
+  return { ...row, action: null, line: t('friend_sheet.full_status'), label: null, hint: null };
+}
+
 export function friendsMeta(lists: FriendLists) {
   const count = lists.friends.length;
   return t('friends.meta', {
