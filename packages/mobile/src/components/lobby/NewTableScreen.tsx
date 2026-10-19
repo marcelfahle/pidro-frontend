@@ -329,6 +329,7 @@ export function NewTableScreen({
           setQuery('');
           setSelectedPlayerId(liveSeat(position)?.player?.id ?? null);
           setPickerPage(undefined);
+          if (position === declined?.position) onDismissDeclined?.();
           setSelected(position);
         }
       }}
