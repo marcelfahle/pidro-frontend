@@ -9,6 +9,7 @@ export {
   type CreateGuestResponse,
   type DeclaredAgeBand,
   type FacebookCredential,
+  type FriendLinkRequest,
   createAuthApi,
   type LoginRequest,
   type LoginResponse,
@@ -19,6 +20,7 @@ export {
   type RegisterRequest,
   type RegisterResponse,
   type SetAgeRequest,
+  type SignUpExtras,
   TERMS_VERSION,
   type UpgradeGuestRequest,
   type UpgradeGuestResponse,
@@ -70,8 +72,10 @@ export {
 } from './lobby';
 export {
   createInvitesApi,
+  type DeferredFriend,
   type DeferredInviteFingerprint,
   type DeferredInviteRequest,
+  type DeferredMatch,
   type DeferredScreenClass,
   type Invite,
   type InvitePlatform,

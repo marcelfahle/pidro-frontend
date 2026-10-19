@@ -3,6 +3,7 @@ import {
   localizedError,
   localizedFieldErrors,
   t,
+  type FriendPlayer,
   type TranslationKey,
   type User,
 } from '@pidro/shared';
@@ -31,7 +32,7 @@ export type GuestSaveFailure = {
   uncertain?: boolean;
 };
 export type GuestSaveResult = { ok: true } | { ok: false; error: GuestSaveFailure };
-export type GuestSaveResponse = { token: string; user: User };
+export type GuestSaveResponse = { token: string; user: User; linked_friend?: FriendPlayer };
 
 type GuestSaveSession = {
   accessToken: string | null;

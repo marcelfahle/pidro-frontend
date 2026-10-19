@@ -108,24 +108,32 @@ export function FriendRow({
         </View>
       )}
       {trailing === 'sent' || trailing === 'friends' ? (
-        <View style={styles.state}>
-          <Icon
-            name={trailing === 'sent' ? 'clock' : 'check'}
-            size={16}
-            strokeWidth={2.6}
-            color={trailing === 'sent' ? PidroColors.textSoft : PidroColors.success}
-          />
-          <PidroText
-            role="label"
-            numberOfLines={1}
-            maxFontSizeMultiplier={1.3}
-            style={trailing === 'sent' ? styles.stateSent : styles.stateFriends}>
-            {t(trailing === 'sent' ? 'friends.sent' : 'friends.are_friends')}
-          </PidroText>
-        </View>
+        <FriendState state={trailing === 'sent' ? 'sent' : 'friends'} />
       ) : trailing !== 'chevron' ? (
         trailing
       ) : null}
+    </View>
+  );
+}
+
+/** The quiet "Sent" or "Friends" a row, or a profile, shows once nothing is left to tap. */
+export function FriendState({ state }: { state: 'sent' | 'friends' }) {
+  const { t } = useTranslation();
+  return (
+    <View style={styles.state}>
+      <Icon
+        name={state === 'sent' ? 'clock' : 'check'}
+        size={16}
+        strokeWidth={2.6}
+        color={state === 'sent' ? PidroColors.textSoft : PidroColors.success}
+      />
+      <PidroText
+        role="label"
+        numberOfLines={1}
+        maxFontSizeMultiplier={1.3}
+        style={state === 'sent' ? styles.stateSent : styles.stateFriends}>
+        {t(state === 'sent' ? 'friends.sent' : 'friends.are_friends')}
+      </PidroText>
     </View>
   );
 }

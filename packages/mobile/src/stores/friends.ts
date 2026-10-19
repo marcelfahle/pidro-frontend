@@ -1,4 +1,10 @@
-import { useFriendsStore, type BlockedPlayers, type FriendLists } from '@pidro/shared';
+import {
+  isFriendAccepted,
+  useFriendsStore,
+  type BlockedPlayers,
+  type FriendLists,
+  type FriendPlayer,
+} from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
 import { authStore } from './auth';
 
@@ -46,4 +52,11 @@ export const unblockPlayer = (id: string) => updateLists(() => friendsApi.unbloc
 export async function blockPlayer(id: string) {
   await updateLists(() => friendsApi.block(id));
   void refreshFriends().catch(() => undefined);
+}
+
+/** A sign-up through someone's link answers with the friend it made: "You and Bertil are friends now." */
+export function queueLinkedFriend(friend: FriendPlayer | undefined) {
+  const accepted = { player: friend, source: 'link' };
+  if (isFriendAccepted(accepted))
+    useFriendsStore.getState().queueNotice({ ...accepted, kind: 'accepted' });
 }

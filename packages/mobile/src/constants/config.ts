@@ -18,6 +18,7 @@ export const STORAGE_KEYS = {
   installId: 'install-id:v1',
   guestCreationToken: 'guest-creation-token:v1',
   pendingInvite: 'pending-invite-storage',
+  pendingFriendLink: 'pending-friend-link-storage',
 } as const;
 
 export const APP_CONFIG = {

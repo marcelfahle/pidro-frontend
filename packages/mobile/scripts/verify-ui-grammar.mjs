@@ -56,7 +56,7 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
-  ...['request', 'accepted', 'seat', 'queue', 'too-late'].map((kind) => ({
+  ...['request', 'accepted', 'linked', 'seat', 'queue', 'too-late'].map((kind) => ({
     name: `friend-notice-${kind}`,
     path: `/home?fixture=friend-${kind}`,
     testId: 'friend-notice',
@@ -105,6 +105,12 @@ const allCases = [
     testId: 'friends-screen',
     authenticated: true,
   })),
+  {
+    name: 'friends-link-profile',
+    path: '/friends?fixture=link-profile',
+    testId: 'player-profile-modal',
+    authenticated: true,
+  },
   ...['profile', 'remove', 'block'].map((state) => ({
     name: `friends-${state}`,
     path: '/friends?fixture=list',
@@ -1234,6 +1240,9 @@ async function assertFriendNotice(page, name, viewport) {
   } else if (name.endsWith('too-late')) {
     assert.equal(await notice.innerText(), "Kalle's game started without you");
     assert.equal(await notice.getByRole('button').count(), 0);
+  } else if (name.endsWith('linked')) {
+    await notice.getByText('You and Nora are friends now.', { exact: true }).waitFor();
+    assert.equal(await notice.getByRole('button').count(), 0);
   } else if (!name.endsWith('accepted')) {
     await notice.getByRole('button', { name: 'Not now', exact: true }).click();
     await notice.waitFor({ state: 'detached' });
@@ -1473,6 +1482,14 @@ async function assertFriendsPresentation(page, name) {
     return;
   }
   if (!name.startsWith('friends-')) return;
+  if (name === 'friends-link-profile') {
+    const profile = page.getByTestId('player-profile-modal');
+    await profile.getByText('Nora', { exact: true }).waitFor();
+    await profile.getByRole('button', { name: 'Add Nora', exact: true }).click();
+    await profile.getByText('Sent', { exact: true }).waitFor();
+    assert.equal(await profile.getByRole('button', { name: 'Add Nora', exact: true }).count(), 0);
+    return;
+  }
   if (name.startsWith('friends-sheet-')) {
     const state = name.slice('friends-sheet-'.length);
     const sheet = page.getByTestId('friend-sheet');
@@ -1602,6 +1619,21 @@ async function assertFriendsPresentation(page, name) {
         : 'Come play Pidro with me 🃏 https://www.pidro.online/'
     );
     assert.equal(await footer.getByRole('alert').count(), 0);
+    // Send your link comes last, below the Classic card, and shares the player's own link.
+    const link = page.getByTestId('friends-link-card');
+    assert.ok(
+      (await link.boundingBox()).y >=
+        (await footer.boundingBox()).y + (await footer.boundingBox()).height
+    );
+    await link
+      .getByRole('button', { name: swedish ? 'Skicka din länk' : 'Send your link', exact: true })
+      .click();
+    assert.equal(
+      await page.evaluate(() => window.__appShare.text),
+      swedish
+        ? 'Kom och spela Pidro med mig: https://pidro.online'
+        : 'Come play Pidro with me: https://pidro.online'
+    );
   } else if (name !== 'friends-all' && name !== 'friends-empty') {
     assert.equal(await page.getByTestId('friends-classic-count').count(), 0);
   }

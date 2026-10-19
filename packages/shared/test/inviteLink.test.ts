@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { normalizeInviteCode, parseInviteLink } from '../src/utils/inviteLink';
+import {
+  normalizeFriendSlug,
+  normalizeInviteCode,
+  parseFriendLink,
+  parseInviteLink,
+} from '../src/utils/inviteLink';
 
 describe('normalizeInviteCode', () => {
   it('normalizes accepted Crockford variants', () => {
@@ -73,5 +78,36 @@ describe('parseInviteLink', () => {
     ];
 
     for (const value of invalid) expect(parseInviteLink(value)).toBeNull();
+  });
+});
+
+describe('parseFriendLink', () => {
+  it("reads a player's own link from the web, a relative path and the app scheme", () => {
+    expect(parseFriendLink('https://pidro.online/play/bertil')).toBe('bertil');
+    expect(parseFriendLink('https://www.pidro.online/play/Bjorn-Agren-2?utm=x')).toBe(
+      'bjorn-agren-2'
+    );
+    expect(parseFriendLink('/play/bertil')).toBe('bertil');
+    expect(parseFriendLink('pidro-mobile://play/bertil')).toBe('bertil');
+    expect(parseFriendLink('pidro-mobile-dev:///play/bertil')).toBe('bertil');
+  });
+
+  it('rejects other hosts, paths, invite links and malformed slugs', () => {
+    for (const value of [
+      'https://evil.example/play/bertil',
+      'https://pidro.online/play/bertil/stats',
+      'https://pidro.online/play/',
+      'https://pidro.online/j/7KQ4M2XB',
+      'https://user@pidro.online/play/bertil',
+      'http://pidro.online/play/bertil',
+      'pidro-mobile://play/b',
+      'pidro-mobile://play/%62ertil',
+      'pidro-mobile://play/bertil-',
+      '7KQ4M2XB',
+    ]) {
+      expect(parseFriendLink(value)).toBeNull();
+    }
+    expect(normalizeFriendSlug('a'.repeat(31))).toBeNull();
+    expect(normalizeFriendSlug('a'.repeat(30))).toBe('a'.repeat(30));
   });
 });

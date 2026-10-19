@@ -40,6 +40,12 @@ describe('native invite intent', () => {
     expect(redirectSystemPath({ path: 'pidro-mobile://j/%37KQ4M2XB' })).toBe('/+not-found');
   });
 
+  it("opens a player's own link on the play route", () => {
+    expect(redirectSystemPath({ path: 'https://pidro.online/play/Bertil' })).toBe('/play/bertil');
+    expect(redirectSystemPath({ path: 'pidro-mobile://play/bertil' })).toBe('/play/bertil');
+    expect(redirectSystemPath({ path: 'https://pidro.online/play/b' })).toBe('/+not-found');
+  });
+
   it('opens dev harness routes from simulator deep links', () => {
     expect(redirectSystemPath({ path: 'exp://127.0.0.1:8081/--/table-dev?phase=bidding' })).toBe(
       '/table-dev?phase=bidding'

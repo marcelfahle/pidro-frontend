@@ -2,19 +2,23 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { localizedError, publicPlayerName, type ProfileIdentity } from '@pidro/shared';
 import { profileApi } from '@/api/profile';
+import { FriendState } from '@/components/friends/FriendRow';
+import { ActionPill } from '@/components/ui/ActionPill';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
-import { blockPlayer } from '@/stores/friends';
+import { addFriend, blockPlayer } from '@/stores/friends';
 import { useTranslation } from '@/i18n';
 
 interface PlayerProfileProps {
   playerId: string | null;
   onClose: () => void;
   hideActions?: boolean;
+  /** Opened from their link: Add, or Sent once asked. */
+  add?: 'add' | 'sent' | null;
   fixture?: ProfileIdentity;
 }
 
@@ -22,6 +26,7 @@ export function PlayerProfileModal({
   playerId,
   onClose,
   hideActions,
+  add,
   fixture,
 }: PlayerProfileProps) {
   return playerId ? (
@@ -30,12 +35,19 @@ export function PlayerProfileModal({
       playerId={playerId}
       onClose={onClose}
       hideActions={hideActions}
+      add={add}
       fixture={__DEV__ ? fixture : undefined}
     />
   ) : null;
 }
 
-function PlayerProfileContent({ playerId, onClose, hideActions, fixture }: PlayerProfileProps) {
+function PlayerProfileContent({
+  playerId,
+  onClose,
+  hideActions,
+  add,
+  fixture,
+}: PlayerProfileProps) {
   const { t } = useTranslation();
   const user = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<ProfileIdentity | null>(fixture ?? null);
@@ -44,6 +56,10 @@ function PlayerProfileContent({ playerId, onClose, hideActions, fixture }: Playe
   const [confirm, setConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<unknown>(null);
+  const [added, setAdded] = useState<'sent' | 'friends' | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [addError, setAddError] = useState<unknown>(null);
+  const offer = add ? (added ?? add) : null;
   const canBlock = !hideActions && !!user && !user.guest && user.id !== playerId;
   const confirming = confirm && canBlock;
   useEffect(() => {
@@ -98,6 +114,48 @@ function PlayerProfileContent({ playerId, onClose, hideActions, fixture }: Playe
                 <PidroText role="label" align="center">
                   {publicPlayerName(profile.username, t('social.player'), profile.display_name)}
                 </PidroText>
+                {offer ? (
+                  <View style={styles.offer}>
+                    {offer === 'add' ? (
+                      <ActionPill
+                        label={t('friends.add')}
+                        icon="person-plus"
+                        accessibilityLabel={t('friends.add_player', {
+                          name: publicPlayerName(
+                            profile.username,
+                            t('social.player'),
+                            profile.display_name
+                          ),
+                        })}
+                        loading={adding}
+                        onPress={async () => {
+                          if (adding) return;
+                          setAdding(true);
+                          setAddError(null);
+                          try {
+                            const lists = fixture ? undefined : await addFriend(profile.user_id);
+                            setAdded(
+                              lists?.friends.some((p) => p.user_id === profile.user_id)
+                                ? 'friends'
+                                : 'sent'
+                            );
+                          } catch (error) {
+                            setAddError(error ?? true);
+                          } finally {
+                            setAdding(false);
+                          }
+                        }}
+                      />
+                    ) : (
+                      <FriendState state={offer} />
+                    )}
+                  </View>
+                ) : null}
+                {addError ? (
+                  <PidroText role="body" tone="danger" align="center" accessibilityRole="alert">
+                    {localizedError(addError, 'friends.add_failed')}
+                  </PidroText>
+                ) : null}
                 <PidroText role="label">{t('profile.about')}</PidroText>
                 <PidroText role="body" tone={profile.bio ? 'default' : 'muted'}>
                   {profile.bio || t('profile.no_bio')}
@@ -175,4 +233,5 @@ function PlayerProfileContent({ playerId, onClose, hideActions, fixture }: Playe
 const styles = StyleSheet.create({
   content: { gap: PidroSpacing.sm },
   avatar: { alignSelf: 'center' },
+  offer: { alignSelf: 'center' },
 });

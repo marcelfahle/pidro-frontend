@@ -1,4 +1,4 @@
-import { parseInviteLink } from '@pidro/shared';
+import { parseFriendLink, parseInviteLink } from '@pidro/shared';
 
 const APP_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-beta:']);
 
@@ -64,6 +64,9 @@ function isAppStartupPath(path: string): boolean {
 export function redirectSystemPath({ path }: { path: string; initial?: boolean }): string {
   const fixture = devFixturePath(path);
   if (fixture) return fixture;
+
+  const friend = parseFriendLink(path);
+  if (friend) return `/play/${friend}`;
 
   const invite = parseInviteLink(path);
   if (!invite) return isAppStartupPath(path) ? '/' : '/+not-found';

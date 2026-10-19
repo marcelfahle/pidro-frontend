@@ -1,5 +1,6 @@
 import type { ApiClient } from './client';
 import type { ClassicAlreadyClaimed, ClassicNewAccount } from './classic';
+import type { FriendPlayer } from './friends';
 import type { SeatInvitation } from '../types/lobby';
 
 export const TERMS_VERSION = '1';
@@ -11,6 +12,14 @@ export interface AgeTermsRequest {
   age_band?: DeclaredAgeBand;
   terms_version?: string;
 }
+
+/** The slug of the player whose link brought a newcomer, sent only while one is pending. */
+export interface FriendLinkRequest {
+  friend_slug?: string;
+}
+
+/** What a sign-up or guest save sends next to its own fields. */
+export type SignUpExtras = AgeTermsRequest & FriendLinkRequest;
 
 export interface LoginRequest extends AgeTermsRequest {
   username: string;
@@ -34,6 +43,8 @@ interface AuthResponseEnvelope {
   data: {
     token: string;
     user: User;
+    /** The friend a `friend_slug` made, on a sign-up that made one. */
+    linked_friend?: FriendPlayer;
   };
 }
 
@@ -87,7 +98,7 @@ export interface CreateGuestRequest {
   terms_version?: string;
 }
 
-export interface RegisterRequest extends AgeTermsRequest {
+export interface RegisterRequest extends SignUpExtras {
   user: {
     username: string;
     email: string;
@@ -95,13 +106,13 @@ export interface RegisterRequest extends AgeTermsRequest {
   };
 }
 
-export interface UpgradeGuestRequest extends AgeTermsRequest {
+export interface UpgradeGuestRequest extends SignUpExtras {
   username: string;
   email: string;
   password: string;
 }
 
-export type ProviderAuthRequest = AgeTermsRequest &
+export type ProviderAuthRequest = SignUpExtras &
   (
     | {
         identity_token: string;
@@ -159,7 +170,7 @@ export function createAuthApi(api: ApiClient) {
     provider: AuthProvider,
     credential: ProviderCredential,
     installId: string,
-    ageTerms: AgeTermsRequest = {}
+    ageTerms: SignUpExtras = {}
   ): Promise<ProviderLoginResponse> => {
     const credentials =
       credential.type === 'identity_token'
@@ -207,7 +218,7 @@ export function createAuthApi(api: ApiClient) {
       username: string,
       email: string,
       password: string,
-      ageTerms: AgeTermsRequest = {}
+      ageTerms: SignUpExtras = {}
     ): Promise<RegisterResponse> => {
       const request: RegisterRequest = {
         user: { username, email, password },
@@ -221,7 +232,7 @@ export function createAuthApi(api: ApiClient) {
       displayName: string,
       email: string,
       password: string,
-      ageTerms: AgeTermsRequest = {}
+      ageTerms: SignUpExtras = {}
     ): Promise<UpgradeGuestResponse> => {
       const request: UpgradeGuestRequest = {
         username: displayName,

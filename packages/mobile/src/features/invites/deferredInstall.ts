@@ -1,7 +1,9 @@
 import {
+  normalizeFriendSlug,
   normalizeInviteCode,
   type DeferredInviteFingerprint,
   type DeferredInviteRequest,
+  type DeferredMatch,
   type DeferredScreenClass,
   type PendingInvite,
 } from '@pidro/shared';
@@ -25,7 +27,7 @@ interface DeferredInstallDependencies {
   getPlayReferrer: () => Promise<string | null>;
   getFingerprint: () => Promise<DeferredInviteFingerprint | null>;
   getInstallId: () => Promise<string>;
-  resolve: (request: DeferredInviteRequest, signal: AbortSignal) => Promise<string | null>;
+  resolve: (request: DeferredInviteRequest, signal: AbortSignal) => Promise<DeferredMatch>;
   timeoutMs?: number;
 }
 
@@ -36,14 +38,21 @@ export function screenClassFor(width: number, height: number): DeferredScreenCla
   return 'large';
 }
 
+/** The Play referrer's one `invite` code or one `friend` slug, as the server reads it back. */
 export function parsePlayInstallReferrer(value: string | null): string | null {
   if (!value || value.includes('://')) return null;
 
   try {
     const params = new URLSearchParams(value);
-    const inviteValues = params.getAll('invite');
-    if (inviteValues.length !== 1) return null;
-    return normalizeInviteCode(inviteValues[0] ?? '');
+    const invites = params.getAll('invite');
+    const friends = params.getAll('friend');
+    if (invites.length + friends.length !== 1) return null;
+    if (invites.length) {
+      const code = normalizeInviteCode(invites[0] ?? '');
+      return code && `invite=${code}`;
+    }
+    const slug = normalizeFriendSlug(friends[0] ?? '');
+    return slug && `friend=${slug}`;
   } catch {
     return null;
   }
@@ -85,7 +94,7 @@ export async function resolveDeferredInstall({
   getInstallId,
   resolve,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-}: DeferredInstallDependencies): Promise<string | null> {
+}: DeferredInstallDependencies): Promise<DeferredMatch | null> {
   try {
     if (await storage.getItem(DEFERRED_ATTEMPT_KEY)) return null;
 
@@ -105,27 +114,27 @@ export async function resolveDeferredInstall({
       ]),
       remaining()
     );
-    const referrerCode = platform === 'android' ? parsePlayInstallReferrer(rawReferrer) : null;
+    const referrer = platform === 'android' ? parsePlayInstallReferrer(rawReferrer) : null;
     const freshInstall = isFreshInstall(installationTime, startedAt);
 
-    if (!freshInstall && !referrerCode) return null;
+    if (!freshInstall && !referrer) return null;
 
     const fingerprint = freshInstall ? await beforeDeadline(getFingerprint(), remaining()) : null;
-    if (freshInstall && !fingerprint && !referrerCode) return null;
+    if (freshInstall && !fingerprint && !referrer) return null;
 
     const installId = await beforeDeadline(getInstallId(), remaining());
     const request: DeferredInviteRequest = {
       platform,
       install_id: installId,
-      ...(referrerCode ? { referrer: `invite=${referrerCode}` } : {}),
+      ...(referrer ? { referrer } : {}),
       ...(freshInstall && fingerprint ? fingerprint : {}),
     };
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), Math.max(0, remaining()));
     try {
-      const code = await beforeDeadline(resolve(request, controller.signal), remaining());
-      return normalizeInviteCode(code ?? '');
+      const match = await beforeDeadline(resolve(request, controller.signal), remaining());
+      return match.code || match.friend ? match : null;
     } finally {
       clearTimeout(timer);
       controller.abort();

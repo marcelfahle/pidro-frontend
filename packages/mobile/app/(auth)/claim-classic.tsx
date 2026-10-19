@@ -31,6 +31,8 @@ import { storedAgeTerms } from '@/features/onboarding/ageTerms';
 import { authenticatedEntryDestination } from '@/navigation/initialRoute';
 import { useAgeGateStore } from '@/stores/ageGate';
 import { useAuthStore } from '@/stores/auth';
+import { queueLinkedFriend } from '@/stores/friends';
+import { pendingFriendSlug } from '@/stores/pendingFriendLink';
 import { usePendingInviteStore } from '@/stores/pendingInvite';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { formatNumber, useTranslation, type TranslationKey } from '@/i18n';
@@ -275,6 +277,7 @@ export default function ClaimClassicScreen() {
           install_id: installId,
           ...(Object.keys(account).length ? { account } : {}),
           ...storedAgeTerms(),
+          ...pendingFriendSlug(),
         });
       if (guestCredentials) {
         // This claim saves the guest as Save your progress does, retiring the guest's token,
@@ -293,7 +296,10 @@ export default function ClaimClassicScreen() {
           login: (identifier, accountPassword) =>
             authApi.login(identifier, accountPassword, storedAgeTerms()),
           getSession: useAuthStore.getState,
-          install: (response) => setSession({ accessToken: response.token, user: response.user }),
+          install: (response) => {
+            setSession({ accessToken: response.token, user: response.user });
+            queueLinkedFriend(response.linked_friend);
+          },
           setSessionPreservation: (preserve) =>
             useAuthStore.getState().setPreserveSessionOnUnauthorized(preserve),
         });
@@ -308,6 +314,7 @@ export default function ClaimClassicScreen() {
       } else {
         const result = await claim();
         setSession({ accessToken: result.token, user: result.user });
+        queueLinkedFriend(result.linked_friend);
       }
       const claimed = useAuthStore.getState().user;
       if (!claimed) return;

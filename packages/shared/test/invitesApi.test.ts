@@ -241,7 +241,7 @@ describe('invite APIs', () => {
     ]);
   });
 
-  it('resolves a deferred first-install request with an empty-or-code envelope', async () => {
+  it('resolves a deferred first-install request to an invite, a friend or neither', async () => {
     const request = {
       platform: 'ios' as const,
       install_id: 'install-1',
@@ -250,18 +250,23 @@ describe('invite APIs', () => {
       locale: 'en-US',
       timezone: 'Europe/Madrid',
     };
+    const bertil = { slug: 'bertil', display_name: 'Bertil', avatar_url: null };
     const { api, calls } = recordingApi([
-      { data: { invite: { code: '7KQ4M2XB' } } },
+      { data: { invite: { code: '7KQ4M2XB' }, friend: null } },
+      { data: { invite: null, friend: bertil } },
+      { data: { invite: null, friend: null } },
       { data: { invite: null } },
+      { data: { invite: null, friend: { slug: '../lobby', display_name: 'Mallory' } } },
     ]);
     const invites = createInvitesApi(api);
 
-    expect(await invites.resolveDeferred(request)).toBe('7KQ4M2XB');
-    expect(await invites.resolveDeferred(request)).toBeNull();
-    expect(calls).toEqual([
-      { method: 'post', path: '/api/v1/invites/deferred', body: request },
-      { method: 'post', path: '/api/v1/invites/deferred', body: request },
-    ]);
+    expect(await invites.resolveDeferred(request)).toEqual({ code: '7KQ4M2XB', friend: null });
+    expect(await invites.resolveDeferred(request)).toEqual({ code: null, friend: bertil });
+    expect(await invites.resolveDeferred(request)).toEqual({ code: null, friend: null });
+    expect(await invites.resolveDeferred(request)).toEqual({ code: null, friend: null });
+    expect(await invites.resolveDeferred(request)).toEqual({ code: null, friend: null });
+    expect(calls).toHaveLength(5);
+    expect(calls[0]).toEqual({ method: 'post', path: '/api/v1/invites/deferred', body: request });
   });
 
   it('uses returned room state for lock, move, and kick controls', async () => {
