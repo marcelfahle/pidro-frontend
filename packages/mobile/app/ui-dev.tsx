@@ -21,9 +21,12 @@ import { LeagueProgress } from '@/components/home/LeagueProgress';
 import { RatingPlaque } from '@/components/home/RatingPlaque';
 import { Icon, type IconName } from '@/components/ui/Icon';
 import { AuthProviderButtons } from '@/components/auth/AuthProviderButtons';
+import { ActionPill } from '@/components/ui/ActionPill';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Button } from '@/components/ui/Button';
+import { CountBadge } from '@/components/ui/CountBadge';
 import { DecisionWindow } from '@/components/ui/DecisionWindow';
+import { DismissButton } from '@/components/ui/DismissButton';
 import { HomeTileButton } from '@/components/ui/HomeTileButton';
 import { Input } from '@/components/ui/Input';
 import { PidroText } from '@/components/ui/PidroText';
@@ -70,6 +73,91 @@ function SwitchGallery() {
           onValueChange={noop}
           disabled
         />
+      </View>
+    </Surface>
+  );
+}
+
+const ROW_ICONS: IconName[] = ['person-plus', 'check', 'enter', 'cards', 'share', 'lock', 'clock'];
+
+/** The light row controls from the Friends and New table boards (PID-241). */
+function RowControlsGallery() {
+  const [rules, setRules] = useState<'finnish' | 'louisiana'>('finnish');
+  return (
+    <Surface variant="panel" style={styles.section} padded testID="ui-row-controls-panel">
+      <PidroText role="title">Row controls — pill, dismiss, count</PidroText>
+      <PidroText role="metadata" tone="muted">
+        Press a pill to see its tint. Tab to one to see its focus ring.
+      </PidroText>
+      <View style={styles.row}>
+        <ActionPill label="Add" icon="person-plus" onPress={noop} />
+        <ActionPill
+          label="Join"
+          icon="enter"
+          accessibilityLabel="Join Nora's table"
+          onPress={noop}
+        />
+        <ActionPill label="Play" icon="cards" onPress={noop} />
+        <ActionPill label="Accept" icon="check" variant="gold" onPress={noop} />
+      </View>
+      <View style={styles.row}>
+        <ActionPill label="Add" icon="person-plus" size="sm" onPress={noop} />
+        <ActionPill label="Join" icon="enter" size="sm" onPress={noop} />
+        <ActionPill label="Accept" icon="check" variant="gold" size="sm" onPress={noop} />
+        <ActionPill label="Sent" icon="clock" size="sm" disabled />
+      </View>
+      <View style={styles.row}>
+        <ActionPill label="Invite a friend" icon="person-plus" onPress={noop} />
+        <ActionPill label="Tell them about the new app" icon="share" onPress={noop} />
+      </View>
+      <View style={styles.row}>
+        <ActionPill label="Adding" loading onPress={noop} />
+        <ActionPill label="Accepting" variant="gold" loading onPress={noop} />
+        <ActionPill label="Locked" icon="lock" disabled onPress={noop} />
+        <ActionPill label="No icon" onPress={noop} />
+      </View>
+      <View accessibilityRole="radiogroup" accessibilityLabel="Rules" style={styles.chips}>
+        <ActionPill
+          label="Finnish"
+          selected={rules === 'finnish'}
+          onPress={() => setRules('finnish')}
+          style={styles.chip}
+        />
+        <ActionPill
+          label="Louisiana"
+          selected={rules === 'louisiana'}
+          onPress={() => setRules('louisiana')}
+          style={styles.chip}
+        />
+      </View>
+      <View style={styles.row}>
+        <DismissButton accessibilityLabel="Ignore Pekka's request" onPress={noop} />
+        <DismissButton accessibilityLabel="Dismiss notice" disabled />
+        <View style={styles.badgeTitle}>
+          <PidroText role="label" tone="gold">
+            Want to be friends
+          </PidroText>
+          <CountBadge count={2} />
+        </View>
+      </View>
+      <View testID="ui-count-badges" style={styles.row}>
+        <CountBadge count={1} />
+        <CountBadge count={12} />
+        <CountBadge count={99} />
+        <CountBadge count={120} />
+        <CountBadge count={0} />
+        <CountBadge count={3} size="sm" />
+        <CountBadge count={120} size="sm" />
+      </View>
+      <View style={styles.row}>
+        {ROW_ICONS.map((name) => (
+          <View key={name} style={styles.swatch}>
+            <Icon name={name} size={22} color={PidroColors.iconOnGlass} />
+            <PidroText role="metadata" tone="muted">
+              {name}
+            </PidroText>
+          </View>
+        ))}
       </View>
     </Surface>
   );
@@ -615,6 +703,8 @@ function UiDevHarness() {
 
         <SwitchGallery />
 
+        <RowControlsGallery />
+
         <Surface variant="panel" style={styles.section} padded>
           <PidroText role="title">Inputs — carved-in wells</PidroText>
           <Input
@@ -738,6 +828,18 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     alignItems: 'center',
     gap: PidroSpacing.sm,
+  },
+  chips: {
+    flexDirection: 'row',
+    gap: PidroSpacing.xs,
+  },
+  chip: {
+    flex: 1,
+  },
+  badgeTitle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: PidroSpacing.xs,
   },
   homeTiles: {
     width: '100%',

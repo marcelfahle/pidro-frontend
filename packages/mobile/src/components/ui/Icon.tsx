@@ -34,7 +34,11 @@ export type IconName =
   | 'spade'
   | 'offline'
   | 'link'
-  | 'hash';
+  | 'hash'
+  | 'person-plus'
+  | 'enter'
+  | 'share'
+  | 'clock';
 
 const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   home: { path: 'M3 11l9-8 9 8M5 9v12h5v-7h4v7h5V9', mode: 'stroke' },
@@ -78,6 +82,13 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     mode: 'stroke',
   },
   hash: { path: 'M4 9h16M4 15h16M10 3 8 21m8-18-2 18', mode: 'stroke' },
+  'person-plus': {
+    path: 'M14 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M2.5 20.5c.7-3.6 3.6-6 7.5-6 1.6 0 3 .4 4.2 1.1M19 14v7M15.5 17.5h7',
+    mode: 'stroke',
+  },
+  enter: { path: 'M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M4 12h11M11 8l4 4-4 4', mode: 'stroke' },
+  share: { path: 'M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6', mode: 'stroke' },
+  clock: { path: 'M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0M12 7.5V12l3 2', mode: 'stroke' },
   'arrow-left': { path: 'M19 12H5m7-7-7 7 7 7', mode: 'stroke' },
   star: {
     path: 'M12 2l2.4 5.7 6.1.5-4.6 4 1.4 6L12 15l-5.3 3.2 1.4-6-4.6-4 6.1-.5z',
