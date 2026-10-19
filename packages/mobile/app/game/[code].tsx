@@ -228,8 +228,9 @@ export default function GameScreen() {
   const room =
     rooms.find((candidate) => candidate.code === code) ??
     (roomLookup?.roomCode === code ? roomLookup.room : undefined);
-  // Public refreshes omit the host's password. Keep only the private server answer,
-  // scoped to this room and host, for the lifetime of this screen.
+  // The host's own room read carries the password, so it returns on reload. Lobby,
+  // channel and readiness snapshots still omit it; keep the last private answer,
+  // scoped to this room and host.
   const [hostPassword, setHostPassword] = useState(() =>
     room?.seat_password && room.host_id === youPlayerId
       ? { code: room.code, host: youPlayerId, value: room.seat_password }
