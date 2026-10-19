@@ -327,6 +327,16 @@ test('Play on a friend prefills Partner; requirements and a server password surv
   await expect(page.getByTestId('new-table-seat-west')).toContainText(
     `Waiting… · password ${password}`
   );
+  // The host's own room read restores the digits after a reload; nobody else's carries them.
+  await page.reload();
+  await expect(partner).toContainText('Not ready');
+  await expect(page.getByTestId('new-table-seat-west')).toContainText(
+    `Waiting… · password ${password}`
+  );
+  const friendRead = await api(`/api/v1/rooms/${code}`, { token: friend.token });
+  expect(friendRead.status).toBe(200);
+  expect(friendRead.payload.data.room.code).toBe(code);
+  expect(friendRead.payload.data.room).not.toHaveProperty('seat_password');
 });
 
 test('a delayed partner lookup preserves an explicit seat choice and a cold entry can go back', async ({
