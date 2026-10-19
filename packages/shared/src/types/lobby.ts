@@ -22,6 +22,8 @@ export interface SeatInvitation {
   host?: HeldPlayer;
   rule_set?: RuleSet;
   held_since?: string;
+  /** Across from the host, or on the other team; older servers leave it out. */
+  join_as?: 'partner' | 'opponent' | null;
 }
 
 export interface SeatRequiresGamesError {
@@ -49,6 +51,8 @@ export interface ReadinessSnapshot {
       level?: number | null;
       pin?: SeatPin | null;
       bot_persona?: BotPersona | null;
+      /** A bot keeping a player's seat until they come back. */
+      has_reservation?: boolean;
       held_for?: HeldPlayer | null;
       min_games?: number;
       password?: boolean;

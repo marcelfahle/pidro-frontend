@@ -149,6 +149,18 @@ export default function GameCanvas({
           }}
         />
         <View
+          testID="trick-north-top"
+          pointerEvents="none"
+          accessible={false}
+          style={{
+            position: 'absolute',
+            top: L.trick.cy - L.trick.r - (L.cardH * L.trick.pileScale) / 2,
+            left: L.trick.cx,
+            width: 1,
+            height: 1,
+          }}
+        />
+        <View
           testID="player-hand-top"
           pointerEvents="none"
           accessible={false}

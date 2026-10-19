@@ -32,6 +32,7 @@ import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
+import { TableInvitation } from '@/components/invites/TableInvitation';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
@@ -41,6 +42,7 @@ import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
 import { gameExitPath, parseGameOrigin } from '@/navigation/gameRoute';
 import { canManageRoom } from '@/features/invites/hostControls';
 import { claimDailyGuestSavePrompt } from '@/features/auth/guestSavePrompt';
+import { tableInvitation } from '@/features/invites/tableInvitation';
 import { readingTimeMs } from '@/features/game/readingTime';
 import { t, useTranslation } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
@@ -202,6 +204,11 @@ export default function GameScreen() {
     });
   }, [readiness, isChannelJoined, role]);
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
+  const seatInvitations = useAuthStore((s) => s.seatInvitations);
+  const invitation = tableInvitation(seatInvitations, readiness, youPositionAbs, role);
+  // Joining a held seat leaves this table: its channel goes first, so the
+  // closing room cannot flash its own ending before the next table opens.
+  const [leavingForSeat, setLeavingForSeat] = useState(false);
 
   // Identity snapshots also update direct-link games without a lobby in the stack.
   useLobbyChannel();
@@ -365,7 +372,11 @@ export default function GameScreen() {
   // could stay stuck on the waiting screen after the last seat filled).
   const hasGameState = !!serverPhase;
   const canJoinGameChannel =
-    authHydrated && !!accessToken && !!room && (room.status !== 'finished' || hasGameState);
+    authHydrated &&
+    !!accessToken &&
+    !!room &&
+    (room.status !== 'finished' || hasGameState) &&
+    !leavingForSeat;
   const { notice, addNotice: handleSeatEvent, dismissNotice, clearNotices } = useTableNotices(code);
   const decisions = useSeatDecisions(pushGameAction, refreshSeatLifecycle);
   // A solo table waits for you to say you are ready, as Classic's "Tap to
@@ -769,6 +780,14 @@ export default function GameScreen() {
         />
         <TableFeedback notice={notice} onDismiss={dismissNotice} />
         <TableSeatDecision key={room.code} decisions={decisions} />
+        {invitation ? (
+          <TableInvitation
+            key={`${invitation.code}-${invitation.position}`}
+            invitation={invitation}
+            roomCode={room.code}
+            onLeaving={setLeavingForSeat}
+          />
+        ) : null}
       </View>
     );
   }

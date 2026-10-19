@@ -14,11 +14,20 @@ import { Redirect, useLocalSearchParams } from 'expo-router';
 import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { BOT_CREW } from '@/features/lobby/fixtures';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
+import { TableInvitation } from '@/components/invites/TableInvitation';
 import { DevOverlays } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
-import type { Card, Invite, RuleSet, SeatStatus, ServerBid, ServerGameState } from '@pidro/shared';
+import type {
+  Card,
+  Invite,
+  RuleSet,
+  SeatInvitation,
+  SeatStatus,
+  ServerBid,
+  ServerGameState,
+} from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
 import type { TableNotice } from '@/game/tableNotices';
 import { loadGameCanvasTable } from '@/game/canvas/loadGameCanvasTable';
@@ -117,6 +126,21 @@ const BOT_TRICK = [
   { player: 'east', card: heart(4) },
 ];
 const BOT_TRICK_HAND: Card[] = [heart(14), heart(10), heart(5), heart(2)];
+// `invitation=partner|opponent|rules`: in a game with bots, Bertil holds a seat
+// for you (PID-258); `rules` is an older server that does not say as what.
+const BERTIL: SeatInvitation = {
+  code: 'BRTL',
+  position: 'north',
+  host_id: 'p-bertil',
+  host: { user_id: 'p-bertil', display_name: 'Bertil', avatar_url: null },
+  rule_set: 'finnish',
+  held_since: '2026-10-19T12:00:00Z',
+};
+const INVITATIONS: Record<string, SeatInvitation> = {
+  partner: { ...BERTIL, join_as: 'partner' },
+  opponent: { ...BERTIL, position: 'east', join_as: 'opponent' },
+  rules: BERTIL,
+};
 const TRUMP_HAND: Card[] = [
   heart(14),
   heart(11),
@@ -411,6 +435,7 @@ function TableDevHarness() {
     hand?: string;
     you?: string;
     end?: string;
+    invitation?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -496,6 +521,7 @@ function TableDevHarness() {
             outPlayers={OUT_PLAYERS[params.out as keyof typeof OUT_PLAYERS] ?? null}
             botTrick={params.trick === 'bots'}
             countHelp={params.count === 'on'}
+            invitation={INVITATIONS[params.invitation ?? ''] ?? null}
           />
         </FixtureInsets>
       </SafeAreaProvider>
@@ -699,6 +725,7 @@ function RolePreview({
   outPlayers = null,
   countHelp = false,
   botTrick = false,
+  invitation = null,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -714,9 +741,10 @@ function RolePreview({
   outPlayers?: (typeof OUT_PLAYERS)[keyof typeof OUT_PLAYERS] | null;
   countHelp?: boolean;
   botTrick?: boolean;
+  invitation?: SeatInvitation | null;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
-  const tableRoom = bidRound || botTrick || outPlayers ? BOT_ROOM : WAITING_ROOM;
+  const tableRoom = bidRound || botTrick || outPlayers || invitation ? BOT_ROOM : WAITING_ROOM;
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
@@ -994,6 +1022,9 @@ function RolePreview({
         timed={feedback === 'timed'}
         notice={feedback === 'notice' ? NORA_LOST : null}
       />
+      {Table && invitation ? (
+        <TableInvitation invitation={invitation} roomCode={tableRoom.code} fixture />
+      ) : null}
     </View>
   );
 }

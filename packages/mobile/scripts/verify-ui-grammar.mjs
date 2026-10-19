@@ -654,6 +654,29 @@ const allCases = [
     testId: 'seat-east',
     playLines: { west: 'Plays 9♥', north: 'Plays K♥', east: 'Plays 4♥' },
   },
+  // PID-258: in a game with bots, a seat held for you waits at the top, over
+  // North but clear of the played cards, the hand and the bids. A phone on its
+  // side has no room above the bids: there it waits until you have bid.
+  {
+    name: 'table-invitation',
+    path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner',
+    testId: 'table-invitation',
+    invitation: "Finnish · as Bertil's partner",
+  },
+  {
+    name: 'table-invitation-bidding',
+    path: '/table-dev?phase=bidding&role=player&bids=round&invitation=opponent',
+    testId: 'bidding-window',
+    invitation: "Finnish · as Bertil's opponent",
+  },
+  ...['island-left', 'island-right'].map((safeArea) => ({
+    name: `table-invitation-${safeArea}`,
+    path: `/table-dev?phase=playing&role=player&trick=bots&invitation=rules&safeArea=${safeArea}`,
+    testId: 'table-invitation',
+    invitation: 'Finnish',
+    skipViewports: ['portrait'],
+    insets: safeArea === 'island-left' ? { left: 59, right: 0 } : { left: 0, right: 59 },
+  })),
   // PID-209: you dealt and won the bid. The suits sit in the felt, hearts
   // (with the 5♦) already lifted in the hand; every seat stays in view.
   {
@@ -2757,6 +2780,52 @@ async function assertTrumpPicker(page, testCase, box, viewport) {
   }
 }
 
+// PID-258: the invitation reads in full, stays inside the safe edges, and
+// leaves the hand, the bids and North's played card uncovered. Not now closes it.
+async function assertTableInvitation(page, testCase, viewport) {
+  if (!testCase.invitation) return;
+  const card = page.getByTestId('table-invitation');
+  if (
+    testCase.testId === 'bidding-window' &&
+    viewport.width > viewport.height &&
+    viewport.height < 500
+  ) {
+    assert.equal(
+      await card.count(),
+      0,
+      `${testCase.name}: waits while you bid in ${viewport.name}`
+    );
+    return;
+  }
+  const box = await getStableBox(card, page);
+  assertInsideViewport(`${testCase.name} card`, box, viewport);
+  for (const text of [
+    'Bertil is holding a seat for you',
+    testCase.invitation,
+    'Joining ends your game with the bots.',
+  ])
+    await card.getByText(text, { exact: true }).waitFor();
+  const insets = testCase.insets ?? { left: 0, right: 0 };
+  assert.ok(box.x >= insets.left, `${testCase.name}: clears the left inset`);
+  assert.ok(
+    box.x + box.width <= viewport.width - insets.right,
+    `${testCase.name}: clears the right inset`
+  );
+  const bottom = box.y + box.height;
+  const north = await getStableBox(page.getByTestId('trick-north-top').first(), page);
+  assert.ok(
+    bottom <= north.y + 0.5,
+    `${testCase.name}: clears North's played card in ${viewport.name}`
+  );
+  await assertAbovePlayerHand(page, testCase.name, box, viewport);
+  for (const button of await page.getByTestId('bidding-window').getByRole('button').all()) {
+    const bid = await getStableBox(button, page);
+    assert.ok(!boxesOverlap(box, bid), `${testCase.name}: clears the bids in ${viewport.name}`);
+  }
+  await card.getByRole('button', { name: 'Not now', exact: true }).click();
+  await card.waitFor({ state: 'detached' });
+}
+
 async function assertAbovePlayerHand(page, name, box, viewport) {
   const handBoundary = page.getByTestId('player-hand-top').first();
   await handBoundary.waitFor({ state: 'attached', timeout: 20_000 });
@@ -3582,6 +3651,7 @@ async function main() {
           await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
           await assertFriendNotice(page, testCase.name, caseViewport);
+          await assertTableInvitation(page, testCase, caseViewport);
           await assertUpdateNotice(page, testCase.name, caseViewport);
           await assertTableMessageReadable(page, testCase.name, caseViewport);
           await assertClassicLogin(page, testCase);
