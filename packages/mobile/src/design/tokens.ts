@@ -82,6 +82,10 @@ export const PidroColors = {
   tabletopMark: 'rgba(190, 230, 255, 0.16)',
   choiceOn: 'rgba(107, 73, 11, 0.45)',
   radioOff: 'rgba(184, 225, 246, 0.6)',
+  // A seat row on New table: the host's row sits darker, the gold "vs" fades in from each side.
+  seatRowHost: 'rgba(7, 45, 82, 0.5)',
+  seatRowChevron: 'rgba(184, 225, 246, 0.75)',
+  vsLineGradient: 'linear-gradient(90deg, rgba(226,175,69,0) 0%, rgba(226,175,69,0.7) 100%)',
   plaqueShadow: '0px 4px 14px rgba(1,13,27,0.35), inset 0px 1px 0px rgba(139,234,255,0.12)',
   // A chosen row in a list of choices: gold edge on a warm wash.
   chosenBg: 'rgba(107, 73, 11, 0.45)',

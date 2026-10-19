@@ -1,3 +1,7 @@
+const seatRowCases = ['setup', 'setup-open', 'opened', 'opened-more'].map(
+  (fixture) => `ui-seat-rows-${fixture}`
+);
+
 const lobbyCases = [
   'list',
   'badges',
@@ -45,6 +49,7 @@ export const UI_VIEWPORTS = [
       'table-game-over-spectator',
       'table-count-help',
       'locale-sv-table-count-help',
+      ...seatRowCases,
     ],
   },
   {
@@ -132,6 +137,7 @@ export const UI_VIEWPORTS = [
       'classic-help',
       ...lobbyCases,
       'create-table',
+      ...seatRowCases,
     ],
   },
   {

@@ -407,6 +407,11 @@ const allCases = [
     testId: 'ui-progression-panel',
   },
   { name: 'ui-avatars', path: '/ui-dev?state=avatars', testId: 'ui-avatars-panel' },
+  ...['setup', 'setup-open', 'opened', 'opened-more'].map((fixture) => ({
+    name: `ui-seat-rows-${fixture}`,
+    path: `/ui-dev?state=seat-rows&fixture=${fixture}`,
+    testId: 'ui-seat-rows-panel',
+  })),
   ...['default', 'open', 'requirement', 'bots', 'friend'].map((fixture) => ({
     name: fixture === 'default' ? 'create-table' : `create-table-${fixture}`,
     path: `/ui-dev?state=create&fixture=${fixture}`,
