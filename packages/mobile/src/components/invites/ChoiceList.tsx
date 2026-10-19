@@ -42,7 +42,10 @@ export function ChoiceList({
   const choices = sections
     .flatMap((section) => section.items)
     .filter((item) => item.kind !== 'deeper');
-  const radioTabStop = choices.find((item) => item.id === selectedId)?.id ?? choices[0]?.id;
+  const radioTabStop =
+    choices.find((item) => item.id === focused)?.id ??
+    choices.find((item) => item.id === selectedId)?.id ??
+    choices[0]?.id;
   const displayed = compact ? [{ title: '', items: choices }] : sections;
   return (
     <View
@@ -81,7 +84,7 @@ export function ChoiceList({
                               : event.key === 'ArrowUp' || event.key === 'ArrowLeft'
                                 ? -1
                                 : 0;
-                          if (!step && event.key !== ' ') return;
+                          if (!step && event.key !== ' ' && event.key !== 'Enter') return;
                           event.preventDefault();
                           const next =
                             choices[
@@ -91,7 +94,7 @@ export function ChoiceList({
                                 choices.length
                             ];
                           refs.current[next.id]?.focus();
-                          onSelect(next.id);
+                          if (!step) onSelect(next.id);
                         },
                       }
                     : {})}

@@ -98,7 +98,9 @@ export function FriendPicker({
                       <FriendRow
                         name={friend.name}
                         avatarUrl={friend.avatarUrl}
-                        accessibilityLabel={`${friend.name}, ${line}. ${t('picker.invite')}`}
+                        accessibilityLabel={
+                          selected ? friend.name : t('seat_friend.invite', { name: friend.name })
+                        }
                         dimmed={unavailable}
                         selected={selected}
                         onPress={() => onInvite(friend)}

@@ -2810,6 +2810,12 @@ async function assertSeatPicker(page, testCase, viewport) {
     const current = group.getByRole('radio', { checked: true });
     await current.focus();
     await current.press('ArrowDown');
+    assert.equal(await container.count(), 1, 'Arrow keys browse without closing');
+    assert.equal(await current.getAttribute('aria-checked'), 'true', 'Browsing does not commit');
+    const next = group.getByRole('radio', { name: /^1000\+ games played,/ });
+    assert.ok(await next.evaluate((el) => el === document.activeElement));
+    assert.equal(await next.getAttribute('tabindex'), '0');
+    await next.press(viewport.width > viewport.height ? 'Enter' : 'Space');
     await container.waitFor({ state: 'detached' });
     assert.equal(await page.getByTestId('seat-picker-result').innerText(), '1000');
     await page.getByRole('button', { name: 'Open seat picker', exact: true }).click();
@@ -2855,7 +2861,9 @@ async function assertSeatPicker(page, testCase, viewport) {
   const search = picker.getByRole('textbox', { name: swedish ? 'Hitta en vän' : 'Find a friend' });
   await search.fill('  PEKKA ');
   assert.equal(await picker.getByRole('button').count(), 1);
-  await picker.getByRole('button', { name: /^Pekka,/ }).click();
+  await picker
+    .getByRole('button', { name: swedish ? 'Bjud in Pekka' : 'Invite Pekka', exact: true })
+    .click();
   await container.waitFor({ state: 'detached' });
   assert.equal(await page.getByTestId('seat-picker-result').innerText(), 'Pekka');
 }
