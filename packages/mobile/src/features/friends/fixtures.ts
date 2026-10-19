@@ -125,6 +125,7 @@ export function friendsFixture(value?: string): FriendLists | undefined {
           ...hanna,
           user_id: 'sanna',
           display_name: 'Sanna',
+          // Reads "in September" until September 2027, when the year joins it: refresh then.
           played_together_at: '2026-09-12T12:00:00Z',
         },
       ],

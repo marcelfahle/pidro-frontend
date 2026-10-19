@@ -55,8 +55,12 @@ export function friendAction(friend: FriendEntry): 'join' | 'play' | null {
   return null;
 }
 
-export function friendSheetState(entry: FriendEntry, relation: FriendRelation = 'friend') {
-  const row = friendRowState(entry, relation);
+export function friendSheetState(
+  entry: FriendEntry,
+  relation: FriendRelation = 'friend',
+  now: Date = new Date()
+) {
+  const row = friendRowState(entry, relation, now);
   const params = { name: entry.display_name };
   if (relation === 'added_you')
     return { ...row, action: 'accept' as const, label: t('friends.accept'), hint: null };

@@ -298,12 +298,15 @@ describe('Friends presentation', () => {
   });
 
   test('the sheet reads the row line for a friend who is not online', () => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
+    const now = new Date(2026, 9, 19, 9, 30);
     const nora = { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'offline' };
-    expect(friendSheetState({ ...nora, played_together_at: yesterday.toISOString() }).line).toBe(
-      'Played yesterday'
-    );
+    expect(
+      friendSheetState(
+        { ...nora, played_together_at: new Date(2026, 9, 18, 22).toISOString() },
+        'friend',
+        now
+      ).line
+    ).toBe('Played yesterday');
     expect(friendSheetState({ ...nora, played_together_at: null }).line).toBe('Not online');
     expect(
       friendSheetState({
