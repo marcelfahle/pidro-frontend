@@ -114,6 +114,12 @@ try {
           await page.getByRole('button', { name: 'Remove from table', exact: true }).count(),
           0
         );
+        // The room carries the host's password; only the host may read it.
+        assert.doesNotMatch(
+          await page.getByTestId('new-table-seat-west').innerText(),
+          /4821/,
+          'nonhost never sees the password'
+        );
       }
       await page.screenshot({
         path: resolve(output, `new-table-${fixture}-${viewport.width}x${viewport.height}.png`),

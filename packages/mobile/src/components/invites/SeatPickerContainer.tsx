@@ -119,7 +119,7 @@ export function SeatPickerContainer({
                     contentContainerStyle={styles.choicesContent}
                     keyboardShouldPersistTaps="handled">
                     {tablet && (
-                      <PidroText role="metadata" tone="soft">
+                      <PidroText role="eyebrow" tone="cyan">
                         {t('picker.fill_or_open')}
                       </PidroText>
                     )}
@@ -138,7 +138,7 @@ export function SeatPickerContainer({
                 {(split || friendPage) && (
                   <View style={styles.friendsColumn}>
                     {split && (
-                      <PidroText role="metadata" tone="soft">
+                      <PidroText role="eyebrow" tone="cyan">
                         {t('picker.or_invite')}
                       </PidroText>
                     )}

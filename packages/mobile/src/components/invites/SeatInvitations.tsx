@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import type { SeatInvitation } from '@pidro/shared';
+import { friendNoticeId, type SeatInvitation } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -70,7 +70,17 @@ export function SeatInvitations({
   const invitations = fixture ?? stored;
   const late = fixture
     ? []
-    : notices.flatMap((notice) => (notice.kind === 'too_late' ? [notice.invitation] : []));
+    : notices.flatMap((notice) => (notice.kind === 'too_late' ? [notice] : []));
+  const lateIds = late.map(friendNoticeId).join(' ');
+  // Tables is outside the shell, whose notice would let these go; they leave the same way, after 4 s.
+  useEffect(() => {
+    if (!lateIds) return;
+    const timer = setTimeout(
+      () => lateIds.split(' ').forEach((id) => useFriendsStore.getState().dismissNotice(id)),
+      4000
+    );
+    return () => clearTimeout(timer);
+  }, [lateIds]);
   const [pending, setPending] = useState<string | null>(null);
   const busy = useRef(false);
   const [error, setError] = useState<unknown>(null);
@@ -114,7 +124,7 @@ export function SeatInvitations({
           </Surface>
         );
       })}
-      {late.map((invitation) => (
+      {late.map(({ invitation }) => (
         <NoticeCard
           key={`${invitation.code}-${invitation.position}`}
           variant="too_late"

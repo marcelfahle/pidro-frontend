@@ -2,7 +2,8 @@ import { Text, type TextProps, type TextStyle, StyleSheet } from 'react-native';
 import { PidroColors, PidroType } from '@/design/tokens';
 import { useLocale } from '@/i18n';
 
-export type PidroTextRole = 'score' | 'display' | 'title' | 'label' | 'body' | 'metadata';
+export type PidroTextRole =
+  'score' | 'display' | 'title' | 'label' | 'body' | 'metadata' | 'eyebrow';
 export type PidroTextTone = 'default' | 'soft' | 'muted' | 'gold' | 'cyan' | 'danger';
 
 export interface PidroTextProps extends Omit<TextProps, 'role'> {
@@ -40,6 +41,7 @@ const styles = StyleSheet.create({
   label: PidroType.label,
   body: PidroType.body,
   metadata: PidroType.metadata,
+  eyebrow: PidroType.eyebrow,
   default: {
     color: PidroColors.text,
   },

@@ -284,6 +284,21 @@ test('picked friends become holds only on Open; invitations arrive live, recover
       await expect(inbox.getByRole('button', { name: 'Sit down', exact: true })).toBeVisible();
     }
     await receiver.goto('/lobby');
+    // Tables is outside the shell, and its too-late card still goes by itself.
+    await receiver.route(
+      `**/api/v1/rooms/${code}/join`,
+      (route) =>
+        route.fulfill({
+          status: 422,
+          json: { error: 'SEAT_TAKEN', error_code: 'SEAT_TAKEN', error_params: {} },
+        }),
+      { times: 1 }
+    );
+    await inbox.getByRole('button', { name: 'Sit down', exact: true }).click();
+    const late = receiver.getByText(`${player.name}'s game started without you`, { exact: true });
+    await expect(late).toBeVisible();
+    await expect(late).toBeHidden({ timeout: 8_000 });
+    await receiver.reload();
     await inbox.getByRole('button', { name: 'Sit down', exact: true }).click();
     await receiver.waitForURL(new RegExp(`/game/${code}$`));
     expect(

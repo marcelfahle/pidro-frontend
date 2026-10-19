@@ -344,6 +344,15 @@ export const PidroType = {
     fontWeight: '700' as const,
     letterSpacing: 0.2,
   },
+  /** A section's name above its rows: Your team, Fill it now, Online now. */
+  eyebrow: {
+    fontFamily: PidroFonts.ui,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '900' as const,
+    letterSpacing: 1,
+    textTransform: 'uppercase' as const,
+  },
   labelSpacing: 0.1,
 } as const;
 

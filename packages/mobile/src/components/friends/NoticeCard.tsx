@@ -5,7 +5,7 @@
  * host's, dashed is too late. It enters and leaves like the shell's update
  * notice and honours Reduce Motion. Where it floats and when is PID-246.
  */
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, { FadeInDown, FadeOutDown, useReducedMotion } from 'react-native-reanimated';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
@@ -34,7 +34,6 @@ export interface NoticeCardProps {
   footnote?: string;
   /** One row, the words and then the buttons, no avatar: for a short landscape screen. */
   row?: boolean;
-  style?: StyleProp<ViewStyle>;
   testID?: string;
 }
 
@@ -48,7 +47,6 @@ export function NoticeCard({
   secondary,
   footnote,
   row = false,
-  style,
   testID,
 }: NoticeCardProps) {
   const reduceMotion = useReducedMotion();
@@ -62,7 +60,7 @@ export function NoticeCard({
       exiting={reduceMotion ? undefined : FadeOutDown.duration(160)}
       accessibilityRole="alert"
       accessibilityLiveRegion="polite"
-      style={[styles.card, row && styles.row, styles[variant], style]}>
+      style={[styles.card, row && styles.row, styles[variant]]}>
       <View style={[styles.person, row && styles.grow]}>
         {row ? null : (
           <View style={(late || variant === 'cant_come') && styles.dim}>

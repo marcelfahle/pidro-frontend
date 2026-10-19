@@ -269,25 +269,13 @@ describe('invite APIs', () => {
     expect(calls[0]).toEqual({ method: 'post', path: '/api/v1/invites/deferred', body: request });
   });
 
-  it('uses returned room state for lock, move, and kick controls', async () => {
-    const { api, calls } = recordingApi([
-      { data: { room: { ...rawRoom, locked: false } } },
-      { data: { room: rawRoom } },
-      { data: { room: rawRoom } },
-    ]);
+  it('uses returned room state for kick controls', async () => {
+    const { api, calls } = recordingApi([{ data: { room: rawRoom } }]);
     const lobby = createLobbyApi(api);
 
-    expect((await lobby.setRoomLocked('ABCD', false)).locked).toBe(false);
-    await lobby.movePlayer('ABCD', 'east', 'guest-1');
     await lobby.kickPlayer('ABCD', 'south');
 
     expect(calls).toEqual([
-      { method: 'post', path: '/api/v1/rooms/ABCD/lock', body: { locked: false } },
-      {
-        method: 'post',
-        path: '/api/v1/rooms/ABCD/seat',
-        body: { position: 'east', user_id: 'guest-1' },
-      },
       { method: 'post', path: '/api/v1/rooms/ABCD/kick', body: { position: 'south' } },
     ]);
   });

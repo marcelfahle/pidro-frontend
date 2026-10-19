@@ -104,7 +104,7 @@ export interface Room {
   name?: string;
   config?: RoomConfig;
   host_id?: string | null;
-  /** Only returned in the host's private mutation responses. */
+  /** Sent to the host only: with its room read, its new room and its seat changes. */
   seat_password?: string;
   locked?: boolean;
   status: RoomStatus;

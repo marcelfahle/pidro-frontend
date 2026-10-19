@@ -184,7 +184,10 @@ export function TeamSection({
   const title = t(team === 'yours' ? 'game.your_team' : 'game.opponents');
   return (
     <View accessibilityLabel={title} style={[styles.section, style]}>
-      <PidroText role="metadata" style={[styles.eyebrow, team === 'yours' && TONES.gold]}>
+      <PidroText
+        role="eyebrow"
+        tone="cyan"
+        style={[styles.eyebrow, team === 'yours' && TONES.gold]}>
         {title}
       </PidroText>
       {children}
@@ -264,15 +267,7 @@ const styles = StyleSheet.create({
   },
   dimmed: { opacity: 0.6 },
   section: { gap: 8 },
-  eyebrow: {
-    paddingHorizontal: 4,
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '900',
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    color: PidroColors.cyanText,
-  },
+  eyebrow: { paddingHorizontal: 4 },
   vsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 8 },
   vsColumn: { alignSelf: 'center' },
   vsLine: { flex: 1, height: 1 },

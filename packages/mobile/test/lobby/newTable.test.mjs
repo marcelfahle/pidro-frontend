@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test';
 import { normalizeRoom, roomWithReadiness, setLocale } from '@pidro/shared';
-import { assignedFriendIds, chooseFriend, chooseSeat, defaultSeats, isPractice, newTableRequest, pickerFriends, seatChoice, seatedHuman, seatEntry, seatError, tableFooter, tableHeader } from '../../src/features/lobby/newTable';
+import { assignedFriendIds, chooseFriend, chooseSeat, createFailure, defaultSeats, isPractice, newTableRequest, pickerFriends, seatChoice, seatedHuman, seatEntry, seatError, tableFooter, tableHeader } from '../../src/features/lobby/newTable';
 import { seatRow } from '../../src/features/lobby/seatRow';
 
 const maija = { user_id: 'maija', display_name: 'Maija', avatar_url: null, presence: 'online' };
@@ -91,9 +91,21 @@ it('says a refused seat change in plain words', () => {
   const refused = (code) => ({ response: { status: 422, data: { errors: [{ code }] } } });
   expect(seatError(refused('ALREADY_SEATED'))).toBe('That friend already has a seat. Choose someone else.');
   expect(seatError(refused('SEAT_NOT_VACANT'))).toBe('Someone sat down in this seat.');
+  // The host is at this table: the friend is the one at a table with others, not the host.
+  expect(seatError(refused('ALREADY_IN_ROOM'))).toBe('That friend is playing with others now. Choose someone else.');
   expect(seatError(new Error('network'))).toBe('This seat could not be changed. Please try again.');
   try {
     setLocale('sv');
     expect(seatError(refused('SEAT_NOT_VACANT'))).toBe('Någon har satt sig på den här platsen.');
   } finally { setLocale('en'); }
+});
+
+it('blames a held friend, not the host, when opening is refused for a table elsewhere', () => {
+  const refused = (code) => ({ response: { status: 422, data: { errors: [{ code }] } } });
+  const held = newTableRequest('finnish', chooseFriend(draft(), 'seat_3', maija));
+  expect(createFailure(refused('ALREADY_IN_ROOM'), held)).toEqual({ key: 'new_table.held_friend_busy' });
+  const open = newTableRequest('finnish', draft());
+  const error = refused('ALREADY_IN_ROOM');
+  expect(createFailure(error, open)).toEqual({ error, key: 'social.create_error' });
+  expect(createFailure(refused('ACCOUNT_REQUIRED'), held).key).toBe('social.account_error');
 });
