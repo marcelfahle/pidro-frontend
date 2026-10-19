@@ -3,7 +3,7 @@
  * dismiss a notice. Round, borderless, 44pt. The label must name what it
  * dismisses ("Ignore Pekka's request"), so it is required.
  */
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { StyleSheet } from 'react-native';
 import { PidroColors, PidroLayout, PidroRadii } from '@/design/tokens';
 import { Icon } from './Icon';
@@ -22,6 +22,10 @@ export function DismissButton({
 }: DismissButtonProps) {
   const [focused, setFocused] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const pressIn = useCallback(() => setPressed(true), []);
+  const pressOut = useCallback(() => setPressed(false), []);
+  const focus = useCallback(() => setFocused(true), []);
+  const blur = useCallback(() => setFocused(false), []);
   return (
     <PressableFX
       accessibilityRole="button"
@@ -29,10 +33,10 @@ export function DismissButton({
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
+      onFocus={focus}
+      onBlur={blur}
       style={[
         styles.button,
         pressed && styles.pressed,

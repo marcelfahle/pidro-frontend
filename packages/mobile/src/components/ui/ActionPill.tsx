@@ -8,7 +8,7 @@
  * than the beveled CTA the screen leads with. The sm pill is 38pt to look at
  * but keeps a 44pt touch target.
  */
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { ActivityIndicator, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { PidroBevel, PidroColors, PidroLayout, PidroRadii, PidroType } from '@/design/tokens';
 import { Icon, type IconName } from './Icon';
@@ -44,6 +44,10 @@ export function ActionPill({
 }: ActionPillProps) {
   const [focused, setFocused] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const pressIn = useCallback(() => setPressed(true), []);
+  const pressOut = useCallback(() => setPressed(false), []);
+  const focus = useCallback(() => setFocused(true), []);
+  const blur = useCallback(() => setFocused(false), []);
   const gold = variant === 'gold' || selected === true;
   const sm = size === 'sm';
   const inert = disabled || loading;
@@ -60,10 +64,10 @@ export function ActionPill({
       aria-checked={selected}
       disabled={inert}
       onPress={onPress}
-      onPressIn={() => setPressed(true)}
-      onPressOut={() => setPressed(false)}
-      onFocus={() => setFocused(true)}
-      onBlur={() => setFocused(false)}
+      onPressIn={pressIn}
+      onPressOut={pressOut}
+      onFocus={focus}
+      onBlur={blur}
       style={[styles.target, inert && styles.disabled, style]}>
       <View
         style={[

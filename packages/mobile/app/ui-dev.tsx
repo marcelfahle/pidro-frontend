@@ -100,7 +100,7 @@ function RowControlsGallery() {
         <ActionPill label="Play" icon="cards" onPress={noop} />
         <ActionPill label="Accept" icon="check" variant="gold" onPress={noop} />
       </View>
-      <View style={styles.row}>
+      <View testID="ui-pills-sm" style={styles.row}>
         <ActionPill label="Add" icon="person-plus" size="sm" onPress={noop} />
         <ActionPill label="Join" icon="enter" size="sm" onPress={noop} />
         <ActionPill label="Accept" icon="check" variant="gold" size="sm" onPress={noop} />

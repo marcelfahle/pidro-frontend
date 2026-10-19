@@ -2643,7 +2643,10 @@ async function assertRowControls(page, name, screenshotDir) {
   const dismiss = page.getByRole('button', { name: "Ignore Pekka's request", exact: true });
   const box = await dismiss.boundingBox();
   assert.ok(box.width >= 44 && box.height >= 44, 'The dismiss × is a 44pt target');
-  const sm = await panel.getByRole('button', { name: 'Join', exact: true }).boundingBox();
+  const sm = await page
+    .getByTestId('ui-pills-sm')
+    .getByRole('button', { name: 'Join', exact: true })
+    .boundingBox();
   assert.ok(sm.height >= 44, 'The sm pill keeps a 44pt target');
   assert.equal(await panel.getByRole('button', { name: 'Adding' }).isDisabled(), true);
   const finnish = page.getByRole('radio', { name: 'Finnish', exact: true });
@@ -2653,7 +2656,7 @@ async function assertRowControls(page, name, screenshotDir) {
   assert.equal(await louisiana.getAttribute('aria-checked'), 'true');
   assert.equal(await finnish.getAttribute('aria-checked'), 'false');
   assert.deepEqual(
-    (await page.getByTestId('ui-count-badges').innerText()).split(/\s+/),
+    await page.getByTestId('ui-count-badges').locator('[dir="auto"]').allInnerTexts(),
     ['1', '12', '99', '99+', '3', '99+'],
     'A zero count hides; past 99 reads 99+'
   );
