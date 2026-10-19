@@ -28,6 +28,8 @@ export interface FriendRowProps {
   trailing?: ReactNode | 'chevron' | 'sent' | 'friends';
   /** Greyed and inert, as a busy friend in the seat picker. */
   dimmed?: boolean;
+  /** A shorter row with a one-line status, for the seat picker on a sideways phone. */
+  dense?: boolean;
 }
 
 const LINE_COLOR = {
@@ -46,12 +48,13 @@ export function FriendRow({
   selected = false,
   trailing,
   dimmed = false,
+  dense = false,
 }: FriendRowProps) {
   const { t } = useTranslation();
   const identity = (
     <>
       <View style={row.variant === 'sent' && styles.faded}>
-        <PlayerAvatar size={44} uri={avatarUrl} ring={ring} />
+        <PlayerAvatar size={dense ? 40 : 44} uri={avatarUrl} ring={ring} />
         {row.dot ? (
           <View style={[styles.dot, row.dot === 'online' ? styles.dotOnline : styles.dotTable]} />
         ) : null}
@@ -62,7 +65,7 @@ export function FriendRow({
         </PidroText>
         <PidroText
           role="metadata"
-          numberOfLines={2}
+          numberOfLines={dense ? 1 : 2}
           maxFontSizeMultiplier={1.3}
           style={[styles.line, { color: LINE_COLOR[row.tone] }]}>
           {row.line}
@@ -85,6 +88,7 @@ export function FriendRow({
         row.variant === 'fresh' && styles.fresh,
         selected && styles.selected,
         dimmed && styles.dimmed,
+        dense && styles.dense,
       ]}>
       {onPress && !dimmed ? (
         <PressableFX
@@ -93,7 +97,7 @@ export function FriendRow({
           accessibilityState={{ selected }}
           accessibilityHint={row.line}
           onPress={onPress}
-          style={styles.identity}>
+          style={[styles.identity, dense && styles.denseIdentity]}>
           {identity}
         </PressableFX>
       ) : (
@@ -103,7 +107,7 @@ export function FriendRow({
           accessibilityLabel={`${name}, ${row.line}`}
           accessibilityState={{ disabled: dimmed }}
           aria-disabled={dimmed || undefined}
-          style={styles.identity}>
+          style={[styles.identity, dense && styles.denseIdentity]}>
           {identity}
         </View>
       )}
@@ -161,6 +165,7 @@ const styles = StyleSheet.create({
   fresh: { borderWidth: 1.5, borderColor: PidroColors.presenceOnline },
   selected: { borderColor: PidroBevel.rim, backgroundColor: PidroColors.goldSoft },
   dimmed: { opacity: 0.5 },
+  dense: { minHeight: 52, paddingVertical: 3 },
   identity: {
     flex: 1,
     minWidth: 0,
@@ -169,6 +174,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
+  denseIdentity: { minHeight: PidroLayout.touchTarget },
   faded: { opacity: 0.7 },
   dot: {
     position: 'absolute',

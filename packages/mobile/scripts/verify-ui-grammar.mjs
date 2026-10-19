@@ -7,6 +7,7 @@ import { partitionCases, verifyCoverage } from './ui-shards.mjs';
 import {
   assertInsideViewport,
   assertMinimumTouchTargets,
+  assertTeamLayout,
   getStableBox,
   suppressDevOverlays,
   UI_VIEWPORTS,
@@ -2123,24 +2124,8 @@ async function assertCreationPresentation(page, testCase) {
   }
   const fixture = testCase.newTableFixture;
   if (!fixture) return;
-  const boxes = [];
-  for (const position of ['north', 'south', 'east', 'west']) {
-    const row = page.getByTestId(`new-table-seat-${position}`);
-    await row.waitFor();
-    const box = await row.boundingBox();
-    assert.ok(box && box.width <= 437 && box.width > 100, 'team column maxWidth 436');
-    assert.ok(
-      Math.abs(box.x + box.width / 2 - page.viewportSize().width / 2) <= 2,
-      'centered team list'
-    );
-    boxes.push(box);
-  }
-  boxes.sort((a, b) => a.y - b.y);
-  for (let i = 1; i < boxes.length; i++)
-    assert.ok(
-      boxes[i].y >= boxes[i - 1].y + boxes[i - 1].height - 1,
-      'single list without overlap'
-    );
+  const viewport = page.viewportSize();
+  await assertTeamLayout(page, viewport, testCase.name);
   if (fixture === 'setup')
     assert.equal(await page.getByText('Anyone can sit', { exact: true }).count(), 3);
   const footer = {
@@ -2167,6 +2152,19 @@ async function assertCreationPresentation(page, testCase) {
     );
   if (fixture === 'friends' || fixture === 'live-friends')
     await page.getByTestId('friend-picker').waitFor();
+  // The board's sideways picker: four rows of two friends, whole, above the bottom edge.
+  if (fixture === 'picker' && viewport.width > viewport.height && viewport.height < 600) {
+    const scroll = await page.getByTestId('friend-picker-scroll').boundingBox();
+    assertInsideViewport('friend list', scroll, { name: testCase.name, ...viewport });
+    const rows = await page
+      .getByTestId('friend-picker-scroll')
+      .getByRole('button')
+      .evaluateAll((nodes) => nodes.map((node) => node.parentElement.getBoundingClientRect()));
+    const whole = rows.filter(
+      (row) => row.top >= scroll.y - 0.5 && row.bottom <= scroll.y + scroll.height + 0.5
+    );
+    assert.ok(whole.length >= 8, `${whole.length} whole friend rows in the sideways picker`);
+  }
   if (fixture === 'declined') {
     const card = page.getByTestId('seat-declined-notice');
     await card.getByText("Maija can't come right now", { exact: true }).waitFor();
@@ -3308,9 +3306,13 @@ async function main() {
     cases
       .filter((testCase) => {
         if (testCase.newTableFixture)
-          return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
-            viewport.name
-          );
+          return [
+            'portrait',
+            'small-portrait',
+            'landscape',
+            'tablet-portrait',
+            'tablet-landscape',
+          ].includes(viewport.name);
         if (
           viewport.cases &&
           !viewport.cases.includes(testCase.name) &&

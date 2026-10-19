@@ -87,7 +87,7 @@ export function SeatRow({
           {row.name}
         </PidroText>
         <PidroText
-          numberOfLines={1}
+          numberOfLines={2}
           style={[
             styles.status,
             { fontSize: size.status, lineHeight: Math.round(size.status * 1.3) },

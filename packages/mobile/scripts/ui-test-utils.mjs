@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+
 const seatRowCases = ['setup', 'setup-open', 'opened', 'opened-more'].map(
   (fixture) => `ui-seat-rows-${fixture}`
 );
@@ -312,4 +314,54 @@ export async function assertMinimumTouchTargets(
       );
     }
   }
+}
+
+// New table's four seat rows: one centred list upright (436 on a phone, 660 on an
+// iPad), two teams side by side sideways. Every row on screen, nothing scrolls.
+export async function assertTeamLayout(page, viewport, label) {
+  const boxes = [];
+  for (const position of ['north', 'south', 'east', 'west']) {
+    const box = await page.getByTestId(`new-table-seat-${position}`).boundingBox();
+    assert.ok(box, `${label}: ${position} row`);
+    assertInsideViewport(`${label} ${position}`, box, viewport);
+    boxes.push(box);
+  }
+  // A notice slides in from below; judge the page once it has landed.
+  const fits = (sizes) =>
+    sizes.every(([w, h, clientW, clientH]) => w <= clientW + 1 && h <= clientH + 1);
+  let sizes = [];
+  for (let attempt = 0; attempt < 50; attempt++) {
+    sizes = await page.evaluate(() =>
+      [
+        document.scrollingElement,
+        ...document.querySelectorAll(
+          '[data-testid="new-table-screen"], [data-testid="waiting-table"]'
+        ),
+      ].map((node) => [node.scrollWidth, node.scrollHeight, node.clientWidth, node.clientHeight])
+    );
+    if (fits(sizes)) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(fits(sizes), `${label}: the screen does not scroll ${JSON.stringify(sizes)}`);
+  const centre = (box) => box.x + box.width / 2;
+  if (viewport.width > viewport.height) {
+    boxes.sort((a, b) => a.x - b.x || a.y - b.y);
+    const [left, right] = [boxes.slice(0, 2), boxes.slice(2)];
+    for (const column of [left, right]) {
+      assert.ok(Math.abs(column[0].x - column[1].x) <= 1, `${label}: a team is one column`);
+      assert.ok(column[1].y >= column[0].y + column[0].height - 1, `${label}: rows apart`);
+    }
+    assert.ok(left[0].x + left[0].width < right[0].x, `${label}: teams side by side`);
+    assert.ok(Math.abs(left[0].y - right[0].y) <= 1, `${label}: teams level`);
+    assert.ok(Math.abs(left[0].width - right[0].width) <= 1, `${label}: equal columns`);
+    return 'columns';
+  }
+  const maxWidth = Math.min(viewport.width, viewport.height) >= 600 ? 660 : 436;
+  boxes.sort((a, b) => a.y - b.y);
+  for (const [index, box] of boxes.entries()) {
+    assert.ok(box.width > 100 && box.width <= maxWidth + 1, `${label}: column width`);
+    assert.ok(Math.abs(centre(box) - viewport.width / 2) <= 2, `${label}: centred list`);
+    if (index) assert.ok(box.y >= boxes[index - 1].y + boxes[index - 1].height - 1, 'one list');
+  }
+  return 'list';
 }

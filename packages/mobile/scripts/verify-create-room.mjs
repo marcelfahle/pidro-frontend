@@ -5,6 +5,7 @@ import { chromium } from 'playwright';
 import {
   assertInsideViewport,
   assertMinimumTouchTargets,
+  assertTeamLayout,
   suppressDevOverlays,
 } from './ui-test-utils.mjs';
 
@@ -35,6 +36,7 @@ try {
     { width: 375, height: 667 },
     { width: 844, height: 390 },
     { width: 768, height: 1024 },
+    { width: 1024, height: 768 },
   ]) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 2 });
     for (const fixture of fixtures) {
@@ -44,29 +46,8 @@ try {
       await screen.waitFor();
       await suppressDevOverlays(page);
       await page.evaluate(() => document.fonts.ready);
-      const boxes = [];
-      for (const position of ['north', 'south', 'east', 'west']) {
-        const row = page.getByTestId(`new-table-seat-${position}`);
-        const box = await row.boundingBox();
-        assert.ok(box && box.width <= 436 + 1 && box.width > 100, `${position}: column width`);
-        assert.ok(
-          Math.abs(box.x + box.width / 2 - viewport.width / 2) <= 2,
-          `${position}: centered`
-        );
-        boxes.push(box);
-      }
-      boxes.sort((a, b) => a.y - b.y);
-      for (let i = 1; i < boxes.length; i++)
-        assert.ok(
-          boxes[i].y >= boxes[i - 1].y + boxes[i - 1].height - 1,
-          'single team list, no overlap'
-        );
+      await assertTeamLayout(page, viewport, `${fixture} ${viewport.width}x${viewport.height}`);
       if (!pickerFixtures.includes(fixture)) {
-        for (const position of ['north', 'south', 'east', 'west']) {
-          const row = page.getByTestId(`new-table-seat-${position}`);
-          if (viewport.width > viewport.height) await row.scrollIntoViewIfNeeded();
-          assertInsideViewport(position, await row.boundingBox(), viewport);
-        }
         await assertMinimumTouchTargets(page, `new-table-${fixture}`, viewport);
       }
       assert.equal(await page.getByTestId('create-room-window').count(), 0);
@@ -97,7 +78,6 @@ try {
       }[fixture];
       if (footer) {
         const action = screen.getByRole('button', { name: footer, exact: true });
-        if (viewport.width > viewport.height) await action.scrollIntoViewIfNeeded();
         assert.ok(await action.isVisible());
         const box = await action.boundingBox();
         assertInsideViewport('footer', box, viewport);

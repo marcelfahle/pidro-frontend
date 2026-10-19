@@ -126,7 +126,11 @@ export function NewTableScreen({
   const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
-  const compact = width < height && height < 700;
+  // Sideways the teams sit side by side; a phone keeps every line, an iPad its own column.
+  const wide = width > height;
+  const tablet = Math.min(width, height) >= 600;
+  const phoneLandscape = wide && !tablet;
+  const compact = !wide && height < 700;
   const insets = useSafeAreaInsets();
   const user = useAuthStore((state) => state.user);
   const friendStore = useFriendsStore();
@@ -321,8 +325,8 @@ export function NewTableScreen({
     />
   );
   const kickPlayer = selectedLive?.player;
-  // A small phone has no room above the seats: the card takes the share button's place
-  // and says what the status line would.
+  // A small or sideways phone has no room above the seats: the card takes the share
+  // button's place and says what the status line would.
   const declinedCard = showDeclined && (
     <NoticeCard
       testID="seat-declined-notice"
@@ -330,6 +334,7 @@ export function NewTableScreen({
       title={t('friend_notice.cant_come', { name: declined.user.display_name })}
       body={t('friend_notice.seat_open_again')}
       avatarUrl={declined.user.avatar_url}
+      row={phoneLandscape}
       secondary={{
         label: t('friend_notice.invite_someone_else'),
         onPress: () => {
@@ -343,12 +348,101 @@ export function NewTableScreen({
       }}
     />
   );
+  const rulesLink = room && (
+    <TextLink testID="waiting-rules-menu" label={t('rules.menu')} onPress={rules.show} />
+  );
+  // Phone portrait: pills over their line. Sideways: the line beside them; iPad: under them.
+  const rulesChoice = !room && (
+    <View style={[styles.rules, tablet && styles.rulesTablet, phoneLandscape && styles.rulesRow]}>
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel={t('social.rules')}
+        style={styles.pills}>
+        {(['finnish', 'louisiana'] as const).map((rule) => (
+          <ActionPill
+            key={rule}
+            label={t(`social.${rule}`)}
+            selected={draftRules === rule}
+            disabled={busy}
+            onPress={() => setDraftRules(rule)}
+            style={!wide && !tablet && styles.pill}
+          />
+        ))}
+      </View>
+      <PidroText
+        role="metadata"
+        tone="soft"
+        align={wide || tablet ? 'right' : 'center'}
+        style={phoneLandscape && styles.rulesLine}>
+        {t(`social.${ruleSet}_detail`)}
+      </PidroText>
+    </View>
+  );
+  const align = phoneLandscape ? 'left' : 'center';
+  const readyAction = !isSpectator && full && !!onReady;
+  const footerCard = (compact || phoneLandscape) && !!room && !!declinedCard && !readyAction;
+  const joining = joiningName && (
+    <PidroText role="metadata" align={align} accessibilityLiveRegion="polite">
+      {t('table.joining', { name: joiningName })}
+    </PidroText>
+  );
+  const action = !room ? (
+    <BevelButton
+      label={t(isPractice(draft) ? 'new_table.start' : 'social.open_table')}
+      size="lg"
+      fullWidth
+      loading={busy}
+      disabled={busy}
+      onPress={() => onSubmit?.(newTableRequest(draftRules, draft))}
+    />
+  ) : readyAction ? (
+    <BevelButton
+      label={t(isYouReady ? 'game.you_ready' : readyBusy ? 'game.confirming' : 'game.im_ready')}
+      size="lg"
+      fullWidth
+      loading={readyBusy}
+      disabled={readyDisabled || isYouReady || readyBusy}
+      onPress={() => void confirmReady()}
+    />
+  ) : footerCard ? (
+    declinedCard
+  ) : !isSpectator && editable && !full ? (
+    <BevelButton
+      label={t('new_table.share')}
+      material="glass"
+      size="lg"
+      fullWidth
+      disabled={controlsBusy}
+      onPress={onOpenInvite}
+    />
+  ) : null;
+  const footerLine = (
+    <PidroText role="metadata" tone="soft" align={align} accessibilityLiveRegion="polite">
+      {!room
+        ? tableFooter(draft)
+        : full
+          ? t('game.ready_count', { count: readyPlayers.length })
+          : waitingFooter(room, editable)}
+    </PidroText>
+  );
+  const failureLine =
+    error || readyError || (!selected && pickerError) ? (
+      <PidroText role="metadata" tone="danger" align={align} accessibilityRole="alert">
+        {error || (readyError ? localizedError(readyError, 'game.ready_failed') : pickerError)}
+      </PidroText>
+    ) : null;
   return (
     <>
       <ScreenShell
         testID={room ? 'waiting-table' : 'new-table-screen'}
-        scroll={width > height && height < 600}
-        contentStyle={[styles.screen, compact && styles.compact]}>
+        // Fits at every text size the boards draw; scrolls only if a larger one cannot.
+        scroll={phoneLandscape}
+        contentStyle={[
+          styles.screen,
+          compact && styles.compact,
+          phoneLandscape && styles.landscape,
+          tablet && (wide ? styles.tabletWide : styles.tablet),
+        ]}>
         <View testID="waiting-toolbar" style={styles.header}>
           <BackButton
             accessibilityLabel={t(
@@ -367,95 +461,43 @@ export function NewTableScreen({
               </PidroText>
             )}
           </View>
+          {(wide || tablet) && (room ? rulesLink : rulesChoice)}
         </View>
-        {!compact && declinedCard}
-        {!room && (
-          <View style={styles.rules}>
-            <View
-              accessibilityRole="radiogroup"
-              accessibilityLabel={t('social.rules')}
-              style={styles.pills}>
-              {(['finnish', 'louisiana'] as const).map((rule) => (
-                <ActionPill
-                  key={rule}
-                  label={t(`social.${rule}`)}
-                  selected={draftRules === rule}
-                  disabled={busy}
-                  onPress={() => setDraftRules(rule)}
-                  style={styles.pill}
-                />
-              ))}
-            </View>
-            <PidroText role="metadata" tone="soft" align="center">
-              {t(`social.${ruleSet}_detail`)}
-            </PidroText>
-          </View>
-        )}
-        <View style={[styles.teams, compact && styles.compactTeams]}>
-          <TeamSection team="yours">
+        {!compact && !phoneLandscape && declinedCard}
+        {!wide && !tablet && !room && rulesChoice}
+        <View style={[styles.teams, compact && styles.compactTeams, wide && styles.columns]}>
+          <TeamSection team="yours" style={wide && styles.column}>
             {order.slice(0, 2).map((position, index) => row(position, index))}
           </TeamSection>
-          <VsDivider />
-          <TeamSection team="opponents">
+          <VsDivider between={wide ? 'columns' : 'rows'} />
+          <TeamSection team="opponents" style={wide && styles.column}>
             {order.slice(2).map((position, index) => row(position, index + 2))}
           </TeamSection>
         </View>
-        <View testID="readiness-panel" style={styles.footer}>
-          {room && (
-            <TextLink testID="waiting-rules-menu" label={t('rules.menu')} onPress={rules.show} />
+        <View testID="readiness-panel" style={[styles.footer, phoneLandscape && styles.footerRow]}>
+          {room && !wide && !tablet && rulesLink}
+          {phoneLandscape && footerCard ? (
+            <View style={styles.words}>
+              {declinedCard}
+              {failureLine}
+            </View>
+          ) : phoneLandscape ? (
+            <>
+              <View style={styles.words}>
+                {joining}
+                {footerLine}
+                {failureLine}
+              </View>
+              {action && <View style={styles.action}>{action}</View>}
+            </>
+          ) : (
+            <>
+              {joining}
+              {action}
+              {!footerCard && footerLine}
+              {failureLine}
+            </>
           )}
-          {joiningName && (
-            <PidroText role="metadata" align="center" accessibilityLiveRegion="polite">
-              {t('table.joining', { name: joiningName })}
-            </PidroText>
-          )}
-          {!room ? (
-            <BevelButton
-              label={t(isPractice(draft) ? 'new_table.start' : 'social.open_table')}
-              size="lg"
-              fullWidth
-              loading={busy}
-              disabled={busy}
-              onPress={() => onSubmit?.(newTableRequest(draftRules, draft))}
-            />
-          ) : !isSpectator && full && onReady ? (
-            <BevelButton
-              label={t(
-                isYouReady ? 'game.you_ready' : readyBusy ? 'game.confirming' : 'game.im_ready'
-              )}
-              size="lg"
-              fullWidth
-              loading={readyBusy}
-              disabled={readyDisabled || isYouReady || readyBusy}
-              onPress={() => void confirmReady()}
-            />
-          ) : compact && declinedCard ? (
-            declinedCard
-          ) : !isSpectator && editable && !full ? (
-            <BevelButton
-              label={t('new_table.share')}
-              material="glass"
-              size="lg"
-              fullWidth
-              disabled={controlsBusy}
-              onPress={onOpenInvite}
-            />
-          ) : null}
-          {!(compact && declinedCard) && (
-            <PidroText role="metadata" tone="soft" align="center" accessibilityLiveRegion="polite">
-              {!room
-                ? tableFooter(draft)
-                : full
-                  ? t('game.ready_count', { count: readyPlayers.length })
-                  : waitingFooter(room, editable)}
-            </PidroText>
-          )}
-          {error || readyError || (!selected && pickerError) ? (
-            <PidroText role="metadata" tone="danger" align="center" accessibilityRole="alert">
-              {error ||
-                (readyError ? localizedError(readyError, 'game.ready_failed') : pickerError)}
-            </PidroText>
-          ) : null}
         </View>
       </ScreenShell>
       {isSpectator && <WatchingBadge />}
@@ -536,14 +578,25 @@ export function NewTableScreen({
 const styles = StyleSheet.create({
   screen: { maxWidth: 436, gap: 12, paddingHorizontal: 20, paddingVertical: 16 },
   compact: { gap: 8, paddingVertical: 8 },
+  landscape: { maxWidth: 1040, paddingVertical: 12 },
+  tablet: { maxWidth: 660, gap: 20, paddingVertical: 32 },
+  tabletWide: { maxWidth: 1040, gap: 20, paddingVertical: 32 },
   compactTeams: { gap: 8 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   heading: { flex: 1, minWidth: 0, gap: 2 },
   title: { fontFamily: PidroFonts.display, fontSize: 24, lineHeight: 32 },
   rules: { gap: 4 },
+  rulesTablet: { alignItems: 'flex-end', gap: 8 },
+  rulesRow: { flexDirection: 'row-reverse', alignItems: 'center', gap: 12, flexShrink: 1 },
+  rulesLine: { flexShrink: 1 },
   pills: { flexDirection: 'row', gap: 8 },
   pill: { flex: 1 },
   teams: { gap: 12 },
+  columns: { flexDirection: 'row', alignItems: 'flex-start', gap: 20 },
+  column: { flex: 1, minWidth: 0 },
   footer: { marginTop: 'auto', paddingTop: 12, gap: 8, alignItems: 'center' },
+  footerRow: { flexDirection: 'row', gap: 20 },
+  words: { flex: 1, minWidth: 0, gap: 4 },
+  action: { width: 300 },
   confirm: { gap: 12 },
 });

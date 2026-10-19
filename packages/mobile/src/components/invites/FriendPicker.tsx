@@ -14,6 +14,8 @@ export interface FriendPickerProps {
   onAddFriends: () => void;
   compact?: boolean;
   columns?: 1 | 2;
+  /** Shorter rows, so a sideways phone shows four rows of two. */
+  dense?: boolean;
 }
 
 export function FriendPicker({
@@ -24,9 +26,15 @@ export function FriendPicker({
   onAddFriends,
   compact = false,
   columns = 1,
+  dense = false,
 }: FriendPickerProps) {
   const { t } = useTranslation();
-  const groups = groupPickerFriends(friends, searchText);
+  const grouped = groupPickerFriends(friends, searchText);
+  // Without their titles the groups read as one list, so they flow as one grid.
+  const groups =
+    compact && grouped.length
+      ? [{ ...grouped[0], friends: grouped.flatMap((group) => group.friends) }]
+      : grouped;
   return (
     <View testID="friend-picker" style={styles.picker}>
       {friends.length > 0 && (
@@ -36,6 +44,7 @@ export function FriendPicker({
           value={searchText}
           onChangeText={onSearchChange}
           autoCorrect={false}
+          compact={dense}
         />
       )}
       <ScrollView
@@ -72,7 +81,7 @@ export function FriendPicker({
                   )}
                 </View>
               )}
-              <View style={styles.grid}>
+              <View style={[styles.grid, dense && styles.denseGrid]}>
                 {group.friends.map((friend) => {
                   const state = friend.availability;
                   const unavailable = state === 'others' || state === 'taken';
@@ -103,6 +112,7 @@ export function FriendPicker({
                         }
                         dimmed={unavailable}
                         selected={selected}
+                        dense={dense}
                         onPress={() => onInvite(friend)}
                         row={{
                           variant: 'friend',
@@ -140,6 +150,7 @@ const styles = StyleSheet.create({
   section: { gap: 6 },
   heading: { paddingHorizontal: 8, gap: 2 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  denseGrid: { gap: 4 },
   full: { width: '100%' },
   half: { width: '49%', flexGrow: 1, flexBasis: '47%', maxWidth: '50%' },
 });

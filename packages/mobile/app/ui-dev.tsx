@@ -574,7 +574,11 @@ function UiDevHarness() {
   if (state === 'seat-rows') return <SeatRowGallery fixture={params.fixture} />;
   if (state === 'seat-picker') return <SeatPickerGallery fixture={params.fixture} />;
   if (state === 'new-table')
-    return <NewTableGallery key={params.fixture} fixture={params.fixture} />;
+    return (
+      <FixtureInsets preset={params.safeArea}>
+        <NewTableGallery key={params.fixture} fixture={params.fixture} />
+      </FixtureInsets>
+    );
 
   return (
     <>
