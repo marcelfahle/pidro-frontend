@@ -3,20 +3,20 @@ import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
 import {
-  assertInsideViewport,
   assertMinimumTouchTargets,
+  assertTeamLayout,
   suppressDevOverlays,
   waitForImages,
 } from './ui-test-utils.mjs';
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const shots = process.env.UI_SHOT_DIR ?? '/tmp/pidro-waiting-seats';
-const positions = ['north', 'south', 'east', 'west'];
 const viewports = [
   { name: 'portrait', width: 390, height: 844 },
   { name: 'small-portrait', width: 375, height: 667 },
   { name: 'landscape', width: 844, height: 390 },
   { name: 'tablet-portrait', width: 768, height: 1024 },
+  { name: 'tablet-landscape', width: 1024, height: 768 },
 ];
 const browser = await chromium.launch({ headless: true });
 await mkdir(shots, { recursive: true });
@@ -30,26 +30,7 @@ try {
       await suppressDevOverlays(page);
       await page.evaluate(() => document.fonts.ready);
       await waitForImages(page);
-      const boxes = [];
-      for (const position of positions) {
-        const row = page.getByTestId(`new-table-seat-${position}`);
-        await row.waitFor();
-        const box = await row.boundingBox();
-        assert.ok(box && box.width > 100 && box.width <= 437, `${position}: list column width`);
-        assert.ok(Math.abs(box.x + box.width / 2 - viewport.width / 2) <= 2, 'centered list');
-        boxes.push(box);
-      }
-      boxes.sort((a, b) => a.y - b.y);
-      for (let i = 1; i < boxes.length; i++)
-        assert.ok(
-          boxes[i].y >= boxes[i - 1].y + boxes[i - 1].height - 1,
-          'single list without overlap'
-        );
-      for (const position of positions) {
-        const row = page.getByTestId(`new-table-seat-${position}`);
-        if (viewport.width > viewport.height) await row.scrollIntoViewIfNeeded();
-        assertInsideViewport(position, await row.boundingBox(), viewport);
-      }
+      await assertTeamLayout(page, viewport, `${viewport.name} ${phase}`);
       await page.getByTestId('waiting-rule-set').waitFor();
       await page.getByTestId('waiting-rules-menu').waitFor();
       assert.equal(
@@ -61,7 +42,6 @@ try {
       await assertMinimumTouchTargets(page, phase, viewport);
       if (phase.startsWith('ready')) {
         const ready = page.getByRole('button', { name: "I'm ready", exact: true });
-        await ready.scrollIntoViewIfNeeded();
         await ready.click();
         const confirmed = page.getByRole('button', { name: "You're ready", exact: true });
         await confirmed.waitFor();

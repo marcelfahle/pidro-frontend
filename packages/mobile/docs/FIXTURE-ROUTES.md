@@ -236,13 +236,16 @@ empty Tables screen (start a table, join with a code, the quick game Home also s
 and the badge gallery. Captures go to `/tmp/pidro-lobby` (or `UI_SHOT_DIR`).
 
 `node scripts/verify-create-room.mjs` covers all fourteen new-table fixtures at
-390×844, 375×667, 844×390 and 768×1024, and on the `live-*` ones taps each choice,
+390×844, 375×667, 844×390, 768×1024 and 1024×768, and on the `live-*` ones taps each choice,
 checks the row the server answer gives and that the picker reopens on it. Grammar
 case names are `new-table-setup`, `new-table-partner`, `new-table-bots`,
 `new-table-opened`, `new-table-ready`, `new-table-louisiana`, `new-table-requirement`,
 `new-table-password`, `new-table-picker`, `new-table-friends`, `new-table-guest`,
 `new-table-live-picker` and `new-table-live-friends`.
-The root is a centered column (maxWidth 436); only phone landscape scrolls.
+Upright the root is a centered column (436 on a phone, 660 on an iPad); sideways the two
+teams sit side by side with `vs` between. Nothing scrolls; the picker's friend list scrolls
+inside itself and shows four whole rows of two on a 390pt-tall phone (`dense` `FriendRow`).
+Add `&safeArea=island-left|island-right` to fake a notch on either side in a browser.
 Setup seats are all open, with Finnish/Louisiana ActionPill radios. Footer actions
 are Open the table, Start the game (three bots), Share the table link (opened),
 and I'm ready (full). The picker has five subtitle-named radios: Anyone, Bot,
@@ -256,7 +259,7 @@ a refused creation. Locale waiting cases now use `state=new-table&fixture=opened
 The old `create-*`, `friend-seat-*` and `create-safe-area` fixtures are retired,
 including the modal-only safe-area structure test. Captures go to
 `/tmp/pidro-create` (or `UI_SHOT_DIR`). Browser checks do not certify native safe
-areas or keyboard avoidance; responsive layout refinements belong to PID-257.
+areas or keyboard avoidance.
 
 ## Shell friend notices
 

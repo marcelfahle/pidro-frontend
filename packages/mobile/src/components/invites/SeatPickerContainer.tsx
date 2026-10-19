@@ -45,6 +45,7 @@ export function SeatPickerContainer({
   const tablet = Math.min(width, height) >= 600;
   const landscape = width > height;
   const split = tablet || landscape;
+  const phoneLandscape = landscape && !tablet;
   const reduceMotion = useReducedMotion();
   const [page, setPage] = useState(initialPage);
   const friendPage = !split && page === 'friends';
@@ -72,6 +73,7 @@ export function SeatPickerContainer({
               style={[
                 styles.sheet,
                 split && styles.screen,
+                phoneLandscape && styles.tight,
                 tablet && styles.panel,
                 friendPage && styles.expanded,
               ]}>
@@ -88,11 +90,11 @@ export function SeatPickerContainer({
                   </PidroText>
                 </>
               ) : (
-                <View style={[styles.header, landscape && !tablet && styles.inlineHeader]}>
-                  {landscape && !tablet && (
+                <View style={[styles.header, phoneLandscape && styles.inlineHeader]}>
+                  {phoneLandscape && (
                     <DismissButton accessibilityLabel={closeLabel} onPress={onClose} />
                   )}
-                  <View style={[styles.heading, landscape && !tablet && styles.inlineHeading]}>
+                  <View style={[styles.heading, phoneLandscape && styles.inlineHeading]}>
                     <PidroText role="title" tone="gold" style={styles.title}>
                       {title}
                     </PidroText>
@@ -100,7 +102,7 @@ export function SeatPickerContainer({
                       {subtitle}
                     </PidroText>
                   </View>
-                  {(!landscape || tablet) && (
+                  {!phoneLandscape && (
                     <DismissButton accessibilityLabel={closeLabel} onPress={onClose} />
                   )}
                 </View>
@@ -144,6 +146,7 @@ export function SeatPickerContainer({
                       {...friends}
                       compact={split}
                       columns={landscape ? 2 : 1}
+                      dense={phoneLandscape}
                       onInvite={(friend) => {
                         friends.onInvite(friend);
                         onClose();
@@ -176,6 +179,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: PidroRadii.xl,
   },
   screen: { flex: 1, borderRadius: 0 },
+  // Four rows of friends fit under the header on a 390pt-tall phone.
+  tight: { paddingVertical: 8, gap: 8 },
   panel: {
     flexGrow: 0,
     flexShrink: 1,

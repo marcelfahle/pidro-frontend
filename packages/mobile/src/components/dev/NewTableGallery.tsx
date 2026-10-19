@@ -14,6 +14,10 @@ const friends: FriendPlayer[] = [
     table_company: 'bots',
   },
   { user_id: 'hanna', display_name: 'Hanna', avatar_url: null, presence: 'offline' },
+  { user_id: 'mikko', display_name: 'Mikko', avatar_url: null, presence: 'offline' },
+  { user_id: 'sanna', display_name: 'Sanna', avatar_url: null, presence: 'offline' },
+  { user_id: 'erkki', display_name: 'Erkki', avatar_url: null, presence: 'offline' },
+  { user_id: 'ville', display_name: 'Ville', avatar_url: null, presence: 'offline' },
   {
     user_id: 'nora',
     display_name: 'Nora',
