@@ -1484,10 +1484,14 @@ async function assertFriendsPresentation(page, name) {
   if (!name.startsWith('friends-')) return;
   if (name === 'friends-link-profile') {
     const profile = page.getByTestId('player-profile-modal');
+    const add = profile.getByRole('button', {
+      name: swedish ? 'Lägg till Nora' : 'Add Nora',
+      exact: true,
+    });
     await profile.getByText('Nora', { exact: true }).waitFor();
-    await profile.getByRole('button', { name: 'Add Nora', exact: true }).click();
-    await profile.getByText('Sent', { exact: true }).waitFor();
-    assert.equal(await profile.getByRole('button', { name: 'Add Nora', exact: true }).count(), 0);
+    await add.click();
+    await profile.getByText(swedish ? 'Skickad' : 'Sent', { exact: true }).waitFor();
+    assert.equal(await add.count(), 0);
     return;
   }
   if (name.startsWith('friends-sheet-')) {
