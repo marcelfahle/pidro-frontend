@@ -2155,11 +2155,14 @@ async function assertCreationPresentation(page, testCase) {
   // The board's sideways picker: four rows of two friends, whole, above the bottom edge.
   if (fixture === 'picker' && viewport.width > viewport.height && viewport.height < 600) {
     const scroll = await page.getByTestId('friend-picker-scroll').boundingBox();
+    assertInsideViewport('friend list', scroll, { name: testCase.name, ...viewport });
     const rows = await page
       .getByTestId('friend-picker-scroll')
       .getByRole('button')
       .evaluateAll((nodes) => nodes.map((node) => node.parentElement.getBoundingClientRect()));
-    const whole = rows.filter((row) => row.bottom <= scroll.y + scroll.height + 0.5);
+    const whole = rows.filter(
+      (row) => row.top >= scroll.y - 0.5 && row.bottom <= scroll.y + scroll.height + 0.5
+    );
     assert.ok(whole.length >= 8, `${whole.length} whole friend rows in the sideways picker`);
   }
   if (fixture === 'declined') {

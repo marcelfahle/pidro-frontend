@@ -328,9 +328,20 @@ export async function assertTeamLayout(page, viewport, label) {
   }
   // A notice slides in from below; judge the page once it has landed.
   const fits = await page
-    .waitForFunction(() => document.scrollingElement.scrollHeight <= innerHeight + 1, null, {
-      timeout: 5000,
-    })
+    .waitForFunction(
+      () =>
+        [
+          document.scrollingElement,
+          ...document.querySelectorAll(
+            '[data-testid="new-table-screen"], [data-testid="waiting-table"]'
+          ),
+        ].every(
+          (node) =>
+            node.scrollHeight <= node.clientHeight + 1 && node.scrollWidth <= node.clientWidth + 1
+        ),
+      null,
+      { timeout: 5000 }
+    )
     .then(() => true)
     .catch(() => false);
   assert.ok(fits, `${label}: the screen does not scroll`);

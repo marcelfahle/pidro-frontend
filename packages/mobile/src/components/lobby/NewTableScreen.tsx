@@ -435,6 +435,8 @@ export function NewTableScreen({
     <>
       <ScreenShell
         testID={room ? 'waiting-table' : 'new-table-screen'}
+        // Fits at every text size the boards draw; scrolls only if a larger one cannot.
+        scroll={phoneLandscape}
         contentStyle={[
           styles.screen,
           compact && styles.compact,
