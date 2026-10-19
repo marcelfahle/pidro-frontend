@@ -65,6 +65,10 @@ förra sticket.**, PID-230), the end of a hand (**Klarade det**, **Bet med 3**,
 (**Din Pidro-inloggning**, **Pidro är en ny app med egen inloggning, så välj ett nytt
 lösenord för den. Ditt Classic-lösenord stannar i Classic.**) and trump-killing terminology. No native-speaker approval is claimed.
 
+PID-246 adds **%{count} väntar på ditt svar** to the Swedish review list. The
+shell reuses the existing request, accepted, Not now and seat-held translations
+from `social.ts`; native-speaker approval is still pending for these notice lines.
+
 ## Backend rollout
 
 Companion: https://github.com/marcelfahle/pidro-backend/pull/94.

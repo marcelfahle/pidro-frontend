@@ -177,7 +177,7 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     ).toBeVisible();
     await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');
     await expect(
-      receiver.getByRole('button', { name: 'Friends, 1 invitation waiting', exact: true })
+      receiver.getByRole('button', { name: 'Friends, 1 waiting for your answer', exact: true })
     ).toBeVisible();
     await receiver.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(receiver).toHaveURL(/\/settings$/);
@@ -211,7 +211,8 @@ test('picked friends become holds only on Open; invitations arrive live, recover
       await inbox.getByRole('button', { name: 'Sit down', exact: true }).click();
       await expect(inbox.getByText('That seat is gone', { exact: true })).toBeVisible();
       await expect(inbox.getByRole('button', { name: 'Sit down', exact: true })).toHaveCount(0);
-      await expect(receiver.getByTestId('friends-invitation-count')).toHaveCount(0);
+      // The badge follows the refetched server list, not this mocked refusal.
+      await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');
       await expect(receiver).toHaveURL(/\/home$/);
       // The mocked refusal did not change the real hold; /me restores it on reload.
       await receiver.reload();
