@@ -1,0 +1,55 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+a:focus-visible,button:focus-visible{outline:2px solid #FFD447;outline-offset:2px}
+:where(button.wood,button.glass){padding:0;border:none;background:none;font:inherit;cursor:pointer}
+.notice p{white-space:normal}
+.trow{box-sizing:border-box;display:flex;align-items:center;justify-content:center;gap:10px;height:104px;border-radius:12px;background:rgba(18,74,119,0.58);border:1px solid rgba(184,225,246,0.22)}
+.chip{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;border:1px solid rgba(139,234,255,0.5);font-weight:900;font-size:10px;letter-spacing:0.8px;text-transform:uppercase;color:#8beaff}
+.notice{position:absolute;left:16px;right:16px;bottom:112px;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:14px;border-radius:16px;background:#0b2c4f;border:1.5px solid #E2AF45;box-shadow:0px 12px 28px rgba(0,0,0,0.55)}
+.notice.ok{border-color:#4fd37a;flex-direction:row;align-items:center;gap:10px}
+.tbadge{position:absolute;top:-6px;right:-12px;display:flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:#d9412f;border:1.5px solid #0A2340;color:#ffffff;font-weight:900;font-size:10px}
+</style>
+</head><body>
+
+<main class="felt" style="width: 390px; height: 844px; box-sizing: border-box">
+
+<div aria-hidden="true" style="position: absolute; left: 20px; right: 20px; top: 59px; display: flex; flex-direction: column; gap: 12px">
+<div style="height: 44px; display: flex; flex-direction: column; justify-content: center"><p class="label" style="font-size: 15px">104 playing now</p><p class="meta">11 tables · 6 with open seats</p></div>
+<p class="eyebrow">Open tables</p>
+<div class="trow"><span class="chip">Finnish</span><span class="label" style="font-size: 14px; color: #FFD447">3 seats open</span></div>
+<div class="trow"><span class="chip">Louisiana</span><span class="label" style="font-size: 14px; color: #FFD447">2 seats open</span></div>
+<div class="trow"><span class="chip">Finnish</span><span class="label" style="font-size: 14px; color: #FFD447">1 seat open</span></div>
+<div class="trow"><span class="chip">Finnish</span><span class="label" style="font-size: 14px; color: #FFD447">2 seats open</span></div>
+</div>
+
+
+<div class="notice" role="alert">
+<div style="display: flex; align-items: center; gap: 12px">
+<span class="ring" style="width: 44px; height: 44px; padding: 2.5px; flex-shrink: 0"><span class="face-initial" style="font-size: 19px">P</span></span>
+<div style="display: flex; flex-direction: column; gap: 1px; min-width: 0">
+<p style="margin: 0; font-weight: 800; font-size: 17px; line-height: 22px">Pekka wants to be friends</p>
+<p class="meta">You played together yesterday</p>
+</div>
+</div>
+<div style="display: flex; gap: 8px">
+<button type="button" class="wood" style="flex: 1 1 0; height: 48px"><span class="face" style="font-size: 17px">Accept</span></button>
+<button type="button" class="glass" style="flex: 1 1 0; height: 48px"><span class="face" style="font-size: 16px">Not now</span></button>
+</div>
+</div>
+
+
+
+
+<nav class="tabbar" aria-label="Main" style="position: absolute; left: 24px; right: 24px; bottom: 26px">
+<a class="tab" href="#">League</a>
+<a class="tab" href="#">Stats</a>
+<span class="spade" aria-hidden="true"></span>
+<a class="tab" href="#" aria-label="Friends, 1 wants to be friends" style="position: relative">Friends<span class="tbadge" aria-hidden="true">1</span></a>
+<a class="tab" href="#">Settings</a>
+</nav>
+</main>
+
+</body></html>

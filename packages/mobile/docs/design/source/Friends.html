@@ -1,0 +1,165 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+a:focus-visible,button:focus-visible{outline:2px solid #FFD447;outline-offset:2px}
+.frow{box-sizing:border-box;display:flex;align-items:center;gap:6px;min-height:64px;padding:8px 6px 8px 10px;border-radius:12px;background:rgba(18,74,119,0.58);border:1px solid rgba(184,225,246,0.22)}
+.frow.ask{background:rgba(107,73,11,0.4);border:1.5px solid rgba(226,175,69,0.8)}
+.frow.fresh{border:1.5px solid #4fd37a}
+.frow.asked{background:rgba(7,45,82,0.6);border-style:dashed}
+.fhit{display:flex;align-items:center;gap:12px;flex:1 1 auto;min-width:0;min-height:48px;text-decoration:none;color:#ffffff}
+.av{position:relative;width:44px;height:44px;flex-shrink:0}
+.dot{position:absolute;right:-2px;bottom:-2px;width:13px;height:13px;border-radius:999px;border:2px solid #0A2340;box-sizing:border-box}
+.dot.online{background:#4fd37a}.dot.table{background:#FFD447}
+.txt{display:flex;flex-direction:column;gap:1px;min-width:0;flex-grow:1}
+.nm{font-weight:800;font-size:16px;line-height:20px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-weight:700;font-size:13px;line-height:17px;color:rgba(239,249,255,0.75)}
+.sub.online{color:#92e6b2}.sub.table{color:#FFD447}.sub.fresh{color:#92e6b2}
+.act{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 14px 0 11px;border-radius:999px;background:rgba(139,234,255,0.12);border:1.5px solid rgba(139,234,255,0.5);color:#CFEFFF;font-family:inherit;font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;flex-shrink:0}
+.act:hover{background:rgba(139,234,255,0.22);color:#ffffff}
+.act.gold{background:rgba(226,175,69,0.2);border-color:#E2AF45;color:#FFD447}
+.act.gold:hover{background:rgba(226,175,69,0.32)}
+.x{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;padding:0;border-radius:999px;border:none;background:none;color:rgba(239,249,255,0.72);cursor:pointer;flex-shrink:0}
+.x:hover{background:rgba(139,234,255,0.12);color:#ffffff}
+.chev{flex-shrink:0;margin-right:6px}
+.count{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;box-sizing:border-box;border-radius:999px;background:#d9412f;color:#ffffff;font-weight:900;font-size:11px;letter-spacing:0;font-variant-numeric:tabular-nums}
+.tbadge{position:absolute;top:-6px;right:-12px;display:flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;box-sizing:border-box;border-radius:999px;background:#d9412f;border:1.5px solid #0A2340;color:#ffffff;font-weight:900;font-size:10px;font-variant-numeric:tabular-nums}
+.ttl{margin:0;font-weight:800;font-size:16px;line-height:21px;color:#ffffff}
+.body{margin:0;font-weight:600;font-size:14px;line-height:20px;color:rgba(239,249,255,0.8)}
+.toast{position:absolute;left:16px;right:16px;bottom:108px;box-sizing:border-box;display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 6px 6px 16px;border-radius:14px;background:#0b2c4f;border:1.5px solid rgba(91,221,255,0.55);box-shadow:0px 12px 28px rgba(0,0,0,0.55)}
+.undo{box-sizing:border-box;min-height:44px;padding:0 14px;border:none;background:none;border-radius:10px;color:#8beaff;font-family:inherit;font-weight:900;font-size:15px;cursor:pointer}
+</style>
+</head><body>
+
+<main class="felt" style="width: 390px; height: 1180px; box-sizing: border-box; padding: 59px 16px 120px; display: flex; flex-direction: column; gap: 18px; position: relative">
+
+<header style="display: flex; align-items: center; gap: 12px; padding: 0 4px">
+<div style="flex-grow: 1; display: flex; flex-direction: column; gap: 1px">
+<h1 class="display" style="font-size: 28px; line-height: 34px">Friends</h1>
+<p class="meta">6 friends · 3 online</p>
+</div>
+<a class="act" href="#"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"></circle><path d="M2.5 20.5c.7-3.6 3.6-6 7.5-6 1.6 0 3 .4 4.2 1.1"></path><path d="M19 14v7M15.5 17.5h7"></path></svg>Add</a>
+</header>
+
+
+<section aria-label="Want to be friends" style="display: flex; flex-direction: column; gap: 8px">
+<p class="eyebrow" style="display: flex; align-items: center; gap: 8px; padding: 0 4px; color: #FFD447"><span>Want to be friends</span><span class="count">2</span></p>
+
+<div class="frow ask">
+<a class="fhit" href="#" aria-label="Pekka, Asked today. Open">
+<span class="av"><span class="ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">P</span></span></span>
+<span class="txt"><span class="nm">Pekka</span><span class="sub">Asked today</span></span>
+</a>
+<button type="button" class="act gold" aria-label="Accept Pekka"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Accept</button>
+<button type="button" class="x" aria-label="Ignore Pekka’s request"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+<div class="frow ask">
+<a class="fhit" href="#" aria-label="Liisa, Asked on Monday. Open">
+<span class="av"><span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">L</span></span></span>
+<span class="txt"><span class="nm">Liisa</span><span class="sub">Asked on Monday</span></span>
+</a>
+<button type="button" class="act gold" aria-label="Accept Liisa"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Accept</button>
+<button type="button" class="x" aria-label="Ignore Liisa’s request"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+</section>
+
+
+<section aria-label="Online now" style="display: flex; flex-direction: column; gap: 8px">
+<p class="eyebrow" style="padding: 0 4px">Online now</p>
+
+<div class="frow">
+<a class="fhit" href="#" aria-label="Nora, At a table · 1 seat open. Open">
+<span class="av"><span class="ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">N</span></span><span class="dot table"></span></span>
+<span class="txt"><span class="nm">Nora</span><span class="sub table">At a table · 1 seat open</span></span>
+</a>
+<a class="act" href="#" aria-label="Join Nora’s table"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4"></path><path d="M4 12h11M11 8l4 4-4 4"></path></svg>Join</a>
+
+</div>
+
+<div class="frow">
+<a class="fhit" href="#" aria-label="Kalle, At a table · hand 4. Open">
+<span class="av"><span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">K</span></span><span class="dot table"></span></span>
+<span class="txt"><span class="nm">Kalle</span><span class="sub table">At a table · hand 4</span></span>
+</a>
+
+
+</div>
+
+<div class="frow">
+<a class="fhit" href="#" aria-label="Maija, Free to play. Open">
+<span class="av"><span class="ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">M</span></span><span class="dot online"></span></span>
+<span class="txt"><span class="nm">Maija</span><span class="sub online">Free to play</span></span>
+</a>
+
+<a class="act" href="#" aria-label="Start a table with Maija"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="10" height="14" rx="2" transform="rotate(-10 8 13)"></rect><rect x="11" y="4" width="10" height="14" rx="2" transform="rotate(10 16 11)"></rect></svg>Play</a>
+</div>
+
+</section>
+
+<section aria-label="Not online" style="display: flex; flex-direction: column; gap: 8px">
+<p class="eyebrow" style="padding: 0 4px">Not online</p>
+
+<div class="frow">
+<a class="fhit" href="#" aria-label="Hanna, Played yesterday. Open">
+<span class="av"><span class="ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">H</span></span></span>
+<span class="txt"><span class="nm">Hanna</span><span class="sub">Played yesterday</span></span>
+<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.7)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</a>
+</div>
+
+<div class="frow">
+<a class="fhit" href="#" aria-label="Mikko, Played last week. Open">
+<span class="av"><span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">M</span></span></span>
+<span class="txt"><span class="nm">Mikko</span><span class="sub">Played last week</span></span>
+<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.7)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</a>
+</div>
+
+<div class="frow">
+<a class="fhit" href="#" aria-label="Sanna, Played in September. Open">
+<span class="av"><span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px"><span class="face-initial" style="font-size: 19px">S</span></span></span>
+<span class="txt"><span class="nm">Sanna</span><span class="sub">Played in September</span></span>
+<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.7)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"></path></svg>
+</a>
+</div>
+
+</section>
+
+
+<section aria-label="Waiting for an answer" style="display: flex; flex-direction: column; gap: 8px">
+<p class="eyebrow" style="padding: 0 4px">Waiting for an answer</p>
+
+<div class="frow asked">
+<span class="fhit">
+<span class="av"><span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px; opacity: 0.7"><span class="face-initial" style="font-size: 19px">E</span></span></span>
+<span class="txt"><span class="nm">Eero</span><span class="sub">Request sent 2 days ago</span></span>
+</span>
+<button type="button" class="x" aria-label="Cancel your friend request to Eero"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+
+</section>
+
+
+<section class="window" aria-label="Classic friends" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<p class="ttl">38 of your Classic friends aren’t here yet</p>
+<p class="body">They’ll appear here as soon as they sign in with their Classic account.</p>
+</div>
+<a class="act" href="#" style="align-self: flex-start"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5"></path><path d="M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"></path></svg>Tell them about the new app</a>
+</section>
+
+
+
+<nav class="tabbar" aria-label="Main" style="position: absolute; left: 24px; right: 24px; bottom: 26px">
+<a class="tab" href="#">League</a>
+<a class="tab" href="#">Stats</a>
+<span class="spade" aria-hidden="true"></span>
+<a class="tab on" href="#" aria-label="Friends, 2 want to be friends" style="position: relative">Friends<span class="tbadge" aria-hidden="true">2</span></a>
+<a class="tab" href="#">Settings</a>
+</nav>
+</main>
+
+</body></html>

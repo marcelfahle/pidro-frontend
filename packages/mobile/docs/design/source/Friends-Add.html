@@ -1,0 +1,106 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="stylesheet" href="pidro-ds-v2.css">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bree+Serif&amp;family=Nunito:wght@500;600;700;800;900&amp;display=swap">
+<style>
+body{margin:0;font-family:"Nunito",sans-serif;color:#ffffff;background:#07264c}
+a{color:#8beaff}a:hover{color:#c4f4ff}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid #FFD447;outline-offset:2px}
+.frow{box-sizing:border-box;display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 8px 8px 10px;border-radius:12px;background:rgba(18,74,119,0.58);border:1px solid rgba(184,225,246,0.22)}
+.frow.ask{background:rgba(107,73,11,0.4);border:1.5px solid rgba(226,175,69,0.8)}
+.txt{display:flex;flex-direction:column;gap:1px;min-width:0;flex-grow:1}
+.nm{font-weight:800;font-size:16px;line-height:20px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sub{font-weight:700;font-size:13px;line-height:17px;color:rgba(239,249,255,0.75)}
+.sub.gold{color:#FFD447}.sub.green{color:#92e6b2}
+.act{box-sizing:border-box;display:inline-flex;align-items:center;justify-content:center;gap:6px;height:44px;padding:0 14px 0 11px;border-radius:999px;background:rgba(139,234,255,0.12);border:1.5px solid rgba(139,234,255,0.5);color:#CFEFFF;font-family:inherit;font-weight:800;font-size:15px;text-decoration:none;cursor:pointer;flex-shrink:0}
+.act:hover{background:rgba(139,234,255,0.22);color:#ffffff}
+.act.gold{background:rgba(226,175,69,0.2);border-color:#E2AF45;color:#FFD447}
+.state{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:0 10px;font-weight:800;font-size:14px;flex-shrink:0;color:rgba(239,249,255,0.8)}
+.state.green{color:#92e6b2}
+.ttl{margin:0;font-weight:800;font-size:16px;line-height:21px;color:#ffffff}
+.body{margin:0;font-weight:600;font-size:14px;line-height:20px;color:rgba(239,249,255,0.8)}
+.toast{position:absolute;left:16px;right:16px;bottom:108px;box-sizing:border-box;display:flex;align-items:center;gap:10px;min-height:56px;padding:10px 16px;border-radius:14px;background:#0b2c4f;border:1.5px solid rgba(91,221,255,0.55);box-shadow:0px 12px 28px rgba(0,0,0,0.55)}
+</style>
+</head><body>
+
+<main class="felt" style="width: 390px; height: 844px; box-sizing: border-box; padding: 59px 16px 120px; display: flex; flex-direction: column; gap: 16px; position: relative">
+
+<header style="display: flex; align-items: center; gap: 12px">
+<a class="glass" href="#" aria-label="Back to Friends" style="width: 44px; height: 44px; flex-shrink: 0"><span class="face"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#CFEFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"></path></svg></span></a>
+<h1 class="display" style="font-size: 26px; line-height: 32px">Add a friend</h1>
+</header>
+
+<div style="position: relative">
+<label for="find" style="position: absolute; left: 0; top: 0; width: 0; height: 0; overflow: hidden">Find a player by name</label>
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(184,225,246,0.75)" stroke-width="2.2" stroke-linecap="round" aria-hidden="true" style="position: absolute; left: 14px; top: 15px"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+<input class="input" id="find" type="search" placeholder="Find a player by name" style="height: 50px; padding-left: 44px; font-size: 16px">
+</div>
+
+<section aria-label="Played with recently" style="display: flex; flex-direction: column; gap: 8px">
+<p class="eyebrow" style="padding: 0 4px">Played with recently</p>
+
+<div class="frow">
+<span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px; flex-shrink: 0"><span class="face-initial" style="font-size: 19px">S</span></span>
+<span class="txt"><span class="nm">Sanna</span><span class="sub">Played together today</span></span>
+<button type="button" class="act" aria-label="Add Sanna"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"></circle><path d="M2.5 20.5c.7-3.6 3.6-6 7.5-6 1.6 0 3 .4 4.2 1.1"></path><path d="M19 14v7M15.5 17.5h7"></path></svg>Add</button>
+
+
+
+</div>
+
+<div class="frow">
+<span class="ring" style="width: 44px; height: 44px; padding: 2.5px; flex-shrink: 0"><span class="face-initial" style="font-size: 19px">E</span></span>
+<span class="txt"><span class="nm">Erkki</span><span class="sub">Played together today</span></span>
+<button type="button" class="act" aria-label="Add Erkki"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="8" r="4"></circle><path d="M2.5 20.5c.7-3.6 3.6-6 7.5-6 1.6 0 3 .4 4.2 1.1"></path><path d="M19 14v7M15.5 17.5h7"></path></svg>Add</button>
+
+
+
+</div>
+
+<div class="frow ask">
+<span class="ring" style="width: 44px; height: 44px; padding: 2.5px; flex-shrink: 0"><span class="face-initial" style="font-size: 19px">P</span></span>
+<span class="txt"><span class="nm">Pekka</span><span class="sub gold">Wants to be friends</span></span>
+
+<button type="button" class="act gold" aria-label="Accept Pekka"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Accept</button>
+
+
+</div>
+
+<div class="frow">
+<span class="ring glass-ring" style="width: 44px; height: 44px; padding: 2.5px; flex-shrink: 0"><span class="face-initial" style="font-size: 19px">E</span></span>
+<span class="txt"><span class="nm">Eero</span><span class="sub">Waiting for Eero to accept</span></span>
+
+
+<span class="state"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Sent</span>
+
+</div>
+
+<div class="frow">
+<span class="ring" style="width: 44px; height: 44px; padding: 2.5px; flex-shrink: 0"><span class="face-initial" style="font-size: 19px">N</span></span>
+<span class="txt"><span class="nm">Nora</span><span class="sub">Your friend</span></span>
+
+
+
+<span class="state green"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Friends</span>
+</div>
+
+</section>
+
+<section class="window" aria-label="Someone not on Pidro yet" style="padding: 14px 16px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<p class="ttl">Someone who isn’t on Pidro yet?</p>
+<p class="body">Send them your link. Once they install Pidro and sign up, you’ll be friends straight away.</p>
+</div>
+<a class="act" href="#" style="align-self: flex-start"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>Send your link</a>
+</section>
+
+
+
+<nav class="tabbar" aria-label="Main" style="position: absolute; left: 24px; right: 24px; bottom: 26px">
+<a class="tab" href="#">League</a>
+<a class="tab" href="#">Stats</a>
+<span class="spade" aria-hidden="true"></span>
+<a class="tab on" href="#">Friends</a>
+<a class="tab" href="#">Settings</a>
+</nav>
+</main>
+
+</body></html>
