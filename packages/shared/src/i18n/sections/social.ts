@@ -56,7 +56,6 @@ export const en = {
   "social.classic_bring": "Bring your name and games.",
   "social.classic_action": "Played Pidro Classic? Bring your name and games.",
   "social.friends": "Friends",
-  "friends.added_you": "Added you",
   "friends.want_to_be_friends": "Want to be friends",
   "friends.online_now": "Online now",
   "friends.waiting_answer": "Waiting for an answer",
@@ -450,7 +449,6 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "social.classic_action":
     "Har du spelat Pidro Classic? Ta med ditt namn och dina spel.",
   "social.friends": "Vänner",
-  "friends.added_you": "Har lagt till dig",
   "friends.want_to_be_friends": "Vill bli vänner",
   "friends.online_now": "Online nu",
   "friends.waiting_answer": "Väntar på svar",
