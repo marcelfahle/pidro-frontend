@@ -59,6 +59,12 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   await accept.click();
   await expect.poll(() => changes).toBe(2);
   await expect.poll(() => Boolean(releaseAdd)).toBe(true);
+  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  const sheet = page.getByTestId('friend-sheet');
+  await sheet.getByRole('button', { name: 'Accept', exact: true }).click();
+  await expect(sheet).toBeVisible();
+  await expect(sheet.getByRole('button', { name: 'Accept', exact: true })).toBeEnabled();
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
   releaseAdd!();
   await expect(accept).toHaveCount(0);
   await expect(page.getByText('Could not update Friends. Please try again.')).toBeVisible();
@@ -70,7 +76,6 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   ]);
 
   await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
-  const sheet = page.getByTestId('friend-sheet');
   await expect(sheet).toBeVisible();
   await sheet.getByRole('button', { name: 'See full profile', exact: true }).click();
   const profile = page.getByTestId('player-profile-modal');

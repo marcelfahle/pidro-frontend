@@ -110,7 +110,7 @@ export default function FriendsScreen() {
     player: FriendPlayer,
     inSheet = false
   ) {
-    if (busy.current) return;
+    if (busy.current) return false;
     busy.current = true;
     setPending(player.user_id);
     setJoinError(null);
@@ -118,7 +118,7 @@ export default function FriendsScreen() {
     if (action === 'ignore') setHidden(player.user_id);
     try {
       if (preview) {
-        if (action === 'join') return;
+        if (action === 'join') return true;
         setPreviewLists({
           ...lists,
           friends: action === 'accept' ? [...lists.friends, player] : lists.friends,
@@ -149,6 +149,7 @@ export default function FriendsScreen() {
       }
       if (action === 'ignore' || action === 'cancel')
         setToast({ kind: action === 'ignore' ? 'hidden' : 'cancelled', player });
+      return true;
     } catch (cause) {
       if (action === 'join') {
         if (!inSheet) setJoinError(cause);
@@ -363,9 +364,9 @@ export default function FriendsScreen() {
                 }
                 onAction={async (action) => {
                   if (action === 'play') play(selectedPlayer);
-                  else if (action === 'join' || action === 'accept')
-                    await act(action, selectedPlayer, true);
-                  else if (!preview)
+                  else if (action === 'join' || action === 'accept') {
+                    if (!(await act(action, selectedPlayer, true))) return;
+                  } else if (!preview)
                     await (action === 'remove' ? removeFriend : blockPlayer)(
                       selectedPlayer.user_id
                     );
