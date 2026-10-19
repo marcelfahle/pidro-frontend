@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
 import { lobbyFixture, seatInvitationsFixture } from '@/features/lobby/fixtures';
+import { roomHasUser } from '@/features/lobby/newTable';
 import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
 import {
   emptyEntry,
@@ -53,15 +54,6 @@ function failureText(failure?: LobbyFailure): string | undefined {
   return 'minimum' in failure
     ? seatRequirementMessage(failure.minimum, failure.played)
     : localizedError(failure.error, failure.fallback);
-}
-
-function roomHasUser(room: Room, userId?: string | null): boolean {
-  if (!userId) return false;
-  if (room.player_ids?.includes(userId)) return true;
-  if (room.positions && Object.values(room.positions).includes(userId)) return true;
-  return (
-    room.seats?.some((seat) => seat.player?.id === userId || seat.player_id === userId) ?? false
-  );
 }
 
 function uniqueRooms(rooms: Room[]): Room[] {

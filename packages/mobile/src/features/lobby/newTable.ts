@@ -21,6 +21,15 @@ export const seatPositions: Record<SeatKey, Position> = {
 };
 export const defaultSeats: TableDraft['seats'] = { seat_2: 'open', seat_3: 'open', seat_4: 'open' };
 
+export function roomHasUser(room: Room, userId?: string | null): boolean {
+  if (!userId) return false;
+  if (room.player_ids?.includes(userId)) return true;
+  if (room.positions && Object.values(room.positions).includes(userId)) return true;
+  return (
+    room.seats?.some((seat) => seat.player?.id === userId || seat.player_id === userId) ?? false
+  );
+}
+
 export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: DraftSeat): TableDraft {
   return { seats: { ...draft.seats, [seat]: choice } };
 }

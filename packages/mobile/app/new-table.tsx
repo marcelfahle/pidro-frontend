@@ -5,7 +5,9 @@ import { lobbyApi } from '@/api/lobby';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { NewTableScreen } from '@/components/lobby/NewTableScreen';
+import { roomHasUser } from '@/features/lobby/newTable';
 import { useTranslation, type TranslationKey } from '@/i18n';
+import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 
@@ -29,13 +31,23 @@ export default function NewTableRoute() {
         response = await lobbyApi.createRoom(data);
       } catch (error) {
         if (apiErrorInfo(error).code !== 'ALREADY_IN_ROOM') throw error;
-        const current = await lobbyApi.listLobby().catch(() => null);
+        // A full waiting table appears in no lobby category, but remains in rooms.
+        const current = await Promise.all([lobbyApi.listLobby(), lobbyApi.listRooms()]).catch(
+          () => null
+        );
         if (!current) {
           setFailure({ key: 'social.quick_unknown' });
           return;
         }
-        useLobbyStore.getState().setLobby(current.lobby);
-        if (current.lobby.my_rejoinable.length) {
+        const [lobby, allRooms] = current;
+        const userId = useAuthStore.getState().user?.id;
+        useLobbyStore.getState().setLobby(lobby.lobby);
+        if (
+          lobby.lobby.my_rejoinable.length ||
+          [...lobby.rooms, ...allRooms.rooms].some(
+            (room) => room.status !== 'finished' && roomHasUser(room, userId)
+          )
+        ) {
           setFailure({ key: 'social.already_table' });
           return;
         }

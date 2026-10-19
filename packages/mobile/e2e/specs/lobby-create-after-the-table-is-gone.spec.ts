@@ -1,5 +1,5 @@
 import { test, expect } from '../fixtures';
-import { register } from '../support/api';
+import { api, register } from '../support/api';
 import { startSignedIn } from '../support/session';
 
 test('a new table is created when the old one is already gone', async ({ page, player }) => {
@@ -37,7 +37,8 @@ test('creating a table never leaves an unknown or live multiplayer table', async
   page,
   player,
 }) => {
-  await startSignedIn(page, await register(player));
+  const account = await register(player);
+  await startSignedIn(page, account);
   await page.goto('/lobby');
   await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
   const form = page.getByTestId('new-table-screen');
@@ -95,4 +96,40 @@ test('creating a table never leaves an unknown or live multiplayer table', async
   await form.getByRole('button', { name: 'Open the table', exact: true }).click();
   await page.waitForURL(/\/game\/[A-Z0-9]+/);
   expect(leaves).toHaveLength(1);
+  const code = new URL(page.url()).pathname.split('/').pop();
+  await page.unroute('**/api/v1/rooms');
+  const attempt = await page.context().newPage();
+  attempt.on('request', (request) => {
+    if (request.url().endsWith('/leave')) leaves.push(request.url());
+  });
+  // An occupied waiting table is not my_rejoinable; a full one has no category at all.
+  for (const full of [false, true]) {
+    if (full)
+      for (const position of ['east', 'south', 'west'])
+        expect(
+          (
+            await api(`/api/v1/rooms/${code}/bot`, {
+              method: 'POST',
+              token: account.token,
+              body: { position },
+            })
+          ).status
+        ).toBe(200);
+    await attempt.goto('/new-table');
+    await attempt.getByRole('button', { name: 'Open the table', exact: true }).click();
+    await expect(
+      attempt
+        .getByTestId('new-table-screen')
+        .getByText(
+          'You are already at a table. Rejoin it or leave before creating another table.',
+          {
+            exact: true,
+          }
+        )
+    ).toBeVisible();
+    expect(leaves).toHaveLength(1);
+    const room = await api(`/api/v1/rooms/${code}`, { token: account.token });
+    expect(room.payload.data.room.positions.north).toBe(account.user.id);
+  }
+  await attempt.close();
 });
