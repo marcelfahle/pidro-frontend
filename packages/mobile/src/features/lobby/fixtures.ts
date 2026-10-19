@@ -1,6 +1,7 @@
 import { emptyLobbyCategories, POSITION_TO_INDEX } from '@pidro/shared';
 import type { LobbyCategories, Position, Room, SeatInvitation } from '@pidro/shared';
 import { defaultSeats, type TableDraft } from './newTable';
+import { answerEntry, emptyEntry, type PasswordEntry } from './passwordSeat';
 import { friendsFixture } from '@/features/friends/fixtures';
 
 export function createTableFixture(value?: string): TableDraft | undefined {
@@ -86,9 +87,23 @@ function room(code: string, names: (string | null)[], louisiana = false, playing
   };
 }
 
-export function lobbyFixture(
-  value?: string
-): { lobby: LobbyCategories; query: string; gamesPlayed: number } | undefined {
+/** `password` is Tables with a locked chair; the others open its keypad in one state. */
+const PASSWORD_FIXTURES: Record<string, PasswordEntry | null> = {
+  password: null,
+  'password-keypad': emptyEntry,
+  'password-typed': { digits: '48', status: 'typing' },
+  'password-wrong': answerEntry('wrong'),
+  'password-wait': answerEntry('wait'),
+};
+
+export function lobbyFixture(value?: string):
+  | {
+      lobby: LobbyCategories;
+      query: string;
+      gamesPlayed: number;
+      password?: { code: string; position: Position; initial: PasswordEntry };
+    }
+  | undefined {
   if (
     !__DEV__ ||
     ![
@@ -103,6 +118,7 @@ export function lobbyFixture(
       'search-empty',
       'held',
       'invitations',
+      ...Object.keys(PASSWORD_FIXTURES),
     ].includes(value ?? '')
   )
     return;
@@ -143,6 +159,12 @@ export function lobbyFixture(
       avatar_url: null,
     };
   }
+  const keypad = PASSWORD_FIXTURES[value ?? ''];
+  if (keypad !== undefined) {
+    const locked = room('LOCK', ['Bertil', null, 'Hanna', 'Bot']);
+    locked.seats![1].password = true;
+    lobby.open_tables.splice(1, 0, locked);
+  }
   const categories: Record<string, keyof LobbyCategories> = {
     rejoin: 'my_rejoinable',
     open: 'open_tables',
@@ -150,6 +172,7 @@ export function lobbyFixture(
     locked: 'open_tables',
     held: 'open_tables',
     invitations: 'open_tables',
+    ...Object.fromEntries(Object.keys(PASSWORD_FIXTURES).map((key) => [key, 'open_tables'])),
     substitute: 'substitute_needed',
     watch: 'spectatable',
   };
@@ -163,5 +186,6 @@ export function lobbyFixture(
           : lobby,
     query: value === 'search-empty' ? 'Nobody named this' : '',
     gamesPlayed: value === 'locked' ? 40 : 1500,
+    ...(keypad ? { password: { code: 'LOCK', position: 'south' as const, initial: keypad } } : {}),
   };
 }

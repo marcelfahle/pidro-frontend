@@ -8,18 +8,22 @@ import {
 
 const positions = ['north', 'east', 'south', 'west'] as const;
 
-test('both seat transports preserve requirements, departure name and game progress', () => {
+test('both seat transports preserve requirements, the password lock, departure name and game progress', () => {
   const game = { hand: 4, scores: { north_south: 34, east_west: 21 } };
   const held_for = { user_id: 'nora', display_name: 'Nora', avatar_url: null };
   for (const seats of [
-    { north: { min_games: 1000, vacated_by: 'Jussi', held_for }, south: {} },
-    [{ position: 'north', min_games: 1000, vacated_by: 'Jussi', held_for }, { position: 'south' }],
+    { north: { min_games: 1000, password: true, vacated_by: 'Jussi', held_for }, south: {} },
+    [
+      { position: 'north', min_games: 1000, password: true, vacated_by: 'Jussi', held_for },
+      { position: 'south' },
+    ],
   ]) {
     const room = normalizeRoom({ code: 'GAME', seats, game });
     expect(room.seats?.[0].min_games).toBe(1000);
     expect(room.seats?.[0].vacated_by).toBe('Jussi');
     expect(room.seats?.[0].held_for).toEqual(held_for);
     expect(room.seats?.[1].min_games).toBe(0);
+    expect(room.seats?.map((seat) => seat.password)).toEqual([true, false]);
     expect(room.game).toEqual(game);
     expect(normalizeRoom(room)).toEqual(room);
     expect(normalizeRoom({ code: 'WAIT', seats })).not.toHaveProperty('game');

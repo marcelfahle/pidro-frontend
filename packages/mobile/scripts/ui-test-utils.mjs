@@ -14,6 +14,14 @@ const lobbyCases = [
   'search-empty',
 ].map((fixture) => `lobby-${fixture}`);
 
+const passwordCases = [
+  'password',
+  'password-keypad',
+  'password-typed',
+  'password-wrong',
+  'password-wait',
+].map((fixture) => `lobby-${fixture}`);
+
 export const UI_VIEWPORTS = [
   {
     name: 'iphone-insets-portrait',
@@ -50,6 +58,7 @@ export const UI_VIEWPORTS = [
       'table-count-help',
       'locale-sv-table-count-help',
       ...seatRowCases,
+      ...passwordCases,
     ],
   },
   {
@@ -136,6 +145,7 @@ export const UI_VIEWPORTS = [
       'classic-link-sent',
       'classic-help',
       ...lobbyCases,
+      ...passwordCases,
       'create-table',
       ...seatRowCases,
     ],

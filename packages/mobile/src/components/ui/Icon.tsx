@@ -21,6 +21,7 @@ export type IconName =
   | 'arrow-left'
   | 'settings'
   | 'close'
+  | 'backspace'
   | 'chevron-down'
   | 'chevron-left'
   | 'chevron-right'
@@ -44,6 +45,10 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
   home: { path: 'M3 11l9-8 9 8M5 9v12h5v-7h4v7h5V9', mode: 'stroke' },
   rematch: { path: 'M20 7v5h-5M20 12a8 8 0 1 0-2.3 5.7M20 7l-2.3-2', mode: 'stroke' },
   close: { path: 'M6 6l12 12M6 18L18 6', mode: 'stroke' },
+  backspace: {
+    path: 'M9 5h11a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H9l-6-7zM12.5 9.5l5 5M17.5 9.5l-5 5',
+    mode: 'stroke',
+  },
   'chevron-down': { path: 'M6 9l6 6 6-6', mode: 'stroke' },
   settings: {
     path: 'M10 2h4l.6 3.1 2.1 1.2 3-.9 2 3.4-2.4 2.2v2l2.4 2.2-2 3.4-3-.9-2.1 1.2L14 22h-4l-.6-3.1-2.1-1.2-3 .9-2-3.4L4.7 13v-2L2.3 8.8l2-3.4 3 .9 2.1-1.2L10 2z M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0',

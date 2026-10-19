@@ -6,7 +6,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { OpenChair } from '@/components/lobby/OpenChair';
+import { ChairLock, OpenChair } from '@/components/lobby/OpenChair';
 import { gradientBg } from '@/components/ui/Bevel';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
@@ -136,20 +136,13 @@ function SeatRowToken({ token, size }: { token: SeatToken; size: (typeof SIZES)[
       {token.kind === 'open' ? (
         <>
           <OpenChair size={s} />
-          {token.locked || token.badge ? (
-            <View
-              style={[
-                styles.badge,
-                { minWidth: size.badgeWidth, height: size.badge },
-                token.locked && styles.badgeGold,
-              ]}>
-              {token.locked ? (
-                <Icon name="lock" size={11} color={PidroBevel.textGold} strokeWidth={2.8} />
-              ) : (
-                <PidroText style={styles.badgeText} maxFontSizeMultiplier={1}>
-                  {token.badge}
-                </PidroText>
-              )}
+          {token.locked ? (
+            <ChairLock style={{ minWidth: size.badgeWidth, height: size.badge }} />
+          ) : token.badge ? (
+            <View style={[styles.badge, { minWidth: size.badgeWidth, height: size.badge }]}>
+              <PidroText style={styles.badgeText} maxFontSizeMultiplier={1}>
+                {token.badge}
+              </PidroText>
             </View>
           ) : null}
         </>
@@ -261,7 +254,6 @@ const styles = StyleSheet.create({
     borderColor: PidroBevel.avatarGlassEdge,
     backgroundColor: PidroBevel.panelDeep,
   },
-  badgeGold: { borderColor: PidroBevel.rim },
   badgeText: { fontSize: 9, lineHeight: 12, fontWeight: '900' },
   halo: {
     position: 'absolute',

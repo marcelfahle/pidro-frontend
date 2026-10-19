@@ -353,6 +353,15 @@ matches human player names, not table names, codes or bots.
 five-second inline reason. `watch` includes “Hand 4 · 34 to 21” and older-payload
 “Playing” rows; `substitute` shows “Jussi left in hand 3” using the current hand.
 
+`password` adds Bertil's table, whose south chair is a password seat with the gold
+lock (PID-259); tap it for the keypad. `password-keypad`, `password-typed` (48 typed),
+`password-wrong` and `password-wait` open the keypad in that state. A fixture keypad
+answers every password wrong, so typing four digits walks through the shake.
+`&safeArea=island-left` or `island-right` fakes the landscape insets inside the panel.
+Grammar cases: `lobby-password`, `lobby-password-keypad`, `lobby-password-typed`,
+`lobby-password-wrong`, `lobby-password-wait` (phone, small phone, landscape,
+667×375 and iPad portrait) and `lobby-password-island-left|right` (landscape).
+
 Grammar cases: `lobby-list`, `lobby-empty`, `lobby-rejoin`, `lobby-open`,
 `lobby-badges`, `lobby-locked`, `lobby-substitute`, `lobby-watch`, `lobby-search-empty`. They cover the phone
 viewports plus lobby-specific 834×1194 and 1194×834 tablet sizes. The existing

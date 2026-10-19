@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Icon } from '@/components/ui/Icon';
-import { PidroBevel, PidroColors } from '@/design/tokens';
+import { PidroBevel, PidroColors, PidroRadii } from '@/design/tokens';
 
 /** Open, substitute and friend chairs share the same dashed seat. */
 export function OpenChair({
@@ -40,6 +40,15 @@ export function OpenChair({
   );
 }
 
+/** The gold lock at a password chair's lower right: the same token on New table and Tables. */
+export function ChairLock({ style }: { style?: StyleProp<ViewStyle> }) {
+  return (
+    <View pointerEvents="none" style={[styles.lock, style]}>
+      <Icon name="lock" size={11} color={PidroBevel.textGold} strokeWidth={2.8} />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   chair: {
     alignItems: 'center',
@@ -48,5 +57,19 @@ const styles = StyleSheet.create({
     borderStyle: 'dashed',
     borderColor: PidroColors.chairOpenBorder,
     backgroundColor: PidroColors.panel,
+  },
+  lock: {
+    position: 'absolute',
+    right: -5,
+    bottom: -4,
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: PidroRadii.full,
+    borderWidth: 1.5,
+    borderColor: PidroBevel.rim,
+    backgroundColor: PidroBevel.panelDeep,
   },
 });

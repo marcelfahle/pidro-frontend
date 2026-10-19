@@ -100,8 +100,9 @@ export function createLobbyApi(api: ApiClient) {
     joinRoom: async (
       code: string,
       position?: PositionPreference,
+      password?: string,
     ): Promise<{ room: Room; assigned_position: string }> => {
-      const body = position ? { position } : undefined;
+      const body = position ? { position, ...(password ? { password } : {}) } : undefined;
       const response = await api.post<JoinRoomResponse>(`/api/v1/rooms/${code}/join`, body);
       return {
         room: normalizeRoom(response.data?.data?.room ?? response.data?.room),

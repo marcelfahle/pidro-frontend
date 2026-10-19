@@ -85,6 +85,8 @@ export interface Seat {
   position?: Position;
   player_id?: string | null;
   min_games?: number;
+  /** A vacant seat that needs the table's password; never the password itself. */
+  password?: boolean;
   vacated_by?: string;
   held_for?: HeldPlayer | null;
 }

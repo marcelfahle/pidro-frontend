@@ -12,12 +12,19 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
 import { lobbyFixture, seatInvitationsFixture } from '@/features/lobby/fixtures';
 import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
+import {
+  emptyEntry,
+  passwordAnswer,
+  passwordSeatWords,
+  type PasswordEntry,
+} from '@/features/lobby/passwordSeat';
 import { pickProfile } from '@/game/canvas/layout';
 import { publicPlayerName } from '@pidro/shared';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { lobbyApi } from '@/api/lobby';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { CreateRoomModal } from '@/components/lobby/CreateRoomModal';
+import { PasswordKeypadSheet } from '@/components/lobby/PasswordKeypadSheet';
 import { RoomCard } from '@/components/lobby/RoomCard';
 import { SeatInvitations } from '@/components/invites/SeatInvitations';
 import { OpenChair } from '@/components/lobby/OpenChair';
@@ -109,6 +116,16 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const [query, setQuery] = useState(fixture?.query ?? '');
   const [rowErrors, setRowErrors] = useState<Record<string, LobbyFailure | undefined>>({});
   const [joining, setJoining] = useState<string | null>(null);
+  const [passwordSeat, setPasswordSeat] = useState<{
+    code: string;
+    position: Position;
+    words: ReturnType<typeof passwordSeatWords>;
+    initial: PasswordEntry;
+  } | null>(() => {
+    const seat = fixture?.password;
+    const room = fixture?.lobby.open_tables.find((table) => table.code === seat?.code);
+    return seat && room ? { ...seat, words: passwordSeatWords(room, seat.position) } : null;
+  });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<LobbyFailure | null>(null);
@@ -151,6 +168,22 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   const showSeatReason = useCallback((code: string, minimum: number, played: number) => {
     setRowErrors((errors) => ({ ...errors, [code]: { minimum, played } }));
   }, []);
+
+  const openPassword = useCallback(
+    (code: string, position: Position) => {
+      const room = Object.values(lobby)
+        .flat()
+        .find((table) => table.code === code);
+      if (room)
+        setPasswordSeat({
+          code,
+          position,
+          words: passwordSeatWords(room, position),
+          initial: emptyEntry,
+        });
+    },
+    [lobby]
+  );
 
   const requestAccount = useCallback((retry: () => Promise<void>) => {
     pendingAccountActionRef.current = retry;
@@ -222,16 +255,35 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
   }, [loadLobby]);
 
   const handleJoinRoom = useCallback(
-    async function joinRoom(code: string, position?: Position, mayRequestAccount = true) {
-      if (fixture || joining) return;
+    async function joinRoom(
+      code: string,
+      position?: Position,
+      mayRequestAccount = true,
+      password?: string
+    ): Promise<'wrong' | { wait: number } | void> {
+      // A fixture keypad answers every password wrong, so its states can be walked through.
+      if (fixture) return password ? 'wrong' : undefined;
+      if (joining) return;
       setJoining(code);
       setRowErrors((errors) => ({ ...errors, [code]: undefined }));
       try {
-        const response = await lobbyApi.joinRoom(code, position);
+        const response = await lobbyApi.joinRoom(code, position, password);
         captureAnalytics('room_joined', { join_source: 'lobby' });
         upsertLobbyRoom(response.room, 'my_rejoinable');
+        setPasswordSeat(null);
         router.push(`/game/${code}`);
       } catch (joinError: unknown) {
+        const answer = passwordAnswer(joinError);
+        if (password && answer) return answer;
+        // The lobby did not know this seat had a password yet: ask for it.
+        if (answer === 'wrong' && position) {
+          openPassword(code, position);
+          return;
+        }
+        // Only this seat's keypad closes; a later one for another seat stays open.
+        setPasswordSeat((seat) =>
+          seat?.code === code && seat.position === position ? null : seat
+        );
         const { code: errorCode, requirement } = apiErrorInfo(joinError);
         if (requirement) {
           showSeatReason(code, requirement.min_games, requirement.games_played);
@@ -240,7 +292,8 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         }
         if (errorCode === 'ACCOUNT_REQUIRED') {
           if (mayRequestAccount) {
-            requestAccount(() => joinRoom(code, position, false));
+            // A password seat asks for its password again once the account is there.
+            requestAccount(async () => void (await joinRoom(code, position, false)));
           } else {
             Alert.alert(t('social.join_failed'), localizedError(joinError, 'social.account_error'));
           }
@@ -270,6 +323,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       activeRoom?.code,
       loadLobby,
       showSeatReason,
+      openPassword,
       t,
     ]
   );
@@ -534,6 +588,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
                           onJoin={handleJoinRoom}
                           gamesPlayed={gamesPlayed}
                           onLocked={showSeatReason}
+                          onPassword={openPassword}
                           pending={joining === room.code}
                           error={failureText(rowErrors[room.code])}
                           onAction={handleRowAction}
@@ -558,6 +613,16 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         ) : null}
       </View>
 
+      {passwordSeat ? (
+        <PasswordKeypadSheet
+          words={passwordSeat.words}
+          initial={passwordSeat.initial}
+          onSubmit={(password) =>
+            handleJoinRoom(passwordSeat.code, passwordSeat.position, true, password)
+          }
+          onClose={() => setPasswordSeat(null)}
+        />
+      ) : null}
       <CreateRoomModal
         isOpen={isCreateModalOpen}
         onClose={() => {
