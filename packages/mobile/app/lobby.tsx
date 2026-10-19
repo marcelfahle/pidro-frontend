@@ -428,7 +428,13 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         return;
       }
       if (code === 'ALREADY_IN_ROOM') {
-        if (activeRoom) {
+        const current = await lobbyApi.listLobby().catch(() => null);
+        if (!current) {
+          reportFailure('social.quick_unknown');
+          return;
+        }
+        setLobby(current.lobby);
+        if (activeRoom || current.lobby.my_rejoinable.length) {
           reportFailure('social.already_table');
         } else {
           try {

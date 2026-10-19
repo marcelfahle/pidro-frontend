@@ -8,6 +8,7 @@ import type {
 } from '../types/lobby';
 import {
   flattenLobbyCategories,
+  lobbyCategoryKeys,
   normalizeLobbyCategories,
   normalizeRoom,
   normalizeRooms,
@@ -76,6 +77,9 @@ export function createLobbyApi(api: ApiClient) {
       const response = await api.get<ListLobbyResponse>('/api/v1/lobby');
       const body = response.data;
       const rawLobby = body?.data ?? body?.lobby ?? body;
+      if (!lobbyCategoryKeys.every((key) => Array.isArray((rawLobby as Partial<LobbyCategories>)?.[key]))) {
+        throw new Error('Incomplete lobby response');
+      }
       const lobby = normalizeLobbyCategories(rawLobby);
       return {
         lobby,
