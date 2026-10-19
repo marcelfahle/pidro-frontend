@@ -280,7 +280,10 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           openPassword(code, position);
           return;
         }
-        setPasswordSeat(null);
+        // Only this seat's keypad closes; a later one for another seat stays open.
+        setPasswordSeat((seat) =>
+          seat?.code === code && seat.position === position ? null : seat
+        );
         const { code: errorCode, requirement } = apiErrorInfo(joinError);
         if (requirement) {
           showSeatReason(code, requirement.min_games, requirement.games_played);

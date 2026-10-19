@@ -63,6 +63,12 @@ describe('reading the server', () => {
     });
   });
 
+  it('reads the structured lowercase codes too', () => {
+    const structured = (status, error_code) => ({ response: { status, data: { error_code } } });
+    expect(passwordAnswer(structured(403, 'seat_requires_password'))).toBe('wrong');
+    expect(passwordAnswer(structured(429, 'rate_limited'))).toEqual({ wait: 60 });
+  });
+
   it('leaves every other refusal to Tables', () => {
     expect(passwordAnswer(refused(409, 'SEAT_TAKEN'))).toBeUndefined();
     expect(passwordAnswer(refused(404, 'ROOM_NOT_FOUND'))).toBeUndefined();

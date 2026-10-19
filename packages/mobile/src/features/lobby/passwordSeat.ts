@@ -30,7 +30,7 @@ export function answerEntry(answer: 'wrong' | 'wait'): PasswordEntry {
 
 /** How the keypad reads a refused join: wrong, wait so many seconds, or not its business. */
 export function passwordAnswer(error: unknown): 'wrong' | { wait: number } | undefined {
-  const { code } = apiErrorInfo(error);
+  const code = apiErrorInfo(error).code?.toUpperCase();
   if (code === 'SEAT_REQUIRES_PASSWORD') return 'wrong';
   if (code !== 'RATE_LIMITED') return undefined;
   const header = (error as { response?: { headers?: Record<string, unknown> } })?.response
