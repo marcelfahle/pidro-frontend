@@ -326,23 +326,39 @@ export async function assertTeamLayout(page, viewport, label) {
     assertInsideViewport(`${label} ${position}`, box, viewport);
     boxes.push(box);
   }
-  // A notice slides in from below; judge the page once it has landed.
+  // Judge the layout boxes, not scrollHeight: a notice's slide (or a finished one's
+  // leftover copy) is a transform that must not count as overflow.
   const fits = (sizes) =>
     sizes.every(([w, h, clientW, clientH]) => w <= clientW + 1 && h <= clientH + 1);
   let sizes = [];
   for (let attempt = 0; attempt < 50; attempt++) {
     sizes = await page.evaluate(() =>
       [
-        document.scrollingElement,
         ...document.querySelectorAll(
           '[data-testid="new-table-screen"], [data-testid="waiting-table"]'
         ),
-      ].map((node) => [node.scrollWidth, node.scrollHeight, node.clientWidth, node.clientHeight])
+      ].map((screen) => {
+        const scrolls = ['auto', 'scroll'].includes(getComputedStyle(screen).overflowY);
+        const box = scrolls ? screen.firstElementChild : screen;
+        const style = getComputedStyle(box);
+        const children = [...box.children];
+        return [
+          Math.max(...children.map((child) => child.offsetLeft + child.offsetWidth)) +
+            parseFloat(style.paddingRight),
+          Math.max(...children.map((child) => child.offsetTop + child.offsetHeight)) +
+            parseFloat(style.paddingBottom),
+          screen.clientWidth,
+          screen.clientHeight,
+        ];
+      })
     );
-    if (fits(sizes)) break;
+    if (sizes.length && fits(sizes)) break;
     await page.waitForTimeout(100);
   }
-  assert.ok(fits(sizes), `${label}: the screen does not scroll ${JSON.stringify(sizes)}`);
+  assert.ok(
+    sizes.length && fits(sizes),
+    `${label}: the screen does not scroll ${JSON.stringify(sizes)}`
+  );
   const centre = (box) => box.x + box.width / 2;
   if (viewport.width > viewport.height) {
     boxes.sort((a, b) => a.x - b.x || a.y - b.y);
