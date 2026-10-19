@@ -5,7 +5,7 @@ import { WelcomeWindow } from '../screens/welcome-window';
 import { api, register } from '../support/api';
 import { newPlayer } from '../support/player';
 
-test("PID-247: signing up through someone's link makes the two of them friends", async ({
+test("PID-247: signing up through someone's link sends them a friend request", async ({
   page,
   player,
 }) => {
@@ -40,15 +40,21 @@ test("PID-247: signing up through someone's link makes the two of them friends",
 
   await expect(new HomeScreen(page).root).toBeVisible();
   await expect(page.getByTestId('friend-notice')).toContainText(
-    `You and ${bertilPlayer.name} are friends now.`
+    `Request sent. You'll be friends once ${bertilPlayer.name} accepts.`
   );
 
-  const friendsOf = async (token: string) =>
-    (await api('/api/v1/friends', { token })).payload.data.friends.map(
-      (friend: { user_id: string }) => friend.user_id
-    );
-  expect(await friendsOf(data.token)).toEqual([bertil.user.id]);
-  expect(await friendsOf(bertil.token)).toEqual([data.user.id]);
+  // A link never makes a friendship by itself: Bertil gets a request and accepts it or not.
+  const lists = async (token: string) => {
+    const lists = (await api('/api/v1/friends', { token })).payload.data;
+    const ids = (players: { user_id: string }[]) => players.map((p) => p.user_id);
+    return {
+      friends: ids(lists.friends),
+      requested: ids(lists.requested),
+      addedYou: ids(lists.added_you),
+    };
+  };
+  expect(await lists(data.token)).toMatchObject({ friends: [], requested: [bertil.user.id] });
+  expect(await lists(bertil.token)).toMatchObject({ friends: [], addedYou: [data.user.id] });
 
   // The link has done its work: it is not sent again.
   await expect

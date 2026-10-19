@@ -1241,7 +1241,9 @@ async function assertFriendNotice(page, name, viewport) {
     assert.equal(await notice.innerText(), "Kalle's game started without you");
     assert.equal(await notice.getByRole('button').count(), 0);
   } else if (name.endsWith('linked')) {
-    await notice.getByText('You and Nora are friends now.', { exact: true }).waitFor();
+    await notice
+      .getByText("Request sent. You'll be friends once Nora accepts.", { exact: true })
+      .waitFor();
     assert.equal(await notice.getByRole('button').count(), 0);
   } else if (!name.endsWith('accepted')) {
     await notice.getByRole('button', { name: 'Not now', exact: true }).click();
