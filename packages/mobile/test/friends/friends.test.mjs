@@ -10,7 +10,8 @@ import {
   friendSheetState,
   friendsMeta,
   presenceLabel,
-  relationLabel,
+  discoveryRowState,
+  friendLinkMessage,
 } from '../../src/features/friends/index.ts';
 
 afterEach(() => {
@@ -159,7 +160,6 @@ describe('Friends presentation', () => {
       );
       expect(sections[1].players[0].display_name).toBe('Zoe');
       expect(presenceLabel('at_table')).toBe(locale === 'sv' ? 'Vid ett bord' : 'At a table');
-      expect(relationLabel('added_you')).toBe(locale === 'sv' ? 'Har lagt till dig' : 'Added you');
       expect(useFriendsStore.getState().error).toBe(cause);
       expect(localizedError(cause, 'friends.update_failed')).toBe(
         locale === 'sv'
@@ -237,18 +237,36 @@ describe('Friends presentation', () => {
     );
   });
 
-  test('labels distinguish all server states, including an unanswered outgoing add', () => {
-    expect(['online', 'at_table', 'offline'].map((value) => presenceLabel(value))).toEqual([
-      'Online',
-      'At a table',
-      'Offline',
-    ]);
-    expect(['none', 'friend', 'added_you', 'added'].map((value) => relationLabel(value))).toEqual([
-      'Add',
-      'Friend',
-      'Added you',
-      'Added',
-    ]);
+  test('discovery describes the relationship rather than inventing a recent-play date', () => {
+    const player = { display_name: 'Sanna', presence: 'online' };
+    expect(discoveryRowState({ ...player, relation: 'none' }).line).toBe('Free to play');
+    expect(discoveryRowState({ ...player, relation: 'added_you' }).line).toBe(
+      'Wants to be friends'
+    );
+    expect(discoveryRowState({ ...player, relation: 'added' }).line).toBe(
+      'Waiting for Sanna to accept'
+    );
+    expect(discoveryRowState({ ...player, relation: 'friend' }).line).toBe('Your friend');
+    setLocale('sv');
+    expect(discoveryRowState({ ...player, relation: 'added' }).line).toBe(
+      'Väntar på att Sanna tackar ja'
+    );
+  });
+
+  test('your link message uses your slug, with an app-home fallback and the current language', () => {
+    expect(friendLinkMessage('sanna-7KQ')).toEqual({
+      url: 'https://pidro.online/play/sanna-7KQ',
+      message: 'Come play Pidro with me: https://pidro.online/play/sanna-7KQ',
+    });
+    for (const slug of [undefined, null, ''])
+      expect(friendLinkMessage(slug)).toEqual({
+        url: 'https://pidro.online',
+        message: 'Come play Pidro with me: https://pidro.online',
+      });
+    setLocale('sv');
+    expect(friendLinkMessage('pekka').message).toBe(
+      'Kom och spela Pidro med mig: https://pidro.online/play/pekka'
+    );
   });
 
   test('search waits for three normalized characters, excluding edge whitespace', () => {

@@ -99,10 +99,6 @@ export function presenceLabel(presence: FriendPlayer['presence']) {
   return t(`friends.${presence}`);
 }
 
-export function relationLabel(relation: FriendResult['relation']) {
-  return t(relation === 'none' ? 'friends.add' : `friends.${relation}`);
-}
-
 export function canSearch(query: string) {
   // Hermes has no Segmenter. The server checks the exact grapheme minimum.
   return Array.from(query.normalize('NFKC').trim()).length >= 3;
@@ -135,7 +131,21 @@ export type FriendEntry = Omit<FriendPlayer, 'presence'> & {
 };
 
 /** Where the entry stands with you: as `FriendResult.relation`, plus a friend made just now. */
-export type FriendRelation = 'friend' | 'added_you' | 'added' | 'new_friend';
+export type FriendRelation = FriendResult['relation'] | 'new_friend';
+
+export function friendLinkMessage(slug?: string | null) {
+  const url = slug ? `https://pidro.online/play/${slug}` : 'https://pidro.online';
+  return { url, message: t('friends.share_link_message', { url }) };
+}
+
+export function discoveryRowState(player: FriendResult): FriendRowState {
+  const row = friendRowState(player, player.relation);
+  if (player.relation === 'added')
+    return { ...row, line: t('friends.waiting_accept', { name: player.display_name }) };
+  if (player.relation === 'friend')
+    return { ...row, dot: null, line: t('friends.your_friend'), tone: 'quiet' };
+  return row;
+}
 
 export interface FriendRowState {
   variant: 'friend' | 'request' | 'sent' | 'fresh';

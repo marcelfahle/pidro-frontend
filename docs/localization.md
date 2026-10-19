@@ -92,6 +92,14 @@ and flags; invalid format and password lengths preserve their actual reasons.
 
 ## Native and OTA boundary
 
+PID-250 Swedish review (not native-speaker approved): **Hitta en spelare efter namn**,
+**Spelat med nyligen**, **Din vän**, **Väntar på att %{name} tackar ja**,
+**Förfrågan skickad. Ni blir vänner när %{name} tackar ja.**,
+**Kom och spela Pidro med mig: %{url}**, **De du spelar med visas här efter ett spel.**,
+and **Lägg till dem du tycker om att spela med. När de tackat ja ser du när de är
+online och kan bjuda in dem till ditt bord.** The existing Send your link card's
+Swedish title, body and action also need review in their new screen context.
+
 `expo-localization` was already installed; no new native dependency. App config
 declares en/sv support and localized iOS photo-library permission copy. Camera and
 microphone permission requests remain disabled. These generated native resources

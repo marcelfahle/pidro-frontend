@@ -14,7 +14,7 @@ authStore.subscribe((state, previous) => {
   }
 });
 
-function updateLists(request: () => Promise<FriendLists | BlockedPlayers>) {
+function updateLists<T extends FriendLists | BlockedPlayers>(request: () => Promise<T>) {
   const current = revision;
   // A mutation's full answer lands before its friends_changed refetch.
   const result = requests.then(async () => {

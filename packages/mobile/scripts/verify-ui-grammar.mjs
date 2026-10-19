@@ -1576,13 +1576,20 @@ async function assertFriendsPresentation(page, name) {
         : 'Come play Pidro with me 🃏 https://www.pidro.online/'
     );
     assert.equal(await footer.getByRole('alert').count(), 0);
-  } else if (name !== 'friends-all') {
+  } else if (name !== 'friends-all' && name !== 'friends-empty') {
     assert.equal(await page.getByTestId('friends-classic-count').count(), 0);
   }
   const expected =
     (swedish
       ? {
-          'friends-empty': ['Ingen här ännu. Lägg till dem du spelar med.'],
+          'friends-empty': [
+            'Lägg till dem du tycker om att spela med. När de tackat ja ser du när de är online och kan bjuda in dem till ditt bord.',
+            'Spelat med nyligen',
+            'Sanna',
+            'Erkki',
+            'Ville',
+            '38 av dina Classic-vänner är inte här ännu',
+          ],
           'friends-list': [
             'Nora',
             'Pekka',
@@ -1594,27 +1601,119 @@ async function assertFriendsPresentation(page, name) {
           'friends-added-you': ['Vill bli vänner', 'Kalle', 'Acceptera'],
           'friends-loading': ['Laddar…'],
           'friends-error': ['Kunde inte uppdatera Vänner. Försök igen.', 'Försök igen'],
-          'friends-recent': ['Spelat med nyligen', 'Nora', 'Kalle', 'Tillagd'],
-          'friends-results': ['Sökresultat', 'Vän', 'Har lagt till dig', 'Tillagd'],
+          'friends-recent': [
+            'Spelat med nyligen',
+            'Sanna',
+            'Nora',
+            'Pekka',
+            'Eero',
+            'Skickad',
+            'Vänner',
+            'Din vän',
+            'Vill bli vänner',
+            'Väntar på att Eero tackar ja',
+            'Skicka din länk',
+          ],
+          'friends-results': [
+            'Sökresultat',
+            'Vänner',
+            'Vill bli vänner',
+            'Skickad',
+            'Skicka din länk',
+          ],
           'friends-profile': ['Spelarprofil', 'Nora'],
           'friends-remove': ['Ta bort Nora från dina vänner?', 'Behåll Nora'],
           'friends-block': ['Blockera Nora?', 'Avbryt'],
           'friends-guest': ['Spara din spelare', 'Spara konto'],
         }
       : {
-          'friends-empty': ['Nobody here yet. Add the people you play with.'],
+          'friends-empty': [
+            "Add the people you like playing with. Once they accept, you'll see when they're online and can invite them to your table.",
+            'Played with recently',
+            'Sanna',
+            'Erkki',
+            'Ville',
+            "38 of your Classic friends aren't here yet",
+          ],
           'friends-list': ['Nora', 'Pekka', 'Liisa', 'Free to play', 'At a table', 'Not online'],
           'friends-added-you': ['Want to be friends', 'Kalle', 'Accept'],
           'friends-loading': ['Loading…'],
           'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
-          'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
-          'friends-results': ['Search results', 'Friend', 'Added you', 'Added'],
+          'friends-recent': [
+            'Played with recently',
+            'Sanna',
+            'Nora',
+            'Pekka',
+            'Eero',
+            'Sent',
+            'Friends',
+            'Your friend',
+            'Wants to be friends',
+            'Waiting for Eero to accept',
+            'Send your link',
+          ],
+          'friends-results': [
+            'Search results',
+            'Friends',
+            'Wants to be friends',
+            'Sent',
+            'Send your link',
+          ],
           'friends-profile': ['Player profile', 'Nora'],
           'friends-remove': ['Remove Nora from your friends?', 'Keep Nora'],
           'friends-block': ['Block Nora?', 'Cancel'],
           'friends-guest': ['Save your player', 'Save account'],
         })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
+  if (['friends-recent', 'friends-results', 'friends-empty'].includes(name)) {
+    const list = page.getByTestId('friend-discovery');
+    const before = await list.innerText();
+    const firstName = name === 'friends-results' ? 'Nora' : 'Sanna';
+    await page
+      .getByRole('button', { name: `${swedish ? 'Lägg till' : 'Add'} ${firstName}`, exact: true })
+      .click();
+    await list
+      .getByText(
+        swedish ? `Väntar på att ${firstName} tackar ja` : `Waiting for ${firstName} to accept`,
+        { exact: true }
+      )
+      .waitFor();
+    assert.ok(before.includes(firstName));
+    const toast = page.getByTestId('toast');
+    await toast.waitFor();
+    assertInsideViewport('sent toast', await toast.boundingBox(), page.viewportSize());
+    await toast.waitFor({ state: 'hidden', timeout: 6000 });
+    if (name !== 'friends-empty') {
+      const acceptedName = name === 'friends-results' ? 'Noreen' : 'Pekka';
+      await page
+        .getByRole('button', {
+          name: `${swedish ? 'Acceptera' : 'Accept'} ${acceptedName}`,
+          exact: true,
+        })
+        .click();
+      assert.equal(
+        await list.getByText(swedish ? 'Din vän' : 'Your friend', { exact: true }).count(),
+        2
+      );
+      await page.evaluate(() =>
+        Object.defineProperty(navigator, 'share', {
+          configurable: true,
+          value: async (data) => {
+            window.__friendShare = data;
+          },
+        })
+      );
+      await page
+        .getByRole('button', { name: swedish ? 'Skicka din länk' : 'Send your link', exact: true })
+        .click();
+      assert.equal(
+        await page.evaluate(() => window.__friendShare.text),
+        swedish
+          ? 'Kom och spela Pidro med mig: https://pidro.online'
+          : 'Come play Pidro with me: https://pidro.online'
+      );
+    }
+  }
   if (name === 'friends-all') {
     for (const text of swedish
       ? [

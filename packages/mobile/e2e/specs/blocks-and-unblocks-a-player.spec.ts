@@ -58,7 +58,11 @@ test('blocking removes the friendship; unblocking restores nothing @responsive',
   await page.unroute(`**/api/v1/blocks/${other.user.id}`);
   await page.getByRole('button', { name: 'Block', exact: true }).click();
   await expect(sheet).toBeHidden();
-  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+  await expect(
+    page.getByText(
+      "Add the people you like playing with. Once they accept, you'll see when they're online and can invite them to your table."
+    )
+  ).toBeVisible();
   expect((await api('/api/v1/friends', { token: other.token })).payload.data.friends).toEqual([]);
   expect(
     (

@@ -63,6 +63,9 @@ export const UI_VIEWPORTS = [
     cases: [
       'classic-login',
       'friends-all',
+      'friends-empty',
+      'friends-recent',
+      'friends-results',
       'classic-login-guest',
       'locale-sv-classic-login',
       'update-notice',
@@ -140,6 +143,9 @@ export const UI_VIEWPORTS = [
     cases: [
       ...seatPickerCases,
       'friends-all',
+      'friends-empty',
+      'friends-recent',
+      'friends-results',
       'ui-components',
       'table-bidding',
       'table-count-help',
