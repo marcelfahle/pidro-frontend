@@ -128,6 +128,15 @@ alone between columns and on iPad. The groups are `Your team` (gold) and
 `features/lobby/seatRow.ts` (sheet: `/ui-dev?state=seat-rows`).
 Table names are generated at creation, not an extra form step.
 
+## Friends
+
+A person with a status line is one `FriendRow` (`components/friends/`): on
+Friends, Add a friend, the empty state and the seat picker. Its look and line come
+from `friendRowState` in `features/friends`, and every "yesterday" or "in
+September" from `relativeDay`, so screens never word a status themselves. A quiet
+card among the rows is an `InfoCard`; a friend notice is a `NoticeCard`, which
+enters and leaves like the update notice. Sheet: `/ui-dev?state=components`.
+
 ## Motion
 
 - **Press physics** (built into `BevelPressable`/`PressableFX`): 2px travel or 0.97

@@ -10,6 +10,7 @@ import { friendsFixture } from '@/features/friends/fixtures';
 import { SettingsScreen } from '@/components/settings/SettingsScreen';
 import { LocaleFixture } from '@/components/dev/LocaleFixture';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
+import { FriendsGallery } from '@/components/dev/FriendsGallery';
 import { SeatRowGallery } from '@/components/dev/SeatRowGallery';
 import FriendsScreen from './(shell)/friends';
 import AddFriendScreen from './(shell)/friends-add';
@@ -706,6 +707,8 @@ function UiDevHarness() {
         <SwitchGallery />
 
         <RowControlsGallery />
+
+        <FriendsGallery />
 
         <Surface variant="panel" style={styles.section} padded>
           <PidroText role="title">Inputs — carved-in wells</PidroText>
