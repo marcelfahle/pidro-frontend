@@ -229,7 +229,7 @@ function Panel({
   );
   const keypad = (
     <View style={[styles.keypad, landscape && { width: keypadWidth }]}>
-      {KEYS.map((key, index) =>
+      {KEYS.map((key) =>
         key ? (
           <BevelPressable
             key={key}
@@ -249,7 +249,7 @@ function Panel({
             )}
           </BevelPressable>
         ) : (
-          <View key={index} style={styles.key} />
+          <View key="gap" style={styles.key} />
         )
       )}
     </View>
