@@ -1,6 +1,6 @@
 # Design boards
 
-The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202), and the end-of-hand, game-over and share boards were added on 2026-10-16. The Friends and New table boards were added on 2026-10-19 (epics PID-239 and PID-240). The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
+The approved designs for the avatar, the table seats, the profile, leagues and the Tables screens, exported from Marcel's design canvas on 2026-10-14; the Tables boards were replaced on 2026-10-15 (PID-202), and the end-of-hand, game-over and share boards were added on 2026-10-16. The Friends and New table boards were added on 2026-10-19 (epics PID-239 and PID-240), and the password-seat boards the same day (PID-259). The canvas itself is private (https://claude.ai/artifact/QNDfktYA6aE65LywZGW7so), so this folder is the copy a ticket works from.
 
 - `boards/<Name>.png`: what it should look like. Phone boards are at 2×, wide boards at 1×.
 - `source/<Name>.html`: the same board as plain HTML and CSS. Open it in a browser, or read it for exact sizes, offsets and colours. The shared classes are in `source/pidro-ds-v2.css`.
@@ -38,6 +38,11 @@ Initials stand in for photos on the boards. In the app the avatar is the player'
 | `New-Table-Seat`, `New-Table-Friends` | Tapping a seat: one choice in two groups, then the full-height friend list | Seat picker (PID-256), components (PID-244) |
 | `New-Table-Landscape`, `New-Table-Landscape-Picker` | Phone landscape: the teams side by side; the picker full screen, friends in two columns | PID-257 |
 | `New-Table-iPad`, `New-Table-iPad-Landscape`, `New-Table-iPad-Picker` | iPad portrait and landscape; the picker as a centered panel | PID-257 |
+| `Password-Seat` | Tables with a password seat: the open chair carries the same gold lock as on New table | Password seat (PID-259) |
+| `Password-Keypad` | Tapping it: "This seat needs a password", four big boxes, a number pad; the fourth number sends it | Password seat (PID-259) |
+| `Password-Wrong` | A wrong password: the boxes shake gently and clear, and the line says to ask the host (the shake is a note on the board) | Password seat (PID-259) |
+| `Password-Wait` | Too many tries: "Try again in a minute.", the keys greyed until then | Password seat (PID-259) |
+| `Password-Landscape` | Phone landscape: the keypad beside the boxes, nothing scrolls | Password seat (PID-259) |
 | `Hand-Made`, `Hand-Missed`, `Hand-Landscape` | After a hand: the table dims, one panel with the bid result and the point cards each team took; closes by itself | End of hand (PID-236) |
 | `Win-Reveal`, `Lose-Reveal`, `Win-Compact`, `Win-Landscape` | Game over, won and lost, on a phone, a small phone (375×667) and in landscape. iPad uses the phone layouts at 1.25×, centred | Game over (PID-237) |
 | `Win-Beats` | The win beat by beat: picture, sound and haptic, Reduce Motion, the quieter loss | Game over (PID-237) |
