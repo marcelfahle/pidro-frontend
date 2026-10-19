@@ -425,6 +425,11 @@ const allCases = [
     testId: 'ui-progression-panel',
   },
   { name: 'ui-avatars', path: '/ui-dev?state=avatars', testId: 'ui-avatars-panel' },
+  ...['choices', 'friends', 'many', 'empty', 'sv'].map((fixture) => ({
+    name: `ui-seat-picker-${fixture}`,
+    path: `/ui-dev?state=seat-picker&fixture=${fixture === 'sv' ? 'friends&locale=sv' : fixture}`,
+    testId: 'seat-picker-container',
+  })),
   ...['setup', 'setup-open', 'opened', 'opened-more'].map((fixture) => ({
     name: `ui-seat-rows-${fixture}`,
     path: `/ui-dev?state=seat-rows&fixture=${fixture}`,
@@ -2767,14 +2772,14 @@ async function assertFriendComponents(page, name, screenshotDir) {
     .boundingBox();
   assert.ok(nameBox.height <= 24, 'A long name stays on one line');
   assert.ok(nameBox.x + nameBox.width <= hit.x + hit.width + 1, 'A long name is truncated');
-  for (const box of await rows.getByRole('button').evaluateAll((nodes) =>
-    nodes.map((node) => node.getBoundingClientRect().toJSON())
-  )) {
+  for (const box of await rows
+    .getByRole('button')
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()))) {
     assert.ok(box.width >= 44 && box.height >= 44, 'Every friend row control is a 44pt target');
   }
-  for (const box of await notices.getByRole('button').evaluateAll((nodes) =>
-    nodes.map((node) => node.getBoundingClientRect().toJSON())
-  )) {
+  for (const box of await notices
+    .getByRole('button')
+    .evaluateAll((nodes) => nodes.map((node) => node.getBoundingClientRect().toJSON()))) {
     assert.ok(box.height >= 44, 'Every notice button is a 44pt target');
   }
   // The panels are taller than a phone, and the gallery scrolls inside the
@@ -2789,6 +2794,70 @@ async function assertFriendComponents(page, name, screenshotDir) {
   await solo.waitFor({ state: 'detached' });
   await notices.getByRole('button', { name: 'Show the notice', exact: true }).click();
   await solo.waitFor();
+}
+
+async function assertSeatPicker(page, testCase, viewport) {
+  if (!testCase.name.startsWith('ui-seat-picker-')) return;
+  const container = page.getByTestId('seat-picker-container');
+  const swedish = testCase.name.endsWith('-sv');
+  const split =
+    viewport.width > viewport.height || Math.min(viewport.width, viewport.height) >= 600;
+  const choices = testCase.name.endsWith('-choices');
+  if (split || choices) {
+    const group = page.getByRole('radiogroup', { name: 'Opponent seat' });
+    assert.equal(await group.getByRole('radio').count(), 5);
+    assert.equal(await group.getByRole('radio', { checked: true }).count(), 1);
+    const current = group.getByRole('radio', { checked: true });
+    await current.focus();
+    await current.press('ArrowDown');
+    await container.waitFor({ state: 'detached' });
+    assert.equal(await page.getByTestId('seat-picker-result').innerText(), '1000');
+    await page.getByRole('button', { name: 'Open seat picker', exact: true }).click();
+    if (!split) {
+      await page
+        .getByRole('button', { name: 'A friend, Choose who to invite', exact: true })
+        .click();
+      await page.getByRole('link', { name: '‹ Opponent seat', exact: true }).waitFor();
+    }
+  }
+  const picker = page.getByTestId('friend-picker');
+  if (testCase.name.endsWith('-empty')) {
+    await picker.getByText('No friends yet', { exact: true }).waitFor();
+    await picker.getByRole('link', { name: 'Add friends', exact: true }).click();
+    await container.waitFor({ state: 'detached' });
+    assert.equal(await page.getByTestId('seat-picker-result').innerText(), 'Add friends');
+    return;
+  }
+  const scroll = page.getByTestId('friend-picker-scroll');
+  if (testCase.name.endsWith('-many')) {
+    assert.equal(await picker.getByRole('button').count(), 30);
+    const before = await container.boundingBox();
+    const scrolled = await scroll.evaluate((el) => {
+      el.scrollTop = el.scrollHeight;
+      return el.scrollHeight > el.clientHeight && el.scrollTop > 0;
+    });
+    assert.ok(scrolled, '30 friends scroll inside the picker');
+    await picker.getByText('Friend 23', { exact: true }).scrollIntoViewIfNeeded();
+    assert.deepEqual(await container.boundingBox(), before, 'container stays fixed');
+  }
+  const unavailable = picker.getByLabel(
+    swedish ? 'Nora, I ett spel med andra' : 'Nora, In a game with others',
+    { exact: true }
+  );
+  assert.equal(await unavailable.getAttribute('aria-disabled'), 'true');
+  const taken = picker.getByLabel(
+    swedish
+      ? 'Sanna, Redan inbjuden till en annan plats'
+      : 'Sanna, Already invited to another seat',
+    { exact: true }
+  );
+  assert.equal(await taken.getAttribute('aria-disabled'), 'true');
+  const search = picker.getByRole('textbox', { name: swedish ? 'Hitta en vän' : 'Find a friend' });
+  await search.fill('  PEKKA ');
+  assert.equal(await picker.getByRole('button').count(), 1);
+  await picker.getByRole('button', { name: /^Pekka,/ }).click();
+  await container.waitFor({ state: 'detached' });
+  assert.equal(await page.getByTestId('seat-picker-result').innerText(), 'Pekka');
 }
 
 async function main() {
@@ -3176,6 +3245,7 @@ async function main() {
           await assertFriendsPresentation(page, testCase.name);
           await assertCreationPresentation(page, testCase);
           await assertPasswordKeypad(page, testCase, caseViewport);
+          await assertSeatPicker(page, testCase, caseViewport);
           await assertAuthFormInteractions(page, testCase.name, viewport);
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);

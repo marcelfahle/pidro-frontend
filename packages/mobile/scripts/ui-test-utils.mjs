@@ -1,6 +1,9 @@
 const seatRowCases = ['setup', 'setup-open', 'opened', 'opened-more'].map(
   (fixture) => `ui-seat-rows-${fixture}`
 );
+const seatPickerCases = ['choices', 'friends', 'many', 'empty', 'sv'].map(
+  (fixture) => `ui-seat-picker-${fixture}`
+);
 
 const lobbyCases = [
   'list',
@@ -59,6 +62,7 @@ export const UI_VIEWPORTS = [
       'locale-sv-table-count-help',
       ...seatRowCases,
       ...passwordCases,
+      ...seatPickerCases,
     ],
   },
   {
@@ -117,6 +121,7 @@ export const UI_VIEWPORTS = [
     width: 768,
     height: 1024,
     cases: [
+      ...seatPickerCases,
       'ui-components',
       'table-bidding',
       'table-count-help',
@@ -156,6 +161,7 @@ export const UI_VIEWPORTS = [
     height: 768,
     lobbyViewport: { name: 'lobby-tablet-landscape', width: 1194, height: 834 },
     cases: [
+      ...seatPickerCases,
       'table-bidding',
       'table-count-help',
       'table-game-over',

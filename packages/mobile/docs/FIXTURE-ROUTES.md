@@ -213,6 +213,22 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 This route is the pixel-diff baseline source. Change a token or primitive → it drifts →
 refresh with `bun run ui:baselines <runId>`.
 
+`/ui-dev?state=seat-picker&fixture=choices|friends|many|empty` previews PID-244's
+`ChoiceList`, `FriendPicker` and `SeatPickerContainer`. The container chooses a
+portrait sheet, landscape full screen or centered tablet panel; `many` supplies
+30 friends, and `locale=sv` previews owned Swedish copy. The `ui-seat-picker-*`
+grammar cases cover 390×844, 375×667, 844×390, 768×1024 and 1024×768, including
+keyboard selection, unavailable rows, search, one-tap invite/close and internal
+list scrolling. Browser checks do not certify native keyboard or safe areas.
+
+Callers pass choice sections (including optional short subtitles), a selected ID,
+and friends whose section and availability have already been mapped from server
+state. `groupPickerFriends` only groups and name-filters those entries. Neither
+list fetches or reads server presence. The container calls the selection callback
+then `onClose`; a deeper row opens the full-height friend page on portrait phones.
+Use that row's subtitle for the chosen friend's name, and remount the container
+for a new presentation. Existing creation and invitation screens are unchanged.
+
 `/ui-dev?state=lobby-seats` shows lobby seat requirement samples using the same
 seat payload as the live lobby.
 `node scripts/verify-lobby.mjs` checks the real lobby with mocked API responses at
