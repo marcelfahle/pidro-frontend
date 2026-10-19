@@ -40,7 +40,9 @@ export function FriendSheet({
   const [profile, setProfile] = useState<ProfileIdentity | undefined>(
     __DEV__ ? fixture : undefined
   );
-  const [confirm, setConfirm] = useState<'remove' | 'block' | null>(initialConfirm ?? null);
+  const [confirm, setConfirm] = useState<'remove' | 'block' | null>(
+    __DEV__ ? (initialConfirm ?? null) : null
+  );
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const [error, setError] = useState<unknown>(null);
@@ -147,7 +149,10 @@ export function FriendSheet({
                         <PidroText role="display" accessibilityRole="header" style={styles.name}>
                           {player.display_name}
                         </PidroText>
-                        <PidroText role="metadata" tone={state.tone === 'gold' ? 'gold' : 'soft'}>
+                        <PidroText
+                          role="metadata"
+                          tone="soft"
+                          style={state.tone === 'gold' && styles.gold}>
                           {state.line}
                         </PidroText>
                       </View>
@@ -313,7 +318,14 @@ const styles = StyleSheet.create({
     paddingBottom: 14,
   },
   copy: { flex: 1, minWidth: 0, gap: 2 },
-  name: { fontFamily: PidroFonts.display, fontSize: 26, lineHeight: 32, fontWeight: '400' },
+  name: {
+    fontFamily: PidroFonts.display,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: '400',
+    color: PidroBevel.textGold,
+  },
+  gold: { color: PidroBevel.textGold },
   main: { gap: 10, paddingBottom: 6 },
   mainButton: { height: 52 },
   actions: { minWidth: 0 },
