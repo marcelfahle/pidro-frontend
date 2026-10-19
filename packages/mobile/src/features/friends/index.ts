@@ -10,9 +10,55 @@ import { relativeDay } from '../relativeDay';
 
 export function friendSections(lists: FriendLists) {
   return [
-    { title: t('friends.added_you'), players: lists.added_you, addBack: true },
-    { title: t('social.friends'), players: lists.friends, addBack: false },
+    {
+      key: 'requests',
+      title: t('friends.want_to_be_friends'),
+      players: lists.added_you,
+      relation: 'added_you' as const,
+    },
+    {
+      key: 'online',
+      title: t('friends.online_now'),
+      players: lists.friends.filter(isOnline),
+      relation: 'friend' as const,
+    },
+    {
+      key: 'offline',
+      title: t('friends.not_online'),
+      players: lists.friends.filter((friend) => !isOnline(friend)),
+      relation: 'friend' as const,
+    },
+    {
+      key: 'sent',
+      title: t('friends.waiting_answer'),
+      players: lists.requested ?? [],
+      relation: 'added' as const,
+    },
   ].filter((section) => section.players.length > 0);
+}
+
+function isOnline(friend: FriendEntry) {
+  return friend.presence !== undefined && friend.presence !== 'offline';
+}
+
+export function friendAction(friend: FriendEntry): 'join' | 'play' | null {
+  if (!isOnline(friend)) return null;
+  if (friend.join_as) return 'join';
+  if (
+    friend.presence === 'online' ||
+    friend.presence === 'with_bots' ||
+    (friend.presence === 'at_table' && friend.table_company === 'bots')
+  )
+    return 'play';
+  return null;
+}
+
+export function friendsMeta(lists: FriendLists) {
+  const count = lists.friends.length;
+  return t('friends.meta', {
+    friends: t('friends.count', { count, number: formatNumber(count) }),
+    online: formatNumber(lists.friends.filter(isOnline).length),
+  });
 }
 
 export function classicFriendsMessage(lists: FriendLists): string | null {
@@ -47,9 +93,8 @@ export function canViewPlayer(player: Pick<RelativePlayerView, 'playerId' | 'sea
  * A friends-list entry as a row reads it. Everything past the name is
  * optional, so an older server works: `table_company` and `join_as` arrive
  * with PID-251 and PID-253, `requested_at` with PID-245, and `with_bots` /
- * `with_others` are the other presence form PID-251 considered. The server
- * sends no seat count, hand, last-played or asked date yet; the line reads
- * them when they come and says less until then.
+ * `with_others` are the other presence form PID-251 considered. Fields
+ * from older fixtures remain accepted alongside the wire names.
  */
 export type FriendEntry = Omit<FriendPlayer, 'presence'> & {
   presence?: FriendPlayer['presence'] | 'with_bots' | 'with_others';
@@ -97,13 +142,15 @@ function presenceStatus(entry: FriendEntry, now: Date): Omit<FriendRowState, 'va
   if (!seated) {
     return {
       dot: null,
-      line: dated('friends.played', entry.last_played_at, now) ?? t('friends.not_online'),
+      line:
+        dated('friends.played', entry.played_together_at ?? entry.last_played_at, now) ??
+        t('friends.not_online'),
       tone: 'quiet',
       busy: false,
     };
   }
   if (join_as) {
-    const seats = entry.seats_open;
+    const seats = entry.table_open_seats ?? entry.seats_open;
     return {
       dot: 'table',
       line: seats
@@ -116,10 +163,11 @@ function presenceStatus(entry: FriendEntry, now: Date): Omit<FriendRowState, 'va
   if (company === 'bots')
     return { dot: 'online', line: t('friends.with_bots'), tone: 'green', busy: false };
   const busy = company === 'people';
-  if (entry.hand)
+  const hand = entry.table_hand ?? entry.hand;
+  if (hand)
     return {
       dot: 'table',
-      line: t('friends.at_table_hand', { number: formatNumber(entry.hand) }),
+      line: t('friends.at_table_hand', { number: formatNumber(hand) }),
       tone: 'gold',
       busy,
     };
@@ -135,7 +183,7 @@ export function friendRowState(
   now: Date = new Date()
 ): FriendRowState {
   if (relation === 'added_you') {
-    const asked = dated('friends.asked', entry.asked_at, now);
+    const asked = dated('friends.asked', entry.requested_at ?? entry.asked_at, now);
     return {
       variant: 'request',
       dot: null,

@@ -399,6 +399,10 @@ lobby cases; other screens keep their existing dimensions.
 
 Use an authenticated fixture. Friends has `empty`, `list` (all three presences),
 `added-you`, `loading`, `error`, and `classic` (seven Classic friends not here yet).
+`all` shows all five sections, with Join, Play and no-action online rows, incoming
+and sent requests, last played and Classic. Ignore/Undo, Accept and cancel work
+locally in this fixture. `friends-all` checks it at 390×844, 375×667, 844×390 and
+768×1024, including toast dismissal. Long lists scroll clear of the tab pill.
 Tap a row in `list` for the real profile sheet
 with a fixture identity; Remove friend opens its confirmation without a backend
 write. Add a friend has `recent` and `results` (all four server relation labels).

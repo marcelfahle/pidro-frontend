@@ -1,5 +1,7 @@
 import type { BlockedPlayers, FriendLists, FriendResult, FriendNotice } from '@pidro/shared';
 
+export const FRIENDS_FIXTURE_NOW = new Date('2026-10-19T12:00:00Z');
+
 const players: FriendResult[] = [
   { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'online', relation: 'none' },
   {
@@ -28,9 +30,34 @@ const players: FriendResult[] = [
 export function friendsFixture(value?: string): FriendLists | undefined {
   if (
     !__DEV__ ||
-    !['empty', 'list', 'added-you', 'loading', 'error', 'classic'].includes(value ?? '')
+    !['empty', 'list', 'all', 'added-you', 'loading', 'error', 'classic'].includes(value ?? '')
   )
     return;
+  if (value === 'all')
+    return {
+      friends: [
+        { ...players[0], presence: 'at_table', join_as: 'partner', table_open_seats: 1 },
+        { ...players[3], presence: 'at_table', table_company: 'people', table_hand: 4 },
+        { ...players[0], user_id: 'maija', display_name: 'Maija' },
+        {
+          ...players[2],
+          user_id: 'hanna',
+          display_name: 'Hanna',
+          played_together_at: '2026-10-18T12:00:00Z',
+        },
+      ],
+      added_you: [{ ...players[1], requested_at: '2026-10-19T08:00:00Z' }],
+      requests_waiting: 1,
+      requested: [
+        {
+          ...players[3],
+          user_id: 'eero',
+          display_name: 'Eero',
+          requested_at: '2026-10-17T12:00:00Z',
+        },
+      ],
+      classic: { not_here: 38 },
+    };
   return {
     friends: ['empty', 'loading', 'error'].includes(value ?? '') ? [] : players.slice(0, 3),
     added_you: value === 'added-you' ? [players[3]] : [],

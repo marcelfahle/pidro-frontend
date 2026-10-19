@@ -1,22 +1,40 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Share, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { localizedError, type FriendPlayer } from '@pidro/shared';
+import { localizedError, type FriendLists, type FriendPlayer } from '@pidro/shared';
+import { friendsApi } from '@/api/friends';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet } from '@/components/auth/AuthSheet';
+import { FriendRow } from '@/components/friends/FriendRow';
+import { InfoCard } from '@/components/friends/InfoCard';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { useNoticeInset, usePillClearance } from '@/components/shell/TabPill';
+import { ActionPill } from '@/components/ui/ActionPill';
 import { BevelButton } from '@/components/ui/BevelButton';
+import { CountBadge } from '@/components/ui/CountBadge';
+import { DismissButton } from '@/components/ui/DismissButton';
 import { PidroText } from '@/components/ui/PidroText';
-import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
-import { TextLink } from '@/components/ui/TextLink';
-import { PidroSpacing } from '@/design/tokens';
-import { classicFriendsMessage, friendSections } from '@/features/friends';
-import { FriendRow } from '@/features/friends/FriendRow';
-import { friendsFixture } from '@/features/friends/fixtures';
+import { Toast } from '@/components/ui/Toast';
+import { PidroFonts, PidroSpacing } from '@/design/tokens';
+import {
+  classicFriendsMessage,
+  friendAction,
+  friendRowState,
+  friendSections,
+  friendsMeta,
+} from '@/features/friends';
+import { friendsFixture, FRIENDS_FIXTURE_NOW } from '@/features/friends/fixtures';
 import { useAuthStore } from '@/stores/auth';
-import { addFriend, refreshFriends, removeFriend, useFriendsStore } from '@/stores/friends';
+import {
+  addFriend,
+  ignoreFriend,
+  refreshFriends,
+  removeFriend,
+  unignoreFriend,
+  useFriendsStore,
+} from '@/stores/friends';
+import { useLobbyStore } from '@/stores/lobby';
 import { useTranslation } from '@/i18n';
 
 function LiveFriends() {
@@ -34,160 +52,317 @@ export default function FriendsScreen() {
   const router = useRouter();
   const { fixture } = useLocalSearchParams<{ fixture?: string }>();
   const preview = friendsFixture(fixture);
+  const [previewLists, setPreviewLists] = useState<FriendLists>();
   const store = useFriendsStore();
   const guest = useAuthStore((state) => Boolean(state.user?.guest));
   const clearance = usePillClearance();
   const noticeInset = useNoticeInset();
   const [accountOpen, setAccountOpen] = useState(guest);
-  const [selected, setSelected] = useState<FriendPlayer | null>(null);
+  const [selected, onOpen] = useState<FriendPlayer | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const busy = useRef(false);
+  const [hidden, setHidden] = useState<string | null>(null);
+  const [joinError, setJoinError] = useState<unknown>(null);
   const [shareError, setShareError] = useState(false);
-  const lists = preview ?? store;
-  const sections = friendSections(lists);
+  const [toast, setToast] = useState<{ kind: 'hidden' | 'cancelled'; player: FriendPlayer } | null>(
+    null
+  );
+  const dismissToast = useCallback(() => setToast(null), []);
+  const lists = preview ? (previewLists ?? preview) : store;
+  const sections = friendSections({
+    ...lists,
+    added_you: lists.added_you.filter((p) => p.user_id !== hidden),
+  });
   const classicMessage = classicFriendsMessage(lists);
-  const loading = preview ? fixture === 'loading' : store.isLoading;
-  const error = preview ? fixture === 'error' : store.error;
+  const loading = preview ? fixture === 'loading' : store.isLoading && !pending;
+  const error = joinError ?? (preview ? fixture === 'error' : store.error);
+
+  async function act(
+    action: 'accept' | 'ignore' | 'undo' | 'cancel' | 'join',
+    player: FriendPlayer
+  ) {
+    if (busy.current) return;
+    busy.current = true;
+    setPending(player.user_id);
+    setJoinError(null);
+    setToast(null);
+    if (action === 'ignore') setHidden(player.user_id);
+    try {
+      if (preview) {
+        if (action === 'join') return;
+        setPreviewLists({
+          ...lists,
+          friends: action === 'accept' ? [...lists.friends, player] : lists.friends,
+          added_you:
+            action === 'undo'
+              ? [player, ...lists.added_you]
+              : lists.added_you.filter((p) => p.user_id !== player.user_id),
+          requested:
+            action === 'cancel'
+              ? lists.requested?.filter((p) => p.user_id !== player.user_id)
+              : lists.requested,
+          requests_waiting:
+            (lists.requests_waiting ?? lists.added_you.length) +
+            (action === 'undo' ? 1 : action === 'accept' || action === 'ignore' ? -1 : 0),
+        });
+      } else if (action === 'join') {
+        const { room } = await friendsApi.join(player.user_id);
+        useLobbyStore.getState().upsertLobbyRoom(room, 'my_rejoinable');
+        router.push(`/game/${room.code}`);
+      } else {
+        const mutate = {
+          accept: addFriend,
+          ignore: ignoreFriend,
+          undo: unignoreFriend,
+          cancel: removeFriend,
+        }[action];
+        await mutate(player.user_id);
+      }
+      if (action === 'ignore' || action === 'cancel')
+        setToast({ kind: action === 'ignore' ? 'hidden' : 'cancelled', player });
+    } catch (cause) {
+      if (action === 'join') {
+        setJoinError(cause);
+        await refreshFriends().catch(() => undefined);
+      }
+      // List mutations report their error through the store and keep the last answer.
+    } finally {
+      setHidden(null);
+      setPending(null);
+      busy.current = false;
+    }
+  }
 
   return (
-    <ScreenShell
-      scroll
-      compact
-      testID="friends-screen"
-      contentStyle={[
-        styles.content,
-        {
-          paddingBottom: PidroSpacing.md + (guest ? noticeInset : clearance.bottom),
-          paddingRight: PidroSpacing.md + (guest ? 0 : clearance.right),
-        },
-      ]}>
-      {!guest && !preview ? <LiveFriends /> : null}
-      <ScreenHeader title={t('social.friends')} onBack={() => router.replace('/home')} />
-      {guest ? (
-        <BevelButton label={t('auth.sheet_save_title')} onPress={() => setAccountOpen(true)} />
-      ) : (
-        <>
-          {error ? (
-            <>
-              <PidroText role="body" tone="danger" accessibilityRole="alert">
-                {localizedError(error, 'friends.update_failed')}
-              </PidroText>
-              <BevelButton
-                label={t('profile.retry')}
-                material="glass"
-                onPress={() => {
-                  if (!preview) void refreshFriends().catch(() => undefined);
-                }}
-              />
-            </>
-          ) : null}
-          {loading ? (
-            <PidroText role="body" tone="soft">
-              {t('profile.loading')}
+    <View style={styles.root}>
+      <ScreenShell
+        scroll
+        compact
+        testID="friends-screen"
+        contentStyle={[
+          styles.content,
+          {
+            paddingBottom: PidroSpacing.md + (guest ? noticeInset : clearance.bottom),
+            paddingRight: PidroSpacing.md + (guest ? 0 : clearance.right),
+          },
+        ]}>
+        {!guest && !preview ? <LiveFriends /> : null}
+        <View style={styles.header}>
+          <View style={styles.heading}>
+            <PidroText role="display" accessibilityRole="header" style={styles.title}>
+              {t('social.friends')}
             </PidroText>
-          ) : null}
-          {sections.map((section) => (
-            <View key={section.addBack ? 'added_you' : 'friends'}>
-              <PidroText role="label" tone="soft">
-                {section.title}
+            {!guest ? (
+              <PidroText role="metadata" tone="soft">
+                {friendsMeta(lists)}
               </PidroText>
-              {section.players.map((player) => (
-                <FriendRow
-                  key={player.user_id}
-                  player={player}
-                  onPress={() => setSelected(player)}
-                  action={
-                    section.addBack ? (
-                      <BevelButton
-                        label={t('friends.add_back')}
-                        size="sm"
-                        loading={pending === player.user_id}
-                        disabled={pending !== null}
-                        onPress={async () => {
-                          if (preview) return;
-                          setPending(player.user_id);
-                          try {
-                            await addFriend(player.user_id);
-                          } catch {
-                            /* The store shows the error. */
-                          } finally {
-                            setPending(null);
-                          }
-                        }}
-                      />
-                    ) : undefined
-                  }
-                />
-              ))}
-            </View>
-          ))}
-          {sections.length === 0 && !loading && !error ? (
-            <PidroText role="body" tone="soft">
-              {t('friends.empty')}
-            </PidroText>
+            ) : null}
+          </View>
+          {!guest ? (
+            <ActionPill
+              label={t('friends.add')}
+              icon="person-plus"
+              accessibilityLabel={t('friends.add_friend')}
+              onPress={() => router.push('/friends-add')}
+            />
           ) : null}
-          {classicMessage ? (
-            <View testID="friends-classic-count">
-              <PidroText role="body" tone="soft">
-                {classicMessage}
-              </PidroText>
-              <TextLink
-                label={t('friends.share_app')}
-                onPress={async () => {
-                  setShareError(false);
-                  try {
-                    await Share.share({
-                      message: t('friends.share_app_message', { url: 'https://www.pidro.online/' }),
-                    });
-                  } catch {
-                    setShareError(true);
-                  }
-                }}
-              />
-              {shareError ? (
+        </View>
+        {guest ? (
+          <BevelButton label={t('auth.sheet_save_title')} onPress={() => setAccountOpen(true)} />
+        ) : (
+          <>
+            {error ? (
+              <>
                 <PidroText role="body" tone="danger" accessibilityRole="alert">
-                  {t('invite.host.shareError')}
+                  {localizedError(error, joinError ? 'social.seat_error' : 'friends.update_failed')}
                 </PidroText>
-              ) : null}
-            </View>
-          ) : null}
-          <BevelButton
-            label={t('friends.add_friend')}
-            fullWidth
-            onPress={() => router.push('/friends-add')}
-          />
-          <PlayerProfileModal
-            playerId={selected?.user_id ?? null}
-            onClose={() => setSelected(null)}
-            fixture={
-              preview && selected
-                ? { ...selected, username: selected.display_name, bio: null, classic: null }
-                : undefined
-            }
-            onRemove={
-              selected && lists.friends.some((player) => player.user_id === selected.user_id)
-                ? async () => {
-                    if (!preview) await removeFriend(selected.user_id);
-                    setSelected(null);
-                  }
-                : undefined
-            }
-          />
-        </>
-      )}
-      <AuthSheet
-        isOpen={accountOpen}
-        onClose={() => {
-          setAccountOpen(false);
-          if (guest) router.replace('/home');
-        }}
-        onSaved={() => setAccountOpen(false)}
-        onClaimClassic={() => {
-          setAccountOpen(false);
-          router.push({ pathname: '/(auth)/claim-classic', params: { from: 'friends' } });
-        }}
-      />
-    </ScreenShell>
+                <ActionPill
+                  label={t('profile.retry')}
+                  onPress={() => {
+                    setJoinError(null);
+                    if (!preview) void refreshFriends().catch(() => undefined);
+                  }}
+                />
+              </>
+            ) : null}
+            {loading ? (
+              <PidroText role="body" tone="soft">
+                {t('profile.loading')}
+              </PidroText>
+            ) : null}
+            {sections.map((section) => (
+              <View key={section.key} style={styles.section} testID={`friends-${section.key}`}>
+                <View style={styles.sectionTitle}>
+                  <PidroText
+                    role="label"
+                    tone={section.key === 'requests' ? 'gold' : 'soft'}
+                    accessibilityRole="header">
+                    {section.title}
+                  </PidroText>
+                  {section.key === 'requests' ? (
+                    <CountBadge count={lists.requests_waiting ?? lists.added_you.length} />
+                  ) : null}
+                </View>
+                {section.players.map((player) => {
+                  const action = friendAction(player);
+                  return (
+                    <FriendRow
+                      key={player.user_id}
+                      name={player.display_name}
+                      avatarUrl={player.avatar_url}
+                      row={friendRowState(
+                        player,
+                        section.relation,
+                        preview ? FRIENDS_FIXTURE_NOW : undefined
+                      )}
+                      onPress={() => onOpen(player)}
+                      trailing={
+                        section.key === 'requests' ? (
+                          <>
+                            <ActionPill
+                              label={t('friends.accept')}
+                              icon="check"
+                              variant="gold"
+                              accessibilityLabel={t('friends.accept_player', {
+                                name: player.display_name,
+                              })}
+                              disabled={pending !== null}
+                              onPress={() => void act('accept', player)}
+                            />
+                            <DismissButton
+                              accessibilityLabel={t('friends.ignore_player', {
+                                name: player.display_name,
+                              })}
+                              disabled={pending !== null}
+                              onPress={() => void act('ignore', player)}
+                            />
+                          </>
+                        ) : section.key === 'sent' ? (
+                          <DismissButton
+                            accessibilityLabel={t('friends.cancel_request', {
+                              name: player.display_name,
+                            })}
+                            disabled={pending !== null}
+                            onPress={() => void act('cancel', player)}
+                          />
+                        ) : section.key === 'offline' ? (
+                          'chevron'
+                        ) : action ? (
+                          <ActionPill
+                            label={t(action === 'join' ? 'friends.join' : 'friends.play')}
+                            icon={action === 'join' ? 'enter' : 'cards'}
+                            accessibilityLabel={t(
+                              action === 'join' ? 'friends.join_player' : 'friends.play_player',
+                              { name: player.display_name }
+                            )}
+                            disabled={pending !== null}
+                            loading={pending === player.user_id}
+                            onPress={() => {
+                              if (action === 'join') void act('join', player);
+                              else if (!preview)
+                                router.push({
+                                  pathname: '/lobby',
+                                  params: { partner: player.user_id },
+                                });
+                            }}
+                          />
+                        ) : undefined
+                      }
+                    />
+                  );
+                })}
+              </View>
+            ))}
+            {sections.length === 0 && !loading && !error ? (
+              <PidroText role="body" tone="soft">
+                {t('friends.empty')}
+              </PidroText>
+            ) : null}
+            {classicMessage ? (
+              <View testID="friends-classic-count">
+                <InfoCard
+                  title={classicMessage}
+                  body={t('friends.classic_body')}
+                  action={{
+                    label: t('friends.tell_classic'),
+                    icon: 'share',
+                    onPress: async () => {
+                      setShareError(false);
+                      try {
+                        await Share.share({
+                          message: t('friends.share_app_message', {
+                            url: 'https://www.pidro.online/',
+                          }),
+                        });
+                      } catch {
+                        setShareError(true);
+                      }
+                    },
+                  }}
+                />
+                {shareError ? (
+                  <PidroText role="body" tone="danger" accessibilityRole="alert">
+                    {t('invite.host.shareError')}
+                  </PidroText>
+                ) : null}
+              </View>
+            ) : null}
+            <PlayerProfileModal
+              playerId={selected?.user_id ?? null}
+              onClose={() => onOpen(null)}
+              fixture={
+                preview && selected
+                  ? { ...selected, username: selected.display_name, bio: null, classic: null }
+                  : undefined
+              }
+              onRemove={
+                selected && lists.friends.some((player) => player.user_id === selected.user_id)
+                  ? async () => {
+                      if (!preview) await removeFriend(selected.user_id);
+                      onOpen(null);
+                    }
+                  : undefined
+              }
+            />
+          </>
+        )}
+        <AuthSheet
+          isOpen={accountOpen}
+          onClose={() => {
+            setAccountOpen(false);
+            if (guest) router.replace('/home');
+          }}
+          onSaved={() => setAccountOpen(false)}
+          onClaimClassic={() => {
+            setAccountOpen(false);
+            router.push({ pathname: '/(auth)/claim-classic', params: { from: 'friends' } });
+          }}
+        />
+      </ScreenShell>
+      {toast ? (
+        <Toast
+          key={`${toast.kind}-${toast.player.user_id}`}
+          message={t(toast.kind === 'hidden' ? 'friends.hidden' : 'friends.cancelled', {
+            name: toast.player.display_name,
+          })}
+          action={
+            toast.kind === 'hidden'
+              ? { label: t('friends.undo'), onPress: () => void act('undo', toast.player) }
+              : undefined
+          }
+          onDismiss={dismissToast}
+        />
+      ) : null}
+    </View>
   );
 }
 
-const styles = StyleSheet.create({ content: { gap: PidroSpacing.md } });
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  content: { gap: 18 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
+  heading: { flex: 1, gap: 1 },
+  title: { fontFamily: PidroFonts.display, fontSize: 28, lineHeight: 34, fontWeight: '400' },
+  section: { gap: 8 },
+  sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
+});

@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
 import { lobbyFixture, seatInvitationsFixture } from '@/features/lobby/fixtures';
+import { chooseFriend, defaultSeats, type TableDraft } from '@/features/lobby/newTable';
 import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
 import {
   emptyEntry,
@@ -42,6 +43,7 @@ import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tok
 import { useQuickGame } from '@/hooks/useQuickGame';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { useAuthStore } from '@/stores/auth';
+import { refreshFriends, useFriendsStore } from '@/stores/friends';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
@@ -87,7 +89,10 @@ function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
 
 function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
   const { t } = useTranslation();
-  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
+  const { fixture: fixtureParam, partner } = useLocalSearchParams<{
+    fixture?: string;
+    partner?: string;
+  }>();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const profile = pickProfile(width, height);
@@ -127,6 +132,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     return seat && room ? { ...seat, words: passwordSeatWords(room, seat.position) } : null;
   });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [initialDraft, setInitialDraft] = useState<TableDraft>();
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<LobbyFailure | null>(null);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
@@ -391,7 +397,13 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
         return;
       }
       if (code === 'ALREADY_IN_ROOM') {
-        if (activeRoom) {
+        const current = await lobbyApi.listLobby().catch(() => null);
+        if (!current) {
+          reportFailure('social.quick_unknown');
+          return;
+        }
+        setLobby(current.lobby);
+        if (current.lobby.my_rejoinable.length) {
           reportFailure('social.already_table');
         } else {
           try {
@@ -430,18 +442,51 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     }
   };
 
-  const handleNewTable = () => {
-    if (fixture) return;
-    if (activeRoom) {
-      Alert.alert(t('social.current_table'), t('social.at_table'), [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
-      ]);
-      return;
-    }
-    setCreateError(null);
-    setIsCreateModalOpen(true);
-  };
+  const handleNewTable = useCallback(
+    (draft?: TableDraft) => {
+      if (fixture) return;
+      if (activeRoom) {
+        Alert.alert(t('social.current_table'), t('social.at_table'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('social.rejoin'), onPress: () => router.push(`/game/${activeRoom.code}`) },
+        ]);
+        return;
+      }
+      setInitialDraft(draft);
+      setCreateError(null);
+      setIsCreateModalOpen(true);
+    },
+    [fixture, activeRoom, router, t]
+  );
+
+  useEffect(() => {
+    if (fixture || !partner || !user?.id) return;
+    let active = true;
+    const resolvePartner = async () => {
+      const findPartner = () =>
+        useFriendsStore.getState().friends.find((friend) => friend.user_id === partner);
+      let friend = findPartner();
+      if (!friend) {
+        try {
+          await refreshFriends();
+        } catch {
+          return;
+        }
+        friend = findPartner();
+      }
+      if (!active) return;
+      // Consume even an unavailable friend; a later New table must start fresh.
+      router.setParams({ partner: undefined });
+      if (!friend) return;
+      handleNewTable(
+        chooseFriend({ seats: { ...defaultSeats }, requirements: {} }, 'seat_3', friend)
+      );
+    };
+    void resolvePartner();
+    return () => {
+      active = false;
+    };
+  }, [fixture, partner, router, user?.id, handleNewTable]);
 
   const search = (
     <View style={!portraitPhone && styles.search}>
@@ -491,7 +536,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           size={portraitPhone ? 'icon' : 'sm'}
           label={portraitPhone ? undefined : t('social.start')}
           accessibilityLabel={t('social.start')}
-          onPress={handleNewTable}>
+          onPress={() => handleNewTable()}>
           <Icon name="plus" size={22} />
         </BevelButton>
       </View>
@@ -531,7 +576,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
           />
         ) : isEmptyLobby ? (
           <EmptyLobby
-            onStart={handleNewTable}
+            onStart={() => handleNewTable()}
             onJoinCode={() => router.push('/join-code')}
             onQuickGame={quickGame.start}
             quickGameLoading={quickGame.loading}
@@ -608,7 +653,12 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
               styles.pinned,
               gradientBg(`linear-gradient(180deg, transparent 0%, ${PidroColors.feltBottom} 45%)`),
             ]}>
-            <BevelButton label={t('social.start')} size="lg" fullWidth onPress={handleNewTable} />
+            <BevelButton
+              label={t('social.start')}
+              size="lg"
+              fullWidth
+              onPress={() => handleNewTable()}
+            />
           </View>
         ) : null}
       </View>
@@ -625,8 +675,10 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       ) : null}
       <CreateRoomModal
         isOpen={isCreateModalOpen}
+        initialDraft={initialDraft}
         onClose={() => {
           setIsCreateModalOpen(false);
+          setInitialDraft(undefined);
           setCreateError(null);
         }}
         onSubmit={handleCreateRoom}

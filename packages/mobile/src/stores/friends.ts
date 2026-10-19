@@ -38,6 +38,8 @@ function updateLists(request: () => Promise<FriendLists | BlockedPlayers>) {
 export const refreshFriends = () => updateLists(friendsApi.list);
 export const addFriend = (id: string) => updateLists(() => friendsApi.add(id));
 export const removeFriend = (id: string) => updateLists(() => friendsApi.remove(id));
+export const ignoreFriend = (id: string) => updateLists(() => friendsApi.ignore(id));
+export const unignoreFriend = (id: string) => updateLists(() => friendsApi.unignore(id));
 
 export const refreshBlockedPlayers = () => updateLists(friendsApi.blocks);
 export const unblockPlayer = (id: string) => updateLists(() => friendsApi.unblock(id));

@@ -51,6 +51,7 @@ export const UI_VIEWPORTS = [
     height: 667,
     cases: [
       'classic-login',
+      'friends-all',
       'classic-login-guest',
       'locale-sv-classic-login',
       'update-notice',
@@ -126,6 +127,7 @@ export const UI_VIEWPORTS = [
     height: 1024,
     cases: [
       ...seatPickerCases,
+      'friends-all',
       'ui-components',
       'table-bidding',
       'table-count-help',

@@ -68,6 +68,8 @@ export const en = {
   "error.profile_unavailable":
     "Your eligibility could not be checked. Please try again shortly.",
   "error.seat_taken": "This seat is occupied.",
+  "error.no_seat_for_you": "There is no seat available for you at this table.",
+  "error.invitation_gone": "That seat is no longer held for you.",
   "error.team_full": "This team is full.",
   "error.invalid_position": "Invalid seat position.",
   "error.room_not_available": "This room is not accepting players.",
@@ -213,6 +215,8 @@ export const sv: Record<keyof typeof en, string> = {
   "error.profile_unavailable":
     "Din behörighet kunde inte kontrolleras. Försök igen om en stund.",
   "error.seat_taken": "Platsen är upptagen.",
+  "error.no_seat_for_you": "Det finns ingen ledig plats för dig vid det här bordet.",
+  "error.invitation_gone": "Platsen är inte längre reserverad för dig.",
   "error.team_full": "Laget är fullt.",
   "error.invalid_position": "Ogiltig sittplats.",
   "error.room_not_available": "Rummet tar inte emot spelare.",
