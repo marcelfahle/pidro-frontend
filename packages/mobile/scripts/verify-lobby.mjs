@@ -235,10 +235,10 @@ try {
     await page.getByRole('button', { name: 'Clear search' }).click();
     await page.getByTestId('lobby-table-MEK').waitFor();
     await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-    await page.getByTestId('create-room-window').waitFor();
+    await page.getByTestId('new-table-screen').waitFor();
     for (const next of ['empty', 'error']) {
       state = next;
-      await page.reload();
+      await page.goto(`${baseUrl}/lobby`);
       await page
         .getByText(next === 'empty' ? 'No one is at a table yet' : 'Couldn’t load tables', {
           exact: true,
@@ -259,7 +259,7 @@ try {
         await page.waitForURL((url) => url.pathname === '/join-code');
         await page.goBack();
         await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-        await page.getByTestId('create-room-window').waitFor();
+        await page.getByTestId('new-table-screen').waitFor();
       } else {
         state = 'populated';
         await page.getByRole('button', { name: 'Try again' }).click();

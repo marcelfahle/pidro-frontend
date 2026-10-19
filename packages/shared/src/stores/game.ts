@@ -590,6 +590,8 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
         seat_index,
         status: id ? 'occupied' : 'free',
         held_for: snapshot.seats[position].held_for,
+        min_games: snapshot.seats[position].min_games,
+        password: snapshot.seats[position].password,
         player: id
           ? {
               ...known,

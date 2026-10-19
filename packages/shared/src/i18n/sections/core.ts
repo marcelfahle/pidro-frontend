@@ -74,14 +74,8 @@ export const en = {
   'invite.host.revokeError': 'The invite could not be revoked.',
   'invite.host.shareError': 'The share sheet could not be opened.',
   'invite.host.copyError': 'The invite link could not be copied.',
-  'table.invite': 'Invite',
-  'table.lock': 'Lock joins',
-  'table.unlock': 'Unlock joins',
   'table.joining': '%{name} is joining…',
   'table.managePlayer': 'Manage %{name}',
-  'table.manageDescription':
-    'Move this player to an open seat or remove them from the table.',
-  'table.moveTo': 'Move to %{position}',
   'table.position.north': 'north',
   'table.position.east': 'east',
   'table.position.south': 'south',
@@ -90,7 +84,6 @@ export const en = {
   'table.actionErrorTitle': 'Table action failed',
   'table.actionError':
     'The server did not accept that change. Refresh and try again.',
-  'table.seatBot': 'Fill an open seat with a bot',
   'table.reopened': 'A player left. Invite someone or add a bot.',
   'table.rematch.tableNotFull':
     'A seat is empty. A rematch needs all four seats taken.',
@@ -207,14 +200,8 @@ export const sv: Record<keyof typeof en, string> = {
   'invite.host.revokeError': 'Inbjudan kunde inte återkallas.',
   'invite.host.shareError': 'Delningsmenyn kunde inte öppnas.',
   'invite.host.copyError': 'Inbjudningslänken kunde inte kopieras.',
-  'table.invite': 'Bjud in',
-  'table.lock': 'Lås anslutningar',
-  'table.unlock': 'Tillåt anslutningar',
   'table.joining': '%{name} ansluter…',
   'table.managePlayer': 'Hantera %{name}',
-  'table.manageDescription':
-    'Flytta spelaren till en ledig plats eller ta bort spelaren från bordet.',
-  'table.moveTo': 'Flytta till %{position}',
   'table.position.north': 'norr',
   'table.position.east': 'öster',
   'table.position.south': 'söder',
@@ -223,7 +210,6 @@ export const sv: Record<keyof typeof en, string> = {
   'table.actionErrorTitle': 'Bordsåtgärden misslyckades',
   'table.actionError':
     'Servern godtog inte ändringen. Uppdatera och försök igen.',
-  'table.seatBot': 'Fyll en ledig plats med en bot',
   'table.reopened':
     'En spelare lämnade bordet. Bjud in någon eller lägg till en bot.',
   'table.rematch.tableNotFull':

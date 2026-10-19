@@ -171,20 +171,19 @@ async function main() {
     captures.push(...(await captureCurrentScreen(page, 'lobby', 'lobby-screen')));
 
     await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
-    for (const seat of ['Left opponent seat', 'Partner seat']) {
-      await page
-        .getByRole('radiogroup', { name: seat, exact: true })
-        .getByRole('radio', { name: 'Bot', exact: true })
-        .click();
+    await page.waitForURL(/\/new-table$/);
+    for (const seat of ['east', 'south']) {
+      await page.getByTestId(`new-table-seat-${seat}`).click();
+      await page.getByTestId('seat-picker-container').getByRole('radio', { name: /^Bot,/ }).click();
     }
-    captures.push(...(await captureCurrentScreen(page, 'create-table-live', 'create-room-window')));
+    captures.push(...(await captureCurrentScreen(page, 'create-table-live', 'new-table-screen')));
 
     await page.getByRole('button', { name: 'Open the table', exact: true }).click();
     await page.waitForURL(/\/game\/[A-Z0-9]+$/, { timeout: 20_000 });
     const gameUrl = page.url();
     const gameBody = (await page.locator('body').innerText()).replace(/\s+/g, ' ');
     if (/Open the table/i.test(gameBody) || /could not create/i.test(gameBody)) {
-      throw new Error(`Create modal still visible after submit: ${gameBody}`);
+      throw new Error(`New table setup still visible after submit: ${gameBody}`);
     }
 
     await page.getByText('Leave').waitFor({ timeout: 15_000 });

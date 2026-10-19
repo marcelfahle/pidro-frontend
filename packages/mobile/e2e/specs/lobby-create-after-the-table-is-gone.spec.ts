@@ -24,8 +24,9 @@ test('a new table is created when the old one is already gone', async ({ page, p
   const left = page.waitForResponse((response) => response.url().endsWith('/current/leave'));
 
   await page.getByRole('button', { name: 'Start a table', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/new-table$/);
   await page
-    .getByTestId('create-room-window')
+    .getByTestId('new-table-screen')
     .getByRole('button', { name: 'Open the table' })
     .click();
   expect((await left).status()).toBe(404);

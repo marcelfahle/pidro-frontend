@@ -16,4 +16,10 @@ test('an invite survives create account and ends at that table', async ({ page, 
   await new JoinInviteScreen(page).joinTable();
   await page.waitForURL(`**/game/${room}`);
   await expect(page.getByTestId('waiting-table')).toBeVisible();
+  for (const position of ['north', 'south', 'east', 'west']) {
+    await expect(page.getByTestId(`new-table-seat-${position}`)).toBeVisible();
+  }
+  await expect(
+    page.getByRole('button', { name: 'Share the table link', exact: true })
+  ).toBeVisible();
 });

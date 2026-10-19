@@ -36,6 +36,20 @@ beforeEach(() => {
 });
 
 describe('authoritative readiness snapshots', () => {
+  test('seat requirements follow readiness without losing the private host password', () => {
+    const next = snapshot(5);
+    next.positions = { ...next.positions, south: null };
+    next.seats.south = {
+      occupant_type: 'vacant', status: 'vacant', user_id: null,
+      min_games: 100, password: true,
+    };
+    const projected = roomWithReadiness({ ...room, seat_password: '4821' }, next);
+    expect(projected.seats?.[2]).toMatchObject({ player: null, min_games: 100, password: true });
+    expect(projected.seat_password).toBe('4821');
+    next.seats.south = { ...next.seats.south, min_games: 0, password: false };
+    expect(roomWithReadiness(projected, next).seats?.[2]).toMatchObject({ min_games: 0, password: false });
+  });
+
   test('holds follow the latest readiness snapshot rather than stale room metadata', () => {
     const held = snapshot(5);
     held.positions = { ...held.positions, south: null };

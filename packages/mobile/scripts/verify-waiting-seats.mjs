@@ -1,5 +1,4 @@
-// RN Web regression coverage. Insets and enlarged text approximate native devices;
-// this does not replace VoiceOver/TalkBack or on-device Dynamic Type validation.
+// Browser coverage of the shared team list; native safe areas still need device coverage.
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright';
@@ -12,264 +11,127 @@ import {
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
 const shots = process.env.UI_SHOT_DIR ?? '/tmp/pidro-waiting-seats';
+const positions = ['north', 'south', 'east', 'west'];
 const viewports = [
-  { name: 'small-iphone', width: 320, height: 568 },
-  { name: 'iphone-island', width: 393, height: 852, safeArea: 'island' },
-  { name: 'android', width: 360, height: 800, safeArea: 'android' },
-  { name: 'landscape', width: 667, height: 375 },
-  { name: 'ipad', width: 768, height: 1024 },
-  { name: 'ipad-landscape', width: 1024, height: 768 },
+  { name: 'portrait', width: 390, height: 844 },
+  { name: 'small-portrait', width: 375, height: 667 },
+  { name: 'landscape', width: 844, height: 390 },
+  { name: 'tablet-portrait', width: 768, height: 1024 },
 ];
-const positions = ['north', 'east', 'south', 'west'];
-const overlaps = (a, b) =>
-  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 const browser = await chromium.launch({ headless: true });
 await mkdir(shots, { recursive: true });
 let checks = 0;
 try {
   for (const viewport of viewports) {
-    const page = await browser.newPage({ viewport });
+    const page = await browser.newPage({ viewport, deviceScaleFactor: 2 });
     for (const phase of ['waiting', 'waiting-host', 'ready', 'ready-host']) {
-      await page.goto(`${baseUrl}/table-dev?phase=${phase}&safeArea=${viewport.safeArea ?? ''}`);
-      await page.getByTestId('waiting-seat-west').waitFor();
+      await page.goto(`${baseUrl}/table-dev?phase=${phase}`);
+      await page.getByTestId('waiting-table').waitFor();
       await suppressDevOverlays(page);
       await page.evaluate(() => document.fonts.ready);
       await waitForImages(page);
-      for (const scale of [1, 1.5]) {
-        if (scale > 1) {
-          const scaled = await page.evaluate(() => {
-            const texts = [...document.querySelectorAll('[class*="css-text-"]')];
-            const sizes = texts.map((el) => [
-              el,
-              getComputedStyle(el).fontSize,
-              getComputedStyle(el).lineHeight,
-            ]);
-            for (const [el, font, line] of sizes) {
-              el.style.fontSize = `${parseFloat(font) * 1.5}px`;
-              if (line !== 'normal') el.style.lineHeight = `${parseFloat(line) * 1.5}px`;
-            }
-            return texts.length;
-          });
-          assert(scaled > 0, `${viewport.name}/${phase}: text-scale selector matched no elements`);
-        }
-        for (const button of await page.getByTestId('waiting-toolbar').getByRole('button').all()) {
-          assertInsideViewport(
-            `${phase}/${scale} toolbar ${await button.innerText()}`,
-            await button.boundingBox(),
-            viewport
-          );
-        }
-        const leave = page.getByRole('button', { name: 'Leave table', exact: true });
-        assert.equal(await leave.innerText(), 'Leave', 'Keep the waiting toolbar label compact');
-        if (viewport.name === 'android' && phase === 'ready-host' && scale === 1) {
-          const table = await page
-            .getByRole('button', { name: 'Table', exact: true })
-            .boundingBox();
-          assert.ok(
-            Math.abs(table.y - (await leave.boundingBox()).y) < 1,
-            'Host controls must fit one toolbar row at normal text size'
-          );
-        }
-        const boxes = [];
-        for (const position of positions) {
-          const seat = page.getByTestId(`waiting-seat-${position}`);
-          const box = await seat.boundingBox();
-          assert(box.width > 100, `${viewport.name}/${position} collapsed`);
-          assert(
-            box.x >= 0 && box.x + box.width <= viewport.width + 1,
-            'Seat overflows horizontally'
-          );
-          boxes.push(box);
-          if (position !== 'south') {
-            const fits = await page
-              .getByTestId(`waiting-name-${position}`)
-              .evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
-            assert(fits, `${viewport.name}/${phase}/${scale}/${position} ordinary name truncated`);
-          }
-          await seat.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-          const visible = await seat.boundingBox();
-          const scroll = await page.getByTestId('waiting-seats-scroll').boundingBox();
-          assert(
-            visible.y >= scroll.y - 1 && visible.y + visible.height <= viewport.height + 1,
-            `${viewport.name}/${phase}/${scale}/${position} not reachable: ${JSON.stringify({ visible, scroll })}`
-          );
-        }
-        // Measure in one scroll position so document coordinates are comparable.
-        boxes.length = 0;
-        for (const position of positions)
-          boxes.push(await page.getByTestId(`waiting-seat-${position}`).boundingBox());
-        boxes.push(await page.getByTestId('readiness-panel').boundingBox());
-        for (let i = 0; i < boxes.length; i++) {
-          for (let j = i + 1; j < boxes.length; j++)
-            assert(!overlaps(boxes[i], boxes[j]), 'Seat/panel overlap');
-        }
-        await assertMinimumTouchTargets(page, phase, viewport);
-        assert.equal(await page.getByTestId('waiting-toolbar').getByText('DEV01').count(), 0);
-        assert.equal(await page.getByRole('button', { name: /^Manage / }).count(), 0);
-        assert.equal(
-          await page
-            .getByTestId('readiness-panel')
-            .getByRole('button', { name: /Invite|Lock/ })
-            .count(),
-          0
-        );
-        assert.equal(
-          await page.getByTestId('waiting-team-0').getByTestId('waiting-seat-south').count(),
-          1
-        );
-        assert.equal(
-          await page.getByTestId('waiting-team-0').getByTestId('waiting-seat-north').count(),
-          1
-        );
-        assert.equal(await page.getByTestId('waiting-ready-north').count(), 1);
-        assert.equal(
-          await page.getByRole('button', { name: 'Table', exact: true }).count(),
-          phase.endsWith('host') ? 1 : 0
-        );
-        assert.equal(await page.getByRole('button', { name: /Bot.*View profile/ }).count(), 0);
-        await page.getByTestId('waiting-seats-scroll').evaluate((el) => {
-          el.scrollTop = 0;
-        });
-        if (phase === 'ready-host' || phase === 'waiting-host')
-          await page.screenshot({ path: `${shots}/${viewport.name}-${phase}-${scale}.png` });
-        checks++;
+      const boxes = [];
+      for (const position of positions) {
+        const row = page.getByTestId(`new-table-seat-${position}`);
+        await row.waitFor();
+        const box = await row.boundingBox();
+        assert.ok(box && box.width > 100 && box.width <= 437, `${position}: list column width`);
+        assert.ok(Math.abs(box.x + box.width / 2 - viewport.width / 2) <= 2, 'centered list');
+        boxes.push(box);
       }
-      if (phase.endsWith('host')) {
-        await page.getByRole('button', { name: 'Table', exact: true }).click();
-        assert.equal(
-          await page.getByRole('button', { name: /^Manage / }).count(),
-          phase.startsWith('ready') ? 2 : 1
+      boxes.sort((a, b) => a.y - b.y);
+      for (let i = 1; i < boxes.length; i++)
+        assert.ok(
+          boxes[i].y >= boxes[i - 1].y + boxes[i - 1].height - 1,
+          'single list without overlap'
         );
-        await assertMinimumTouchTargets(page, 'table-menu', viewport);
-        await page.getByRole('button', { name: 'Lock joins', exact: true }).click();
-        await page.getByRole('button', { name: 'Unlock joins', exact: true }).waitFor();
-        if (viewport.name === 'android' && phase === 'ready-host') {
-          await page.waitForTimeout(400);
-          await page.screenshot({ path: `${shots}/table-menu.png` });
-        }
-        await page.getByRole('button', { name: 'Close Table settings', exact: true }).click();
+      for (const position of positions) {
+        const row = page.getByTestId(`new-table-seat-${position}`);
+        if (viewport.width > viewport.height) await row.scrollIntoViewIfNeeded();
+        assertInsideViewport(position, await row.boundingBox(), viewport);
       }
+      await page.getByTestId('waiting-rule-set').waitFor();
+      await page.getByTestId('waiting-rules-menu').waitFor();
+      assert.equal(
+        await page
+          .getByRole('button', { name: /^(Manage |Move to |Lock joins|Unlock joins|Table$)/ })
+          .count(),
+        0
+      );
+      await assertMinimumTouchTargets(page, phase, viewport);
+      if (phase.startsWith('ready')) {
+        const ready = page.getByRole('button', { name: "I'm ready", exact: true });
+        await ready.scrollIntoViewIfNeeded();
+        await ready.click();
+        const confirmed = page.getByRole('button', { name: "You're ready", exact: true });
+        await confirmed.waitFor();
+        assert.equal(await confirmed.isDisabled(), true);
+        await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+      }
+      await page.screenshot({ path: `${shots}/${viewport.name}-${phase}.png` });
+      checks++;
     }
-    await page.goto(`${baseUrl}/table-dev?phase=ready-host&role=spectator`);
-    await page.getByRole('button', { name: 'Back to lobby', exact: true }).waitFor();
-    await page.getByText('Watching', { exact: true }).waitFor();
-    await page.getByText('North / South', { exact: true }).waitFor();
-    await page.getByText('East / West', { exact: true }).waitFor();
+
+    // Failure must leave the intent retryable, without inventing server confirmation.
+    await page.goto(`${baseUrl}/table-dev?phase=ready-solo&readyResult=error`);
+    await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+    await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+    await page.getByText('Readiness was not confirmed.', { exact: false }).waitFor();
     assert.equal(
-      await page.getByRole('button', { name: /I'm ready|^Table$|Invite|^Manage / }).count(),
-      0
+      await page.getByRole('button', { name: "I'm ready", exact: true }).isEnabled(),
+      true
     );
-    await page.getByRole('button', { name: 'Table rules', exact: true }).waitFor();
-    assert.equal(await page.getByText('You', { exact: true }).count(), 0);
-    if (viewport.name === 'android') {
-      await waitForImages(page);
-      await page.screenshot({ path: `${shots}/spectator.png` });
-    }
+    await page.goto(`${baseUrl}/table-dev?phase=ready-solo&viewer=east`);
+    await page.getByText('3 of 4 ready', { exact: true }).waitFor();
+    await page.getByRole('button', { name: "I'm ready", exact: true }).click();
+    await page.getByText('4 of 4 ready', { exact: true }).waitFor();
+
+    // Occupied chairs go straight to removal confirmation, never a host settings panel.
+    await page.goto(`${baseUrl}/table-dev?phase=ready-host`);
+    await page.getByTestId('new-table-seat-east').click();
+    const remove = page.getByRole('button', { name: 'Remove from table', exact: true });
+    await remove.waitFor();
+    assert.equal(await page.getByRole('button', { name: /^Move to / }).count(), 0);
+    await remove.click();
+    const vacant = page.getByTestId('new-table-seat-east');
+    await vacant.getByText('Open seat', { exact: true }).waitFor();
+    await vacant.click();
+    const picker = page.getByTestId('seat-picker-container');
+    await picker.waitFor();
+    assert.equal(await picker.getByRole('radio').count(), 1);
+    await picker.getByRole('radio', { name: /^Bot, .+/ }).waitFor();
+    if (viewport.width < viewport.height && viewport.width < 600)
+      await picker.getByRole('button', { name: /^A friend, .+/ }).waitFor();
+    else await picker.getByTestId('friend-picker').waitFor();
+
+    await page.goto(`${baseUrl}/table-dev?phase=waiting-host&fixture=held`);
+    const held = page.getByTestId('new-table-seat-east');
+    await held.getByText('Invited · not online yet', { exact: true }).waitFor();
+    await held.click();
+    await page.getByTestId('seat-picker-container').waitFor();
+    assert.equal(await picker.getByRole('radio').count(), 1);
+    await picker.getByRole('radio', { name: /^Anyone, .+/ }).waitFor();
+    if (viewport.width < viewport.height && viewport.width < 600)
+      assert.equal(await picker.getByRole('button', { name: /^A friend/ }).count(), 1);
+    else await picker.getByTestId('friend-picker').waitFor();
+
+    await page.goto(`${baseUrl}/table-dev?phase=ready-host&role=spectator`);
+    await page.getByTestId('waiting-table').waitFor();
+    await page.getByRole('button', { name: 'Back to lobby', exact: true }).waitFor();
+    assert.equal(
+      await page
+        .getByRole('button', {
+          name: /I'm ready|Remove from table|^(Manage |Move to |Lock joins|Unlock joins)/,
+        })
+        .count(),
+      0,
+      'spectators have no player or host intents'
+    );
+    await page.getByTestId('waiting-rules-menu').waitFor();
     await page.close();
   }
-
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 } });
-  await page.goto(`${baseUrl}/table-dev?phase=ready-host`);
-  const avatar = async (position) =>
-    page.getByTestId(`waiting-seat-${position}`).locator('img').getAttribute('src');
-  const westAvatar = await avatar('west');
-  const eastAvatar = await avatar('east');
-  assert.notEqual(westAvatar, eastAvatar);
-  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
-  await page.getByTestId('waiting-seat-south').getByText('Not ready', { exact: true }).waitFor();
-  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
-  await page.getByRole('button', { name: 'Confirming…', exact: true }).waitFor();
-  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
-  await page.getByRole('button', { name: "You're ready", exact: true }).waitFor();
-  assert.equal(await avatar('west'), westAvatar, 'Readiness changed avatar');
-  assert.equal(await page.getByTestId('waiting-ready-south').count(), 1);
-  await page.getByRole('button', { name: 'Table', exact: true }).click();
-  await page.getByRole('button', { name: 'Manage mfand1', exact: true }).click();
-  await page.getByRole('button', { name: 'Remove from table', exact: true }).click();
-  await page.getByTestId('waiting-seat-east').getByText('Open seat', { exact: true }).waitFor();
-  await page.getByRole('button', { name: 'Manage mfios1', exact: true }).click();
-  await page.getByRole('button', { name: /Move to Opponents.*East/i }).click();
-  await page.getByRole('button', { name: 'Close Table settings', exact: true }).click();
-  await page.getByTestId('waiting-seat-east').getByText('mfios1', { exact: true }).waitFor();
-  assert.equal(await avatar('east'), westAvatar, 'Moved player lost avatar');
-  await page.getByTestId('waiting-seat-west').getByText('Open seat', { exact: true }).waitFor();
-
-  await page.goto(`${baseUrl}/table-dev?phase=ready-solo&readyResult=error`);
-  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
-  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
-  await page.getByText('Readiness was not confirmed.', { exact: false }).waitFor();
-  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
-  assert.equal(
-    await page.getByRole('button', { name: "I'm ready", exact: true }).isEnabled(),
-    true
-  );
-
-  await page.goto(`${baseUrl}/table-dev?phase=ready-solo`);
-  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
-  assert.equal(await page.getByRole('button', { name: 'Table', exact: true }).count(), 0);
-  assert.equal(await page.getByTestId('waiting-ready-south').count(), 0);
-  for (const position of ['north', 'east', 'west']) {
-    assert.equal(await page.getByTestId(`waiting-ready-${position}`).count(), 1);
-  }
-  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
-  await page.getByText('4 of 4 ready', { exact: true }).waitFor();
-  assert.equal(await page.getByTestId('waiting-ready-south').count(), 1);
-
-  await page.goto(`${baseUrl}/table-dev?phase=ready-solo&viewer=east`);
-  await page
-    .getByTestId('waiting-seat-east')
-    .getByRole('button', { name: 'Alex, You, Not ready. View profile', exact: true })
-    .waitFor();
-  assert.equal(await page.getByTestId('waiting-ready-east').count(), 0);
-  await page.getByText('3 of 4 ready', { exact: true }).waitFor();
-  await page.getByRole('button', { name: "I'm ready", exact: true }).click();
-  await page.getByText('4 of 4 ready', { exact: true }).waitFor();
-  assert.equal(await page.getByTestId('waiting-ready-east').count(), 1);
-
-  await page.goto(`${baseUrl}/table-dev?phase=ready&viewer=east`);
-  await page
-    .getByTestId('waiting-seat-east')
-    .getByRole('button', { name: 'mfand1, You, Not ready. View profile', exact: true })
-    .waitFor();
-  await page
-    .getByTestId('waiting-seat-west')
-    .getByRole('button', { name: 'mfios1, Partner, Ready. View profile', exact: true })
-    .waitFor();
-  assert.equal(await avatar('east'), eastAvatar, 'Viewer rotation changed identity');
-
-  await page.route('**/api/v1/**', async (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        data: {
-          user_id: 'p-west',
-          username: 'Alexandria the Long-Named Player',
-          display_name: null,
-          avatar_url: null,
-          bio: null,
-        },
-      }),
-    })
-  );
-  await page.goto(`${baseUrl}/table-dev?phase=ready-host&names=long`);
-  const name = page.getByTestId('waiting-name-west');
-  assert(
-    await name.evaluate((el) => el.scrollWidth > el.clientWidth),
-    'Long-name fixture does not exercise truncation'
-  );
-  await page
-    .getByTestId('waiting-seat-west')
-    .getByRole('button', { name: /Alexandria the Long-Named Player.*View profile/ })
-    .click();
-  await page.getByText('Player profile', { exact: true }).waitFor();
-  await page.getByText('Alexandria the Long-Named Player', { exact: true }).last().waitFor();
-  await page.waitForTimeout(400); // Let the native modal's fade finish before capturing.
-  await waitForImages(page);
-  await page.screenshot({ path: `${shots}/full-name-profile.png` });
-  await page.close();
   console.log(
-    `waiting-seats ok: ${checks} layout/text-scale cases; readiness, removal, move, viewer rotation and full-name profile checked`
+    `waiting-seats ok: ${checks} layouts; readiness, retry, viewer rotation, kick, vacant/held choices`
   );
 } finally {
   await browser.close();

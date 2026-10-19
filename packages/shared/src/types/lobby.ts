@@ -2,7 +2,7 @@ import type { SeatPin } from './game';
 
 export type RoomStatus = 'waiting' | 'ready' | 'playing' | 'finished';
 export type RuleSet = 'finnish' | 'louisiana';
-export type SeatType = 'open' | 'ai' | { type: 'open'; min_games: 0 | 100 | 1000 } | { type: 'held'; user_id: string };
+export type SeatType = 'open' | 'ai' | { type: 'open'; min_games: 0 | 100 | 1000; password?: boolean } | { type: 'held'; user_id: string };
 export type BotDifficulty = 'random' | 'basic' | 'smart';
 export type Position = 'north' | 'east' | 'south' | 'west';
 /** Which of the three bot personas sits in a bot seat; the server picks it. */
@@ -50,6 +50,8 @@ export interface ReadinessSnapshot {
       pin?: SeatPin | null;
       bot_persona?: BotPersona | null;
       held_for?: HeldPlayer | null;
+      min_games?: number;
+      password?: boolean;
     }
   >;
   ready_players: Position[];
@@ -98,6 +100,8 @@ export interface Room {
   name?: string;
   config?: RoomConfig;
   host_id?: string | null;
+  /** Only returned in the host's private mutation responses. */
+  seat_password?: string;
   locked?: boolean;
   status: RoomStatus;
   game?: {

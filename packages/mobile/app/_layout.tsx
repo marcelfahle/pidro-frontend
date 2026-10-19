@@ -66,6 +66,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" />
           <Stack.Protected guard={canAccessApp}>
             <Stack.Screen name="(shell)" />
+            <Stack.Screen name="new-table" options={{ animation: 'none' }} />
             <Stack.Screen
               name="lobby"
               options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}

@@ -1,31 +1,6 @@
 import { emptyLobbyCategories, POSITION_TO_INDEX } from '@pidro/shared';
 import type { LobbyCategories, Position, Room, SeatInvitation } from '@pidro/shared';
-import { defaultSeats, type TableDraft } from './newTable';
 import { answerEntry, emptyEntry, type PasswordEntry } from './passwordSeat';
-import { friendsFixture } from '@/features/friends/fixtures';
-
-export function createTableFixture(value?: string): TableDraft | undefined {
-  if (!__DEV__) return;
-  if (value === 'sheet-assigned')
-    return {
-      seats: { ...defaultSeats, seat_2: 'invite' },
-      requirements: {},
-      invited: { seat_2: friendsFixture('list')!.friends[0] },
-    };
-  return {
-    seats:
-      value === 'bots'
-        ? { seat_2: 'ai', seat_3: 'ai', seat_4: 'ai' }
-        : value === 'open'
-          ? { seat_2: 'open', seat_3: 'open', seat_4: 'open' }
-          : {
-              ...defaultSeats,
-              ...(['friend', 'invited'].includes(value ?? '') ? { seat_3: 'invite' as const } : {}),
-            },
-    requirements: value === 'requirement' ? { seat_2: 100 } : {},
-    ...(value === 'invited' ? { invited: { seat_3: friendsFixture('list')!.friends[0] } } : {}),
-  };
-}
 
 export function seatInvitationsFixture(value?: string): SeatInvitation[] | undefined {
   if (!__DEV__ || value !== 'invitations') return;
@@ -78,8 +53,7 @@ function room(code: string, names: (string | null)[], louisiana = false, playing
       player: name
         ? {
             id: `${code}-${positions[index]}`,
-            username: name,
-            ...(name === 'Bot' ? { is_bot: true, ...BOT_CREW[bots++ % 3] } : {}),
+            ...(name === 'Bot' ? { is_bot: true, ...BOT_CREW[bots++ % 3] } : { username: name }),
           }
         : null,
     })),

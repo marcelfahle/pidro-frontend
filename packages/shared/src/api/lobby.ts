@@ -140,6 +140,11 @@ export function createLobbyApi(api: ApiClient) {
       return normalizeRoom(response.data?.data?.room ?? response.data?.room);
     },
 
+    releaseHold: async (code: string, position: Position): Promise<Room> => {
+      const response = await api.delete<GetRoomResponse>(`/api/v1/rooms/${code}/seats/${position}/hold`);
+      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
+    },
+
     movePlayer: async (code: string, position: Position, userId?: string): Promise<Room> => {
       const body = userId ? { position, user_id: userId } : { position };
       const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/seat`, body);
