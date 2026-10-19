@@ -5,6 +5,7 @@ import type {
   CreateRoomRequest,
   Position,
   PositionPreference,
+  SeatType,
 } from '../types/lobby';
 import {
   flattenLobbyCategories,
@@ -164,6 +165,12 @@ export function createLobbyApi(api: ApiClient) {
     /** Host only: seats a bot in a vacant seat at the room's bot difficulty. */
     seatBot: async (code: string, position: Position): Promise<Room> => {
       const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/bot`, { position });
+      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
+    },
+
+    /** Host only, while waiting: the seat becomes this entry, replacing a bot, a hold or a requirement. */
+    setSeat: async (code: string, position: Position, seat: SeatType): Promise<Room> => {
+      const response = await api.put<GetRoomResponse>(`/api/v1/rooms/${code}/seats/${position}`, { seat });
       return normalizeRoom(response.data?.data?.room ?? response.data?.room);
     },
   };

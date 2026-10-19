@@ -204,7 +204,7 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 | URL                                                                     | Shows                                                                                                                                                                                       |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `/ui-dev?state=components`                                              | Type scale, BevelButton (wood/glass × sm/md/lg/hero/icon, loading, disabled), Input wells, AuthProviderButtons, bevel swatches, legacy Button, DecisionWindow, friend rows, info cards and notices (`ui-friend-rows-panel`, `ui-friend-notices-panel`). testID `ui-foundation-panel` |
-| `/ui-dev?state=new-table&fixture=setup\|partner\|bots\|opened\|ready\|louisiana\|requirement\|password\|picker\|friends\|guest\|declined` | Shared setup/live team list. Setup testID `new-table-screen`; live (`opened`, `ready`, `guest`, `declined`) `waiting-table`. Rows `new-table-seat-north/south/east/west`; south is Partner, east/west opponents. `guest` is a nonhost, not an anonymous account. `declined` (PID-254): Maija said Not now, so south is open and the host sees "Can't come" (`seat-declined-notice`) at the top, in the footer on a small phone; Invite someone else opens the friend picker for south. |
+| `/ui-dev?state=new-table&fixture=setup\|partner\|bots\|opened\|ready\|louisiana\|requirement\|password\|picker\|friends\|guest\|declined\|live-picker\|live-friends\|live-error` | Shared setup/live team list. Setup testID `new-table-screen`; live (`opened`, `ready`, `guest`, `declined`, `live-*`) `waiting-table`. Rows `new-table-seat-north/south/east/west`; south is Partner, east/west opponents. `guest` is a nonhost, not an anonymous account. `declined` (PID-254): Maija said Not now, so south is open and the host sees "Can't come" (`seat-declined-notice`) at the top, in the footer on a small phone; Invite someone else opens the friend picker for south. `live-picker` opens the picker on the west password seat of an opened table, `live-friends` the friend list on south (Maija held); a fixture server applies each choice like `PUT /rooms/:code/seats/:position`. `live-error` fails Bot outright (the reason shows inside the picker) and answers any other choice with `SEAT_NOT_VACANT` after seating Eli there (the picker closes and the reason stays in the footer). |
 | `/ui-dev?state=progression`                                             | Progression HUD primitives: PlayerAvatar (sizes, no photo), RatingPlaque, LeagueProgress, CtaBadge. testID `ui-progression-panel`                                                           |
 | `/ui-dev?state=avatars`                                                 | PlayerAvatar: rings, pins, sizes 104–24, every seat state from the Seat-States board, label below/right/left. testID `ui-avatars-panel`                                                     |
 | `/ui-dev?state=seat-rows&fixture=setup\|setup-open\|opened\|opened-more` | New table seat rows (PID-243): every state before and after the table opens, four seats at a time; landscape puts the teams side by side. testID `ui-seat-rows-panel` |
@@ -235,17 +235,19 @@ six viewport sizes, including direct seat joins, search, create, error states, t
 empty Tables screen (start a table, join with a code, the quick game Home also starts)
 and the badge gallery. Captures go to `/tmp/pidro-lobby` (or `UI_SHOT_DIR`).
 
-`node scripts/verify-create-room.mjs` covers all eleven new-table fixtures at
-390×844, 375×667, 844×390 and 768×1024. Grammar case names are `new-table-setup`,
-`new-table-partner`, `new-table-bots`, `new-table-opened`, `new-table-ready`,
-`new-table-louisiana`, `new-table-requirement`, `new-table-password`,
-`new-table-picker`, `new-table-friends` and `new-table-guest`.
+`node scripts/verify-create-room.mjs` covers all fourteen new-table fixtures at
+390×844, 375×667, 844×390 and 768×1024, and on the `live-*` ones taps each choice,
+checks the row the server answer gives and that the picker reopens on it. Grammar
+case names are `new-table-setup`, `new-table-partner`, `new-table-bots`,
+`new-table-opened`, `new-table-ready`, `new-table-louisiana`, `new-table-requirement`,
+`new-table-password`, `new-table-picker`, `new-table-friends`, `new-table-guest`,
+`new-table-live-picker` and `new-table-live-friends`.
 The root is a centered column (maxWidth 436); only phone landscape scrolls.
 Setup seats are all open, with Finnish/Louisiana ActionPill radios. Footer actions
 are Open the table, Start the game (three bots), Share the table link (opened),
 and I'm ready (full). The picker has five subtitle-named radios: Anyone, Bot,
 100+ games played, 1000+ games played, With password, plus the deeper A friend row.
-Live vacant seats offer A friend/Bot; held seats offer Anyone. Occupied rows open
+Live seats without a person offer the same choices, opened on the server's current one. Occupied rows open
 kick confirmation, never move/lock controls. `waiting-rule-set`,
 `waiting-rules-menu` and the Louisiana explainer remain supported.
 The creation script also drives the real lobby entry with mocked API responses,

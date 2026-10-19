@@ -579,7 +579,7 @@ export default function GameScreen() {
   };
 
   const runRoomControl = useCallback(
-    async (action: () => Promise<Room>) => {
+    async (action: () => Promise<Room>, rethrow = false) => {
       if (controlsBusyRef.current) return;
       controlsBusyRef.current = true;
       setControlsBusy(true);
@@ -590,21 +590,19 @@ export default function GameScreen() {
         const generation = ++roomRequestGenerationRef.current;
         if (requestedCode) applyRoomSnapshot(requestedCode, generation, updated);
       } catch (caught) {
-        handleSeatEvent({ error: caught, key: 'table.actionError', variant: 'error' });
+        if (!rethrow) {
+          handleSeatEvent({ error: caught, key: 'table.actionError', variant: 'error' });
+          return;
+        }
+        // The caller shows the refusal; the seat is whatever the server now says it is.
+        refreshSchedulerRef.current?.trigger();
+        throw caught;
       } finally {
         controlsBusyRef.current = false;
         setControlsBusy(false);
       }
     },
     [applyRoomSnapshot, handleSeatEvent]
-  );
-
-  const handleSeatBot = useCallback(
-    (position: Position) => {
-      if (!room || !canManage) return;
-      void runRoomControl(() => lobbyApi.seatBot(room.code, position));
-    },
-    [canManage, room, runRoomControl]
   );
 
   const handleKickPlayer = useCallback(
@@ -798,15 +796,11 @@ export default function GameScreen() {
         joiningName={joiningName}
         controlsBusy={controlsBusy}
         onOpenInvite={() => setShareOpen(true)}
-        onHoldSeat={(position, friend) => {
+        onSetSeat={async (position, seat) => {
           if (canManage)
-            void runRoomControl(() => lobbyApi.holdSeat(room.code, position, friend.user_id));
-        }}
-        onReleaseHold={(position) => {
-          if (canManage) void runRoomControl(() => lobbyApi.releaseHold(room.code, position));
+            await runRoomControl(() => lobbyApi.setSeat(room.code, position, seat), true);
         }}
         onKickPlayer={handleKickPlayer}
-        onSeatBot={handleSeatBot}
         notice={notice}
         onDismissNotice={dismissNotice}
         declined={declined?.roomCode === code && room.host_id === youPlayerId ? declined : null}

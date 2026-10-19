@@ -26,6 +26,8 @@ export interface SeatPickerContainerProps {
   friends: Omit<FriendPickerProps, 'compact' | 'columns'>;
   onClose: () => void;
   initialPage?: 'choices' | 'friends';
+  /** The server's refusal of the last choice, in plain words. */
+  error?: string;
 }
 
 /** Local presentation only. Selection is an intent; the caller owns its result. */
@@ -36,6 +38,7 @@ export function SeatPickerContainer({
   friends,
   onClose,
   initialPage = 'choices',
+  error,
 }: SeatPickerContainerProps) {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
@@ -102,6 +105,11 @@ export function SeatPickerContainer({
                   )}
                 </View>
               )}
+              {error ? (
+                <PidroText role="metadata" tone="danger" accessibilityRole="alert">
+                  {error}
+                </PidroText>
+              ) : null}
               <View style={[styles.body, friendPage && styles.expanded, split && styles.split]}>
                 {!friendPage && (
                   <ScrollView

@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test';
 import { normalizeRoom, roomWithReadiness, setLocale } from '@pidro/shared';
-import { assignedFriendIds, chooseFriend, chooseSeat, defaultSeats, isPractice, newTableRequest, pickerFriends, tableFooter, tableHeader } from '../../src/features/lobby/newTable';
+import { assignedFriendIds, chooseFriend, chooseSeat, defaultSeats, isPractice, newTableRequest, pickerFriends, seatChoice, seatedHuman, seatEntry, seatError, tableFooter, tableHeader } from '../../src/features/lobby/newTable';
 import { seatRow } from '../../src/features/lobby/seatRow';
 
 const maija = { user_id: 'maija', display_name: 'Maija', avatar_url: null, presence: 'online' };
@@ -58,4 +58,42 @@ it('maps server friend presence and assignment to selectable rows', () => {
   const entries = [maija, { ...maija, user_id: 'bots', presence: 'at_table', table_company: 'bots' }, { ...maija, user_id: 'busy', presence: 'at_table', table_company: 'people' }, { ...maija, user_id: 'off', presence: 'offline' }];
   expect(pickerFriends(entries).map(({ section, availability }) => [section, availability])).toEqual([['online', 'online'], ['online', 'bots'], ['busy', 'others'], ['offline', 'offline']]);
   expect(pickerFriends(entries, 'maija', ['off']).map((friend) => friend.availability)).toEqual(['selected', 'bots', 'others', 'taken']);
+  // A table without a known company may have people at it: nobody is pulled out of that game.
+  expect(pickerFriends([{ ...maija, presence: 'at_table' }]).map(({ section, availability }) => [section, availability])).toEqual([['busy', 'others']]);
+});
+
+it('sends each picker choice as one whole entry, and the draft it builds is the plan sent on Open', () => {
+  const choices = ['ai', 'open', '100', '1000', 'password'];
+  expect(choices.map(seatEntry)).toEqual(['ai', 'open', { type: 'open', min_games: 100 }, { type: 'open', min_games: 1000 }, { type: 'open', min_games: 0, password: true }]);
+  const plan = chooseSeat(chooseSeat(chooseFriend(draft(), 'seat_2', maija), 'seat_3', seatEntry('password')), 'seat_4', seatEntry('1000'));
+  expect(newTableRequest('finnish', plan).seats).toEqual({ seat_2: { type: 'held', user_id: 'maija' }, seat_3: { type: 'open', min_games: 0, password: true }, seat_4: { type: 'open', min_games: 1000 } });
+  // Back from a friend to a bot drops the invitation from the plan.
+  expect(newTableRequest('finnish', chooseSeat(plan, 'seat_2', seatEntry('ai'))).seats.seat_2).toBe('ai');
+  for (const choice of choices) expect(seatChoice(seatEntry(choice))).toBe(choice);
+  expect(seatChoice({ type: 'held', friend: maija })).toBe('friend');
+});
+
+it('reopens the picker on the choice the server has for the seat', () => {
+  const live = (seat) => ({ seat_index: 3, position: 'west', status: 'free', player: null, min_games: 0, password: false, held_for: null, ...seat });
+  expect(seatChoice(live({}))).toBe('open');
+  expect(seatChoice(live({ min_games: 100 }))).toBe('100');
+  expect(seatChoice(live({ min_games: 1000 }))).toBe('1000');
+  expect(seatChoice(live({ password: true }))).toBe('password');
+  expect(seatChoice(live({ held_for: maija }))).toBe('friend');
+  const bot = live({ status: 'occupied', player: { id: 'bot_west', username: 'Antti', is_bot: true } });
+  expect(seatChoice(bot)).toBe('ai');
+  expect(seatedHuman(bot)).toBe(false);
+  expect(seatedHuman(live({ status: 'occupied', player: { id: 'kalle', username: 'Kalle' } }))).toBe(true);
+  expect(seatedHuman(live({ held_for: maija }))).toBe(false);
+});
+
+it('says a refused seat change in plain words', () => {
+  const refused = (code) => ({ response: { status: 422, data: { errors: [{ code }] } } });
+  expect(seatError(refused('ALREADY_SEATED'))).toBe('That friend already has a seat. Choose someone else.');
+  expect(seatError(refused('SEAT_NOT_VACANT'))).toBe('Someone sat down in this seat.');
+  expect(seatError(new Error('network'))).toBe('This seat could not be changed. Please try again.');
+  try {
+    setLocale('sv');
+    expect(seatError(refused('SEAT_NOT_VACANT'))).toBe('Någon har satt sig på den här platsen.');
+  } finally { setLocale('en'); }
 });

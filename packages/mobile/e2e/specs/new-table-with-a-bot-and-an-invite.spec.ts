@@ -76,8 +76,42 @@ test('a bot and two open seats share a table link without a name form or seat bi
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByTestId('invite-window')).toBeHidden();
 
-  // The server seated the bot and kept the partner and invite seats open.
+  // After opening every choice is one seat request; the row and the reopened picker follow the server.
   const code = new URL(page.url()).pathname.split('/').pop();
+  const east = page.getByTestId('new-table-seat-east');
+  // Before the first password seat there are no digits; after it, the host's room carries them.
+  let digits = '';
+  const choice = (title: string) =>
+    picker.getByRole('radio', {
+      name: new RegExp(`^${title.replace('+', '\\+')}${title === 'With password' ? digits : ''},`),
+    });
+  for (const [title, seat, row] of [
+    ['1000+ games played', { type: 'open', min_games: 1000 }, /Waiting…$/],
+    ['With password', { type: 'open', min_games: 0, password: true }, /password \d{4}$/],
+    ['Anyone', 'open', /Waiting…$/],
+    ['Bot', 'ai', /Ready$/],
+  ] as const) {
+    await east.click();
+    const sent = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PUT' &&
+        new URL(response.url()).pathname === `/api/v1/rooms/${code}/seats/east`
+    );
+    await choice(title).click();
+    const response = await sent;
+    expect(response.request().postDataJSON()).toEqual({ seat });
+    expect(response.status()).toBe(200);
+    const answered = (await response.json()).data.room.seat_password;
+    if (answered) digits = ` ${answered}`;
+    await expect(picker).toBeHidden();
+    await expect(east).toHaveText(row);
+    await east.click();
+    await expect(choice(title)).toBeChecked();
+    await cancelPicker(page);
+  }
+  expect(digits).toMatch(/^ \d{4}$/);
+
+  // The server seated the bot and kept the partner and invite seats open.
   const { payload } = await api(`/api/v1/rooms/${code}`, { token: session.token });
   const room = payload.data.room;
   const bots = Object.values(room.positions as Record<string, string | null>).filter((id) =>

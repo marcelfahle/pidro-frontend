@@ -98,7 +98,12 @@ try {
     await vacant.click();
     const picker = page.getByTestId('seat-picker-container');
     await picker.waitFor();
-    assert.equal(await picker.getByRole('radio').count(), 1);
+    // After opening every choice is there, and the picker opens on the seat as it is.
+    assert.equal(await picker.getByRole('radio').count(), 5);
+    assert.equal(
+      await picker.getByRole('radio', { name: /^Anyone, .+/ }).getAttribute('aria-checked'),
+      'true'
+    );
     await picker.getByRole('radio', { name: /^Bot, .+/ }).waitFor();
     if (viewport.width < viewport.height && viewport.width < 600)
       await picker.getByRole('button', { name: /^A friend, .+/ }).waitFor();
@@ -109,10 +114,10 @@ try {
     await held.getByText('Invited · not online yet', { exact: true }).waitFor();
     await held.click();
     await page.getByTestId('seat-picker-container').waitFor();
-    assert.equal(await picker.getByRole('radio').count(), 1);
-    await picker.getByRole('radio', { name: /^Anyone, .+/ }).waitFor();
+    assert.equal(await picker.getByRole('radio').count(), 5);
+    assert.equal(await picker.locator('[aria-checked="true"]').count(), 0);
     if (viewport.width < viewport.height && viewport.width < 600)
-      assert.equal(await picker.getByRole('button', { name: /^A friend/ }).count(), 1);
+      assert.equal(await picker.getByRole('button', { name: /^A friend, Nora/ }).count(), 1);
     else await picker.getByTestId('friend-picker').waitFor();
 
     await page.goto(`${baseUrl}/table-dev?phase=ready-host&role=spectator`);

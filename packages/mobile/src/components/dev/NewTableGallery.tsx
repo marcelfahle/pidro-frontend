@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { FriendPlayer, Position, Room } from '@pidro/shared';
+import type { FriendPlayer, Position, Room, Seat, SeatType } from '@pidro/shared';
 import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
 import { defaultSeats, type TableDraft } from '@/features/lobby/newTable';
@@ -23,10 +23,30 @@ const friends: FriendPlayer[] = [
   },
 ];
 
+/** The fixture's server: the seat becomes the entry, as `PUT /rooms/:code/seats/:position` does. */
+function applySeat(seat: Seat, entry: SeatType): Seat {
+  const empty = { ...seat, status: 'free' as const, player: null, held_for: null };
+  if (entry === 'ai')
+    return {
+      ...empty,
+      status: 'occupied',
+      player: { id: `bot_${seat.position}`, username: 'Antti', is_bot: true, bot_persona: 'antti' },
+      min_games: 0,
+      password: false,
+    };
+  if (entry === 'open') return { ...empty, min_games: 0, password: false };
+  if (entry.type === 'held')
+    return { ...empty, held_for: friends.find((friend) => friend.user_id === entry.user_id) };
+  return { ...empty, min_games: entry.min_games, password: !!entry.password };
+}
+
 export function NewTableGallery({ fixture = 'setup' }: { fixture?: string }) {
   const [ready, setReady] = useState<Position[]>(['east', 'west', 'south']);
   const [share, setShare] = useState(false);
-  const [opened, setOpened] = useState(['opened', 'ready', 'guest', 'declined'].includes(fixture));
+  const live = fixture.startsWith('live-');
+  const [opened, setOpened] = useState(
+    live || ['opened', 'ready', 'guest', 'declined'].includes(fixture)
+  );
   const [declined, setDeclined] = useState(
     fixture === 'declined' ? { position: 'south' as const, user: friends[0] } : null
   );
@@ -84,8 +104,35 @@ export function NewTableGallery({ fixture = 'setup' }: { fixture?: string }) {
         initialDraft={draft}
         initialRuleSet={fixture === 'louisiana' ? 'louisiana' : 'finnish'}
         initialPicker={
-          fixture === 'picker' ? 'choices' : fixture === 'friends' ? 'friends' : undefined
+          fixture === 'picker' || fixture === 'live-picker' || fixture === 'live-error'
+            ? 'choices'
+            : fixture === 'friends' || fixture === 'live-friends'
+              ? 'friends'
+              : undefined
         }
+        initialSeat={fixture === 'live-friends' ? 'south' : live ? 'west' : undefined}
+        onSetSeat={async (position, entry) => {
+          await new Promise((resolve) => setTimeout(resolve, 200));
+          // Bot fails outright; anything else finds that someone sat down meanwhile.
+          if (fixture === 'live-error' && entry === 'ai') throw new Error('offline');
+          if (fixture === 'live-error') {
+            setRoom((current) => ({
+              ...current,
+              seats: current.seats?.map((seat) =>
+                seat.position === position
+                  ? { ...seat, status: 'occupied', player: { id: 'eli', username: 'Eli' } }
+                  : seat
+              ),
+            }));
+            throw { response: { status: 422, data: { errors: [{ code: 'SEAT_NOT_VACANT' }] } } };
+          }
+          setRoom((current) => ({
+            ...current,
+            seats: current.seats?.map((seat) =>
+              seat.position === position ? applySeat(seat, entry) : seat
+            ),
+          }));
+        }}
         fixtureFriends={friends}
         youPlayerId={fixture === 'guest' ? 'kalle' : 'host'}
         canManage={fixture !== 'guest'}
