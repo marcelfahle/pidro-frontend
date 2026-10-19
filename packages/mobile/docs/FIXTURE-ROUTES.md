@@ -408,8 +408,9 @@ lobby cases; other screens keep their existing dimensions.
 
 ## `/friends?fixture=<state>` and `/friends-add?fixture=<state>`
 
-Use an authenticated fixture. Friends has `empty`, `list` (all three presences),
-`added-you`, `loading`, `error`, and `classic` (seven Classic friends not here yet).
+Use an authenticated fixture. Friends has `empty`, `list` (the `Friends` board:
+Nora 1 seat open, Kalle hand 4, Hanna yesterday, Mikko last week, Sanna in September,
+Pekka asked today, Liisa 3 days ago, Eero sent 2 days ago), `added-you`, `loading`, `error`, and `classic` (seven Classic friends not here yet).
 `all` shows all five sections, with Join, Play and no-action online rows, incoming
 and sent requests, last played and Classic. Ignore/Undo, Accept and cancel work
 locally in this fixture. `friends-all` checks it at 390×844, 375×667, 844×390 and
@@ -424,9 +425,10 @@ and 768×1024, plus Swedish previews through `/ui-dev?state=friends&fixture=shee
 No sheet fixture writes to the backend. Add a friend has `recent` and `results` (all four server relation states,
 the Send your link card, and working local Add/Accept transitions). The gallery
 `/ui-dev?state=friends-add` defaults to `recent`. Empty Friends has three recent
-players and a Classic count; adding keeps those rows in place. No recent date is
-invented: the shared formatter uses played-at dates when supplied and falls back
-to presence when absent (as in these fixtures).
+players and a Classic count; adding keeps those rows in place. Recent rows carry
+`played_together_at` ("Played together today" on Add, "Today" on empty Friends);
+without it a row falls back to presence. Fixture dates count back from now, so the
+words stay the same every day; only the month form ("in September") uses a fixed date.
 The three discovery grammar cases cover 390×844, 375×667, 844×390 and 768×1024.
 The guest route opens the account sheet and continues on Friends after saving.
 

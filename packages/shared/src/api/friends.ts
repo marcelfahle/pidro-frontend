@@ -11,9 +11,12 @@ export interface FriendPlayer {
   table_company?: 'bots' | 'people';
   /** Whether a seat at their table is open to you, and as what (PID-253). */
   join_as?: 'partner' | 'opponent' | null;
+  /** When they asked you, on `added_you` (PID-260), or you asked them, on `requested` (PID-245). */
   requested_at?: string;
+  /** Only when at_table: the open seats the lobby shows, and the hand, null before the deal (PID-260). */
   table_open_seats?: number;
   table_hand?: number | null;
+  /** Your last finished game together; null if none (PID-260). Always set on recent players. */
   played_together_at?: string | null;
 }
 

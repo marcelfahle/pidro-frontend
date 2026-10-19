@@ -34,12 +34,7 @@ import {
   friendsMeta,
   linkProfileAction,
 } from '@/features/friends';
-import {
-  discoveryFixture,
-  friendsFixture,
-  FRIENDS_FIXTURE_NOW,
-  linkProfileFixture,
-} from '@/features/friends/fixtures';
+import { discoveryFixture, friendsFixture, linkProfileFixture } from '@/features/friends/fixtures';
 import { roomHasUser } from '@/features/lobby/newTable';
 import { useAuthStore } from '@/stores/auth';
 import {
@@ -351,11 +346,7 @@ export default function FriendsScreen() {
                         key={player.user_id}
                         name={player.display_name}
                         avatarUrl={player.avatar_url}
-                        row={friendRowState(
-                          player,
-                          section.relation,
-                          preview ? FRIENDS_FIXTURE_NOW : undefined
-                        )}
+                        row={friendRowState(player, section.relation)}
                         onPress={() => onOpen(player)}
                         trailing={
                           section.key === 'requests' ? (
@@ -422,6 +413,7 @@ export default function FriendsScreen() {
                 <View style={landscape && styles.column}>
                   <FriendDiscovery
                     preview={preview ? discoveryFixture('empty') : undefined}
+                    dayOnly
                     onStart={() => setDiscovering(true)}
                     onSent={setSent}
                   />

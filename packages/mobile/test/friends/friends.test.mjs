@@ -261,6 +261,63 @@ describe('Friends presentation', () => {
     );
   });
 
+  test('a recent player says when you last played together, on Add and on the empty screen', () => {
+    const now = new Date(2026, 9, 19, 9, 30);
+    const sanna = { display_name: 'Sanna', presence: 'online', relation: 'none' };
+    const on = (days, form) =>
+      discoveryRowState(
+        { ...sanna, played_together_at: new Date(2026, 9, 19 - days, 18).toISOString() },
+        form,
+        now
+      );
+    expect(on(0)).toMatchObject({ line: 'Played together today', tone: 'quiet', dot: 'online' });
+    expect(on(1).line).toBe('Played together yesterday');
+    expect(on(2).line).toBe('Played together 2 days ago');
+    expect(on(0, 'day').line).toBe('Today');
+    expect(on(1, 'day').line).toBe('Yesterday');
+    expect(on(2, 'day').line).toBe('2 days ago');
+    // A relation keeps its line; a search result has no date and keeps presence.
+    const dated = { ...sanna, played_together_at: now.toISOString() };
+    expect(discoveryRowState({ ...dated, relation: 'added_you' }, 'day', now).line).toBe(
+      'Wants to be friends'
+    );
+    expect(discoveryRowState({ ...dated, relation: 'added' }, 'together', now).line).toBe(
+      'Waiting for Sanna to accept'
+    );
+    expect(discoveryRowState({ ...dated, relation: 'friend' }, 'day', now).line).toBe(
+      'Your friend'
+    );
+    expect(discoveryRowState(sanna, 'day', now).line).toBe('Free to play');
+    expect(discoveryRowState({ ...sanna, played_together_at: null }, 'together', now).line).toBe(
+      'Free to play'
+    );
+    setLocale('sv');
+    expect(on(1).line).toBe('Spelade tillsammans igår');
+    expect(on(0, 'day').line).toBe('Idag');
+    expect(on(2, 'day').line).toBe('För 2 dagar sedan');
+  });
+
+  test('the sheet reads the row line for a friend who is not online', () => {
+    const now = new Date(2026, 9, 19, 9, 30);
+    const nora = { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'offline' };
+    expect(
+      friendSheetState(
+        { ...nora, played_together_at: new Date(2026, 9, 18, 22).toISOString() },
+        'friend',
+        now
+      ).line
+    ).toBe('Played yesterday');
+    expect(friendSheetState({ ...nora, played_together_at: null }).line).toBe('Not online');
+    expect(
+      friendSheetState({
+        ...nora,
+        presence: 'at_table',
+        join_as: 'partner',
+        table_open_seats: 2,
+      }).line
+    ).toBe('At a table · partner seat free');
+  });
+
   test('your link message uses your slug, with an app-home fallback and the current language', () => {
     expect(friendLinkMessage('sanna-7KQ')).toEqual({
       url: 'https://pidro.online/play/sanna-7KQ',

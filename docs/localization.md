@@ -149,6 +149,12 @@ settings persistence, focus and document language are tested by
 grammar, production export, real backend games and account journeys. The PR
 records exact final run/results and only intentionally refreshed baselines.
 
+PID-260 Swedish review (not native-speaker approved): **Spelade tillsammans %{when}**
+on Add a friend, the bare capitalised day on empty Friends (**Idag**, **Igår**,
+**För 2 dagar sedan**), and the PID-242 lines that now show with server facts:
+**Vid ett bord · 1 ledig plats** / **2 lediga platser**, **Vid ett bord · giv 4**,
+**Spelade igår**, **Spelade i september**, **Frågade idag**, **Frågade för 3 dagar sedan**.
+
 ## PID-249 Swedish review — pending native review
 
 All new `friend_sheet` lines below await native-speaker review; no approval is claimed.
