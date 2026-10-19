@@ -134,7 +134,7 @@ export function liveFriendNotices(
   lists: FriendLists,
   seats: SeatInvitation[],
 ): FriendNotice[] {
-  return queue.flatMap((notice) => {
+  return queue.flatMap((notice): FriendNotice[] => {
     if (notice.kind === "request")
       return lists.added_you.some((p) => p.user_id === notice.player.user_id)
         ? [notice]
