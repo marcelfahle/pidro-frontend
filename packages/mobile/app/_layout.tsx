@@ -63,6 +63,7 @@ export default function RootLayout() {
           <Stack.Screen name="device-settings" />
           <Stack.Screen name="join-code" />
           <Stack.Screen name="join/[code]" />
+          <Stack.Screen name="play/[slug]" />
           <Stack.Screen name="(auth)" />
           <Stack.Protected guard={canAccessApp}>
             <Stack.Screen name="(shell)" />

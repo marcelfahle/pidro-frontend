@@ -100,6 +100,9 @@ and **Lägg till dem du tycker om att spela med. När de tackat ja ser du när d
 online och kan bjuda in dem till ditt bord.** The existing Send your link card's
 Swedish title, body and action also need review in their new screen context.
 
+PID-247 Swedish review (not native-speaker approved): **Du och %{name} är vänner nu.**,
+the notice when someone signs up through your link or you sign up through theirs.
+
 `expo-localization` was already installed; no new native dependency. App config
 declares en/sv support and localized iOS photo-library permission copy. Camera and
 microphone permission requests remain disabled. These generated native resources

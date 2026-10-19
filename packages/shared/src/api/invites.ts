@@ -1,7 +1,7 @@
 import type { ApiClient } from './client';
 import type { Position, PositionPreference, Room, RoomConfig } from '../types/lobby';
 import type { InviteArrivalSource } from '../utils/inviteLink';
-import { normalizeInviteCode } from '../utils/inviteLink';
+import { normalizeFriendSlug, normalizeInviteCode } from '../utils/inviteLink';
 import { normalizeRoom } from '../utils/rooms';
 
 export type InvitePlatform = 'ios' | 'android' | 'web';
@@ -81,8 +81,30 @@ interface RedeemEnvelope {
   data: RedeemInviteResponse;
 }
 
+/** The player whose own link was opened before the install. */
+export interface DeferredFriend {
+  slug: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+export interface DeferredMatch {
+  code: string | null;
+  friend: DeferredFriend | null;
+}
+
 interface DeferredInviteEnvelope {
-  data: { invite: { code: string } | null };
+  data: { invite: { code: string } | null; friend?: Partial<DeferredFriend> | null };
+}
+
+function deferredFriend(value: Partial<DeferredFriend> | null | undefined): DeferredFriend | null {
+  const slug = normalizeFriendSlug(typeof value?.slug === 'string' ? value.slug : '');
+  if (!slug || typeof value?.display_name !== 'string') return null;
+  return {
+    slug,
+    display_name: value.display_name,
+    avatar_url: typeof value.avatar_url === 'string' ? value.avatar_url : null,
+  };
 }
 
 export function createInvitesApi(api: ApiClient) {
@@ -95,11 +117,14 @@ export function createInvitesApi(api: ApiClient) {
     resolveDeferred: async (
       request: DeferredInviteRequest,
       signal?: AbortSignal,
-    ): Promise<string | null> => {
+    ): Promise<DeferredMatch> => {
       const response = await api.post<DeferredInviteEnvelope>('/api/v1/invites/deferred', request, {
         signal,
       });
-      return normalizeInviteCode(response.data.data.invite?.code ?? '');
+      return {
+        code: normalizeInviteCode(response.data.data.invite?.code ?? ''),
+        friend: deferredFriend(response.data.data.friend),
+      };
     },
 
     mint: async (roomCode: string, request: MintInviteRequest): Promise<Invite> => {

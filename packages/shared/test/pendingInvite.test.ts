@@ -1,5 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import type { PersistStorage } from "../src/platform/types";
+import { createPendingFriendLinkStore } from "../src/stores/pendingFriendLink";
 import { createPendingInviteStore } from "../src/stores/pendingInvite";
 
 function memoryStorage(): PersistStorage {
@@ -121,5 +122,47 @@ describe("pending invite store", () => {
     await store.persist.rehydrate();
 
     expect(store.getState().pendingInvite).toBeNull();
+  });
+});
+
+describe("pending friend link store", () => {
+  it("holds the latest normalized slug and clears explicitly", () => {
+    const store = createPendingFriendLinkStore({ storage: memoryStorage() });
+    store.getState().setPendingFriendLink("Bertil", " Bertil ");
+    expect(store.getState().pendingFriendLink).toMatchObject({
+      slug: "bertil",
+      displayName: "Bertil",
+    });
+
+    store.getState().setPendingFriendLink("nora");
+    expect(store.getState().pendingFriendLink).toMatchObject({ slug: "nora", displayName: null });
+
+    store.getState().setPendingFriendLink("../lobby");
+    expect(store.getState().pendingFriendLink?.slug).toBe("nora");
+
+    store.getState().clearPendingFriendLink();
+    expect(store.getState().pendingFriendLink).toBeNull();
+  });
+
+  it("sanitizes persisted data and drops a malformed slug", async () => {
+    const storage = memoryStorage();
+    const persist = (pendingFriendLink: unknown) =>
+      storage.setItem(
+        "friend-test",
+        JSON.stringify({ state: { pendingFriendLink }, version: 0 }),
+      );
+
+    persist({ slug: "Bertil", displayName: 7, receivedAt: "soon" });
+    const store = createPendingFriendLinkStore({ storage, storageKey: "friend-test" });
+    await store.persist.rehydrate();
+    const link = store.getState().pendingFriendLink;
+    expect(link).toMatchObject({ slug: "bertil", displayName: null });
+    expect(Number.isFinite(link?.receivedAt)).toBe(true);
+
+    for (const slug of ["bertil/../lobby", "b", 42]) {
+      persist({ slug, displayName: "Bertil", receivedAt: 1 });
+      await store.persist.rehydrate();
+      expect(store.getState().pendingFriendLink).toBeNull();
+    }
   });
 });

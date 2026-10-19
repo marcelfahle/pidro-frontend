@@ -13,6 +13,8 @@ import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import type { AuthProvider, ProviderLoginResponse } from '@/api/auth';
 import { guestSaveFailure, runGuestSave, type GuestSaveResult } from '@/features/auth/saveGuest';
 import { storedAgeTerms } from '@/features/onboarding/ageTerms';
+import { queueLinkedFriend } from '@/stores/friends';
+import { pendingFriendSlug } from '@/stores/pendingFriendLink';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import { useTranslation, type TranslationKey, type TranslationValues } from '@/i18n';
 
@@ -105,13 +107,14 @@ export function useAuth() {
             ? { type: 'identity_token', token: credential.token }
             : credential.credential,
           installId,
-          storedAgeTerms()
+          { ...storedAgeTerms(), ...pendingFriendSlug() }
         );
         if (outcome.status === 'signed_in') {
           setSession({
             accessToken: outcome.session.token,
             user: outcome.session.user,
           });
+          queueLinkedFriend(outcome.session.linked_friend);
         }
         return outcome;
       } catch (e) {
@@ -151,8 +154,12 @@ export function useAuth() {
       setError(null);
 
       try {
-        const response = await authApi.register(displayName, email, password, storedAgeTerms());
+        const response = await authApi.register(displayName, email, password, {
+          ...storedAgeTerms(),
+          ...pendingFriendSlug(),
+        });
         setSession({ accessToken: response.token, user: response.user });
+        queueLinkedFriend(response.linked_friend);
         return { ok: true };
       } catch (e) {
         if (e instanceof AxiosError) {
@@ -187,11 +194,17 @@ export function useAuth() {
           email,
           password,
           upgrade: (name, accountEmail, accountPassword) =>
-            authApi.upgradeGuest(name, accountEmail, accountPassword, storedAgeTerms()),
+            authApi.upgradeGuest(name, accountEmail, accountPassword, {
+              ...storedAgeTerms(),
+              ...pendingFriendSlug(),
+            }),
           login: (identifier, accountPassword) =>
             authApi.login(identifier, accountPassword, storedAgeTerms()),
           getSession: useAuthStore.getState,
-          install: (response) => setSession({ accessToken: response.token, user: response.user }),
+          install: (response) => {
+            setSession({ accessToken: response.token, user: response.user });
+            queueLinkedFriend(response.linked_friend);
+          },
           setSessionPreservation: (preserve) =>
             useAuthStore.getState().setPreserveSessionOnUnauthorized(preserve),
         });

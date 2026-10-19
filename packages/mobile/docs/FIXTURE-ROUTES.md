@@ -260,11 +260,13 @@ areas or keyboard avoidance; responsive layout refinements belong to PID-257.
 
 ## Shell friend notices
 
-`/home?fixture=friend-request|friend-accepted|friend-seat|friend-queue|friend-too-late` shows the
+`/home?fixture=friend-request|friend-accepted|friend-linked|friend-seat|friend-queue|friend-too-late` shows the
 real shell notice and Friends badge without a backend. Accepted and too late stay visible in
 the fixture for capture; live ones disappear after four seconds. Too late (PID-254)
 replaces a seat notice whose seat went because the game started, the host let it go or
 the room closed, and after a refused Sit down; it has no buttons and no badge.
+Linked (PID-247) is the accepted notice for a friendship someone's own link made:
+"You and Nora are friends now.", with no buttons.
 On a seat notice Not now declines the seat for real. The queue
 fixture starts with a seat, then a request, then accepted. Not now closes only the
 prompt, keeping the badge. These fixtures also work on other shell tabs. Grammar
@@ -433,6 +435,12 @@ Grammar cases: `friends-empty`, `friends-list`, `friends-added-you`,
 `friends-block`, `friends-recent`, `friends-results`, `friends-guest`, and
 `friends-classic`. The Classic case checks the count below the list and the app-share
 payload, including share failure and retry; it never opens a real share sheet.
+Every Friends state ends with the Send your link card (PID-247); `friends-classic`
+checks it sits below the Classic card and shares the player's own link.
+
+`link-profile` opens Nora's profile as her own link (`/play/<slug>`) opens it for
+a signed-in player who is not her friend yet: Add, then Sent, without the backend.
+Grammar case `friends-link-profile` covers 390×844, 375×667, 844×390 and 768×1024.
 
 ## `/blocked-players?fixture=<state>`
 

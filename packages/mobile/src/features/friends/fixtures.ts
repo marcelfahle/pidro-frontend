@@ -1,4 +1,10 @@
-import type { BlockedPlayers, FriendLists, FriendResult, FriendNotice } from '@pidro/shared';
+import type {
+  BlockedPlayers,
+  FriendLists,
+  FriendNotice,
+  FriendPlayer,
+  FriendResult,
+} from '@pidro/shared';
 
 export const FRIENDS_FIXTURE_NOW = new Date('2026-10-19T12:00:00Z');
 
@@ -58,9 +64,12 @@ export function friendsFixture(value?: string): FriendLists | undefined {
   }
   if (
     !__DEV__ ||
-    !['empty', 'list', 'all', 'added-you', 'loading', 'error', 'classic'].includes(value ?? '')
+    !['empty', 'list', 'all', 'added-you', 'loading', 'error', 'classic', 'link-profile'].includes(
+      value ?? ''
+    )
   )
     return;
+  if (value === 'link-profile') return { friends: players.slice(1, 3), added_you: [] };
   if (value === 'all')
     return {
       friends: [
@@ -93,6 +102,11 @@ export function friendsFixture(value?: string): FriendLists | undefined {
       ? { classic: { not_here: value === 'empty' ? 38 : 7 } }
       : {}),
   };
+}
+
+/** Nora's profile as her link opens it for someone who is not her friend yet. */
+export function linkProfileFixture(value?: string): FriendPlayer | null {
+  return __DEV__ && value === 'link-profile' ? players[0] : null;
 }
 
 export function discoveryFixture(value?: string): FriendResult[] | undefined {
@@ -132,6 +146,7 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
     ![
       'friend-request',
       'friend-accepted',
+      'friend-linked',
       'friend-seat',
       'friend-queue',
       'friend-too-late',
@@ -157,6 +172,7 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
     },
   };
   if (value === 'friend-queue') return [accepted, request, seat];
+  if (value === 'friend-linked') return [{ ...accepted, source: 'link' }];
   if (value === 'friend-too-late') return [{ kind: 'too_late', invitation: seat.invitation }];
   return [value === 'friend-seat' ? seat : value === 'friend-accepted' ? accepted : request];
 }

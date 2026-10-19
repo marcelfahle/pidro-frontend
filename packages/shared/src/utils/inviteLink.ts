@@ -6,6 +6,7 @@ export type InviteArrivalSource = (typeof INVITE_ARRIVAL_SOURCES)[number];
 const INVITE_HOSTS = new Set(['www.pidro.online', 'pidro.online']);
 const INVITE_SCHEMES = new Set(['pidro-mobile:', 'pidro-mobile-dev:', 'pidro-mobile-beta:']);
 const INVITE_CODE_PATTERN = /^[0-9A-HJKMNP-TV-Z]{8}$/;
+const FRIEND_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/;
 
 export interface ParsedInviteLink {
   code: string;
@@ -60,6 +61,35 @@ export function parseInviteLink(value: string): ParsedInviteLink | null {
 
     const source = url.searchParams.get('s') ?? url.searchParams.get('source');
     return isInviteSource(source) ? { code, source } : { code };
+  } catch {
+    return null;
+  }
+}
+
+/** A player's share slug, as in `pidro.online/play/<slug>`, or null. */
+export function normalizeFriendSlug(value: string): string | null {
+  const slug = value.trim().toLowerCase();
+  return FRIEND_SLUG_PATTERN.test(slug) ? slug : null;
+}
+
+/** The slug of a player's own link (`/play/<slug>`), from the web or the app scheme. */
+export function parseFriendLink(value: string): string | null {
+  try {
+    const relative = value.startsWith('/');
+    const url = new URL(value, 'https://www.pidro.online');
+    if (url.username || url.password) return null;
+    const path = url.pathname.split('/');
+    let rawSlug: string | undefined;
+
+    if (relative || url.protocol === 'https:') {
+      if (!INVITE_HOSTS.has(url.hostname)) return null;
+      if (path.length === 3 && path[1] === 'play') rawSlug = path[2];
+    } else if (INVITE_SCHEMES.has(url.protocol)) {
+      if (url.hostname === 'play' && path.length === 2) rawSlug = path[1];
+      if (!url.hostname && path.length === 3 && path[1] === 'play') rawSlug = path[2];
+    }
+
+    return rawSlug ? normalizeFriendSlug(rawSlug) : null;
   } catch {
     return null;
   }

@@ -1,9 +1,11 @@
 import {
   t,
   formatNumber,
+  type FriendLinkRequest,
   type FriendLists,
   type FriendPlayer,
   type FriendResult,
+  type PendingFriendLink,
   type RelativePlayerView,
 } from '@pidro/shared';
 import { relativeDay } from '../relativeDay';
@@ -136,6 +138,21 @@ export type FriendRelation = FriendResult['relation'] | 'new_friend';
 export function friendLinkMessage(slug?: string | null) {
   const url = slug ? `https://pidro.online/play/${slug}` : 'https://pidro.online';
   return { url, message: t('friends.share_link_message', { url }) };
+}
+
+/** `friend_slug` for a sign-up, only while someone's link is pending; otherwise nothing. */
+export function friendLinkRequest(link: PendingFriendLink | null): FriendLinkRequest {
+  return link ? { friend_slug: link.slug } : {};
+}
+
+/** What a profile opened from someone's link offers: Add, Sent, or nothing for a friend or yourself. */
+export function linkProfileAction(
+  lists: Pick<FriendLists, 'friends' | 'requested'>,
+  playerId: string,
+  userId: string | undefined
+): 'add' | 'sent' | null {
+  if (playerId === userId || lists.friends.some((p) => p.user_id === playerId)) return null;
+  return lists.requested?.some((p) => p.user_id === playerId) ? 'sent' : 'add';
 }
 
 export function discoveryRowState(player: FriendResult): FriendRowState {

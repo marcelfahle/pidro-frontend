@@ -1,8 +1,14 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { localizedError, type FriendLists, type FriendPlayer } from '@pidro/shared';
+import {
+  localizedError,
+  normalizeFriendSlug,
+  type FriendLists,
+  type FriendPlayer,
+} from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
+import { profileApi } from '@/api/profile';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { FriendDiscovery } from '@/components/friends/FriendDiscovery';
@@ -22,11 +28,18 @@ import { PidroFonts, PidroSpacing } from '@/design/tokens';
 import {
   classicFriendsMessage,
   friendAction,
+  friendLinkMessage,
   friendRowState,
   friendSections,
   friendsMeta,
+  linkProfileAction,
 } from '@/features/friends';
-import { discoveryFixture, friendsFixture, FRIENDS_FIXTURE_NOW } from '@/features/friends/fixtures';
+import {
+  discoveryFixture,
+  friendsFixture,
+  FRIENDS_FIXTURE_NOW,
+  linkProfileFixture,
+} from '@/features/friends/fixtures';
 import { roomHasUser } from '@/features/lobby/newTable';
 import { useAuthStore } from '@/stores/auth';
 import {
@@ -54,11 +67,15 @@ function LiveFriends() {
 export default function FriendsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { fixture } = useLocalSearchParams<{ fixture?: string }>();
+  const { fixture, player: linkSlug } = useLocalSearchParams<{
+    fixture?: string;
+    player?: string;
+  }>();
   const preview = friendsFixture(fixture);
   const [previewLists, setPreviewLists] = useState<FriendLists>();
   const store = useFriendsStore();
-  const guest = useAuthStore((state) => Boolean(state.user?.guest));
+  const user = useAuthStore((state) => state.user);
+  const guest = Boolean(user?.guest);
   const clearance = usePillClearance();
   const noticeInset = useNoticeInset();
   const [accountOpen, setAccountOpen] = useState(guest);
@@ -66,11 +83,15 @@ export default function FriendsScreen() {
     fixture?.startsWith('sheet-') && preview ? (preview.friends[0] ?? preview.added_you[0]) : null
   );
   const [fullProfile, setFullProfile] = useState<FriendPlayer | null>(null);
+  // Someone's own link, opened while signed in: their profile with Add.
+  const linkPreview = linkProfileFixture(fixture);
+  const [linked, setLinked] = useState<string | null>(linkPreview?.user_id ?? null);
   const [pending, setPending] = useState<string | null>(null);
   const busy = useRef(false);
   const [hidden, setHidden] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<unknown>(null);
   const [shareError, setShareError] = useState(false);
+  const [linkShareError, setLinkShareError] = useState(false);
   const [discovering, setDiscovering] = useState(false);
   const [sent, setSent] = useState<string | null>(null);
   const { width, height } = useWindowDimensions();
@@ -96,6 +117,27 @@ export default function FriendsScreen() {
       setSent(null);
     }, [])
   );
+
+  useEffect(() => {
+    const slug = normalizeFriendSlug(linkSlug ?? '');
+    if (!slug || preview) return;
+    let active = true;
+    profileApi
+      .getPlayerBySlug(slug)
+      .then((player) => {
+        if (active) setLinked(player.user_id);
+      })
+      .catch(() => undefined)
+      // Cleared once answered: clearing it earlier reruns this effect and drops the answer.
+      .finally(() => {
+        if (active) router.setParams({ player: undefined });
+      });
+    return () => {
+      active = false;
+    };
+    // The fixture never changes for the route's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [linkSlug]);
 
   const classicCard = classicMessage ? (
     <View testID="friends-classic-count">
@@ -124,6 +166,31 @@ export default function FriendsScreen() {
       ) : null}
     </View>
   ) : null;
+  const linkCard = (
+    <View testID="friends-link-card">
+      <InfoCard
+        title={t('friends.not_on_pidro')}
+        body={t('friends.not_on_pidro_body')}
+        action={{
+          label: t('friends.send_link'),
+          icon: 'link',
+          onPress: async () => {
+            setLinkShareError(false);
+            try {
+              await Share.share({ message: friendLinkMessage(user?.share_slug).message });
+            } catch {
+              setLinkShareError(true);
+            }
+          },
+        }}
+      />
+      {linkShareError ? (
+        <PidroText role="body" tone="danger" accessibilityRole="alert">
+          {t('invite.host.shareError')}
+        </PidroText>
+      ) : null}
+    </View>
+  );
   const selectedPlayer = selected
     ? ([...lists.friends, ...lists.added_you, ...(lists.requested ?? [])].find(
         (player) => player.user_id === selected.user_id
@@ -350,6 +417,7 @@ export default function FriendsScreen() {
                     {t('friends.empty_help')}
                   </PidroText>
                   {landscape ? classicCard : null}
+                  {landscape ? linkCard : null}
                 </View>
                 <View style={landscape && styles.column}>
                   <FriendDiscovery
@@ -361,6 +429,7 @@ export default function FriendsScreen() {
               </View>
             ) : null}
             {!empty || !landscape ? classicCard : null}
+            {!empty || !landscape ? linkCard : null}
             {selectedPlayer ? (
               <FriendSheet
                 key={selectedPlayer.user_id}
@@ -411,6 +480,16 @@ export default function FriendsScreen() {
                 }}
               />
             ) : null}
+            <PlayerProfileModal
+              playerId={linked}
+              add={linked ? linkProfileAction(lists, linked, user?.id) : null}
+              onClose={() => setLinked(null)}
+              fixture={
+                linkPreview
+                  ? { ...linkPreview, username: linkPreview.display_name, bio: null, classic: null }
+                  : undefined
+              }
+            />
             <PlayerProfileModal
               playerId={fullProfile?.user_id ?? null}
               hideActions

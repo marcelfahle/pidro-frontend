@@ -4,7 +4,7 @@ const seatRowCases = ['setup', 'setup-open', 'opened', 'opened-more'].map(
 const seatPickerCases = ['choices', 'friends', 'many', 'empty', 'sv'].map(
   (fixture) => `ui-seat-picker-${fixture}`
 );
-const friendNoticeCases = ['request', 'accepted', 'seat', 'queue', 'too-late'].map(
+const friendNoticeCases = ['request', 'accepted', 'linked', 'seat', 'queue', 'too-late'].map(
   (kind) => `friend-notice-${kind}`
 );
 const friendSheetCases = [
@@ -63,6 +63,8 @@ export const UI_VIEWPORTS = [
     cases: [
       'classic-login',
       'friends-all',
+      'friends-classic',
+      'friends-link-profile',
       'friends-empty',
       'friends-recent',
       'friends-results',
@@ -146,6 +148,8 @@ export const UI_VIEWPORTS = [
     cases: [
       ...seatPickerCases,
       'friends-all',
+      'friends-classic',
+      'friends-link-profile',
       'friends-empty',
       'friends-recent',
       'friends-results',

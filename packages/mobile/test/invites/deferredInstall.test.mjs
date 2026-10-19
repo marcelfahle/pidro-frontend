@@ -36,16 +36,31 @@ function dependencies(overrides = {}) {
     getInstallId: async () => 'install-1',
     resolve: async (request) => {
       calls.push({ request });
-      return '7KQ4M2XB';
+      return { code: '7KQ4M2XB', friend: null };
     },
     ...overrides,
   };
   return { calls, deps, storage };
 }
 
+const bertil = { slug: 'bertil', display_name: 'Bertil', avatar_url: null };
+
 describe('Play Install Referrer parsing', () => {
   it('accepts exactly one normalized invite key alongside campaign fields', () => {
-    expect(parsePlayInstallReferrer('utm_source=share&invite=7kq4-m2xb')).toBe('7KQ4M2XB');
+    expect(parsePlayInstallReferrer('utm_source=share&invite=7kq4-m2xb')).toBe('invite=7KQ4M2XB');
+  });
+
+  it("accepts exactly one friend key: a player's own link", () => {
+    expect(parsePlayInstallReferrer('utm_source=link&friend=Bertil-2')).toBe('friend=bertil-2');
+    for (const value of [
+      'friend=bertil&friend=bertil',
+      'friend=bertil&invite=7KQ4M2XB',
+      'friend=b',
+      'friend=../lobby',
+      'friend=-bertil',
+    ]) {
+      expect(parsePlayInstallReferrer(value)).toBeNull();
+    }
   });
 
   it('rejects duplicates, malformed values, URLs, and unrelated keys', () => {
@@ -82,7 +97,10 @@ describe('deferred install orchestration', () => {
   it('matches a fresh iOS install without ever reading the Play referrer', async () => {
     const { calls, deps } = dependencies();
 
-    expect(await resolveDeferredInstall({ pendingInvite: null, ...deps })).toBe('7KQ4M2XB');
+    expect(await resolveDeferredInstall({ pendingInvite: null, ...deps })).toEqual({
+      code: '7KQ4M2XB',
+      friend: null,
+    });
     expect(calls).toEqual([
       {
         request: {
@@ -104,7 +122,10 @@ describe('deferred install orchestration', () => {
       getPlayReferrer: async () => 'utm_source=share&invite=7kq4-m2xb',
     });
 
-    expect(await resolveDeferredInstall({ pendingInvite: null, ...deps })).toBe('7KQ4M2XB');
+    expect(await resolveDeferredInstall({ pendingInvite: null, ...deps })).toEqual({
+      code: '7KQ4M2XB',
+      friend: null,
+    });
     expect(calls).toEqual([
       {
         request: {
@@ -114,6 +135,37 @@ describe('deferred install orchestration', () => {
         },
       },
     ]);
+  });
+
+  it("sends an Android friend referrer and hands back the server's friend", async () => {
+    const { calls, deps } = dependencies({
+      platform: 'android',
+      getInstallationTime: async () => new Date('2026-09-03T10:00:00Z'),
+      getPlayReferrer: async () => 'friend=bertil',
+      resolve: async (request) => {
+        calls.push({ request });
+        return { code: null, friend: bertil };
+      },
+    });
+
+    expect(await resolveDeferredInstall({ pendingInvite: null, ...deps })).toEqual({
+      code: null,
+      friend: bertil,
+    });
+    expect(calls).toEqual([
+      { request: { platform: 'android', install_id: 'install-1', referrer: 'friend=bertil' } },
+    ]);
+  });
+
+  it('answers with a fingerprint friend, and nothing when the server matched neither', async () => {
+    const friend = dependencies({ resolve: async () => ({ code: null, friend: bertil }) });
+    expect(await resolveDeferredInstall({ pendingInvite: null, ...friend.deps })).toEqual({
+      code: null,
+      friend: bertil,
+    });
+
+    const neither = dependencies({ resolve: async () => ({ code: null, friend: null }) });
+    expect(await resolveDeferredInstall({ pendingInvite: null, ...neither.deps })).toBeNull();
   });
 
   it('skips old or unknown-age installs without an Android referrer', async () => {
@@ -146,7 +198,7 @@ describe('deferred install orchestration', () => {
       await resolveDeferredInstall({
         pendingInvite: null,
         ...deps,
-        resolve: async () => 'N4RT8VW2',
+        resolve: async () => ({ code: 'N4RT8VW2', friend: null }),
       })
     ).toBeNull();
   });

@@ -121,7 +121,11 @@ export function FriendNoticeHost({
         testID="friend-notice"
         variant={notice.kind}
         title={t(
-          notice.kind === 'seat' ? 'seat_invitation.waiting' : `friend_notice.${notice.kind}`,
+          notice.kind === 'seat'
+            ? 'seat_invitation.waiting'
+            : notice.kind === 'accepted' && notice.source === 'link'
+              ? 'friend_notice.linked'
+              : `friend_notice.${notice.kind}`,
           { name }
         )}
         body={body}

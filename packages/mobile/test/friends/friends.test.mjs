@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { localizedError, setLocale, useFriendsStore } from '@pidro/shared';
+import {
+  createAuthApi,
+  createClassicApi,
+  localizedError,
+  setLocale,
+  useFriendsStore,
+} from '@pidro/shared';
 import {
   canSearch,
   canViewPlayer,
@@ -12,6 +18,8 @@ import {
   presenceLabel,
   discoveryRowState,
   friendLinkMessage,
+  friendLinkRequest,
+  linkProfileAction,
 } from '../../src/features/friends/index.ts';
 
 afterEach(() => {
@@ -276,5 +284,69 @@ describe('Friends presentation', () => {
     expect(canSearch('a\u0308or')).toBe(true);
     expect(canSearch('😀a')).toBe(false);
     expect(canSearch('ﬃ')).toBe(true);
+  });
+});
+
+describe("Someone's own link", () => {
+  const ageTerms = { age_band: '18_plus', terms_version: '1' };
+  const bertil = { slug: 'bertil', displayName: 'Bertil', receivedAt: 1 };
+
+  async function bodies(link) {
+    const calls = [];
+    const api = {
+      post: async (path, body) => {
+        calls.push([path, body]);
+        return { status: 200, data: { data: { token: 't', user: { id: 'u' } } } };
+      },
+    };
+    const extras = { ...ageTerms, ...friendLinkRequest(link) };
+    const auth = createAuthApi(api);
+    await auth.register('Sanna', 'sanna@example.com', 'secret123', extras);
+    await auth.upgradeGuest('Sanna', 'sanna@example.com', 'secret123', extras);
+    await auth.providerLogin('apple', { type: 'identity_token', token: 'apple' }, 'i-1', extras);
+    await createClassicApi(api).claim({ ticket: 'tk', install_id: 'i-1', ...extras });
+    return calls;
+  }
+
+  test('sign-up bodies carry friend_slug only while a link is pending', async () => {
+    expect(friendLinkRequest(null)).toEqual({});
+    expect(await bodies(null)).toEqual([
+      [
+        '/api/v1/auth/register',
+        {
+          user: { username: 'Sanna', email: 'sanna@example.com', password: 'secret123' },
+          ...ageTerms,
+        },
+      ],
+      [
+        '/api/v1/auth/upgrade',
+        { username: 'Sanna', email: 'sanna@example.com', password: 'secret123', ...ageTerms },
+      ],
+      ['/api/v1/auth/apple', { identity_token: 'apple', install_id: 'i-1', ...ageTerms }],
+      ['/api/v1/classic/claim', { ticket: 'tk', install_id: 'i-1', ...ageTerms }],
+    ]);
+
+    const linked = await bodies(bertil);
+    expect(linked.map(([, body]) => body.friend_slug)).toEqual([
+      'bertil',
+      'bertil',
+      'bertil',
+      'bertil',
+    ]);
+    expect(linked.map(([, body]) => JSON.stringify(body))).toEqual(
+      (await bodies(null)).map(([, body]) => JSON.stringify({ ...body, friend_slug: 'bertil' }))
+    );
+  });
+
+  test('the profile a link opens offers Add, Sent, or nothing for a friend or yourself', () => {
+    const lists = {
+      friends: [{ user_id: 'nora' }],
+      requested: [{ user_id: 'kalle' }],
+    };
+    expect(linkProfileAction(lists, 'bertil', 'me')).toBe('add');
+    expect(linkProfileAction(lists, 'kalle', 'me')).toBe('sent');
+    expect(linkProfileAction(lists, 'nora', 'me')).toBeNull();
+    expect(linkProfileAction(lists, 'me', 'me')).toBeNull();
+    expect(linkProfileAction({ friends: [] }, 'bertil', 'me')).toBe('add');
   });
 });

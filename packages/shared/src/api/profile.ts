@@ -73,6 +73,13 @@ export function createProfileApi(api: ApiClient) {
       );
       return response.data.data;
     },
+    /** The player behind `pidro.online/play/<slug>`. */
+    getPlayerBySlug: async (slug: string): Promise<ProfileIdentity> => {
+      const response = await api.get<{ data: ProfileIdentity }>(
+        `/api/v1/players/by-slug/${encodeURIComponent(slug)}`
+      );
+      return response.data.data;
+    },
     updateBio: async (draft: string) => {
       const error = bioError(draft);
       if (error) throw new Error(error);
