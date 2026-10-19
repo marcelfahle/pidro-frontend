@@ -29,6 +29,34 @@ const players: FriendResult[] = [
 
 export function friendsFixture(value?: string): FriendLists | undefined {
   if (
+    __DEV__ &&
+    [
+      'sheet-partner',
+      'sheet-opponent',
+      'sheet-full',
+      'sheet-online',
+      'sheet-bots',
+      'sheet-offline',
+      'sheet-request',
+      'sheet-remove',
+      'sheet-block',
+    ].includes(value ?? '')
+  ) {
+    const presence =
+      value === 'sheet-offline' ? 'offline' : value === 'sheet-online' ? 'online' : 'at_table';
+    const player: FriendResult = {
+      ...players[0],
+      presence,
+      table_company: value === 'sheet-bots' ? 'bots' : undefined,
+      join_as:
+        value === 'sheet-partner' ? 'partner' : value === 'sheet-opponent' ? 'opponent' : null,
+    };
+    return {
+      friends: value === 'sheet-request' ? [] : [player],
+      added_you: value === 'sheet-request' ? [player] : [],
+    };
+  }
+  if (
     !__DEV__ ||
     !['empty', 'list', 'all', 'added-you', 'loading', 'error', 'classic'].includes(value ?? '')
   )

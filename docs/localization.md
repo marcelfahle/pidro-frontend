@@ -137,3 +137,28 @@ settings persistence, focus and document language are tested by
 `e2e/specs/settings-language.spec.ts`. Full Frontend CI additionally covers UI
 grammar, production export, real backend games and account journeys. The PR
 records exact final run/results and only intentionally refreshed baselines.
+
+## PID-249 Swedish review — pending native review
+
+All new `friend_sheet` lines below await native-speaker review; no approval is claimed.
+
+| Key | Swedish |
+| --- | --- |
+| `friend_sheet.partner_status` | Vid ett bord · partnerplats ledig |
+| `friend_sheet.opponent_status` | Vid ett bord · motståndarplats ledig |
+| `friend_sheet.full_status` | Vid ett bord · inga lediga platser |
+| `friend_sheet.join` | Gå med vid %{name}s bord |
+| `friend_sheet.partner_hint` | Du spelar som partner till %{name}. |
+| `friend_sheet.opponent_hint` | Du spelar mot %{name}. |
+| `friend_sheet.play` | Spela tillsammans |
+| `friend_sheet.online_hint` | Startar ett nytt bord med %{name} som din partner. |
+| `friend_sheet.offline_hint` | Din inbjudan väntar på %{name} i Pidro. |
+| `friend_sheet.profile` | Visa hela profilen |
+| `friend_sheet.remove` | Ta bort från vänner |
+| `friend_sheet.block` | Blockera %{name} |
+| `friend_sheet.remove_title` | Ta bort %{name} från dina vänner? |
+| `friend_sheet.remove_body` | Ni tas bort från varandras vänlistor. %{name} får inget meddelande. |
+| `friend_sheet.remove_confirm` | Ta bort |
+| `friend_sheet.keep` | Behåll %{name} |
+| `friend_sheet.block_title` | Blockera %{name}? |
+| `friend_sheet.block_body` | %{name} kan inte hitta dig, lägga till dig eller sätta sig vid dina bord, och ni är inte längre vänner. Du kan avblockera %{name} när som helst i Profil. |

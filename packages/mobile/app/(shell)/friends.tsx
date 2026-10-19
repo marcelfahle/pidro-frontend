@@ -6,6 +6,7 @@ import { friendsApi } from '@/api/friends';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { FriendRow } from '@/components/friends/FriendRow';
+import { FriendSheet } from '@/components/friends/FriendSheet';
 import { InfoCard } from '@/components/friends/InfoCard';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { useNoticeInset, usePillClearance } from '@/components/shell/TabPill';
@@ -29,6 +30,7 @@ import { roomHasUser } from '@/features/lobby/newTable';
 import { useAuthStore } from '@/stores/auth';
 import {
   addFriend,
+  blockPlayer,
   ignoreFriend,
   refreshFriends,
   removeFriend,
@@ -59,7 +61,10 @@ export default function FriendsScreen() {
   const clearance = usePillClearance();
   const noticeInset = useNoticeInset();
   const [accountOpen, setAccountOpen] = useState(guest);
-  const [selected, onOpen] = useState<FriendPlayer | null>(null);
+  const [selected, onOpen] = useState<FriendPlayer | null>(() =>
+    fixture?.startsWith('sheet-') && preview ? (preview.friends[0] ?? preview.added_you[0]) : null
+  );
+  const [fullProfile, setFullProfile] = useState<FriendPlayer | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const busy = useRef(false);
   const [hidden, setHidden] = useState<string | null>(null);
@@ -77,10 +82,33 @@ export default function FriendsScreen() {
   const classicMessage = classicFriendsMessage(lists);
   const loading = preview ? fixture === 'loading' : store.isLoading && !pending;
   const error = joinError ?? (preview ? fixture === 'error' : store.error);
+  const selectedPlayer = selected
+    ? ([...lists.friends, ...lists.added_you, ...(lists.requested ?? [])].find(
+        (player) => player.user_id === selected.user_id
+      ) ?? selected)
+    : null;
+  const selectedRelation = lists.added_you.some((player) => player.user_id === selected?.user_id)
+    ? 'added_you'
+    : lists.friends.some((player) => player.user_id === selected?.user_id)
+      ? 'friend'
+      : 'added';
+
+  function play(player: FriendPlayer) {
+    if (preview) return;
+    const { lobby, rooms } = useLobbyStore.getState();
+    const userId = useAuthStore.getState().user?.id;
+    if (
+      lobby.my_rejoinable.length ||
+      rooms.some((room) => room.status !== 'finished' && roomHasUser(room, userId))
+    )
+      router.push('/lobby');
+    else router.push({ pathname: '/new-table', params: { partner: player.user_id } });
+  }
 
   async function act(
     action: 'accept' | 'ignore' | 'undo' | 'cancel' | 'join',
-    player: FriendPlayer
+    player: FriendPlayer,
+    inSheet = false
   ) {
     if (busy.current) return;
     busy.current = true;
@@ -123,9 +151,10 @@ export default function FriendsScreen() {
         setToast({ kind: action === 'ignore' ? 'hidden' : 'cancelled', player });
     } catch (cause) {
       if (action === 'join') {
-        setJoinError(cause);
+        if (!inSheet) setJoinError(cause);
         await refreshFriends().catch(() => undefined);
       }
+      if (inSheet) throw cause;
       // List mutations report their error through the store and keep the last answer.
     } finally {
       setHidden(null);
@@ -260,23 +289,7 @@ export default function FriendsScreen() {
                             loading={pending === player.user_id}
                             onPress={() => {
                               if (action === 'join') void act('join', player);
-                              else if (!preview) {
-                                const { lobby, rooms } = useLobbyStore.getState();
-                                const userId = useAuthStore.getState().user?.id;
-                                if (
-                                  lobby.my_rejoinable.length ||
-                                  rooms.some(
-                                    (room) =>
-                                      room.status !== 'finished' && roomHasUser(room, userId)
-                                  )
-                                )
-                                  router.push('/lobby');
-                                else
-                                  router.push({
-                                    pathname: '/new-table',
-                                    params: { partner: player.user_id },
-                                  });
-                              }
+                              else play(player);
                             }}
                           />
                         ) : undefined
@@ -320,20 +333,63 @@ export default function FriendsScreen() {
                 ) : null}
               </View>
             ) : null}
+            {selectedPlayer ? (
+              <FriendSheet
+                key={selectedPlayer.user_id}
+                player={selectedPlayer}
+                relation={selectedRelation}
+                onClose={() => onOpen(null)}
+                onProfile={() => {
+                  setFullProfile(selectedPlayer);
+                  onOpen(null);
+                }}
+                fixture={
+                  preview
+                    ? {
+                        ...selectedPlayer,
+                        username: selectedPlayer.display_name,
+                        bio: null,
+                        classic: null,
+                        veteran: { level: 31 },
+                      }
+                    : undefined
+                }
+                initialConfirm={
+                  fixture === 'sheet-remove'
+                    ? 'remove'
+                    : fixture === 'sheet-block'
+                      ? 'block'
+                      : undefined
+                }
+                onAction={async (action) => {
+                  if (action === 'play') play(selectedPlayer);
+                  else if (action === 'join' || action === 'accept')
+                    await act(action, selectedPlayer, true);
+                  else if (!preview)
+                    await (action === 'remove' ? removeFriend : blockPlayer)(
+                      selectedPlayer.user_id
+                    );
+                  else
+                    setPreviewLists({
+                      ...lists,
+                      friends: lists.friends.filter(
+                        (player) => player.user_id !== selectedPlayer.user_id
+                      ),
+                      added_you: lists.added_you.filter(
+                        (player) => player.user_id !== selectedPlayer.user_id
+                      ),
+                    });
+                  onOpen(null);
+                }}
+              />
+            ) : null}
             <PlayerProfileModal
-              playerId={selected?.user_id ?? null}
-              onClose={() => onOpen(null)}
+              playerId={fullProfile?.user_id ?? null}
+              hideActions
+              onClose={() => setFullProfile(null)}
               fixture={
-                preview && selected
-                  ? { ...selected, username: selected.display_name, bio: null, classic: null }
-                  : undefined
-              }
-              onRemove={
-                selected && lists.friends.some((player) => player.user_id === selected.user_id)
-                  ? async () => {
-                      if (!preview) await removeFriend(selected.user_id);
-                      onOpen(null);
-                    }
+                preview && fullProfile
+                  ? { ...fullProfile, username: fullProfile.display_name, bio: null, classic: null }
                   : undefined
               }
             />

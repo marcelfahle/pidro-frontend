@@ -70,22 +70,43 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   ]);
 
   await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
-  await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
-  await expect(page.getByText(`Remove ${otherPlayer.name} as a friend?`)).toBeVisible();
-  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  const sheet = page.getByTestId('friend-sheet');
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole('button', { name: 'See full profile', exact: true }).click();
+  const profile = page.getByTestId('player-profile-modal');
+  await expect(profile).toBeVisible();
+  await expect(profile.getByText(otherPlayer.name, { exact: true })).toBeVisible();
+  await expect(profile.getByRole('button', { name: /^(Remove|Block)/ })).toHaveCount(0);
+  await profile.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
+  await expect(
+    page.getByText(`Remove ${otherPlayer.name} from your friends?`, { exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByText(`You'll leave each other's friends lists. ${otherPlayer.name} won't be told.`, {
+      exact: true,
+    })
+  ).toBeVisible();
+  await page.getByRole('button', { name: `Keep ${otherPlayer.name}`, exact: true }).click();
+  await expect(
+    sheet.getByRole('button', { name: 'Remove from friends', exact: true })
+  ).toBeVisible();
   expect(
     (await api('/api/v1/friends', { token: account.token })).payload.data.friends
   ).toHaveLength(1);
-  await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
   await api(`/api/v1/friends/${account.user.id}`, { method: 'DELETE', token: other.token });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
   await api(`/api/v1/friends/${account.user.id}`, { method: 'PUT', token: other.token });
-  await accept.click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await sheet.getByRole('button', { name: 'Accept', exact: true }).click();
   await expect(accept).toHaveCount(0);
   await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
-  await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
-  await page.getByRole('button', { name: 'Remove friend', exact: true }).click();
+  await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
+  await page.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(sheet).toBeHidden();
   await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
   expect((await api('/api/v1/friends', { token: other.token })).payload.data.friends).toHaveLength(
     0
@@ -278,7 +299,10 @@ test('Join seats the player at a real friend table and opens its game', async ({
     await expect(hostPage.getByTestId('waiting-table').last()).toBeVisible({ timeout: 30_000 });
     await startSignedIn(page, account);
     await page.goto('/friends');
-    const join = page.getByRole('button', { name: `Join ${hostPlayer.name}'s table`, exact: true });
+    await page.getByRole('button', { name: `View ${hostPlayer.name}'s profile` }).click();
+    const join = page
+      .getByTestId('friend-sheet')
+      .getByRole('button', { name: `Join ${hostPlayer.name}'s table`, exact: true });
     await join.waitFor();
     // A stale seat offer must explain the refusal and fetch a fresh list.
     await page.route(`**/api/v1/friends/${host.user.id}/join`, (route) =>
@@ -398,8 +422,10 @@ test('Play opens New table with the friend already assigned as Partner and creat
     await expect(page.getByTestId('new-table-screen')).toBeHidden();
     await page.unroute('**/api/v1/lobby');
     await page.goto('/friends');
+    await page.getByRole('button', { name: `View ${friendPlayer.name}'s profile` }).click();
     await page
-      .getByRole('button', { name: `Start a table with ${friendPlayer.name}`, exact: true })
+      .getByTestId('friend-sheet')
+      .getByRole('button', { name: 'Play together', exact: true })
       .click();
     await page.waitForURL(new RegExp(`/new-table\\?partner=${friend.user.id}$`));
     const form = page.getByTestId('new-table-screen');

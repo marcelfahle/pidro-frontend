@@ -37,6 +37,8 @@ export type IconName =
   | 'link'
   | 'hash'
   | 'person-plus'
+  | 'person-minus'
+  | 'block'
   | 'enter'
   | 'share'
   | 'clock';
@@ -91,6 +93,11 @@ const ICONS: Record<IconName, { path: string; mode: 'fill' | 'stroke' }> = {
     path: 'M14 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M2.5 20.5c.7-3.6 3.6-6 7.5-6 1.6 0 3 .4 4.2 1.1M19 14v7M15.5 17.5h7',
     mode: 'stroke',
   },
+  'person-minus': {
+    path: 'M14 8a4 4 0 1 1-8 0 4 4 0 0 1 8 0M2.5 20.5c.7-3.6 3.6-6 7.5-6 1.6 0 3 .4 4.2 1.1M16 17.5h6',
+    mode: 'stroke',
+  },
+  block: { path: 'M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0M6 6l12 12', mode: 'stroke' },
   enter: { path: 'M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M4 12h11M11 8l4 4-4 4', mode: 'stroke' },
   share: { path: 'M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6', mode: 'stroke' },
   clock: { path: 'M20.5 12a8.5 8.5 0 1 1-17 0 8.5 8.5 0 0 1 17 0M12 7.5V12l3 2', mode: 'stroke' },

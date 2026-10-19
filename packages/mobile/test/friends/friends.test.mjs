@@ -7,6 +7,7 @@ import {
   friendAction,
   friendRowState,
   friendSections,
+  friendSheetState,
   friendsMeta,
   presenceLabel,
   relationLabel,
@@ -18,6 +19,61 @@ afterEach(() => {
 });
 
 describe('Friends presentation', () => {
+  test('the short profile offers the one next step, using only the server seat permission', () => {
+    const nora = { user_id: 'nora', display_name: 'Nora', avatar_url: null };
+    for (const presence of ['at_table', 'with_others', 'with_bots']) {
+      expect(friendSheetState({ ...nora, presence, join_as: 'partner' })).toMatchObject({
+        action: 'join',
+        label: "Join Nora's table",
+        line: 'At a table · partner seat free',
+        hint: "You'll play as Nora's partner.",
+        tone: 'gold',
+      });
+      expect(friendSheetState({ ...nora, presence, join_as: 'opponent' })).toMatchObject({
+        action: 'join',
+        hint: "You'll play against Nora.",
+      });
+    }
+    for (const entry of [
+      { presence: 'at_table', table_open_seats: 3 },
+      { presence: 'with_others' },
+      { presence: 'at_table', table_company: 'people', join_as: null },
+    ])
+      expect(friendSheetState({ ...nora, ...entry })).toMatchObject({
+        action: null,
+        label: null,
+        hint: null,
+        line: 'At a table · no free seats',
+      });
+    for (const entry of [
+      { presence: 'online' },
+      { presence: 'with_bots' },
+      { presence: 'at_table', table_company: 'bots' },
+    ])
+      expect(friendSheetState({ ...nora, ...entry })).toMatchObject({
+        action: 'play',
+        label: 'Play together',
+        hint: 'Starts a new table with Nora as your partner.',
+      });
+    for (const entry of [{ presence: 'offline' }, {}])
+      expect(friendSheetState({ ...nora, ...entry })).toMatchObject({
+        action: 'play',
+        hint: 'Your invitation waits for Nora in Pidro.',
+      });
+    expect(
+      friendSheetState({ ...nora, presence: 'at_table', join_as: 'partner' }, 'added_you')
+    ).toMatchObject({
+      action: 'accept',
+      label: 'Accept',
+      hint: null,
+    });
+    setLocale('sv');
+    expect(friendSheetState({ ...nora, presence: 'at_table', join_as: 'opponent' })).toMatchObject({
+      label: 'Gå med vid Noras bord',
+      hint: 'Du spelar mot Nora.',
+    });
+  });
+
   test('Classic copy uses only a positive server count, with singular and plural wording', () => {
     const lists = { friends: [], added_you: [] };
     expect(classicFriendsMessage(lists)).toBeNull();
