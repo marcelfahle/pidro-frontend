@@ -12,6 +12,7 @@ import {
   isFriendAccepted,
   isSeatInvitation,
   isSeatInvitationGone,
+  seatGoneIsLate,
 } from '@pidro/shared';
 import {
   flattenLobbyCategories,
@@ -106,7 +107,18 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
           return;
         }
         const apply = () => {
+          const late = seatGoneIsLate(seat.reason)
+            ? authStore
+                .getState()
+                .seatInvitations.find(
+                  (shown) => shown.code === seat.code && shown.position === seat.position
+                )
+            : undefined;
           authStore.getState().removeSeatInvitation(seat);
+          if (late) {
+            useFriendsStore.getState().lateSeat(late);
+            return;
+          }
           useFriendsStore.setState((state) => ({
             notices: state.notices.filter(
               (notice) =>

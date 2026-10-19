@@ -120,7 +120,13 @@ export function blockedFixture(value?: string): BlockedPlayers | undefined {
 export function friendNoticeFixture(value?: string): FriendNotice[] | undefined {
   if (
     !__DEV__ ||
-    !['friend-request', 'friend-accepted', 'friend-seat', 'friend-queue'].includes(value ?? '')
+    ![
+      'friend-request',
+      'friend-accepted',
+      'friend-seat',
+      'friend-queue',
+      'friend-too-late',
+    ].includes(value ?? '')
   )
     return;
   const yesterday = new Date();
@@ -142,5 +148,6 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
     },
   };
   if (value === 'friend-queue') return [accepted, request, seat];
+  if (value === 'friend-too-late') return [{ kind: 'too_late', invitation: seat.invitation }];
   return [value === 'friend-seat' ? seat : value === 'friend-accepted' ? accepted : request];
 }

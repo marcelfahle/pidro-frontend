@@ -238,7 +238,9 @@ test('picked friends become holds only on Open; invitations arrive live, recover
         { times: 1 }
       );
       await inbox.getByRole('button', { name: 'Sit down', exact: true }).click();
-      await expect(inbox.getByText('That seat is gone', { exact: true })).toBeVisible();
+      await expect(
+        inbox.getByText(`${player.name}'s game started without you`, { exact: true })
+      ).toBeVisible();
       await expect(inbox.getByRole('button', { name: 'Sit down', exact: true })).toHaveCount(0);
       // The badge follows the refetched server list, not this mocked refusal.
       await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');

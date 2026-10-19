@@ -134,3 +134,98 @@ test('PID-246: Not now preserves the request badge; cancelling a live request re
   await expect(badge).toHaveCount(0);
   await expect(page).toHaveURL(/\/home$/);
 });
+
+test('PID-254: Not now and sitting down elsewhere open the seat again and tell the host at once', async ({
+  page,
+  player,
+  browser,
+}) => {
+  const host = await register(player);
+  const friendPlayer = newPlayer();
+  const friend = await register(friendPlayer);
+  for (const [caller, target] of [
+    [host, friend],
+    [friend, host],
+  ]) {
+    expect(
+      (await api(`/api/v1/friends/${target.user.id}`, { method: 'PUT', token: caller.token }))
+        .status
+    ).toBe(200);
+  }
+  const created = await api('/api/v1/rooms', {
+    method: 'POST',
+    token: host.token,
+    body: {
+      seats: { seat_2: 'ai', seat_3: { type: 'held', user_id: friend.user.id }, seat_4: 'ai' },
+    },
+  });
+  expect(created.status).toBe(201);
+  const code = created.payload.data.code;
+  const friendContext = await browser.newContext({
+    viewport: page.viewportSize()!,
+    baseURL: test.info().project.use.baseURL,
+  });
+  try {
+    const invitee = await friendContext.newPage();
+    await invitee.addInitScript(
+      ({ age, installId }) => {
+        localStorage.setItem('age-gate-storage', age);
+        localStorage.setItem('install-id:v1', installId);
+      },
+      { age: AGE_ANSWERED, installId: friendPlayer.installId }
+    );
+    await homeAfterLobbyJoin(invitee, friend);
+    const invitation = invitee.getByTestId('friend-notice');
+    await expect(invitation).toContainText(`${player.name} is holding a seat for you`);
+    await startSignedIn(page, host);
+    await page.goto(`/game/${code}`);
+    const partner = page.getByTestId('new-table-seat-south');
+    await expect(partner).toContainText(friendPlayer.name);
+    const declined = page.getByTestId('seat-declined-notice');
+
+    await invitation.getByRole('button', { name: 'Not now', exact: true }).click();
+    await expect(invitation).toHaveCount(0);
+    await expect(declined).toBeVisible({ timeout: 1_000 });
+    await expect(declined).toContainText(`${friendPlayer.name} can't come right now`);
+    await expect(declined).toContainText('The seat is open again');
+    await expect(partner).toContainText('Open seat');
+    expect(
+      (await api('/api/v1/auth/me', { token: friend.token })).payload.data.seat_invitations
+    ).toEqual([]);
+    await declined.getByRole('button', { name: 'Invite someone else', exact: true }).click();
+    await expect(declined).toHaveCount(0);
+    const sheet = page.getByTestId('seat-picker-container');
+    await expect(sheet.getByTestId('friend-picker')).toBeVisible();
+    await expect(sheet).toContainText('Partner seat');
+
+    // Asked again, she sits down with someone else before answering.
+    await sheet.getByRole('button', { name: `Invite ${friendPlayer.name}`, exact: true }).click();
+    await expect(sheet).toBeHidden();
+    await expect(partner).toContainText(friendPlayer.name);
+    await expect(invitation).toContainText(`${player.name} is holding a seat for you`);
+    const other = await register(newPlayer());
+    const elsewhere = await api('/api/v1/rooms', {
+      method: 'POST',
+      token: other.token,
+      body: { seats: { seat_2: 'open', seat_3: 'ai', seat_4: 'ai' } },
+    });
+    expect(elsewhere.status).toBe(201);
+    expect(
+      (
+        await api(`/api/v1/rooms/${elsewhere.payload.data.code}/join`, {
+          method: 'POST',
+          token: friend.token,
+          body: { position: 'east' },
+        })
+      ).status
+    ).toBe(200);
+    await expect(declined).toBeVisible({ timeout: 1_000 });
+    await expect(declined).toContainText(`${friendPlayer.name} can't come right now`);
+    await expect(partner).toContainText('Open seat');
+    // Her own answer goes quietly on her side.
+    await expect(invitation).toHaveCount(0);
+    await expect(invitee.getByText(/started without you/)).toHaveCount(0);
+  } finally {
+    await friendContext.close();
+  }
+});

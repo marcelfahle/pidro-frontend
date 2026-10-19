@@ -7,6 +7,7 @@ import {
   friendNoticeId,
   liveFriendNotices,
   nextFriendNotice,
+  seatGoneIsLate,
   type FriendNotice,
 } from '../src/features/friendNotices';
 import { useFriendsStore } from '../src/stores/friends';
@@ -98,4 +99,43 @@ test('authoritative lists remove answered/cancelled requests; seats vanish when 
   store.reset();
   expect(useFriendsStore.getState().notices).toEqual([]);
   expect(useFriendsStore.getState().seenNotices).toEqual([]);
+});
+
+test('a seat gone because the game started, was released or closed is late; declined goes quietly', () => {
+  for (const reason of ['started', 'released', 'closed']) expect(seatGoneIsLate(reason)).toBe(true);
+  // An older server sends no reason, a newer one may send one this build does not know.
+  for (const reason of ['declined', undefined, null, 'surprise'])
+    expect(seatGoneIsLate(reason)).toBe(false);
+  expect(
+    isSeatInvitationGone({
+      code: 'TABLE',
+      position: 'west',
+      reason: 'started',
+    })
+  ).toBe(true);
+  expect(isSeatInvitationGone({ code: 'TABLE', position: 'west', reason: 3 })).toBe(false);
+});
+
+test('a late seat replaces its notice where it stood, once', () => {
+  const other: FriendNotice = {
+    kind: 'seat',
+    invitation: { ...seat.invitation, code: 'OTHER' },
+  };
+  const late: FriendNotice = { kind: 'too_late', invitation: seat.invitation };
+  const store = useFriendsStore.getState();
+  [request, seat, other].forEach(store.queueNotice);
+  store.lateSeat(seat.invitation);
+  expect(useFriendsStore.getState().notices).toEqual([request, late, other]);
+  // It is shown before the other seat, and before the request behind it.
+  expect(nextFriendNotice(useFriendsStore.getState().notices)).toEqual(late);
+  store.dismissNotice(friendNoticeId(late));
+  store.lateSeat(seat.invitation);
+  expect(useFriendsStore.getState().notices).toEqual([request, other]);
+  // A seat seen only in a list still gets the card.
+  store.lateSeat(other.invitation);
+  expect(useFriendsStore.getState().notices).toEqual([
+    request,
+    { kind: 'too_late', invitation: other.invitation },
+  ]);
+  expect(friendNoticeId(late)).not.toBe(friendNoticeId(seat));
 });

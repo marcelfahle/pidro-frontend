@@ -513,10 +513,12 @@ export const useGameChannel = ({
         'seat_moved',
         'owner_changed',
         'kicked',
+        'seat_invitation_declined',
       ]) {
-        onCurrent(event, (payload: Record<string, unknown>) => {
+        onCurrent(event, (payload: unknown) => {
           const mapped = waitingRoomEvent(event, payload);
           if (mapped) onWaitingRoomEventRef.current?.(mapped);
+          else console.warn(`[GameChannel] Dropped malformed ${event}`);
         });
       }
 
