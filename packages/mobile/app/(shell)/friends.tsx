@@ -1,10 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
-import { Share, StyleSheet, View } from 'react-native';
+import { Share, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { localizedError, type FriendLists, type FriendPlayer } from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { AuthSheet } from '@/components/auth/AuthSheet';
+import { FriendDiscovery } from '@/components/friends/FriendDiscovery';
 import { FriendRow } from '@/components/friends/FriendRow';
 import { FriendSheet } from '@/components/friends/FriendSheet';
 import { InfoCard } from '@/components/friends/InfoCard';
@@ -25,7 +26,7 @@ import {
   friendSections,
   friendsMeta,
 } from '@/features/friends';
-import { friendsFixture, FRIENDS_FIXTURE_NOW } from '@/features/friends/fixtures';
+import { discoveryFixture, friendsFixture, FRIENDS_FIXTURE_NOW } from '@/features/friends/fixtures';
 import { roomHasUser } from '@/features/lobby/newTable';
 import { useAuthStore } from '@/stores/auth';
 import {
@@ -70,6 +71,11 @@ export default function FriendsScreen() {
   const [hidden, setHidden] = useState<string | null>(null);
   const [joinError, setJoinError] = useState<unknown>(null);
   const [shareError, setShareError] = useState(false);
+  const [discovering, setDiscovering] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
+  const dismissSent = useCallback(() => setSent(null), []);
   const [toast, setToast] = useState<{ kind: 'hidden' | 'cancelled'; player: FriendPlayer } | null>(
     null
   );
@@ -82,6 +88,42 @@ export default function FriendsScreen() {
   const classicMessage = classicFriendsMessage(lists);
   const loading = preview ? fixture === 'loading' : store.isLoading && !pending;
   const error = joinError ?? (preview ? fixture === 'error' : store.error);
+  const empty = discovering || (sections.length === 0 && !loading && !error);
+
+  useFocusEffect(
+    useCallback(() => {
+      setDiscovering(false);
+      setSent(null);
+    }, [])
+  );
+
+  const classicCard = classicMessage ? (
+    <View testID="friends-classic-count">
+      <InfoCard
+        title={classicMessage}
+        body={t('friends.classic_body')}
+        action={{
+          label: t('friends.tell_classic'),
+          icon: 'share',
+          onPress: async () => {
+            setShareError(false);
+            try {
+              await Share.share({
+                message: t('friends.share_app_message', { url: 'https://www.pidro.online/' }),
+              });
+            } catch {
+              setShareError(true);
+            }
+          },
+        }}
+      />
+      {shareError ? (
+        <PidroText role="body" tone="danger" accessibilityRole="alert">
+          {t('invite.host.shareError')}
+        </PidroText>
+      ) : null}
+    </View>
+  ) : null;
   const selectedPlayer = selected
     ? ([...lists.friends, ...lists.added_you, ...(lists.requested ?? [])].find(
         (player) => player.user_id === selected.user_id
@@ -168,7 +210,7 @@ export default function FriendsScreen() {
     <View style={styles.root}>
       <ScreenShell
         scroll
-        compact
+        compact={!empty || !landscape}
         testID="friends-screen"
         contentStyle={[
           styles.content,
@@ -183,7 +225,7 @@ export default function FriendsScreen() {
             <PidroText role="display" accessibilityRole="header" style={styles.title}>
               {t('social.friends')}
             </PidroText>
-            {!guest ? (
+            {!guest && !empty ? (
               <PidroText role="metadata" tone="soft">
                 {friendsMeta(lists)}
               </PidroText>
@@ -216,124 +258,109 @@ export default function FriendsScreen() {
                 />
               </>
             ) : null}
-            {loading ? (
+            {loading && !discovering ? (
               <PidroText role="body" tone="soft">
                 {t('profile.loading')}
               </PidroText>
             ) : null}
-            {sections.map((section) => (
-              <View key={section.key} style={styles.section} testID={`friends-${section.key}`}>
-                <View style={styles.sectionTitle}>
-                  <PidroText
-                    role="label"
-                    tone={section.key === 'requests' ? 'gold' : 'soft'}
-                    accessibilityRole="header">
-                    {section.title}
-                  </PidroText>
-                  {section.key === 'requests' ? (
-                    <CountBadge count={lists.requests_waiting ?? lists.added_you.length} />
-                  ) : null}
-                </View>
-                {section.players.map((player) => {
-                  const action = friendAction(player);
-                  return (
-                    <FriendRow
-                      key={player.user_id}
-                      name={player.display_name}
-                      avatarUrl={player.avatar_url}
-                      row={friendRowState(
-                        player,
-                        section.relation,
-                        preview ? FRIENDS_FIXTURE_NOW : undefined
-                      )}
-                      onPress={() => onOpen(player)}
-                      trailing={
-                        section.key === 'requests' ? (
-                          <>
-                            <ActionPill
-                              label={t('friends.accept')}
-                              icon="check"
-                              variant="gold"
-                              accessibilityLabel={t('friends.accept_player', {
-                                name: player.display_name,
-                              })}
-                              disabled={pending !== null}
-                              onPress={() => void act('accept', player)}
-                            />
+            {!discovering &&
+              sections.map((section) => (
+                <View key={section.key} style={styles.section} testID={`friends-${section.key}`}>
+                  <View style={styles.sectionTitle}>
+                    <PidroText
+                      role="label"
+                      tone={section.key === 'requests' ? 'gold' : 'soft'}
+                      accessibilityRole="header">
+                      {section.title}
+                    </PidroText>
+                    {section.key === 'requests' ? (
+                      <CountBadge count={lists.requests_waiting ?? lists.added_you.length} />
+                    ) : null}
+                  </View>
+                  {section.players.map((player) => {
+                    const action = friendAction(player);
+                    return (
+                      <FriendRow
+                        key={player.user_id}
+                        name={player.display_name}
+                        avatarUrl={player.avatar_url}
+                        row={friendRowState(
+                          player,
+                          section.relation,
+                          preview ? FRIENDS_FIXTURE_NOW : undefined
+                        )}
+                        onPress={() => onOpen(player)}
+                        trailing={
+                          section.key === 'requests' ? (
+                            <>
+                              <ActionPill
+                                label={t('friends.accept')}
+                                icon="check"
+                                variant="gold"
+                                accessibilityLabel={t('friends.accept_player', {
+                                  name: player.display_name,
+                                })}
+                                disabled={pending !== null}
+                                onPress={() => void act('accept', player)}
+                              />
+                              <DismissButton
+                                accessibilityLabel={t('friends.ignore_player', {
+                                  name: player.display_name,
+                                })}
+                                disabled={pending !== null}
+                                onPress={() => void act('ignore', player)}
+                              />
+                            </>
+                          ) : section.key === 'sent' ? (
                             <DismissButton
-                              accessibilityLabel={t('friends.ignore_player', {
+                              accessibilityLabel={t('friends.cancel_request', {
                                 name: player.display_name,
                               })}
                               disabled={pending !== null}
-                              onPress={() => void act('ignore', player)}
+                              onPress={() => void act('cancel', player)}
                             />
-                          </>
-                        ) : section.key === 'sent' ? (
-                          <DismissButton
-                            accessibilityLabel={t('friends.cancel_request', {
-                              name: player.display_name,
-                            })}
-                            disabled={pending !== null}
-                            onPress={() => void act('cancel', player)}
-                          />
-                        ) : section.key === 'offline' ? (
-                          'chevron'
-                        ) : action ? (
-                          <ActionPill
-                            label={t(action === 'join' ? 'friends.join' : 'friends.play')}
-                            icon={action === 'join' ? 'enter' : 'cards'}
-                            accessibilityLabel={t(
-                              action === 'join' ? 'friends.join_player' : 'friends.play_player',
-                              { name: player.display_name }
-                            )}
-                            disabled={pending !== null}
-                            loading={pending === player.user_id}
-                            onPress={() => {
-                              if (action === 'join') void act('join', player);
-                              else play(player);
-                            }}
-                          />
-                        ) : undefined
-                      }
-                    />
-                  );
-                })}
-              </View>
-            ))}
-            {sections.length === 0 && !loading && !error ? (
-              <PidroText role="body" tone="soft">
-                {t('friends.empty')}
-              </PidroText>
-            ) : null}
-            {classicMessage ? (
-              <View testID="friends-classic-count">
-                <InfoCard
-                  title={classicMessage}
-                  body={t('friends.classic_body')}
-                  action={{
-                    label: t('friends.tell_classic'),
-                    icon: 'share',
-                    onPress: async () => {
-                      setShareError(false);
-                      try {
-                        await Share.share({
-                          message: t('friends.share_app_message', {
-                            url: 'https://www.pidro.online/',
-                          }),
-                        });
-                      } catch {
-                        setShareError(true);
-                      }
-                    },
-                  }}
-                />
-                {shareError ? (
-                  <PidroText role="body" tone="danger" accessibilityRole="alert">
-                    {t('invite.host.shareError')}
+                          ) : section.key === 'offline' ? (
+                            'chevron'
+                          ) : action ? (
+                            <ActionPill
+                              label={t(action === 'join' ? 'friends.join' : 'friends.play')}
+                              icon={action === 'join' ? 'enter' : 'cards'}
+                              accessibilityLabel={t(
+                                action === 'join' ? 'friends.join_player' : 'friends.play_player',
+                                { name: player.display_name }
+                              )}
+                              disabled={pending !== null}
+                              loading={pending === player.user_id}
+                              onPress={() => {
+                                if (action === 'join') void act('join', player);
+                                else play(player);
+                              }}
+                            />
+                          ) : undefined
+                        }
+                      />
+                    );
+                  })}
+                </View>
+              ))}
+            {empty ? (
+              <View style={[styles.section, landscape && styles.emptyLandscape]}>
+                <View style={[styles.content, landscape && styles.column]}>
+                  <PidroText role="body" tone="soft">
+                    {t('friends.empty_help')}
                   </PidroText>
-                ) : null}
+                  {landscape ? classicCard : null}
+                </View>
+                <View style={landscape && styles.column}>
+                  <FriendDiscovery
+                    preview={preview ? discoveryFixture('empty') : undefined}
+                    onStart={() => setDiscovering(true)}
+                    onSent={setSent}
+                  />
+                </View>
               </View>
             ) : null}
+            {!empty || !landscape ? classicCard : null}
             {selectedPlayer ? (
               <FriendSheet
                 key={selectedPlayer.user_id}
@@ -409,6 +436,13 @@ export default function FriendsScreen() {
           }}
         />
       </ScreenShell>
+      {sent ? (
+        <Toast
+          key={sent}
+          message={t('friends.sent_toast', { name: sent })}
+          onDismiss={dismissSent}
+        />
+      ) : null}
       {toast ? (
         <Toast
           key={`${toast.kind}-${toast.player.user_id}`}
@@ -435,4 +469,6 @@ const styles = StyleSheet.create({
   title: { fontFamily: PidroFonts.display, fontSize: 28, lineHeight: 34, fontWeight: '400' },
   section: { gap: 8 },
   sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
+  emptyLandscape: { flexDirection: 'row', gap: 20 },
+  column: { flex: 1, minWidth: 0 },
 });

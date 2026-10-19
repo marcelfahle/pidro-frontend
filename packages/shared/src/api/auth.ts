@@ -24,6 +24,7 @@ export type User = {
   display_name?: string | null;
   guest?: boolean;
   avatar_url?: string | null;
+  share_slug?: string | null;
   bio?: string | null;
   age_band?: AgeBand;
   terms_version?: string | null;

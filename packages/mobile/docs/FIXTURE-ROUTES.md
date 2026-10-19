@@ -417,7 +417,12 @@ their existing actions. `sheet-partner`, `sheet-opponent`, `sheet-full`,
 situation directly. `sheet-remove` and `sheet-block` open the inline confirms.
 The `friends-sheet-*` grammar cases cover these at 390×844, 375×667, 844×390
 and 768×1024, plus Swedish previews through `/ui-dev?state=friends&fixture=sheet-partner&locale=sv`.
-No sheet fixture writes to the backend. Add a friend has `recent` and `results` (all four server relation labels).
+No sheet fixture writes to the backend. Add a friend has `recent` and `results` (all four server relation states,
+the Send your link card, and working local Add/Accept transitions). The gallery
+`/ui-dev?state=friends-add` defaults to `recent`. Empty Friends has three recent
+players and a Classic count; adding keeps those rows in place. Recent players
+show presence, not dates: the recent endpoint does not supply played-at dates.
+The three discovery grammar cases cover 390×844, 375×667, 844×390 and 768×1024.
 The guest route opens the account sheet and continues on Friends after saving.
 
 Grammar cases: `friends-empty`, `friends-list`, `friends-added-you`,

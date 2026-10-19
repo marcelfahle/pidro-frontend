@@ -89,18 +89,27 @@ export function friendsFixture(value?: string): FriendLists | undefined {
   return {
     friends: ['empty', 'loading', 'error'].includes(value ?? '') ? [] : players.slice(0, 3),
     added_you: value === 'added-you' ? [players[3]] : [],
-    ...(value === 'classic' ? { classic: { not_here: 7 } } : {}),
+    ...(['classic', 'empty'].includes(value ?? '')
+      ? { classic: { not_here: value === 'empty' ? 38 : 7 } }
+      : {}),
   };
 }
 
 export function discoveryFixture(value?: string): FriendResult[] | undefined {
-  if (!__DEV__ || !['recent', 'results'].includes(value ?? '')) return;
-  return value === 'recent'
-    ? [players[0], players[3]]
-    : players.map((player, index) => ({
-        ...player,
-        display_name: ['Nora', 'Norbert', 'Noreen', 'Norman'][index],
-      }));
+  if (!__DEV__ || !['recent', 'results', 'empty'].includes(value ?? '')) return;
+  if (value === 'empty')
+    return [
+      { ...players[0], user_id: 'sanna', display_name: 'Sanna' },
+      { ...players[0], user_id: 'erkki', display_name: 'Erkki', presence: 'offline' },
+      { ...players[0], user_id: 'ville', display_name: 'Ville', presence: 'offline' },
+    ];
+  return players.map((player, index) => ({
+    ...player,
+    display_name:
+      value === 'results'
+        ? ['Nora', 'Norbert', 'Noreen', 'Norman'][index]
+        : ['Sanna', 'Nora', 'Pekka', 'Eero'][index],
+  }));
 }
 
 export function blockedFixture(value?: string): BlockedPlayers | undefined {

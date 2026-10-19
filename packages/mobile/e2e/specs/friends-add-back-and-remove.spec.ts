@@ -6,6 +6,181 @@ import { sessionOf, startSignedIn } from '../support/session';
 
 test.use({ unavailableExpected: true });
 
+const emptyFriends =
+  "Add the people you like playing with. Once they accept, you'll see when they're online and can invite them to your table.";
+
+for (const source of ['search', 'recent'] as const) {
+  test(`${source} keeps row order and updates real add/accept relations without discovery refetches`, async ({
+    page,
+    player,
+  }) => {
+    const account = await register(player);
+    const prefix = `P${player.id}`;
+    const outgoingPlayer = { ...newPlayer(), name: `${prefix}A` };
+    const incomingPlayer = { ...newPlayer(), name: `${prefix}B` };
+    const outgoing = await register(outgoingPlayer);
+    const incoming = await register(incomingPlayer);
+    expect(
+      (await api(`/api/v1/friends/${account.user.id}`, { method: 'PUT', token: incoming.token }))
+        .status
+    ).toBe(200);
+
+    if (source === 'recent') {
+      // Only game history is synthetic; both relationship mutations reach the real backend.
+      await page.route('**/api/v1/friends/recent', async (route) => {
+        const lists = (await api('/api/v1/friends', { token: account.token })).payload.data;
+        await route.fulfill({
+          json: {
+            data: {
+              users: [outgoing, incoming].map((user, index) => ({
+                user_id: user.user.id,
+                display_name: [outgoingPlayer.name, incomingPlayer.name][index],
+                avatar_url: null,
+                presence: 'offline',
+                relation: lists.friends.some(
+                  (entry: { user_id: string }) => entry.user_id === user.user.id
+                )
+                  ? 'friend'
+                  : lists.requested.some(
+                        (entry: { user_id: string }) => entry.user_id === user.user.id
+                      )
+                    ? 'added'
+                    : index === 1
+                      ? 'added_you'
+                      : 'none',
+              })),
+            },
+          },
+        });
+      });
+    }
+    const discoveryRequests: string[] = [];
+    page.on('request', (request) => {
+      const path = new URL(request.url()).pathname;
+      if (path === '/api/v1/users/search' || path === '/api/v1/friends/recent')
+        discoveryRequests.push(request.url());
+    });
+    await startSignedIn(page, account);
+    await page.goto('/friends-add');
+    const screen = page.getByTestId('friends-add-screen');
+    const search = page.getByRole('textbox', { name: 'Find a player by name', exact: true });
+    if (source === 'search') await search.fill(prefix);
+    const names = screen.getByText(new RegExp(`^${prefix}[AB]$`));
+    await expect(names).toHaveText([outgoingPlayer.name, incomingPlayer.name]);
+    await page.clock.install();
+
+    if (source === 'search') {
+      const searched = page.waitForResponse(
+        (response) =>
+          new URL(response.url()).pathname === '/api/v1/users/search' &&
+          new URL(response.url()).searchParams.get('q') === prefix.slice(0, -1)
+      );
+      await search.fill(prefix.slice(0, -1));
+      await page.clock.runFor(350);
+      expect((await searched).status()).toBe(200);
+      await expect(names).toHaveText([outgoingPlayer.name, incomingPlayer.name]);
+    }
+
+    const beforeAdd = discoveryRequests.length;
+    const added = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/v1/friends/${outgoing.user.id}`) &&
+        response.request().method() === 'PUT'
+    );
+    await screen.getByRole('button', { name: `Add ${outgoingPlayer.name}`, exact: true }).click();
+    const addResponse = await added;
+    expect(addResponse.status()).toBe(200);
+    expect((await addResponse.json()).data.requested).toEqual(
+      expect.arrayContaining([expect.objectContaining({ user_id: outgoing.user.id })])
+    );
+    await expect(screen.getByText('Sent', { exact: true })).toBeVisible();
+    await expect(names).toHaveText([outgoingPlayer.name, incomingPlayer.name]);
+    await page.clock.runFor(700);
+    expect(discoveryRequests).toHaveLength(beforeAdd);
+
+    // A different normalized query really fetches again (a trailing space does not).
+    const searched = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname === '/api/v1/users/search' &&
+        new URL(response.url()).searchParams.get('q') === prefix
+    );
+    await search.fill(prefix);
+    await page.clock.runFor(350);
+    expect((await searched).status()).toBe(200);
+    if (source === 'recent') {
+      const recent = page.waitForResponse('**/api/v1/friends/recent');
+      await search.fill('');
+      await page.clock.runFor(350);
+      expect((await recent).status()).toBe(200);
+    }
+    await expect(names).toHaveText([outgoingPlayer.name, incomingPlayer.name]);
+    await expect(screen.getByText('Sent', { exact: true })).toBeVisible();
+
+    const beforeAccept = discoveryRequests.length;
+    const accepted = page.waitForResponse(
+      (response) =>
+        response.url().endsWith(`/api/v1/friends/${incoming.user.id}`) &&
+        response.request().method() === 'PUT'
+    );
+    await screen
+      .getByRole('button', { name: `Accept ${incomingPlayer.name}`, exact: true })
+      .click();
+    const acceptResponse = await accepted;
+    expect(acceptResponse.status()).toBe(200);
+    expect((await acceptResponse.json()).data.friends).toEqual(
+      expect.arrayContaining([expect.objectContaining({ user_id: incoming.user.id })])
+    );
+    await expect(screen.getByText('Friends', { exact: true })).toBeVisible();
+    await expect(screen.getByText('Your friend', { exact: true })).toBeVisible();
+    await expect(screen.getByText('Sent', { exact: true })).toBeVisible();
+    await expect(names).toHaveText([outgoingPlayer.name, incomingPlayer.name]);
+    await page.clock.runFor(700);
+    expect(discoveryRequests).toHaveLength(beforeAccept);
+    expect((await api('/api/v1/friends', { token: account.token })).payload.data).toMatchObject({
+      friends: [expect.objectContaining({ user_id: incoming.user.id })],
+      requested: [expect.objectContaining({ user_id: outgoing.user.id })],
+    });
+  });
+}
+
+test('empty Friends still shows recently played players and lets you add them', async ({
+  page,
+  player,
+}) => {
+  const account = await register(player);
+  const recentPlayer = newPlayer();
+  const recent = await register(recentPlayer);
+  await page.route('**/api/v1/friends/recent', (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          users: [
+            {
+              user_id: recent.user.id,
+              display_name: recentPlayer.name,
+              avatar_url: null,
+              presence: 'offline',
+              relation: 'none',
+            },
+          ],
+        },
+      },
+    })
+  );
+  await startSignedIn(page, account);
+  await page.goto('/friends');
+  await expect(page.getByText(emptyFriends)).toBeVisible();
+  await expect(page.getByText('Played with recently', { exact: true })).toBeVisible();
+  await expect(page.getByText(recentPlayer.name, { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: `Add ${recentPlayer.name}`, exact: true }).click();
+  await expect(
+    page.getByText(`Waiting for ${recentPlayer.name} to accept`, { exact: true })
+  ).toBeVisible();
+  expect((await api('/api/v1/friends', { token: account.token })).payload.data.requested).toEqual([
+    expect.objectContaining({ user_id: recent.user.id }),
+  ]);
+});
+
 test('Friends receives a live request, accepts, removes after confirmation, and searches @responsive', async ({
   page,
   player,
@@ -33,7 +208,7 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   });
   await startSignedIn(page, account);
   await page.goto('/friends');
-  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+  await expect(page.getByText(emptyFriends)).toBeVisible();
 
   // Wait for the lobby join before sending the event from the other player.
   await expect.poll(() => lobbyJoined).toBe(true);
@@ -103,7 +278,7 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
   await api(`/api/v1/friends/${account.user.id}`, { method: 'DELETE', token: other.token });
   await page.getByRole('button', { name: 'Close', exact: true }).click();
-  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+  await expect(page.getByText(emptyFriends)).toBeVisible();
   await api(`/api/v1/friends/${account.user.id}`, { method: 'PUT', token: other.token });
   await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
   await sheet.getByRole('button', { name: 'Accept', exact: true }).click();
@@ -112,7 +287,7 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(sheet).toBeHidden();
-  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+  await expect(page.getByText(emptyFriends)).toBeVisible();
   expect((await api('/api/v1/friends', { token: other.token })).payload.data.friends).toHaveLength(
     0
   );
@@ -124,25 +299,27 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   disconnected = false;
   await accept.waitFor();
   await api(`/api/v1/friends/${account.user.id}`, { method: 'DELETE', token: other.token });
-  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+  await expect(page.getByText(emptyFriends)).toBeVisible();
 
   const add = page.getByRole('button', { name: 'Add a friend', exact: true });
   await expect(add).toHaveText('Add');
   await add.click();
-  await expect(page.getByText('Recently played with', { exact: true })).toBeVisible();
-  await expect(page.getByText('People you play with will appear here.')).toBeVisible();
+  await expect(page.getByText('Played with recently', { exact: true })).toBeVisible();
+  await expect(page.getByText('People you play with will appear here after a game.')).toBeVisible();
   await page.clock.install();
-  await page.getByRole('textbox', { name: 'Find a player', exact: true }).fill(' ');
+  await page.getByRole('textbox', { name: 'Find a player by name', exact: true }).fill(' ');
   await page.clock.runFor(350);
-  await expect(page.getByText('People you play with will appear here.')).toBeVisible();
-  await page.getByRole('textbox', { name: 'Find a player', exact: true }).fill(otherPlayer.name);
-  await page.getByRole('button', { name: `Add ${otherPlayer.name}`, exact: true }).click();
-  await expect(page.getByText('Added', { exact: true })).toBeVisible();
+  await expect(page.getByText('People you play with will appear here after a game.')).toBeVisible();
   await page
-    .getByRole('textbox', { name: 'Find a player', exact: true })
+    .getByRole('textbox', { name: 'Find a player by name', exact: true })
+    .fill(otherPlayer.name);
+  await page.getByRole('button', { name: `Add ${otherPlayer.name}`, exact: true }).click();
+  await expect(page.getByText('Sent', { exact: true })).toBeVisible();
+  await page
+    .getByRole('textbox', { name: 'Find a player by name', exact: true })
     .fill(`${otherPlayer.name} `);
   await page.clock.runFor(350);
-  await expect(page.getByText('Added', { exact: true })).toBeVisible();
+  await expect(page.getByText('Sent', { exact: true })).toBeVisible();
   expect(
     (await api('/api/v1/friends', { token: other.token })).payload.data.added_you.map(
       (entry: { user_id: string }) => entry.user_id
@@ -240,7 +417,9 @@ test('ignoring hides a request immediately, Undo restores it, and only sender ca
     );
     await startSignedIn(sentPage, sender);
     await sentPage.goto('/friends');
-    await expect(sentPage.getByText('Waiting for an answer', { exact: true })).toBeVisible();
+    await expect(
+      sentPage.getByText(`Waiting for ${player.name} to accept`, { exact: true })
+    ).toBeVisible();
     const cancel = sentPage.getByRole('button', {
       name: `Cancel your friend request to ${player.name}`,
       exact: true,
@@ -259,9 +438,7 @@ test('ignoring hides a request immediately, Undo restores it, and only sender ca
       )
       .toEqual([]);
     await sentPage.reload();
-    await expect(
-      sentPage.getByText('Nobody here yet. Add the people you play with.')
-    ).toBeVisible();
+    await expect(sentPage.getByText(emptyFriends)).toBeVisible();
   } finally {
     await context.close();
   }
@@ -472,6 +649,6 @@ test('a guest opens Friends from Home, saves, and stays on Friends', async ({ pa
   await sheet.save(player.email, player.password, player.name);
   await expect(sheet.root).toBeHidden();
   await expect(page.getByTestId('friends-screen')).toBeVisible();
-  await expect(page.getByText('Nobody here yet. Add the people you play with.')).toBeVisible();
+  await expect(page.getByText(emptyFriends)).toBeVisible();
   expect((await sessionOf(page))?.user).toMatchObject({ id: started.user.id, guest: false });
 });
