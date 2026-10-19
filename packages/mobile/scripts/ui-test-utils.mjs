@@ -327,24 +327,22 @@ export async function assertTeamLayout(page, viewport, label) {
     boxes.push(box);
   }
   // A notice slides in from below; judge the page once it has landed.
-  const fits = await page
-    .waitForFunction(
-      () =>
-        [
-          document.scrollingElement,
-          ...document.querySelectorAll(
-            '[data-testid="new-table-screen"], [data-testid="waiting-table"]'
-          ),
-        ].every(
-          (node) =>
-            node.scrollHeight <= node.clientHeight + 1 && node.scrollWidth <= node.clientWidth + 1
+  const fits = (sizes) =>
+    sizes.every(([w, h, clientW, clientH]) => w <= clientW + 1 && h <= clientH + 1);
+  let sizes = [];
+  for (let attempt = 0; attempt < 50; attempt++) {
+    sizes = await page.evaluate(() =>
+      [
+        document.scrollingElement,
+        ...document.querySelectorAll(
+          '[data-testid="new-table-screen"], [data-testid="waiting-table"]'
         ),
-      null,
-      { timeout: 5000 }
-    )
-    .then(() => true)
-    .catch(() => false);
-  assert.ok(fits, `${label}: the screen does not scroll`);
+      ].map((node) => [node.scrollWidth, node.scrollHeight, node.clientWidth, node.clientHeight])
+    );
+    if (fits(sizes)) break;
+    await page.waitForTimeout(100);
+  }
+  assert.ok(fits(sizes), `${label}: the screen does not scroll ${JSON.stringify(sizes)}`);
   const centre = (box) => box.x + box.width / 2;
   if (viewport.width > viewport.height) {
     boxes.sort((a, b) => a.x - b.x || a.y - b.y);
