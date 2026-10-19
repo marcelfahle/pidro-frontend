@@ -417,9 +417,7 @@ test('ignoring hides a request immediately, Undo restores it, and only sender ca
     );
     await startSignedIn(sentPage, sender);
     await sentPage.goto('/friends');
-    await expect(
-      sentPage.getByText(`Waiting for ${player.name} to accept`, { exact: true })
-    ).toBeVisible();
+    await expect(sentPage.getByText('Waiting for an answer', { exact: true })).toBeVisible();
     const cancel = sentPage.getByRole('button', {
       name: `Cancel your friend request to ${player.name}`,
       exact: true,

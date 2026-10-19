@@ -420,8 +420,9 @@ and 768×1024, plus Swedish previews through `/ui-dev?state=friends&fixture=shee
 No sheet fixture writes to the backend. Add a friend has `recent` and `results` (all four server relation states,
 the Send your link card, and working local Add/Accept transitions). The gallery
 `/ui-dev?state=friends-add` defaults to `recent`. Empty Friends has three recent
-players and a Classic count; adding keeps those rows in place. Recent players
-show presence, not dates: the recent endpoint does not supply played-at dates.
+players and a Classic count; adding keeps those rows in place. No recent date is
+invented: the shared formatter uses played-at dates when supplied and falls back
+to presence when absent (as in these fixtures).
 The three discovery grammar cases cover 390×844, 375×667, 844×390 and 768×1024.
 The guest route opens the account sheet and continues on Friends after saving.
 

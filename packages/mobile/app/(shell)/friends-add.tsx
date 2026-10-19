@@ -45,7 +45,7 @@ export default function AddFriendScreen() {
             paddingRight: PidroSpacing.md + clearance.right,
           },
         ]}>
-        <View style={[styles.intro, landscape && styles.column]}>
+        <View style={[styles.intro, landscape && styles.sidebar]}>
           <View style={styles.header}>
             <BackButton onPress={() => router.back()} />
             <PidroText role="title" accessibilityRole="header" style={styles.title}>
@@ -125,7 +125,8 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   landscape: { flexDirection: 'row', gap: 20 },
-  column: { flex: 1, minWidth: 0 },
+  sidebar: { flex: 1, minWidth: 0 },
+  column: { flex: 1.4, minWidth: 0 },
   search: { position: 'relative' },
   searchInput: { paddingLeft: 44 },
   searchIcon: { position: 'absolute', left: 14, top: 15 },
