@@ -220,7 +220,7 @@ export default function HomeScreen() {
           loading={quickGame.loading}
           onPress={quickGame.start}
           testID="home-quick-game"
-          style={!guest && compactLandscape && styles.accountLandscapeTile}
+          style={!guest && compactLandscape && noticeInset === 0 && styles.accountLandscapeTile}
         />
         <HomeTileButton
           material={guest ? 'glass' : 'wood'}
@@ -240,7 +240,7 @@ export default function HomeScreen() {
             else router.push('/lobby');
           }}
           testID="home-play-online"
-          style={!guest && compactLandscape && styles.accountLandscapeTile}
+          style={!guest && compactLandscape && noticeInset === 0 && styles.accountLandscapeTile}
         />
       </View>
 

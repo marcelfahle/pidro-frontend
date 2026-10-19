@@ -1194,6 +1194,15 @@ async function assertFriendNotice(page, name, viewport) {
     await notice.waitFor({ state: 'detached' });
     assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '1');
   }
+  if (name === 'friend-notice-request' && viewport.name === 'landscape') {
+    await page.goto(
+      new URL('/home?fixture=friend-request&safeArea=iphone-17-landscape', baseUrl).href
+    );
+    await notice.waitFor();
+    await waitForScreenshotReady(page);
+    await assertNothingUnderNotice(page, 'Home with landscape insets', viewport);
+    await assertHomeHeaderClear(page, '/home', viewport);
+  }
 }
 
 // Every header control and both play tiles take their own taps once in view: a
@@ -1766,7 +1775,7 @@ async function assertCreationPresentation(page, testCase) {
     if (testCase.name === 'home-invitations') {
       assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
       await page
-        .getByRole('button', { name: 'Friends, 2 invitations waiting', exact: true })
+        .getByRole('button', { name: 'Friends, 2 waiting for your answer', exact: true })
         .waitFor();
     }
   }
