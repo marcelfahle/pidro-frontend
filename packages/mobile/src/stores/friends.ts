@@ -54,8 +54,17 @@ export async function blockPlayer(id: string) {
   void refreshFriends().catch(() => undefined);
 }
 
-/** A sign-up through someone's link sends them a request: "Request sent. You'll be friends once Bertil accepts." */
+/**
+ * A sign-up through someone's link sends them a request: "Request sent. You'll be friends
+ * once Bertil accepts." A Classic claim can instead accept Bertil's own request, so the
+ * friends list decides: only a request still waiting is told.
+ */
 export function queueLinkedFriend(friend: FriendPlayer | undefined) {
-  if (isFriendPlayer(friend))
-    useFriendsStore.getState().queueNotice({ kind: 'sent', player: friend });
+  if (!isFriendPlayer(friend)) return;
+  void refreshFriends()
+    .then((lists) => {
+      if (lists?.requested?.some((p) => p.user_id === friend.user_id))
+        useFriendsStore.getState().queueNotice({ kind: 'sent', player: friend });
+    })
+    .catch(() => undefined);
 }
