@@ -4,6 +4,9 @@ const seatRowCases = ['setup', 'setup-open', 'opened', 'opened-more'].map(
 const seatPickerCases = ['choices', 'friends', 'many', 'empty', 'sv'].map(
   (fixture) => `ui-seat-picker-${fixture}`
 );
+const friendNoticeCases = ['request', 'accepted', 'seat', 'queue'].map(
+  (kind) => `friend-notice-${kind}`
+);
 
 const lobbyCases = [
   'list',
@@ -63,6 +66,7 @@ export const UI_VIEWPORTS = [
       ...seatRowCases,
       ...passwordCases,
       ...seatPickerCases,
+      ...friendNoticeCases,
     ],
   },
   {
@@ -131,6 +135,7 @@ export const UI_VIEWPORTS = [
       'table-hand-they-set',
       'table-game-over',
       'table-game-over-loss',
+      ...friendNoticeCases,
     ],
   },
   {

@@ -18,6 +18,7 @@ import Svg, { Path } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PidroBevel, PidroColors } from '@/design/tokens';
 import { PidroText } from '@/components/ui/PidroText';
+import { CountBadge } from '@/components/ui/CountBadge';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { gradientBg } from '@/components/ui/Bevel';
 import { useTranslation } from '@/i18n';
@@ -116,7 +117,7 @@ function TabItem({
       accessibilityRole="button"
       accessibilityLabel={
         count > 0
-          ? `${t(`shell.${tab}`)}, ${t('seat_invitation.badge', { count })}`
+          ? `${t(`shell.${tab}`)}, ${t('friend_notice.badge', { count })}`
           : t(`shell.${tab}`)
       }
       accessibilityState={{ selected: active }}
@@ -132,9 +133,7 @@ function TabItem({
       </PidroText>
       {count > 0 ? (
         <View testID="friends-invitation-count" style={styles.countBadge}>
-          <PidroText role="metadata" style={styles.countText}>
-            {count}
-          </PidroText>
+          <CountBadge count={count} size="sm" />
         </View>
       ) : null}
     </PressableFX>
@@ -213,15 +212,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     top: 0,
-    minWidth: 18,
-    minHeight: 18,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: PidroColors.success,
-    paddingHorizontal: 3,
   },
-  countText: { color: PidroColors.ink },
   bottomAnchor: {
     position: 'absolute',
     left: 0,

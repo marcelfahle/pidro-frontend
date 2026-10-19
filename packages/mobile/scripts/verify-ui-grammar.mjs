@@ -56,6 +56,12 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  ...['request', 'accepted', 'seat', 'queue'].map((kind) => ({
+    name: `friend-notice-${kind}`,
+    path: `/home?fixture=friend-${kind}`,
+    testId: 'friend-notice',
+    authenticated: true,
+  })),
   {
     name: 'home-invitations',
     path: '/home?fixture=invitations',
@@ -1133,7 +1139,9 @@ async function assertNothingUnderNotice(page, screen, viewport) {
       const { overflowY } = getComputedStyle(element);
       if (['auto', 'scroll'].includes(overflowY)) element.scrollTop = element.scrollHeight;
     }
-    const notice = document.querySelector('[data-testid="update-notice"]');
+    const notice = document.querySelector(
+      '[data-testid="update-notice"], [data-testid="friend-notice"]'
+    );
     const tappable = '[role="button"], [role="link"], [role="switch"], input, textarea';
     const noticeBoxes = [notice, ...notice.querySelectorAll(tappable)].map((element) =>
       element.getBoundingClientRect()
@@ -1154,11 +1162,47 @@ async function assertNothingUnderNotice(page, screen, viewport) {
       })
       .map((element) => element.getAttribute('aria-label') || element.textContent.trim());
   });
-  assert.deepEqual(
-    covered,
-    [],
-    `the update notice covers controls on ${screen} in ${viewport.name}`
+  assert.deepEqual(covered, [], `the notice covers controls on ${screen} in ${viewport.name}`);
+}
+
+async function assertFriendNotice(page, name, viewport) {
+  if (!name.startsWith('friend-notice-')) return;
+  const notice = page.getByTestId('friend-notice');
+  const count = name.endsWith('queue') ? 2 : 1;
+  assert.equal(await notice.count(), 1);
+  assert.equal(await page.getByTestId('friends-invitation-count').innerText(), String(count));
+  await page
+    .getByRole('button', { name: `Friends, ${count} waiting for your answer`, exact: true })
+    .waitFor();
+  await assertNothingUnderNotice(page, 'Home', viewport);
+  const pill = await page.getByTestId('tab-pill').boundingBox();
+  const card = await notice.boundingBox();
+  assert.ok(
+    viewport.width > viewport.height
+      ? card.x + card.width <= pill.x
+      : card.y + card.height <= pill.y
   );
+  if (name.endsWith('queue')) {
+    assert.match(await notice.innerText(), /Kalle is holding a seat/);
+    await notice.getByRole('button', { name: 'Not now', exact: true }).click();
+    await page.getByText('Pekka wants to be friends', { exact: true }).waitFor();
+    await notice.getByRole('button', { name: 'Not now', exact: true }).click();
+    await page.getByText("Nora accepted. You're friends now.", { exact: true }).waitFor();
+    assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
+  } else if (!name.endsWith('accepted')) {
+    await notice.getByRole('button', { name: 'Not now', exact: true }).click();
+    await notice.waitFor({ state: 'detached' });
+    assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '1');
+  }
+  if (name === 'friend-notice-request' && viewport.name === 'landscape') {
+    await page.goto(
+      new URL('/home?fixture=friend-request&safeArea=iphone-17-landscape', baseUrl).href
+    );
+    await notice.waitFor();
+    await waitForScreenshotReady(page);
+    await assertNothingUnderNotice(page, 'Home with landscape insets', viewport);
+    await assertHomeHeaderClear(page, '/home', viewport);
+  }
 }
 
 // Every header control and both play tiles take their own taps once in view: a
@@ -1731,7 +1775,7 @@ async function assertCreationPresentation(page, testCase) {
     if (testCase.name === 'home-invitations') {
       assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
       await page
-        .getByRole('button', { name: 'Friends, 2 invitations waiting', exact: true })
+        .getByRole('button', { name: 'Friends, 2 waiting for your answer', exact: true })
         .waitFor();
     }
   }
@@ -3037,8 +3081,8 @@ async function main() {
             })
           );
         }
-        if (testCase.name === 'game-away') {
-          // The away screen needs no server; keep the room and channel requests offline.
+        if (testCase.name === 'game-away' || testCase.name.startsWith('friend-notice-')) {
+          // These deterministic fixtures need no server, even beside a live e2e backend.
           await page.route('**/api/v1/**', (route) => route.abort());
         }
         if (testCase.playerProfile) {
@@ -3188,6 +3232,10 @@ async function main() {
             await page.getByTestId(testCase.testId).waitFor();
             await waitForScreenshotReady(page);
           }
+          if (testCase.name.startsWith('friend-notice-')) {
+            await page.getByTestId('friend-notice').waitFor();
+            await waitForScreenshotReady(page);
+          }
           await assertAccountButtonsStayPut(page, testCase.name, answerProfile);
           await assertTargetGeometry(page, testCase, caseViewport);
           await assertBidLines(page, testCase, caseViewport);
@@ -3258,6 +3306,7 @@ async function main() {
           await assertWelcomeGuestInteractions(page, testCase.name, viewport);
           await assertWelcomeSettingsInteractions(page, testCase.name);
           await assertHomeGuestInteractions(page, testCase.name);
+          await assertFriendNotice(page, testCase.name, caseViewport);
           await assertUpdateNotice(page, testCase.name, caseViewport);
           await assertTableMessageReadable(page, testCase.name, caseViewport);
           await assertClassicLogin(page, testCase);

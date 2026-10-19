@@ -1,4 +1,4 @@
-import type { BlockedPlayers, FriendLists, FriendResult } from '@pidro/shared';
+import type { BlockedPlayers, FriendLists, FriendResult, FriendNotice } from '@pidro/shared';
 
 const players: FriendResult[] = [
   { user_id: 'nora', display_name: 'Nora', avatar_url: null, presence: 'online', relation: 'none' },
@@ -60,4 +60,32 @@ export function blockedFixture(value?: string): BlockedPlayers | undefined {
           }))
         : [],
   };
+}
+
+export function friendNoticeFixture(value?: string): FriendNotice[] | undefined {
+  if (
+    !__DEV__ ||
+    !['friend-request', 'friend-accepted', 'friend-seat', 'friend-queue'].includes(value ?? '')
+  )
+    return;
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const request: FriendNotice = {
+    kind: 'request',
+    player: players[1],
+    played_together_at: yesterday.toISOString(),
+  };
+  const accepted: FriendNotice = { kind: 'accepted', player: players[0], source: 'accept' };
+  const seat: FriendNotice = {
+    kind: 'seat',
+    invitation: {
+      code: 'NOTICE',
+      position: 'north',
+      host_id: 'kalle',
+      host: players[3],
+      rule_set: 'finnish',
+    },
+  };
+  if (value === 'friend-queue') return [accepted, request, seat];
+  return [value === 'friend-seat' ? seat : value === 'friend-accepted' ? accepted : request];
 }

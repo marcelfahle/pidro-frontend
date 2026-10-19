@@ -18,6 +18,8 @@ export interface RequestedFriendPlayer extends FriendPlayer {
 export interface FriendLists {
   friends: FriendPlayer[];
   added_you: FriendPlayer[];
+  requests_waiting?: number;
+  waiting_for_you?: number;
   /** Requests you sent that have no answer yet, newest first (PID-245). */
   requested?: RequestedFriendPlayer[];
   classic?: { not_here: number };

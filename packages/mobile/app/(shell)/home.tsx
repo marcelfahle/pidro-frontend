@@ -57,9 +57,9 @@ export default function HomeScreen() {
   const [identity, setIdentity] = useState<ProfileIdentity | null>(null);
   const [lobbyCountState, setLobbyCountState] = useState<LobbyCountState>('loading');
   const refreshIdentity = useProfileIdentity();
-  // Home's layout is fixed: the update notice never moves it. It sits in the logo
-  // stage, the one place no control reaches; the invitations scroll clears it instead.
-  const rawPillClearance = usePillClearance({ notice: false });
+  // Update notices use the logo slot; friend notices reserve space above the pill.
+  // The invitations scroll already adds the floating notice's inset itself.
+  const rawPillClearance = usePillClearance({ notice: !showInvitations });
   const noticeInset = useNoticeInset();
   const pillClearance = guest ? { bottom: 0, right: 0 } : rawPillClearance;
   const playerName = publicPlayerName(user?.username, t('social.player'), user?.display_name);
@@ -173,7 +173,11 @@ export default function HomeScreen() {
 
   const logoStage = (
     <View
-      style={[styles.logoStage, compactLandscape && styles.logoStageLandscape]}
+      style={[
+        styles.logoStage,
+        compactLandscape && styles.logoStageLandscape,
+        noticeInset > 0 && styles.logoWithNotice,
+      ]}
       pointerEvents="box-none">
       <LogoGlow size={tablet ? 700 : compactLandscape ? 360 : 420} />
       {/* A tight stage lets the mark overflow toward the header; it never takes a tap. */}
@@ -216,7 +220,7 @@ export default function HomeScreen() {
           loading={quickGame.loading}
           onPress={quickGame.start}
           testID="home-quick-game"
-          style={!guest && compactLandscape && styles.accountLandscapeTile}
+          style={!guest && compactLandscape && noticeInset === 0 && styles.accountLandscapeTile}
         />
         <HomeTileButton
           material={guest ? 'glass' : 'wood'}
@@ -236,7 +240,7 @@ export default function HomeScreen() {
             else router.push('/lobby');
           }}
           testID="home-play-online"
-          style={!guest && compactLandscape && styles.accountLandscapeTile}
+          style={!guest && compactLandscape && noticeInset === 0 && styles.accountLandscapeTile}
         />
       </View>
 
@@ -283,8 +287,10 @@ export default function HomeScreen() {
               tablet && styles.mainTablet,
               compactLandscape && styles.mainLandscape,
               !compactLandscape && {
-                paddingBottom: tablet && landscape ? 56 : pillClearance.bottom,
+                paddingBottom:
+                  tablet && landscape ? Math.max(56, pillClearance.bottom) : pillClearance.bottom,
               },
+              compactLandscape && noticeInset > 0 && { paddingBottom: noticeInset },
               compactLandscape && !guest && { paddingRight: pillClearance.right },
             ]}>
             {topBar}
@@ -386,6 +392,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoStageLandscape: { width: 340, alignSelf: 'stretch', flexShrink: 1 },
+  logoWithNotice: { minHeight: 0 },
   // A small phone's logo column is too narrow for the notice: it also takes the
   // side gutter and the gap, stopping short of the tiles.
   noticeLandscape: {

@@ -252,6 +252,17 @@ inputs, not a device database or production padding. Native opens the real modal
 without overrides. The unit test `create-modal-safe-area.test.mjs` separately guards
 provider placement inside that native modal; neither test replaces device testing.
 
+## Shell friend notices
+
+`/home?fixture=friend-request|friend-accepted|friend-seat|friend-queue` shows the
+real shell notice and Friends badge without a backend. Accepted stays visible in
+the fixture for capture; live notices disappear after four seconds. The queue
+fixture starts with a seat, then a request, then accepted. Not now closes only the
+prompt, keeping the badge. These fixtures also work on other shell tabs. Grammar
+cases `friend-notice-*` check containment, touch targets, tab clearance and queue
+order at 390×844, 375×667, 844×390 and 768×1024. Browser sizes do not certify
+native safe-area measurement.
+
 ## Shell update notice — "A new version is ready"
 
 `/home?fixture=update-notice` forces the shell's update notice on. It works on any

@@ -15,3 +15,4 @@ export {
 export { type TokenGetter as ChannelTokenGetter } from './channels';
 export * from './platform';
 export * from './i18n';
+export * from './features/friendNotices';

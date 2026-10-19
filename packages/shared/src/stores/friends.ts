@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import type { BlockedPlayers, FriendLists } from '../api/friends';
+import { enqueueFriendNotice, friendNoticeId, type FriendNotice } from '../features/friendNotices';
 
 interface FriendsState extends FriendLists, BlockedPlayers {
+  notices: FriendNotice[];
+  seenNotices: string[];
+  queueNotice: (notice: FriendNotice) => void;
+  dismissNotice: (id: string) => void;
   isLoading: boolean;
   error: unknown;
   setLists: (lists: FriendLists | BlockedPlayers) => void;
@@ -15,18 +20,39 @@ const initialState = {
   added_you: [],
   blocked: [],
   classic: undefined,
+  requested: [],
+  requests_waiting: 0,
+  waiting_for_you: 0,
+  notices: [],
+  seenNotices: [],
   isLoading: false,
   error: null,
 };
 
 export const useFriendsStore = create<FriendsState>((set) => ({
   ...initialState,
-  setLists: (lists) => set((state) => ({
-    ...lists,
-    classic: 'friends' in lists ? lists.classic : state.classic,
-    isLoading: false,
-    error: null,
-  })),
+  queueNotice: (notice) =>
+    set((state) => enqueueFriendNotice(state.notices, state.seenNotices, notice)),
+  dismissNotice: (id) =>
+    set((state) => ({
+      notices: state.notices.filter((notice) => friendNoticeId(notice) !== id),
+    })),
+  setLists: (lists) =>
+    set((state) => ({
+      ...lists,
+      classic: 'friends' in lists ? lists.classic : state.classic,
+      waiting_for_you: 'friends' in lists ? (lists.waiting_for_you ?? 0) : state.waiting_for_you,
+      notices:
+        'friends' in lists
+          ? state.notices.filter(
+              (notice) =>
+                notice.kind !== 'request' ||
+                lists.added_you.some((p) => p.user_id === notice.player.user_id)
+            )
+          : state.notices,
+      isLoading: false,
+      error: null,
+    })),
   setLoading: (isLoading) => set({ isLoading }),
   setError: (error) => set({ error, isLoading: false }),
   reset: () => set(initialState),

@@ -4,10 +4,15 @@ import { batchedUpdates as unstable_batchedUpdates } from '@/utils/batchedUpdate
 import { phoenixSocket } from '../socket';
 import { initRealtime } from '@/bootstrap/realtime';
 import { useLobbyStore } from '@/stores/lobby';
-import { refreshFriends } from '@/stores/friends';
+import { refreshFriends, useFriendsStore } from '@/stores/friends';
 import { authStore } from '@/stores/auth';
 import { getSeatInvitations } from '@/api/auth';
-import type { SeatInvitation } from '@pidro/shared';
+import {
+  isFriendRequest,
+  isFriendAccepted,
+  isSeatInvitation,
+  isSeatInvitationGone,
+} from '@pidro/shared';
 import {
   flattenLobbyCategories,
   hasLobbyCategories,
@@ -48,6 +53,10 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
       let presences = {};
       let invitationEvents: (() => void)[] | null = null;
 
+      const refresh = () => {
+        if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
+      };
+
       const refreshInvitations = async () => {
         const token = authStore.getState().accessToken;
         const events: (() => void)[] = [];
@@ -63,6 +72,12 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
           authStore.getState().setSeatInvitations(invitations);
           // Events delivered during /me are newer than its snapshot.
           events.forEach((apply) => apply());
+          if (!authStore.getState().user?.guest) {
+            authStore.getState().seatInvitations.forEach((invitation) => {
+              if (isSeatInvitation(invitation))
+                useFriendsStore.getState().queueNotice({ kind: 'seat', invitation });
+            });
+          }
         } catch {
           setTimeout(() => {
             if (globalChannel === channel && token === authStore.getState().accessToken)
@@ -73,20 +88,70 @@ export const useLobbyChannel = (onRealtimeUpdate?: () => void) => {
         }
       };
 
-      channel.on('seat_invitation', (invitation: SeatInvitation) => {
+      channel.on('seat_invitation', (invitation: unknown) => {
+        if (!isSeatInvitation(invitation)) {
+          console.warn('[LobbyChannel] Invalid seat_invitation payload');
+          return;
+        }
         const apply = () => authStore.getState().receiveSeatInvitation(invitation);
         invitationEvents?.push(apply);
         apply();
+        if (!authStore.getState().user?.guest)
+          useFriendsStore.getState().queueNotice({ kind: 'seat', invitation });
+        refresh();
       });
-      channel.on('seat_invitation_gone', (seat: Pick<SeatInvitation, 'code' | 'position'>) => {
-        const apply = () => authStore.getState().removeSeatInvitation(seat);
+      channel.on('seat_invitation_gone', (seat: unknown) => {
+        if (!isSeatInvitationGone(seat)) {
+          console.warn('[LobbyChannel] Invalid seat_invitation_gone payload');
+          return;
+        }
+        const apply = () => {
+          authStore.getState().removeSeatInvitation(seat);
+          useFriendsStore.setState((state) => ({
+            notices: state.notices.filter(
+              (notice) =>
+                notice.kind !== 'seat' ||
+                notice.invitation.code !== seat.code ||
+                notice.invitation.position !== seat.position
+            ),
+          }));
+        };
         invitationEvents?.push(apply);
         apply();
+        refresh();
       });
 
-      channel.on('friends_changed', () => {
-        if (!authStore.getState().user?.guest) void refreshFriends().catch(() => undefined);
+      channel.on('friend_request', (payload: unknown) => {
+        if (!isFriendRequest(payload)) {
+          console.warn('[LobbyChannel] Invalid friend_request payload');
+          return;
+        }
+        if (authStore.getState().user?.guest) return;
+        const token = authStore.getState().accessToken;
+        // Confirm it is still waiting before prompting; a missed prompt never owns the badge.
+        void refreshFriends()
+          .then(() => {
+            const store = useFriendsStore.getState();
+            if (
+              token === authStore.getState().accessToken &&
+              store.added_you.some((p) => p.user_id === payload.player.user_id)
+            )
+              store.queueNotice({ ...payload, kind: 'request' });
+          })
+          .catch(() => undefined);
       });
+
+      channel.on('friend_accepted', (payload: unknown) => {
+        if (!isFriendAccepted(payload)) {
+          console.warn('[LobbyChannel] Invalid friend_accepted payload');
+          return;
+        }
+        if (authStore.getState().user?.guest) return;
+        useFriendsStore.getState().queueNotice({ ...payload, kind: 'accepted' });
+        refresh();
+      });
+
+      channel.on('friends_changed', refresh);
 
       channel
         .join()

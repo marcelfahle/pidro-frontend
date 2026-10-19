@@ -5,6 +5,7 @@ import type { SeatInvitation } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
+import { refreshFriends } from '@/stores/friends';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
@@ -12,6 +13,25 @@ import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import { useTranslation } from '@/i18n';
+
+export async function joinSeatInvitation(invitation: SeatInvitation): Promise<boolean> {
+  const token = useAuthStore.getState().accessToken;
+  try {
+    const response = await lobbyApi.joinRoom(invitation.code, invitation.position);
+    if (token !== useAuthStore.getState().accessToken) return false;
+    useLobbyStore.getState().upsertLobbyRoom(response.room, 'my_rejoinable');
+    useAuthStore.getState().removeSeatInvitation(invitation);
+    return true;
+  } catch (error) {
+    if (token !== useAuthStore.getState().accessToken) return false;
+    const code = apiErrorInfo(error).code?.toUpperCase();
+    if (code === 'SEAT_TAKEN' || code === 'ROOM_NOT_FOUND' || code === 'ROOM_FULL')
+      useAuthStore.getState().removeSeatInvitation(invitation);
+    throw error;
+  } finally {
+    if (token === useAuthStore.getState().accessToken) void refreshFriends().catch(() => undefined);
+  }
+}
 
 export function SeatInvitations({
   fixture,
@@ -37,11 +57,7 @@ export function SeatInvitations({
     setGone(false);
     const token = useAuthStore.getState().accessToken;
     try {
-      const response = await lobbyApi.joinRoom(invitation.code, invitation.position);
-      if (token !== useAuthStore.getState().accessToken) return;
-      useLobbyStore.getState().upsertLobbyRoom(response.room, 'my_rejoinable');
-      useAuthStore.getState().removeSeatInvitation(invitation);
-      router.push(`/game/${invitation.code}`);
+      if (await joinSeatInvitation(invitation)) router.push(`/game/${invitation.code}`);
     } catch (caught) {
       if (token !== useAuthStore.getState().accessToken) return;
       const code = apiErrorInfo(caught).code?.toUpperCase();

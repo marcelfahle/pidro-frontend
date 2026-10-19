@@ -4,7 +4,8 @@
  * switches replace in place; the game, lobby and join flows push OVER the
  * shell full-screen, so the pill never competes with the table.
  */
-import { Slot, useGlobalSearchParams, usePathname, useRouter } from 'expo-router';
+import { Slot, useGlobalSearchParams, usePathname, useRouter, useIsFocused } from 'expo-router';
+import { friendNoticeId } from '@pidro/shared';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
@@ -17,9 +18,11 @@ import {
   type ShellTab,
 } from '@/components/shell/TabPill';
 import { UpdateNotice, UpdateNoticeHost } from '@/components/shell/UpdateNotice';
+import { FriendNoticeHost, useShellFriendNotice } from '@/components/shell/FriendNoticeHost';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
+import { useFriendsStore } from '@/stores/friends';
 import { useLobbyStore } from '@/stores/lobby';
 import { gameRoute } from '@/navigation/gameRoute';
 import { seatInvitationsFixture } from '@/features/lobby/fixtures';
@@ -48,6 +51,7 @@ export default function ShellLayout() {
     <FixtureInsets preset={__DEV__ ? params.safeArea : undefined}>
       <Shell
         forceUpdateNotice={__DEV__ && params.fixture === 'update-notice'}
+        fixture={__DEV__ ? params.fixture : undefined}
         fixtureInvitationCount={seatInvitationsFixture(params.fixture)?.length}
       />
     </FixtureInsets>
@@ -56,9 +60,11 @@ export default function ShellLayout() {
 
 function Shell({
   forceUpdateNotice,
+  fixture,
   fixtureInvitationCount,
 }: {
   forceUpdateNotice: boolean;
+  fixture?: string;
   fixtureInvitationCount?: number;
 }) {
   useLobbyChannel();
@@ -68,8 +74,10 @@ function Shell({
   const pathname = usePathname();
   const active = activeTabForPath(pathname);
   const reduceMotion = useReducedMotion();
+  const focused = useIsFocused();
   const guest = useAuthStore((state) => Boolean(state.user?.guest));
-  const invitationCount = useAuthStore((state) => state.seatInvitations.length);
+  const invitationCount = useFriendsStore((state) => state.waiting_for_you ?? 0);
+  const friend = useShellFriendNotice(focused && !guest, fixture);
   const rejoinable = useLobbyStore((state) => state.lobby.my_rejoinable);
   const waitingGame = rejoinable.length > 0 ? rejoinable[0] : null;
   const insets = useSafeAreaInsets();
@@ -77,6 +85,7 @@ function Shell({
   // The notice floats just above the bottom pill, or above the safe area beside the rail.
   const noticeBottom = Math.max(guest ? 0 : pillClearance.bottom, insets.bottom + PidroSpacing.xs);
   const [noticeHeight, setNoticeHeight] = useState(0);
+  const [friendHeight, setFriendHeight] = useState(0);
   // A screen with an UpdateNoticeSlot shows the notice itself; it then never floats here.
   // Slots claim it as they mount, so float only after that, or Home flashes a copy.
   const [noticePlaced, setNoticePlaced] = useState(false);
@@ -90,13 +99,14 @@ function Shell({
   });
   const host = useMemo(
     () => ({
-      notice: visible ? { restarting, onRestart: restart, onDismiss: dismiss } : null,
+      notice:
+        visible && !friend.notice ? { restarting, onRestart: restart, onDismiss: dismiss } : null,
       setPlaced: setNoticePlaced,
     }),
-    [visible, restarting, restart, dismiss]
+    [visible, restarting, restart, dismiss, friend.notice]
   );
-  const floating = visible && mounted && !noticePlaced;
-  const noticeHeightShown = floating ? noticeHeight : 0;
+  const floating = !friend.notice && visible && mounted && !noticePlaced;
+  const noticeHeightShown = friend.notice ? friendHeight : floating ? noticeHeight : 0;
 
   const handleSelect = (tab: ShellTab) => {
     if (tab === 'table') {
@@ -131,6 +141,20 @@ function Shell({
           </Animated.View>
         </FloatingNotice.Provider>
       </UpdateNoticeHost.Provider>
+      {friend.notice ? (
+        <FriendNoticeHost
+          key={friendNoticeId(friend.notice)}
+          notice={friend.notice}
+          dismiss={friend.dismiss}
+          fixture={friend.fixture}
+          style={{
+            bottom: noticeBottom,
+            paddingLeft: insets.left + PidroSpacing.md,
+            paddingRight: Math.max(insets.right + PidroSpacing.md, pillClearance.right),
+          }}
+          onHeight={setFriendHeight}
+        />
+      ) : null}
       {floating ? (
         <UpdateNotice
           restarting={restarting}
@@ -149,7 +173,13 @@ function Shell({
           orientation={landscape ? 'rail' : 'bottom'}
           active={active}
           tableBadge={Boolean(waitingGame)}
-          invitationCount={fixtureInvitationCount ?? invitationCount}
+          invitationCount={
+            friend.fixture
+              ? fixture === 'friend-queue'
+                ? 2
+                : 1
+              : (fixtureInvitationCount ?? invitationCount)
+          }
           onSelect={handleSelect}
         />
       ) : null}
