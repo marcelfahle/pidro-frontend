@@ -109,7 +109,7 @@ const allCases = [
     path: '/ui-dev?state=create&fixture=invited',
     testId: 'create-room-window',
   },
-  ...['empty', 'list', 'added-you', 'loading', 'error', 'classic'].map((fixture) => ({
+  ...['empty', 'list', 'all', 'added-you', 'loading', 'error', 'classic'].map((fixture) => ({
     name: `friends-${fixture}`,
     path: `/friends?fixture=${fixture}`,
     testId: 'friends-screen',
@@ -1452,8 +1452,8 @@ async function assertFriendsPresentation(page, name) {
         },
       });
     });
-    const share = footer.getByRole('link', {
-      name: swedish ? 'Dela appen' : 'Share the app',
+    const share = footer.getByRole('button', {
+      name: swedish ? 'Berätta om nya appen' : 'Tell them about the new app',
       exact: true,
     });
     await share.click();
@@ -1479,15 +1479,22 @@ async function assertFriendsPresentation(page, name) {
         : 'Come play Pidro with me 🃏 https://www.pidro.online/'
     );
     assert.equal(await footer.getByRole('alert').count(), 0);
-  } else {
+  } else if (name !== 'friends-all') {
     assert.equal(await page.getByTestId('friends-classic-count').count(), 0);
   }
   const expected =
     (swedish
       ? {
           'friends-empty': ['Ingen här ännu. Lägg till dem du spelar med.'],
-          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'Vid ett bord', 'Offline'],
-          'friends-added-you': ['Har lagt till dig', 'Kalle', 'Lägg till tillbaka'],
+          'friends-list': [
+            'Nora',
+            'Pekka',
+            'Liisa',
+            'Ledig att spela',
+            'Vid ett bord',
+            'Inte online',
+          ],
+          'friends-added-you': ['Vill bli vänner', 'Kalle', 'Acceptera'],
           'friends-loading': ['Laddar…'],
           'friends-error': ['Kunde inte uppdatera Vänner. Försök igen.', 'Försök igen'],
           'friends-recent': ['Spelat med nyligen', 'Nora', 'Kalle', 'Tillagd'],
@@ -1502,8 +1509,8 @@ async function assertFriendsPresentation(page, name) {
         }
       : {
           'friends-empty': ['Nobody here yet. Add the people you play with.'],
-          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Online', 'At a table', 'Offline'],
-          'friends-added-you': ['Added you', 'Kalle', 'Add back'],
+          'friends-list': ['Nora', 'Pekka', 'Liisa', 'Free to play', 'At a table', 'Not online'],
+          'friends-added-you': ['Want to be friends', 'Kalle', 'Accept'],
           'friends-loading': ['Loading…'],
           'friends-error': ['Could not update Friends. Please try again.', 'Retry'],
           'friends-recent': ['Recently played with', 'Nora', 'Kalle', 'Added'],
@@ -1517,11 +1524,54 @@ async function assertFriendsPresentation(page, name) {
           'friends-guest': ['Save your player', 'Save account'],
         })[name] ?? [];
   for (const text of expected) await page.getByText(text, { exact: true }).first().waitFor();
+  if (name === 'friends-all') {
+    for (const text of [
+      '4 friends · 3 online',
+      'Want to be friends',
+      'Online now',
+      'Not online',
+      'Waiting for an answer',
+      'Request sent 2 days ago',
+      "38 of your Classic friends aren't here yet",
+    ])
+      await page.getByText(text, { exact: true }).first().waitFor();
+    assert.equal(
+      await page.getByRole('button', { name: "Join Nora's table", exact: true }).count(),
+      1
+    );
+    assert.equal(
+      await page.getByRole('button', { name: 'Start a table with Maija', exact: true }).count(),
+      1
+    );
+    assert.equal(
+      await page
+        .getByRole('button', { name: /(?:Join Kalle|Start a table with Kalle|Watch)/ })
+        .count(),
+      0
+    );
+    await page.getByRole('button', { name: "Ignore Pekka's request", exact: true }).click();
+    assert.equal(await page.getByRole('button', { name: 'Accept Pekka', exact: true }).count(), 0);
+    const toast = page.getByTestId('toast');
+    await toast.getByText("Request hidden. Pekka won't be told.", { exact: true }).waitFor();
+    assertInsideViewport('toast', await toast.boundingBox(), page.viewportSize());
+    await page.getByRole('button', { name: 'Undo', exact: true }).click();
+    await page.getByRole('button', { name: 'Accept Pekka', exact: true }).waitFor();
+    await page
+      .getByRole('button', { name: 'Cancel your friend request to Eero', exact: true })
+      .click();
+    await toast.getByText("Request cancelled. Eero won't be told.", { exact: true }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Undo', exact: true }).count(), 0);
+    assert.equal(await page.getByTestId('friends-sent').count(), 0);
+    await toast.waitFor({ state: 'hidden', timeout: 6000 });
+  }
   if (name === 'friends-added-you') {
     assert.ok(
       (
         await page
-          .getByText(swedish ? 'Har lagt till dig' : 'Added you', { exact: true })
+          .getByRole('heading', {
+            name: swedish ? 'Vill bli vänner' : 'Want to be friends',
+            exact: true,
+          })
           .boundingBox()
       ).y <
         (

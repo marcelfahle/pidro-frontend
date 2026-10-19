@@ -11,6 +11,7 @@ import {
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import type { LobbyCategoryKey } from '@pidro/shared';
 import { lobbyFixture, seatInvitationsFixture } from '@/features/lobby/fixtures';
+import { chooseFriend, defaultSeats, type TableDraft } from '@/features/lobby/newTable';
 import { filterPlayers, lobbyCounts, seatRequirementMessage } from '@/features/lobby/tableRow';
 import {
   emptyEntry,
@@ -42,6 +43,7 @@ import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tok
 import { useQuickGame } from '@/hooks/useQuickGame';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { useAuthStore } from '@/stores/auth';
+import { refreshFriends, useFriendsStore } from '@/stores/friends';
 import { useLobbyStore } from '@/stores/lobby';
 import type { CreateRoomRequest, Position, Room } from '@/types/lobby';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
@@ -87,7 +89,10 @@ function LobbyRealtime({ onUpdate }: { onUpdate: () => void }) {
 
 function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> }) {
   const { t } = useTranslation();
-  const { fixture: fixtureParam } = useLocalSearchParams<{ fixture?: string }>();
+  const { fixture: fixtureParam, partner } = useLocalSearchParams<{
+    fixture?: string;
+    partner?: string;
+  }>();
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   const profile = pickProfile(width, height);
@@ -127,6 +132,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     return seat && room ? { ...seat, words: passwordSeatWords(room, seat.position) } : null;
   });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [initialDraft, setInitialDraft] = useState<TableDraft>();
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState<LobbyFailure | null>(null);
   const [accountSheetOpen, setAccountSheetOpen] = useState(false);
@@ -140,6 +146,33 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
     : record?.userId === user?.id
       ? record?.games
       : undefined;
+
+  useEffect(() => {
+    if (fixture || !partner || !user?.id) return;
+    let active = true;
+    const resolvePartner = async () => {
+      const findPartner = () =>
+        useFriendsStore.getState().friends.find((friend) => friend.user_id === partner);
+      let friend = findPartner();
+      if (!friend) {
+        await refreshFriends().catch(() => undefined);
+        friend = findPartner();
+      }
+      if (!active) return;
+      // Consume even an unavailable friend; a later New table must start fresh.
+      router.setParams({ partner: undefined });
+      if (!friend) return;
+      setInitialDraft(
+        chooseFriend({ seats: { ...defaultSeats }, requirements: {} }, 'seat_3', friend)
+      );
+      setCreateError(null);
+      setIsCreateModalOpen(true);
+    };
+    void resolvePartner();
+    return () => {
+      active = false;
+    };
+  }, [fixture, partner, router, user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -439,6 +472,7 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       ]);
       return;
     }
+    setInitialDraft(undefined);
     setCreateError(null);
     setIsCreateModalOpen(true);
   };
@@ -625,8 +659,10 @@ function LobbyContent({ fixture }: { fixture: ReturnType<typeof lobbyFixture> })
       ) : null}
       <CreateRoomModal
         isOpen={isCreateModalOpen}
+        initialDraft={initialDraft}
         onClose={() => {
           setIsCreateModalOpen(false);
+          setInitialDraft(undefined);
           setCreateError(null);
         }}
         onSubmit={handleCreateRoom}

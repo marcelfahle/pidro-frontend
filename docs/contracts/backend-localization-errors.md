@@ -1,13 +1,13 @@
 # Backend error snapshot and frontend adapter
 
-`backend-localization-errors.json` is an unmodified backend v1 manifest fetched
-via `gh api repos/marcelfahle/pidro-backend/contents/docs/contracts/localization-errors.json?ref=6900a3270254c1d034f3a3c13d76a85efcc33c4e`
-on 2026-10-15, after backend PR #94 merged to main. It is byte-identical to the
-previous feature-branch snapshot at `95109262735cf97dba27665ad7669eb17f137d35`.
-SHA-256 of the decoded JSON:
-`70be059d98ab860cdadad36d848bc3f3a592e062109ada971b7d15b68704321b`.
+`backend-localization-errors.json` is a backend v1 manifest copied
+from backend main at `3844ae407547bc0276a63f2fade479b15796ae77`
+on 2026-10-19 for PID-248, including `no_seat_for_you` and the new seat errors.
+It retains PID-259's clarification that the password can be missing or wrong.
+SHA-256 of the stored JSON:
+`622962bbcf255c19302b0d03b86f6ae8da2405d50860417528831929acd59174`.
 
-Coverage: all **119 codes** in English and Swedish, including all five
+Coverage: all **122 codes** in English and Swedish, including all five
 parameterized codes (six required integer parameters). Contract tests compare
 the exact catalog key set and placeholder names to the snapshot.
 

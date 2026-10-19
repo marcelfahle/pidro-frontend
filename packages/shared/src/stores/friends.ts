@@ -41,6 +41,8 @@ export const useFriendsStore = create<FriendsState>((set) => ({
     set((state) => ({
       ...lists,
       classic: 'friends' in lists ? lists.classic : state.classic,
+      requested: 'friends' in lists ? lists.requested ?? [] : state.requested,
+      requests_waiting: 'friends' in lists ? lists.requests_waiting ?? lists.added_you.length : state.requests_waiting,
       waiting_for_you: 'friends' in lists ? (lists.waiting_for_you ?? 0) : state.waiting_for_you,
       notices:
         'friends' in lists

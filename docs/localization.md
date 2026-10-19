@@ -71,6 +71,13 @@ from `social.ts`; native-speaker approval is still pending for these notice line
 
 ## Backend rollout
 
+PID-248 Swedish review: **Vill bli vänner**, **Online nu**, **Väntar på svar**,
+**Acceptera %{name}**, **Dölj förfrågan från %{name}**,
+**Avbryt din vänförfrågan till %{name}**, **Förfrågan dold/avbruten. %{name} får inget meddelande.**,
+**Ångra**, **Gå med vid %{name}s bord**, **Starta ett bord med %{name}**,
+the friend/online count, and **Det finns ingen ledig plats för dig vid det här bordet.**
+No native-speaker approval is claimed.
+
 Companion: https://github.com/marcelfahle/pidro-backend/pull/94.
 `docs/contracts/backend-localization-errors.json` is the exact fetched manifest;
 its sibling Markdown records source commit/hash and adapter behavior. Structured

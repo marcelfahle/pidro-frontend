@@ -21,6 +21,7 @@ const legacy: Record<string, string> = {
   SEAT_REQUIRES_PASSWORD: "seat_requires_password",
   PROFILE_UNAVAILABLE: "profile_unavailable",
   SEAT_TAKEN: "seat_taken",
+  NO_SEAT_FOR_YOU: "no_seat_for_you",
   TEAM_FULL: "team_full",
   INVALID_POSITION: "invalid_position",
   ROOM_NOT_FOUND: "room_not_found",
