@@ -47,6 +47,10 @@ const passwordCases = [
   'password-wait',
 ].map((fixture) => `lobby-${fixture}`);
 
+const appUpdateCases = ['en', 'sv'].flatMap((locale) =>
+  ['named', 'embedded', 'fallback'].map((fixture) => `locale-${locale}-settings-update-${fixture}`)
+);
+
 export const UI_VIEWPORTS = [
   {
     name: 'iphone-insets-portrait',
@@ -80,6 +84,7 @@ export const UI_VIEWPORTS = [
       'locale-sv-classic-login',
       'update-notice',
       'update-notice-friends-guest',
+      ...appUpdateCases,
       'table-hand-made',
       'table-hand-set',
       'table-hand-they-set',
@@ -162,6 +167,7 @@ export const UI_VIEWPORTS = [
       'friends-recent',
       'friends-results',
       'ui-components',
+      ...appUpdateCases,
       'table-bidding',
       'table-invitation',
       'table-invitation-bidding',

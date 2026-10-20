@@ -1,16 +1,32 @@
 import { useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import * as Application from 'expo-application';
 import * as Updates from 'expo-updates';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { Surface } from '@/components/ui/Surface';
+import { appUpdateFixture, channelLabel, runningUpdate } from '@/features/appUpdate';
 import { updatesEnabled as enabled } from '@/hooks/useAppUpdate';
 import { PidroSpacing } from '@/design/tokens';
 import { useTranslation, type TranslationKey } from '@/i18n';
 
 export function AppUpdateSection() {
   const { t } = useTranslation();
+  const { fixture } = useLocalSearchParams<{ fixture?: string }>();
+  // A fixture shows a release build on web; its button never reaches Expo.
+  const about = appUpdateFixture(fixture) ?? {
+    version: Application.nativeApplicationVersion,
+    build: Application.nativeBuildVersion,
+    channel: Updates.channel,
+    enabled,
+    isEmbeddedLaunch: Updates.isEmbeddedLaunch,
+    updateId: Updates.updateId,
+    name: process.env.EXPO_PUBLIC_UPDATE_NAME,
+    sha: process.env.EXPO_PUBLIC_UPDATE_SHA,
+    date: process.env.EXPO_PUBLIC_UPDATE_DATE,
+  };
+  const running = runningUpdate(about);
   const { isUpdateAvailable, isUpdatePending, isChecking, isDownloading, isRestarting } =
     Updates.useUpdates();
   const [action, setAction] = useState<'check' | 'download' | 'restart' | null>(null);
@@ -52,7 +68,7 @@ export function AppUpdateSection() {
     setAction(null);
   }
 
-  const status = !enabled
+  const status = !about.enabled
     ? 'update.disabled'
     : action === 'restart' || isRestarting
       ? 'update.restarting'
@@ -77,7 +93,7 @@ export function AppUpdateSection() {
             {t('update.version')}
           </PidroText>
           <PidroText role="metadata" selectable>
-            {Application.nativeApplicationVersion ?? t('update.unavailable')}
+            {about.version ?? t('update.unavailable')}
           </PidroText>
         </View>
         <View style={styles.versionRow}>
@@ -85,7 +101,7 @@ export function AppUpdateSection() {
             {t('update.build')}
           </PidroText>
           <PidroText role="metadata" selectable>
-            {Application.nativeBuildVersion ?? t('update.unavailable')}
+            {about.build ?? t('update.unavailable')}
           </PidroText>
         </View>
         <View style={styles.versionRow}>
@@ -93,24 +109,27 @@ export function AppUpdateSection() {
             {t('update.channel')}
           </PidroText>
           <PidroText role="metadata" selectable>
-            {Updates.channel || t('update.unavailable')}
+            {channelLabel(about.channel)}
           </PidroText>
         </View>
-        <PidroText role="metadata" tone="muted">
-          {t('update.running')}
-        </PidroText>
-        <PidroText role="metadata" selectable>
-          {enabled
-            ? Updates.isEmbeddedLaunch
-              ? t('update.embedded')
-              : (Updates.updateId ?? t('update.unavailable'))
-            : t('update.development')}
-        </PidroText>
+        <View style={styles.versionRow}>
+          <PidroText role="metadata" tone="muted">
+            {t('update.running')}
+          </PidroText>
+          <PidroText role="metadata" selectable testID="app-update-running">
+            {running.label}
+          </PidroText>
+        </View>
+        {running.detail ? (
+          <PidroText role="metadata" tone="muted" selectable>
+            {running.detail}
+          </PidroText>
+        ) : null}
       </Surface>
       <PidroText role="metadata" tone={error ? 'danger' : 'muted'} accessibilityLiveRegion="polite">
         {status ? t(status) : null}
       </PidroText>
-      {enabled && (
+      {about.enabled && (
         <BevelButton
           label={
             isUpdatePending

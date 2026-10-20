@@ -776,6 +776,14 @@ const allCases = [
 ];
 
 const localizationCases = ['en', 'sv'].flatMap((locale) => [
+  // Settings → About the app names the running update (PID-265).
+  ...['named', 'embedded', 'fallback'].map((fixture) => ({
+    name: `locale-${locale}-settings-update-${fixture}`,
+    path: `/ui-dev?state=settings&fixture=update-${fixture}&locale=${locale}&language=${locale}`,
+    testId: 'app-update-section',
+    locale,
+    appUpdate: fixture,
+  })),
   ...['system', 'en', 'sv'].map((language) => ({
     name: `locale-${locale}-settings-${language}`,
     path: `/ui-dev?state=settings&locale=${locale}&language=${language}&deviceLocale=${locale}-FI`,
@@ -1316,6 +1324,27 @@ async function assertHomeHeaderClear(page, path, viewport) {
       .map((element) => element.getAttribute('aria-label') || element.textContent.trim());
   });
   assert.deepEqual(covered, [], `Home's header or tiles are covered in ${viewport.name}`);
+}
+
+// The running update reads as a name and a day, with the sha and id under it
+// for support; an embedded launch and an unnamed update say so plainly.
+async function assertAppUpdate(page, { appUpdate, locale }) {
+  const section = page.getByTestId('app-update-section');
+  await section.scrollIntoViewIfNeeded();
+  const sv = locale === 'sv';
+  const id = '0199f3a2-7c41-7d2e-9b8a-5e6f1c2d3a4b';
+  const [running, detail] = {
+    named: [sv ? 'Vaasa-Boudreaux · 20 okt.' : 'Vaasa-Boudreaux · Oct 20', `5cca7d0\n${id}`],
+    embedded: [sv ? 'Versionen som är inbyggd i appen' : 'The version built into the app', null],
+    fallback: ['0199f3a2', id],
+  }[appUpdate];
+  assert.equal(await page.getByTestId('app-update-running').innerText(), running);
+  const support = section.getByText(id, { exact: false });
+  assert.equal(await support.count(), detail ? 1 : 0);
+  if (detail) assert.equal(await support.innerText(), detail);
+  await section.getByText(sv ? 'Byggnummer' : 'Build number', { exact: true }).waitFor();
+  await section.getByText('Beta', { exact: true }).waitFor();
+  await waitForScreenshotReady(page);
 }
 
 // The update notice floats over the shell (faked island insets: 59 top, 34 bottom).
@@ -3702,6 +3731,7 @@ async function main() {
             await page.getByTestId(testCase.testId).waitFor();
             await waitForScreenshotReady(page);
           }
+          if (testCase.appUpdate) await assertAppUpdate(page, testCase);
           if (testCase.name.startsWith('friend-notice-')) {
             await page.getByTestId('friend-notice').waitFor();
             await waitForScreenshotReady(page);

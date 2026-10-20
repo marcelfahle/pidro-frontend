@@ -1,3 +1,5 @@
+import { formatDate, t } from '@pidro/shared';
+
 /**
  * When the "new version is ready" notice shows, and when coming back to the
  * app is worth a quiet update check. Expo downloads updates in the background;
@@ -47,4 +49,68 @@ export function shouldCheckOnForeground({
 }) {
   if (!enabled || busy) return false;
   return lastCheckedAt == null || now - lastCheckedAt >= UPDATE_CHECK_INTERVAL_MS;
+}
+
+export interface RunningUpdateInput {
+  /** OTA updates work in this build: a release build, not web or dev. */
+  enabled: boolean;
+  isEmbeddedLaunch: boolean;
+  updateId: string | null | undefined;
+  /** Inlined by scripts/publish-beta.mjs; an update published before PID-265 has none. */
+  name?: string;
+  sha?: string;
+  /** The publish day, YYYY-MM-DD. */
+  date?: string;
+}
+
+/**
+ * What Settings says is running: "Vaasa-Boudreaux · Oct 20", and under it the
+ * short sha and the update id for support.
+ */
+export function runningUpdate({
+  enabled,
+  isEmbeddedLaunch,
+  updateId,
+  name,
+  sha,
+  date,
+}: RunningUpdateInput): { label: string; detail: string | null } {
+  if (!enabled) return { label: t('update.development'), detail: null };
+  if (isEmbeddedLaunch) return { label: t('update.embedded'), detail: null };
+  if (!updateId) return { label: t('update.unavailable'), detail: null };
+  if (!name) return { label: updateId.slice(0, 8), detail: updateId };
+  const [year, month, day] = (date?.match(/^(\d{4})-(\d{2})-(\d{2})$/) ?? []).slice(1).map(Number);
+  // The publish day as a calendar date, so no time zone moves it.
+  const published = year
+    ? formatDate(new Date(year, month - 1, day), { day: 'numeric', month: 'short' })
+    : null;
+  return {
+    label: published ? `${name} · ${published}` : name,
+    detail: sha ? `${sha}\n${updateId}` : updateId,
+  };
+}
+
+export function channelLabel(channel: string | null | undefined) {
+  if (channel === 'beta') return t('update.channelBeta');
+  if (channel === 'production') return t('update.channelProduction');
+  return channel || t('update.unavailable');
+}
+
+/** Dev fixtures for Settings → About the app: `?fixture=update-named|update-embedded|update-fallback`. */
+export function appUpdateFixture(value?: string) {
+  if (!__DEV__ || !value?.startsWith('update-')) return undefined;
+  const release = { version: '3.0.0', build: '57', channel: 'beta', enabled: true };
+  const updateId = '0199f3a2-7c41-7d2e-9b8a-5e6f1c2d3a4b';
+  if (value === 'update-named')
+    return {
+      ...release,
+      isEmbeddedLaunch: false,
+      updateId,
+      name: 'Vaasa-Boudreaux',
+      sha: '5cca7d0',
+      date: '2026-10-20',
+    };
+  if (value === 'update-embedded') return { ...release, isEmbeddedLaunch: true, updateId };
+  if (value === 'update-fallback') return { ...release, isEmbeddedLaunch: false, updateId };
+  return undefined;
 }
