@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { strongestSuit, trumpsIn } from '../../src/features/game/trump.ts';
+import { trumpsIn } from '../../src/features/game/trump.ts';
 
 const card = (rank, suit) => ({ rank, suit });
 
@@ -50,19 +50,5 @@ describe('the preview', () => {
       card(2, 'spades'),
     ]);
     expect(trumpsIn(hand, 'hearts')).toEqual([card(13, 'hearts'), card(5, 'diamonds')]);
-  });
-
-  it('starts on the suit with the most trumps, counting the off-five', () => {
-    // Clubs and spades hold two cards each; the 5♣ makes spades three.
-    expect(strongestSuit(hand)).toBe('spades');
-    // Diamonds' 5♥ beats two clubs.
-    expect(
-      strongestSuit([card(5, 'hearts'), card(4, 'diamonds'), card(9, 'clubs'), card(8, 'clubs')])
-    ).toBe('diamonds');
-  });
-
-  it('takes the first suit on a tie', () => {
-    expect(strongestSuit([card(9, 'clubs'), card(9, 'hearts')])).toBe('hearts');
-    expect(strongestSuit([])).toBe('hearts');
   });
 });

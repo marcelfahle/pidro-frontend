@@ -694,8 +694,8 @@ const allCases = [
     skipViewports: ['portrait'],
     insets: safeArea === 'island-left' ? { left: 59, right: 0 } : { left: 0, right: 59 },
   })),
-  // PID-209: you dealt and won the bid. The suits sit in the felt, hearts
-  // (with the 5♦) already lifted in the hand; every seat stays in view.
+  // PID-209: you dealt and won the bid. The suits sit in the felt, none
+  // picked for you and nothing lifted yet; every seat stays in view.
   {
     name: 'table-trump',
     path: '/table-dev?phase=declaring',
@@ -2887,8 +2887,8 @@ async function assertCountHelp(page, testCase, viewport) {
 }
 
 // PID-209: four suit buttons of 64pt or more, a grid in portrait and a row in
-// landscape, clear of every seat and its cards, with the strongest suit's
-// trumps (hearts and the 5♦) counted.
+// landscape, clear of every seat and its cards, with each suit's trumps
+// counted (hearts and the 5♦ make four).
 async function assertTrumpPicker(page, testCase, box, viewport) {
   await assertAbovePlayerHand(page, testCase.name, box, viewport);
   const choices = await page.getByTestId('trump-picker').getByRole('button').all();

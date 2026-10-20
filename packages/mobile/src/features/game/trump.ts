@@ -11,10 +11,3 @@ export const TRUMP_SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
 export function trumpsIn(hand: Card[], suit: Suit): Card[] {
   return hand.filter((card) => isTrumpCard(card, suit));
 }
-
-/** The suit that leaves the most trumps; on a tie, the first in table order. */
-export function strongestSuit(hand: Card[]): Suit {
-  return TRUMP_SUITS.reduce((best, suit) =>
-    trumpsIn(hand, suit).length > trumpsIn(hand, best).length ? suit : best
-  );
-}

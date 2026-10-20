@@ -12,7 +12,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import type { RematchVote } from '@pidro/shared';
 import type { Room } from '@/types/lobby';
 import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } from '@/types/game';
-import { strongestSuit } from '@/features/game/trump';
 import { useGameTableController } from '@/game/useGameTableController';
 import { useTableHaptics } from '@/game/useGameHaptics';
 import { usePlayGuard } from '@/game/usePlayGuard';
@@ -357,9 +356,10 @@ export function GameCanvasTable({
     handlePlayCard,
   } = controller;
 
-  // Picking trump, the hand lifts the suit pointed at, or else the strongest.
+  // Picking trump, the hand lifts the suit pointed at. Nothing is lifted until
+  // then: a pre-picked suit read as the game choosing for you (testers).
   const [pointedSuit, setPointedSuit] = useState<Suit | null>(null);
-  const previewSuit = showTrumpSelection ? (pointedSuit ?? strongestSuit(yourHand ?? [])) : null;
+  const previewSuit = showTrumpSelection ? pointedSuit : null;
 
   const playCard = usePlayGuard(handlePlayCard, {
     presentation: dealerRobPresentation,
