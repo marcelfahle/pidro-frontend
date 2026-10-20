@@ -1,9 +1,10 @@
 /**
  * A seat held for you, shown at the top of a game with bots (PID-258). Join
  * leaves this game and sits you in the held seat in one step; Not now tells
- * the host and the bots play on. It may cover North, never the hand.
+ * the host and the bots play on. Upright it sits under the score and the menu,
+ * and the table makes room below it (`onHeight`), so it covers no seat.
  */
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,7 +14,7 @@ import { NoticeCard } from '@/components/friends/NoticeCard';
 import { joinSeatInvitation } from '@/components/invites/SeatInvitations';
 import { PidroSpacing } from '@/design/tokens';
 import { tableInvitationLine } from '@/features/invites/tableInvitation';
-import { headerTop } from '@/game/canvas/TableChrome';
+import { TABLE_HEADER, headerTop } from '@/game/canvas/TableChrome';
 import { useTranslation } from '@/i18n';
 import { declineSeatInvitation } from '@/stores/friends';
 import { useGameStore } from '@/stores/game';
@@ -23,12 +24,15 @@ export function TableInvitation({
   invitation,
   roomCode,
   onLeaving,
+  onHeight,
   fixture = false,
 }: {
   invitation: SeatInvitation;
   roomCode: string;
   /** True while this table is being left, false if it stays. */
   onLeaving?: (leaving: boolean) => void;
+  /** The room it takes under the header; 0 once it has gone. */
+  onHeight?: (height: number) => void;
   fixture?: boolean;
 }) {
   const { t } = useTranslation();
@@ -37,7 +41,9 @@ export function TableInvitation({
   const { width, height } = useWindowDimensions();
   // A phone on its side has no room above North's played card for two rows,
   // nor any above a bid, trump or hand window: the card waits for your choice.
+  // Neither has a short upright phone once the table has made room for it.
   const row = width > height && height < 500;
+  const waits = row || (width < height && height < 700);
   const choosing = useGameStore((s) =>
     s.legalActions.some((action) => action.type !== 'play_card')
   );
@@ -47,6 +53,11 @@ export function TableInvitation({
   const [error, setError] = useState<string>();
   const [hidden, setHidden] = useState(false);
   const name = invitation.host?.display_name || t('social.player');
+  const shown = !hidden && !(waits && choosing && !loading);
+  useEffect(() => {
+    if (!shown) onHeight?.(0);
+  }, [shown, onHeight]);
+  useEffect(() => () => onHeight?.(0), [onHeight]);
 
   const join = async () => {
     if (busy.current || fixture) return;
@@ -88,14 +99,16 @@ export function TableInvitation({
     }
   };
 
-  if (hidden || (row && choosing && !loading)) return null;
+  if (!shown) return null;
   return (
     <View
       pointerEvents="box-none"
+      onLayout={(event) => onHeight?.(event.nativeEvent.layout.height)}
       style={[
         styles.slot,
         {
-          top: headerTop(insets.top),
+          // Sideways it keeps its place in the header row.
+          top: width > height ? headerTop(insets.top) : insets.top + TABLE_HEADER,
           paddingLeft: insets.left + PidroSpacing.md,
           paddingRight: insets.right + PidroSpacing.md,
         },

@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useReducedMotion } from 'react-native-reanimated';
+import { BevelPressable } from '@/components/ui/Bevel';
 import { DismissButton } from '@/components/ui/DismissButton';
+import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { TextLink } from '@/components/ui/TextLink';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii } from '@/design/tokens';
@@ -91,8 +93,18 @@ export function SeatPickerContainer({
                 </>
               ) : (
                 <View style={[styles.header, phoneLandscape && styles.inlineHeader]}>
+                  {/* Sideways the ✕ leads the row on round glass, like the back button (the board). */}
                   {phoneLandscape && (
-                    <DismissButton accessibilityLabel={closeLabel} onPress={onClose} />
+                    <BevelPressable
+                      accessibilityRole="button"
+                      accessibilityLabel={closeLabel}
+                      material="glass"
+                      radius={22}
+                      onPress={onClose}
+                      style={styles.close}
+                      contentStyle={styles.closeFace}>
+                      <Icon name="close" size={20} strokeWidth={2.4} />
+                    </BevelPressable>
                   )}
                   <View style={[styles.heading, phoneLandscape && styles.inlineHeading]}>
                     <PidroText role="title" tone="gold" style={styles.title}>
@@ -202,6 +214,8 @@ const styles = StyleSheet.create({
   },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   inlineHeader: { gap: 12 },
+  close: { width: 44, height: 44, flexShrink: 0 },
+  closeFace: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   heading: { flex: 1, minWidth: 0, gap: 2 },
   title: { fontFamily: PidroFonts.display, fontSize: 24, lineHeight: 32 },
   inlineHeading: { flexDirection: 'row', alignItems: 'center', gap: 12 },

@@ -3,6 +3,7 @@ import type { TranslationEntry } from "../catalogs";
 // Add flat, namespaced keys here; keep both languages in parity.
 export const en = {
   "new_table.title": "New table",
+  "new_table.hosts_table": "%{name}’s table",
   "new_table.start": "Start the game",
   "new_table.share": "Share the table link",
   "new_table.practice": "A practice game with three bots.",
@@ -405,6 +406,7 @@ export const en = {
 } as const;
 export const sv: Record<keyof typeof en, TranslationEntry> = {
   "new_table.title": "Nytt bord",
+  "new_table.hosts_table": "%{name}s bord",
   "new_table.start": "Starta spelet",
   "new_table.share": "Dela länken till bordet",
   "new_table.practice": "Ett övningsspel med tre botar.",

@@ -71,6 +71,8 @@ type Props = {
   onSaveGuest?: () => void;
   /** How every hand holds its cards; fixtures try the styles. */
   held?: HeldStyle;
+  /** Upright, the height of a card under the header (a seat invitation): the table starts below it. */
+  topDock?: number;
 };
 
 /** `value` as it was when `hold` began, for as long as it holds. */
@@ -272,6 +274,7 @@ export function GameCanvasTable({
   onSaveGuest,
   rulesFixtureSeen,
   held,
+  topDock = 0,
 }: Props) {
   const { locale } = useTranslation();
   const controller = useGameTableController();
@@ -326,7 +329,7 @@ export function GameCanvasTable({
   const facesReady = useHandPresentationReady(serverModel.yourHand, textures, isBiddingTurn);
   const isHandReady = !model.dealStage && facesReady;
   const insets = useSafeAreaInsets();
-  const reserves = useTableReserves();
+  const reserves = useTableReserves({ top: TABLE_HEADER + topDock });
   const { topReserve, bottomReserve } = reserves;
   const ruleSet = controller.serverState?.variant ?? 'finnish';
   const rules = useRulesExplainer(
