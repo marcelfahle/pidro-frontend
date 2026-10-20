@@ -65,7 +65,7 @@ export function FriendPicker({
             <View key={group.section} style={styles.section}>
               {!compact && (
                 <View style={styles.heading}>
-                  <PidroText role="metadata" tone="soft">
+                  <PidroText role="eyebrow" tone="cyan">
                     {t(
                       group.section === 'online'
                         ? 'picker.online'

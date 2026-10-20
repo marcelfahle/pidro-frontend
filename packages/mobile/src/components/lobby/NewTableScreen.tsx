@@ -249,12 +249,14 @@ export function NewTableScreen({
           id: '100',
           title: t('seat_row.games', { number: '100' }),
           subtitle: t('new_table.experience'),
+          shortSubtitle: t('new_table.experience_short'),
           badge: '100',
         },
         {
           id: '1000',
           title: t('seat_row.games', { number: '1000' }),
           subtitle: t('new_table.experienced'),
+          shortSubtitle: t('new_table.experienced_short'),
           badge: '1k',
         },
         {
@@ -264,6 +266,7 @@ export function NewTableScreen({
             ? t('new_table.with_password_code', { code: room.seat_password })
             : t('new_table.with_password'),
           subtitle: t('new_table.password_help'),
+          shortSubtitle: t('new_table.password_help_short'),
           icon: 'lock',
         },
       ],

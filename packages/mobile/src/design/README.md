@@ -156,7 +156,8 @@ enters and leaves like the update notice. Sheet: `/ui-dev?state=components`.
 - **Bree Serif** (`PidroFonts.display`): CTA labels, screen/plaque titles, big numbers.
   Weight 400 only; it brings its own character.
 - **Nunito** (`PidroFonts.ui`): everything else, via `PidroText` roles
-  (display/title/label/body/metadata). Never invent a size/weight outside the roles.
+  (display/title/label/body/metadata, and `eyebrow` for a section's name above its
+  rows). Never invent a size/weight outside the roles.
 
 ## Gradients and shadows (New Architecture)
 

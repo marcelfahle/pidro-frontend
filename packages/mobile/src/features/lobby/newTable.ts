@@ -2,11 +2,11 @@ import {
   t,
   type CreateRoomRequest,
   type FriendPlayer,
-  type Position,
   type Room,
   type RuleSet,
   type Seat,
   type SeatType,
+  type TranslationKey,
 } from '@pidro/shared';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import type { PickerFriend } from './friendPicker';
@@ -16,11 +16,6 @@ export type DraftSeat =
   Exclude<SeatType, { type: 'held'; user_id: string }> | { type: 'held'; friend: FriendPlayer };
 export type TableDraft = { seats: Record<SeatKey, DraftSeat> };
 
-export const seatPositions: Record<SeatKey, Position> = {
-  seat_2: 'east',
-  seat_3: 'south',
-  seat_4: 'west',
-};
 export const defaultSeats: TableDraft['seats'] = { seat_2: 'open', seat_3: 'open', seat_4: 'open' };
 
 export function roomHasUser(room: Room, userId?: string | null): boolean {
@@ -74,7 +69,26 @@ export function seatError(error: unknown): string {
   const code = apiErrorInfo(error).code?.toUpperCase();
   if (code === 'ALREADY_SEATED') return t('new_table.friend_seated');
   if (code === 'SEAT_NOT_VACANT') return t('new_table.seat_filled');
+  // The host is at this table, so the friend is the one playing elsewhere.
+  if (code === 'ALREADY_IN_ROOM') return t('new_table.friend_busy');
   return localizedError(error, 'new_table.seat_error');
+}
+
+/**
+ * What a refused Open the table says. Asked again after the host's own table was ruled
+ * out, ALREADY_IN_ROOM means a friend held here is playing with others.
+ */
+export function createFailure(
+  error: unknown,
+  request: CreateRoomRequest
+): { error?: unknown; key: TranslationKey } {
+  const code = apiErrorInfo(error).code?.toUpperCase();
+  if (code === 'ACCOUNT_REQUIRED') return { error, key: 'social.account_error' };
+  const holds = Object.values(request.seats ?? {}).some(
+    (seat) => typeof seat === 'object' && seat.type === 'held'
+  );
+  if (code === 'ALREADY_IN_ROOM' && holds) return { key: 'new_table.held_friend_busy' };
+  return { error, key: 'social.create_error' };
 }
 
 export function chooseSeat(draft: TableDraft, seat: SeatKey, choice: DraftSeat): TableDraft {

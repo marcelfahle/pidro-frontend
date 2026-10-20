@@ -5,7 +5,7 @@ import { lobbyApi } from '@/api/lobby';
 import { captureAnalytics } from '@/analytics/PostHogAnalytics';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { NewTableScreen } from '@/components/lobby/NewTableScreen';
-import { roomHasUser } from '@/features/lobby/newTable';
+import { createFailure, roomHasUser } from '@/features/lobby/newTable';
 import { useTranslation, type TranslationKey } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -65,14 +65,7 @@ export default function NewTableRoute() {
       if (apiErrorInfo(error).code === 'ACCOUNT_REQUIRED' && mayRequestAccount) {
         pending.current = data;
         setAccountOpen(true);
-      } else
-        setFailure({
-          error,
-          key:
-            apiErrorInfo(error).code === 'ACCOUNT_REQUIRED'
-              ? 'social.account_error'
-              : 'social.create_error',
-        });
+      } else setFailure(createFailure(error, data));
     } finally {
       busyRef.current = false;
       setBusy(false);

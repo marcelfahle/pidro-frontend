@@ -7,6 +7,7 @@ import {
   enterDigit,
   passwordAnswer,
   passwordSeatWords,
+  passwordWaitLine,
 } from '../../src/features/lobby/passwordSeat';
 import { tableRow } from '../../src/features/lobby/tableRow';
 
@@ -61,6 +62,18 @@ describe('reading the server', () => {
     expect(passwordAnswer(refused(429, 'RATE_LIMITED', { 'retry-after': 'soon' }))).toEqual({
       wait: 60,
     });
+  });
+
+  it('says a minute only when the wait is one, and the real minutes past it', () => {
+    expect(passwordWaitLine(60)).toBe('Try again in a minute.');
+    expect(passwordWaitLine(61)).toBe('Try again in 2 minutes.');
+    expect(passwordWaitLine(540)).toBe('Try again in 9 minutes.');
+    try {
+      setLocale('sv');
+      expect(passwordWaitLine(540)).toBe('Försök igen om 9 minuter.');
+    } finally {
+      setLocale('en');
+    }
   });
 
   it('reads the structured lowercase codes too', () => {

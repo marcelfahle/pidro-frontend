@@ -131,40 +131,13 @@ export function createLobbyApi(api: ApiClient) {
       await api.delete(`/api/v1/rooms/${code}/unwatch`);
     },
 
-    setRoomLocked: async (code: string, locked: boolean): Promise<Room> => {
-      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/lock`, { locked });
-      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
-    },
-
-    holdSeat: async (code: string, position: Position, userId: string): Promise<Room> => {
-      const response = await api.put<GetRoomResponse>(`/api/v1/rooms/${code}/seats/${position}/hold`, { user_id: userId });
-      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
-    },
-
     /** Not now on a seat invitation: the host's hold at that seat opens again. */
     declineSeatInvitation: async (code: string, position: Position): Promise<void> => {
       await api.post(`/api/v1/rooms/${code}/seats/${position}/decline`);
     },
 
-    releaseHold: async (code: string, position: Position): Promise<Room> => {
-      const response = await api.delete<GetRoomResponse>(`/api/v1/rooms/${code}/seats/${position}/hold`);
-      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
-    },
-
-    movePlayer: async (code: string, position: Position, userId?: string): Promise<Room> => {
-      const body = userId ? { position, user_id: userId } : { position };
-      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/seat`, body);
-      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
-    },
-
     kickPlayer: async (code: string, position: Position): Promise<Room> => {
       const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/kick`, { position });
-      return normalizeRoom(response.data?.data?.room ?? response.data?.room);
-    },
-
-    /** Host only: seats a bot in a vacant seat at the room's bot difficulty. */
-    seatBot: async (code: string, position: Position): Promise<Room> => {
-      const response = await api.post<GetRoomResponse>(`/api/v1/rooms/${code}/bot`, { position });
       return normalizeRoom(response.data?.data?.room ?? response.data?.room);
     },
 

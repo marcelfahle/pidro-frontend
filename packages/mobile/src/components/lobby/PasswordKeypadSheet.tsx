@@ -21,6 +21,7 @@ import {
   deleteDigit,
   emptyEntry,
   enterDigit,
+  passwordWaitLine,
   type PasswordEntry,
 } from '@/features/lobby/passwordSeat';
 import { playWrongHaptic } from '@/game/useGameHaptics';
@@ -223,7 +224,7 @@ function Panel({
       {entry.status === 'wrong'
         ? t('social.password_wrong', { name: words.host })
         : entry.status === 'wait'
-          ? t('social.password_wait')
+          ? passwordWaitLine(waitSeconds)
           : t('social.password_help', { name: words.host })}
     </PidroText>
   );

@@ -39,6 +39,13 @@ export function passwordAnswer(error: unknown): 'wrong' | { wait: number } | und
   return { wait: Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 60 };
 }
 
+/** The wait line: the board's minute, or the minutes the server really asks for. */
+export function passwordWaitLine(seconds: number): string {
+  return seconds <= 60
+    ? t('social.password_wait')
+    : t('social.password_wait_minutes', { minutes: Math.ceil(seconds / 60) });
+}
+
 /** The panel's words for one seat: whose table, the rules, and the seat's relation to the host. */
 export function passwordSeatWords(room: Room, position: Position) {
   const seats = tableRow(room, 'open_tables').seats;

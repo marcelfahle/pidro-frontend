@@ -56,7 +56,7 @@ export function ChoiceList({
       {displayed.map((section, index) => (
         <View key={index} style={styles.section}>
           {!compact && (
-            <PidroText role="metadata" tone="soft" style={styles.heading}>
+            <PidroText role="eyebrow" tone="cyan" style={styles.heading}>
               {section.title}
             </PidroText>
           )}
