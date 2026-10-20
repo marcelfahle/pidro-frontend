@@ -19,6 +19,9 @@ if (!sha) {
   process.exit(1);
 }
 
+// A pasted secret can carry a newline, which is not a legal header value.
+process.env.EXPO_TOKEN = process.env.EXPO_TOKEN?.trim();
+
 const API = 'app.pidro.online';
 const short = (commit) => commit.slice(0, 7);
 
