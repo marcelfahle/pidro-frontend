@@ -10,11 +10,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { SeatInvitation } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { NoticeCard } from '@/components/friends/NoticeCard';
-import { declineSeatInvitation, joinSeatInvitation } from '@/components/invites/SeatInvitations';
+import { joinSeatInvitation } from '@/components/invites/SeatInvitations';
 import { PidroSpacing } from '@/design/tokens';
 import { tableInvitationLine } from '@/features/invites/tableInvitation';
 import { headerTop } from '@/game/canvas/TableChrome';
 import { useTranslation } from '@/i18n';
+import { declineSeatInvitation } from '@/stores/friends';
 import { useGameStore } from '@/stores/game';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 
@@ -42,6 +43,7 @@ export function TableInvitation({
   );
   const busy = useRef(false);
   const [loading, setLoading] = useState(false);
+  const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string>();
   const [hidden, setHidden] = useState(false);
   const name = invitation.host?.display_name || t('social.player');
@@ -67,6 +69,22 @@ export function TableInvitation({
     // This game is over either way. Tables says the seat is gone, or still offers it.
     const joined = await joinSeatInvitation(invitation).catch(() => false);
     router.replace(joined ? `/game/${invitation.code}` : '/lobby');
+  };
+
+  const decline = async () => {
+    if (busy.current) return;
+    if (fixture) return setHidden(true);
+    busy.current = true;
+    setDeclining(true);
+    setError(undefined);
+    try {
+      await declineSeatInvitation(invitation);
+    } catch {
+      setError(t('seat_invitation.decline_failed'));
+    } finally {
+      busy.current = false;
+      setDeclining(false);
+    }
   };
 
   if (hidden || (row && choosing && !loading)) return null;
@@ -95,11 +113,8 @@ export function TableInvitation({
         }}
         secondary={{
           label: t('friend_notice.not_now'),
-          onPress: () => {
-            if (busy.current) return;
-            if (fixture) setHidden(true);
-            else void declineSeatInvitation(invitation);
-          },
+          loading: declining,
+          onPress: () => void decline(),
         }}
         footnote={error ?? t('friend_notice.ends_bot_game')}
         row={row}

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { friendNoticeId, type SeatInvitation } from '@pidro/shared';
+import { friendNoticeId, type FriendNotice, type SeatInvitation } from '@pidro/shared';
 import { lobbyApi } from '@/api/lobby';
 import { useAuthStore } from '@/stores/auth';
 import { useLobbyStore } from '@/stores/lobby';
@@ -12,6 +12,7 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { Surface } from '@/components/ui/Surface';
 import { PidroSpacing } from '@/design/tokens';
+import { unnoticedInvitations } from '@/features/invites/tableInvitation';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import { useTranslation } from '@/i18n';
 
@@ -35,22 +36,6 @@ export async function joinSeatInvitation(invitation: SeatInvitation): Promise<bo
   }
 }
 
-/** Not now: the invitation goes at once; a seat already gone is the same answer. */
-export async function declineSeatInvitation(invitation: SeatInvitation): Promise<void> {
-  const token = useAuthStore.getState().accessToken;
-  useAuthStore.getState().removeSeatInvitation(invitation);
-  try {
-    await lobbyApi.declineSeatInvitation(invitation.code, invitation.position);
-  } catch (error) {
-    if (token !== useAuthStore.getState().accessToken) return;
-    if (apiErrorInfo(error).code?.toUpperCase() === 'INVITATION_GONE') return;
-    console.warn('[SeatInvitations] Not now failed; the invitation stays.');
-    useAuthStore.getState().receiveSeatInvitation(invitation);
-  } finally {
-    if (token === useAuthStore.getState().accessToken) void refreshFriends().catch(() => undefined);
-  }
-}
-
 function seatGone(error: unknown) {
   const code = apiErrorInfo(error).code?.toUpperCase();
   return code === 'SEAT_TAKEN' || code === 'ROOM_NOT_FOUND' || code === 'ROOM_FULL';
@@ -58,16 +43,19 @@ function seatGone(error: unknown) {
 
 export function SeatInvitations({
   fixture,
+  noticed = [],
   scrollable = false,
 }: {
   fixture?: SeatInvitation[];
+  /** Notices on their way or on screen: their invitations are answered there, not twice. */
+  noticed?: FriendNotice[];
   scrollable?: boolean;
 }) {
   const { t } = useTranslation();
   const router = useRouter();
   const stored = useAuthStore((state) => state.seatInvitations);
   const notices = useFriendsStore((state) => state.notices);
-  const invitations = fixture ?? stored;
+  const invitations = unnoticedInvitations(fixture ?? stored, noticed);
   const late = fixture
     ? []
     : notices.flatMap((notice) => (notice.kind === 'too_late' ? [notice] : []));

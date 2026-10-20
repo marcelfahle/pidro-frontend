@@ -94,7 +94,7 @@ function RowControlsGallery() {
         <ActionPill
           label="Join"
           icon="enter"
-          accessibilityLabel="Join Nora's table"
+          accessibilityLabel="Join Nora’s table"
           onPress={noop}
         />
         <ActionPill label="Play" icon="cards" onPress={noop} />
@@ -131,7 +131,7 @@ function RowControlsGallery() {
         />
       </View>
       <View style={styles.row}>
-        <DismissButton accessibilityLabel="Ignore Pekka's request" onPress={noop} />
+        <DismissButton accessibilityLabel="Ignore Pekka’s request" onPress={noop} />
         <DismissButton accessibilityLabel="Dismiss notice" disabled />
         <View style={styles.badgeTitle}>
           <PidroText role="label" tone="gold">

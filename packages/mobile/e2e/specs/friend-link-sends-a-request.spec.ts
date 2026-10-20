@@ -40,7 +40,7 @@ test("PID-247: signing up through someone's link sends them a friend request the
 
   await expect(new HomeScreen(page).root).toBeVisible();
   await expect(page.getByTestId('friend-notice')).toContainText(
-    `Request sent. You'll be friends once ${bertilPlayer.name} accepts.`
+    `Request sent. You’ll be friends once ${bertilPlayer.name} accepts.`
   );
 
   const lists = async (token: string) => (await api('/api/v1/friends', { token })).payload.data;
@@ -55,7 +55,7 @@ test("PID-247: signing up through someone's link sends them a friend request the
   // Bertil accepts, and the new player hears it even after the link's own notice.
   await api(`/api/v1/friends/${data.user.id}`, { method: 'PUT', token: bertil.token });
   await expect(page.getByTestId('friend-notice')).toContainText(
-    `${bertilPlayer.name} accepted. You're friends now.`
+    `${bertilPlayer.name} accepted. You’re friends now.`
   );
   expect(ids((await lists(data.token)).friends)).toEqual([bertil.user.id]);
 

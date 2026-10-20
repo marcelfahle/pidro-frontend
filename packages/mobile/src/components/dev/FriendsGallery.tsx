@@ -52,7 +52,7 @@ export function FriendsGallery() {
                   accessibilityLabel="Accept Pekka"
                   onPress={noop}
                 />
-                <DismissButton accessibilityLabel="Ignore Pekka's request" onPress={noop} />
+                <DismissButton accessibilityLabel="Ignore Pekka’s request" onPress={noop} />
               </>
             }
           />
@@ -86,7 +86,7 @@ export function FriendsGallery() {
               <ActionPill
                 label="Join"
                 icon="enter"
-                accessibilityLabel="Join Nora's table"
+                accessibilityLabel="Join Nora’s table"
                 onPress={noop}
               />
             }

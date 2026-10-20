@@ -16,6 +16,7 @@ import {
   friendSheetState,
   friendsMeta,
   discoveryRowState,
+  followFriendLists,
   friendLinkMessage,
   friendLinkRequest,
   linkProfileAction,
@@ -35,16 +36,16 @@ describe('Friends presentation', () => {
         friendSheetState({ ...nora, presence, table_company, join_as: 'partner' })
       ).toMatchObject({
         action: 'join',
-        label: "Join Nora's table",
+        label: 'Join Nora’s table',
         line: 'At a table · partner seat free',
-        hint: "You'll play as Nora's partner.",
+        hint: 'You’ll play as Nora’s partner.',
         tone: 'gold',
       });
       expect(
         friendSheetState({ ...nora, presence, table_company, join_as: 'opponent' })
       ).toMatchObject({
         action: 'join',
-        hint: "You'll play against Nora.",
+        hint: 'You’ll play against Nora.',
       });
     }
     for (const entry of [
@@ -96,10 +97,10 @@ describe('Friends presentation', () => {
     expect(classicFriendsMessage(lists)).toBeNull();
     expect(classicFriendsMessage({ ...lists, classic: { not_here: 0 } })).toBeNull();
     expect(classicFriendsMessage({ ...lists, classic: { not_here: 1 } })).toBe(
-      "1 of your Classic friends isn't here yet"
+      '1 of your Classic friends isn’t here yet'
     );
     expect(classicFriendsMessage({ ...lists, classic: { not_here: 7 } })).toBe(
-      "7 of your Classic friends aren't here yet"
+      '7 of your Classic friends aren’t here yet'
     );
     setLocale('sv');
     expect(classicFriendsMessage({ ...lists, classic: { not_here: 7 } })).toBe(
@@ -298,6 +299,37 @@ describe('Friends presentation', () => {
     expect(on(1).line).toBe('Spelade tillsammans igår');
     expect(on(0, 'day').line).toBe('Idag');
     expect(on(2, 'day').line).toBe('För 2 dagar sedan');
+  });
+
+  test('Add a friend follows the lists: an accepted request reads as a friend', () => {
+    const row = (user_id, relation) => ({
+      user_id,
+      display_name: user_id,
+      avatar_url: null,
+      relation,
+    });
+    const rows = [
+      row('birger', 'added'),
+      row('astrid', 'none'),
+      row('nora', 'added_you'),
+      row('kalle', 'friend'),
+    ];
+    const person = (user_id) => ({ user_id, display_name: user_id, avatar_url: null });
+    const followed = followFriendLists(rows, {
+      friends: [person('birger'), person('nora')],
+      added_you: [person('astrid')],
+    });
+    expect(followed.map((p) => p.relation)).toEqual(['friend', 'added_you', 'friend', 'friend']);
+    expect(discoveryRowState(followed[0]).line).toBe('Your friend');
+    // Lists that do not know a player yet, empty before their first answer, change nothing.
+    expect(followFriendLists(rows, { friends: [], added_you: [], requested: [] })).toEqual(rows);
+    expect(
+      followFriendLists([row('eero', 'none')], {
+        friends: [],
+        added_you: [],
+        requested: [person('eero')],
+      })[0].relation
+    ).toBe('added');
   });
 
   test('the sheet reads the row line for a friend who is not online', () => {

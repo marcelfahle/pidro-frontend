@@ -3,6 +3,7 @@ import { setLocale } from '@pidro/shared';
 import {
   tableInvitation,
   tableInvitationLine,
+  unnoticedInvitations,
 } from '../../src/features/invites/tableInvitation.ts';
 
 const human = { occupant_type: 'human', status: 'connected', user_id: 'u' };
@@ -65,11 +66,25 @@ describe('tableInvitationLine', () => {
     setLocale('en');
     const finnish = { ...later, rule_set: 'finnish' };
     expect(tableInvitationLine({ ...finnish, join_as: 'partner' }, 'Bertil')).toBe(
-      "Finnish · as Bertil's partner"
+      'Finnish · as Bertil’s partner'
     );
     expect(tableInvitationLine({ ...finnish, join_as: 'opponent' }, 'Bertil')).toBe(
-      "Finnish · as Bertil's opponent"
+      'Finnish · as Bertil’s opponent'
     );
     expect(tableInvitationLine(finnish, 'Bertil')).toBe('Finnish');
+  });
+});
+
+describe('unnoticedInvitations', () => {
+  it('leaves out only the invitation whose own seat notice is waiting or on screen', () => {
+    const astrid = { user_id: 'astrid', display_name: 'Astrid', avatar_url: null };
+    const notices = [
+      { kind: 'seat', invitation: { ...older } },
+      { kind: 'request', player: astrid },
+      // The same seat held again later is a new invitation, with its own notice to come.
+      { kind: 'seat', invitation: { ...later, held_since: '2026-10-19T11:00:00Z' } },
+    ];
+    expect(unnoticedInvitations([later, older], notices)).toEqual([later]);
+    expect(unnoticedInvitations([later, older], [])).toEqual([later, older]);
   });
 });

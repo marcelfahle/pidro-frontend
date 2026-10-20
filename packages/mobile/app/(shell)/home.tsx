@@ -1,6 +1,8 @@
 import { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SeatInvitations } from '@/components/invites/SeatInvitations';
+import { friendNoticeFixture } from '@/features/friends/fixtures';
+import { unnoticedInvitations } from '@/features/invites/tableInvitation';
 import { seatInvitationsFixture } from '@/features/lobby/fixtures';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,6 +27,7 @@ import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tok
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { TABLE_UNKNOWN_ERROR, useQuickGame } from '@/hooks/useQuickGame';
 import { useAuthStore } from '@/stores/auth';
+import { useFriendsStore } from '@/stores/friends';
 import { useLobbyStore } from '@/stores/lobby';
 import { formatNumber, useTranslation } from '@/i18n';
 
@@ -44,7 +47,9 @@ export default function HomeScreen() {
   const fixtureInvitations = seatInvitationsFixture(fixture);
   const user = useAuthStore((state) => state.user);
   const storedInvitations = useAuthStore((state) => state.seatInvitations);
-  const invitations = fixtureInvitations ?? storedInvitations;
+  const storedNotices = useFriendsStore((state) => state.notices);
+  const notices = friendNoticeFixture(fixture) ?? storedNotices;
+  const invitations = unnoticedInvitations(fixtureInvitations ?? storedInvitations, notices);
   // Keep the inbox mounted to show a last-seat-gone notice after its row disappears.
   const [showInvitations, setShowInvitations] = useState(invitations.length > 0);
   if (invitations.length > 0 && !showInvitations) setShowInvitations(true);
@@ -301,7 +306,7 @@ export default function HomeScreen() {
                   styles.invitationContent,
                   { paddingBottom: PidroSpacing.md + noticeInset },
                 ]}>
-                <SeatInvitations fixture={fixtureInvitations} />
+                <SeatInvitations fixture={fixtureInvitations} noticed={notices} />
                 {actions}
               </ScrollView>
             ) : compactLandscape ? (

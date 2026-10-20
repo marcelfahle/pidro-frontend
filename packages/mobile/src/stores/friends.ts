@@ -4,8 +4,11 @@ import {
   type BlockedPlayers,
   type FriendLists,
   type FriendPlayer,
+  type SeatInvitation,
 } from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
+import { lobbyApi } from '@/api/lobby';
+import { apiErrorInfo } from '@/utils/apiErrors';
 import { authStore } from './auth';
 
 export { useFriendsStore };
@@ -52,6 +55,23 @@ export const unblockPlayer = (id: string) => updateLists(() => friendsApi.unbloc
 export async function blockPlayer(id: string) {
   await updateLists(() => friendsApi.block(id));
   void refreshFriends().catch(() => undefined);
+}
+
+/**
+ * Not now: the invitation goes once the server has the answer; a seat already gone is the
+ * same answer. Anything else throws, and the invitation stays where it was.
+ */
+export async function declineSeatInvitation(invitation: SeatInvitation): Promise<void> {
+  const token = authStore.getState().accessToken;
+  try {
+    await lobbyApi.declineSeatInvitation(invitation.code, invitation.position);
+  } catch (error) {
+    if (apiErrorInfo(error).code?.toUpperCase() !== 'INVITATION_GONE') throw error;
+  } finally {
+    if (token === authStore.getState().accessToken) void refreshFriends().catch(() => undefined);
+  }
+  if (token === authStore.getState().accessToken)
+    authStore.getState().removeSeatInvitation(invitation);
 }
 
 /**

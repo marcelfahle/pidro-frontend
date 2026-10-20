@@ -6,9 +6,15 @@ const seatRowCases = ['setup', 'setup-open', 'opened', 'opened-more'].map(
 const seatPickerCases = ['choices', 'friends', 'many', 'empty', 'sv'].map(
   (fixture) => `ui-seat-picker-${fixture}`
 );
-const friendNoticeCases = ['request', 'accepted', 'linked', 'seat', 'queue', 'too-late'].map(
-  (kind) => `friend-notice-${kind}`
-);
+const friendNoticeCases = [
+  'request',
+  'accepted',
+  'linked',
+  'seat',
+  'offline',
+  'queue',
+  'too-late',
+].map((kind) => `friend-notice-${kind}`);
 const friendSheetCases = [
   'partner',
   'opponent',

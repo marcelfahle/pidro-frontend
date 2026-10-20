@@ -57,7 +57,7 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
-  ...['request', 'accepted', 'linked', 'seat', 'queue', 'too-late'].map((kind) => ({
+  ...['request', 'accepted', 'linked', 'seat', 'offline', 'queue', 'too-late'].map((kind) => ({
     name: `friend-notice-${kind}`,
     path: `/home?fixture=friend-${kind}`,
     testId: 'friend-notice',
@@ -117,7 +117,7 @@ const allCases = [
     path: '/friends?fixture=list',
     testId: state === 'profile' ? 'player-profile-modal' : 'friend-sheet',
     authenticated: true,
-    open: "View Nora's profile",
+    open: 'View Nora’s profile',
   })),
   ...['partner', 'opponent', 'full', 'online', 'bots', 'offline', 'request', 'remove', 'block'].map(
     (state) => ({
@@ -138,7 +138,7 @@ const allCases = [
     path: `/table-dev?phase=${phase}&role=player`,
     testId: 'player-profile-modal',
     authenticated: true,
-    open: /^View mfios1's profile/,
+    open: /^View mfios1’s profile/,
     playerProfile: true,
   })),
   {
@@ -147,7 +147,7 @@ const allCases = [
     testId: 'player-profile-modal',
     authenticated: true,
     authFixture: guestAuthFixture,
-    open: "View mfios1's profile",
+    open: 'View mfios1’s profile',
     playerProfile: true,
   },
   ...['recent', 'results'].map((fixture) => ({
@@ -668,13 +668,13 @@ const allCases = [
     name: 'table-invitation',
     path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner',
     testId: 'table-invitation',
-    invitation: "Finnish · as Bertil's partner",
+    invitation: 'Finnish · as Bertil’s partner',
   },
   {
     name: 'table-invitation-bidding',
     path: '/table-dev?phase=bidding&role=player&bids=round&invitation=opponent',
     testId: 'bidding-window',
-    invitation: "Finnish · as Bertil's opponent",
+    invitation: 'Finnish · as Bertil’s opponent',
   },
   ...['island-left', 'island-right'].map((safeArea) => ({
     name: `table-invitation-${safeArea}`,
@@ -1231,19 +1231,31 @@ async function assertFriendNotice(page, name, viewport) {
       ? card.x + card.width <= pill.x
       : card.y + card.height <= pill.y
   );
-  if (name.endsWith('queue')) {
+  if (name.endsWith('seat') || name.endsWith('offline'))
+    assert.equal(
+      await page.getByTestId('seat-invitations').count(),
+      0,
+      'Home lists the invitation its notice is already asking about'
+    );
+  if (name.endsWith('offline')) {
+    await notice.getByRole('button', { name: 'Not now', exact: true }).click();
+    await notice.getByText('Couldn’t send that. Try again.', { exact: true }).waitFor();
+    assert.match(await notice.innerText(), /Kalle is holding a seat/);
+    assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '1');
+    await assertNothingUnderNotice(page, 'Home after a failed Not now', viewport);
+  } else if (name.endsWith('queue')) {
     assert.match(await notice.innerText(), /Kalle is holding a seat/);
     await notice.getByRole('button', { name: 'Not now', exact: true }).click();
     await page.getByText('Pekka wants to be friends', { exact: true }).waitFor();
     await notice.getByRole('button', { name: 'Not now', exact: true }).click();
-    await page.getByText("Nora accepted. You're friends now.", { exact: true }).waitFor();
+    await page.getByText('Nora accepted. You’re friends now.', { exact: true }).waitFor();
     assert.equal(await page.getByTestId('friends-invitation-count').innerText(), '2');
   } else if (name.endsWith('too-late')) {
-    assert.equal(await notice.innerText(), "Kalle's game started without you");
+    assert.equal(await notice.innerText(), 'Kalle’s game started without you');
     assert.equal(await notice.getByRole('button').count(), 0);
   } else if (name.endsWith('linked')) {
     await notice
-      .getByText("Request sent. You'll be friends once Nora accepts.", { exact: true })
+      .getByText('Request sent. You’ll be friends once Nora accepts.', { exact: true })
       .waitFor();
     assert.equal(await notice.getByRole('button').count(), 0);
   } else if (!name.endsWith('accepted')) {
@@ -1520,8 +1532,8 @@ async function assertFriendsPresentation(page, name) {
           ],
         }
       : {
-          partner: ['At a table · partner seat free', "You'll play as Nora's partner."],
-          opponent: ['At a table · opponent seat free', "You'll play against Nora."],
+          partner: ['At a table · partner seat free', 'You’ll play as Nora’s partner.'],
+          opponent: ['At a table · opponent seat free', 'You’ll play against Nora.'],
           full: ['At a table · no free seats'],
           online: ['Play together', 'Starts a new table with Nora as your partner.'],
           bots: ['Play together', 'Starts a new table with Nora as your partner.'],
@@ -1529,12 +1541,12 @@ async function assertFriendsPresentation(page, name) {
           request: ['Accept'],
           remove: [
             'Remove Nora from your friends?',
-            "You'll leave each other's friends lists. Nora won't be told.",
+            'You’ll leave each other’s friends lists. Nora won’t be told.',
             'Keep Nora',
           ],
           block: [
             'Block Nora?',
-            "Nora won't be able to find you, add you or sit at your tables, and you won't be friends anymore. You can unblock Nora any time in Profile.",
+            'Nora won’t be able to find you, add you or sit at your tables, and you won’t be friends anymore. You can unblock Nora any time in Profile.',
           ],
         };
     for (const word of words[state]) await sheet.getByText(word, { exact: true }).waitFor();
@@ -1579,12 +1591,12 @@ async function assertFriendsPresentation(page, name) {
       .getByText(
         swedish
           ? '7 av dina Classic-vänner är inte här ännu'
-          : "7 of your Classic friends aren't here yet",
+          : '7 of your Classic friends aren’t here yet',
         { exact: true }
       )
       .waitFor();
     const lastFriend = page.getByRole('button', {
-      name: swedish ? 'Visa profilen för Liisa' : "View Liisa's profile",
+      name: swedish ? 'Visa profilen för Liisa' : 'View Liisa’s profile',
       exact: true,
     });
     assert.ok(
@@ -1701,7 +1713,7 @@ async function assertFriendsPresentation(page, name) {
         }
       : {
           'friends-empty': [
-            "Add the people you like playing with. Once they accept, you'll see when they're online and can invite them to your table.",
+            'Add the people you like playing with. Once they accept, you’ll see when they’re online and can invite them to your table.',
             'Played with recently',
             'Sanna',
             'Erkki',
@@ -1709,7 +1721,7 @@ async function assertFriendsPresentation(page, name) {
             'Today',
             'Yesterday',
             '2 days ago',
-            "38 of your Classic friends aren't here yet",
+            '38 of your Classic friends aren’t here yet',
           ],
           'friends-list': [
             '6 friends · 3 online',
@@ -1837,13 +1849,13 @@ async function assertFriendsPresentation(page, name) {
           'Not online',
           'Waiting for an answer',
           'Request sent 2 days ago',
-          "38 of your Classic friends aren't here yet",
+          '38 of your Classic friends aren’t here yet',
         ])
       await page.getByText(text, { exact: true }).first().waitFor();
     assert.equal(
       await page
         .getByRole('button', {
-          name: swedish ? 'Gå med vid Noras bord' : "Join Nora's table",
+          name: swedish ? 'Gå med vid Noras bord' : 'Join Nora’s table',
           exact: true,
         })
         .count(),
@@ -1875,7 +1887,7 @@ async function assertFriendsPresentation(page, name) {
     const undo = page.getByRole('button', { name: swedish ? 'Ångra' : 'Undo', exact: true });
     await page
       .getByRole('button', {
-        name: swedish ? 'Dölj förfrågan från Pekka' : "Ignore Pekka's request",
+        name: swedish ? 'Dölj förfrågan från Pekka' : 'Ignore Pekka’s request',
         exact: true,
       })
       .click();
@@ -1885,7 +1897,7 @@ async function assertFriendsPresentation(page, name) {
       .getByText(
         swedish
           ? 'Förfrågan dold. Pekka får inget meddelande.'
-          : "Request hidden. Pekka won't be told.",
+          : 'Request hidden. Pekka won’t be told.',
         { exact: true }
       )
       .waitFor();
@@ -1902,7 +1914,7 @@ async function assertFriendsPresentation(page, name) {
       .getByText(
         swedish
           ? 'Förfrågan avbruten. Eero får inget meddelande.'
-          : "Request cancelled. Eero won't be told.",
+          : 'Request cancelled. Eero won’t be told.',
         { exact: true }
       )
       .waitFor();
@@ -1923,7 +1935,7 @@ async function assertFriendsPresentation(page, name) {
         (
           await page
             .getByRole('button', {
-              name: swedish ? 'Visa profilen för Nora' : "View Nora's profile",
+              name: swedish ? 'Visa profilen för Nora' : 'View Nora’s profile',
             })
             .boundingBox()
         ).y
@@ -1945,7 +1957,7 @@ async function assertFriendsPresentation(page, name) {
       .click();
     await page.getByRole('button', { name: swedish ? 'Stäng' : 'Close', exact: true }).click();
     await page
-      .getByRole('button', { name: swedish ? 'Visa profilen för Nora' : "View Nora's profile" })
+      .getByRole('button', { name: swedish ? 'Visa profilen för Nora' : 'View Nora’s profile' })
       .waitFor();
   }
   if (name === 'friends-guest') {
@@ -2184,7 +2196,7 @@ async function assertCreationPresentation(page, testCase) {
   }
   if (fixture === 'declined') {
     const card = page.getByTestId('seat-declined-notice');
-    await card.getByText("Maija can't come right now", { exact: true }).waitFor();
+    await card.getByText('Maija can’t come right now', { exact: true }).waitFor();
     await card.getByText('The seat is open again', { exact: true }).waitFor();
     assert.match(await page.getByTestId('new-table-seat-south').innerText(), /Waiting…/);
     await card.getByRole('button', { name: 'Invite someone else', exact: true }).click();
@@ -3180,7 +3192,7 @@ async function assertSwitchInteractions(page, name, screenshotDir) {
 async function assertRowControls(page, name, screenshotDir) {
   if (name !== 'ui-components') return;
   const panel = page.getByTestId('ui-row-controls-panel');
-  const dismiss = panel.getByRole('button', { name: "Ignore Pekka's request", exact: true });
+  const dismiss = panel.getByRole('button', { name: 'Ignore Pekka’s request', exact: true });
   const box = await dismiss.boundingBox();
   assert.ok(box.width >= 44 && box.height >= 44, 'The dismiss × is a 44pt target');
   const sm = await page
@@ -3211,7 +3223,7 @@ async function assertFriendComponents(page, name, screenshotDir) {
   const rows = page.getByTestId('ui-friend-rows-panel');
   const notices = page.getByTestId('ui-friend-notices-panel');
   const long = rows.getByRole('button', {
-    name: "View Alexandria the Long-Named Player of Helsinki's profile",
+    name: 'View Alexandria the Long-Named Player of Helsinki’s profile',
     exact: true,
   });
   const hit = await long.boundingBox();

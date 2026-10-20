@@ -4,8 +4,8 @@ import { localizedError, type FriendResult } from '@pidro/shared';
 import { friendsApi } from '@/api/friends';
 import { ActionPill } from '@/components/ui/ActionPill';
 import { PidroText } from '@/components/ui/PidroText';
-import { canSearch, discoveryRowState } from '@/features/friends';
-import { addFriend } from '@/stores/friends';
+import { canSearch, discoveryRowState, followFriendLists } from '@/features/friends';
+import { addFriend, useFriendsStore } from '@/stores/friends';
 import { useAuthStore } from '@/stores/auth';
 import { useTranslation } from '@/i18n';
 import { FriendRow } from './FriendRow';
@@ -27,6 +27,9 @@ export function FriendDiscovery({
 }) {
   const { t } = useTranslation();
   const userId = useAuthStore((state) => state.user?.id);
+  const friends = useFriendsStore((state) => state.friends);
+  const addedYou = useFriendsStore((state) => state.added_you);
+  const requested = useFriendsStore((state) => state.requested);
   const [users, setUsers] = useState<FriendResult[]>(preview ?? []);
   const [loadedQuery, setLoadedQuery] = useState<string | null>(preview ? query.trim() : null);
   const [error, setError] = useState<{ cause: unknown; action: 'search' | 'add' } | null>(null);
@@ -103,6 +106,7 @@ export function FriendDiscovery({
   }
 
   const loading = !preview && loadedQuery !== search;
+  const rows = followFriendLists(users, { friends, added_you: addedYou, requested });
   return (
     <View style={styles.section} testID="friend-discovery">
       <PidroText role="metadata" tone="cyan" accessibilityRole="header" style={styles.eyebrow}>
@@ -134,7 +138,7 @@ export function FriendDiscovery({
         </View>
       ) : null}
       {eligible && !loading
-        ? users.map((player) => (
+        ? rows.map((player) => (
             <FriendRow
               key={player.user_id}
               name={player.display_name}
