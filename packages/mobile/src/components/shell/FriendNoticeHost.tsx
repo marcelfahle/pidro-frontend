@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -61,6 +61,12 @@ export function FriendNoticeHost({
   useEffect(() => {
     dismissRef.current = dismiss;
   }, [dismiss]);
+  // A footnote grows the card upward. Report that before paint, so Home makes
+  // room in the same frame instead of the card covering its buttons for one.
+  const slot = useRef<View>(null);
+  useLayoutEffect(() => {
+    if (slot.current) onHeight(slot.current.offsetHeight);
+  }, [error, onHeight]);
   useEffect(() => {
     if (notice.kind === 'request' || notice.kind === 'seat' || fixture) return;
     const timer = setTimeout(() => dismissRef.current(), 4000);
@@ -140,6 +146,7 @@ export function FriendNoticeHost({
 
   return (
     <View
+      ref={slot}
       pointerEvents="box-none"
       style={[styles.slot, style]}
       onLayout={(event) => onHeight(event.nativeEvent.layout.height)}>
