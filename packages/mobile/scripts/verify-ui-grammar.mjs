@@ -2299,6 +2299,7 @@ async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
   else {
     await page.getByRole('button', { name: 'Table settings', exact: true }).click();
     await page.getByTestId('table-rules-menu').waitFor();
+    await waitForScreenshotReady(page);
     await page.screenshot({ path: resolve(screenshotDir, `${testCase.name}-settings.png`) });
     await page.getByTestId('table-rules-menu').click();
   }
