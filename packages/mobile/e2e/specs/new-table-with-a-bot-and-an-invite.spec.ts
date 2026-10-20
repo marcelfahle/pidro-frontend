@@ -434,7 +434,8 @@ test('a delayed partner lookup preserves an explicit seat choice and a cold entr
     await expect(partner).not.toContainText(friendPlayer.name);
     if (choice === 'Anyone') await expect(partner).toContainText('Open seat');
     else await expect(partner).toContainText('Plays right away');
-    await page.unroute('**/api/v1/friends');
+    // Each picker asks for friends as it opens; one may still be on its way.
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
   }
   await page.getByRole('button', { name: 'Cancel creation', exact: true }).click();
   await expect(page).toHaveURL(/\/lobby$/);

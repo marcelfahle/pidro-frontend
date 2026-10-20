@@ -145,11 +145,15 @@ export function NewTableScreen({
   const [query, setQuery] = useState('');
   const [pickerError, setPickerError] = useState<string>();
   const [prefilled, setPrefilled] = useState(false);
-  // No event says a friend sat down elsewhere, so ask again as each seat's picker opens or closes.
+  const askFriends = !fixtureFriends && !!user && !user.guest;
+  useEffect(() => {
+    if (askFriends) void refreshFriends().catch(() => undefined);
+  }, [askFriends, user]);
+  // No event says a friend sat down elsewhere, so a seat's picker asks again as it opens.
   const picking = selected !== null;
   useEffect(() => {
-    if (!fixtureFriends && user && !user.guest) void refreshFriends().catch(() => undefined);
-  }, [fixtureFriends, user, picking]);
+    if (askFriends && picking) void refreshFriends().catch(() => undefined);
+  }, [askFriends, picking]);
   const partnerFriend = friends.find((entry) => entry.user_id === partner);
   if (!room && !prefilled && partnerFriend) {
     setDraft(chooseFriend(draft, 'seat_3', partnerFriend));
