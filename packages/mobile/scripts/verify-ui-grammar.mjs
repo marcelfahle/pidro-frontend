@@ -683,7 +683,7 @@ const allCases = [
     name: 'table-invitation-island',
     path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner&safeArea=island',
     testId: 'table-invitation',
-    invitation: "Finnish · as Bertil's partner",
+    invitation: 'Finnish · as Bertil’s partner',
     skipViewports: ['landscape', 'compact-landscape'],
   },
   ...['island-left', 'island-right'].map((safeArea) => ({
