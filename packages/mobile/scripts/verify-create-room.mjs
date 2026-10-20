@@ -7,6 +7,7 @@ import {
   assertMinimumTouchTargets,
   assertTeamLayout,
   suppressDevOverlays,
+  waitForScreenshotReady,
 } from './ui-test-utils.mjs';
 
 const baseUrl = process.env.MOBILE_BASE_URL ?? 'http://localhost:8081';
@@ -121,6 +122,8 @@ try {
           'nonhost never sees the password'
         );
       }
+      // The picker fades in; a capture mid-fade differs from run to run.
+      await waitForScreenshotReady(page);
       await page.screenshot({
         path: resolve(output, `new-table-${fixture}-${viewport.width}x${viewport.height}.png`),
       });
