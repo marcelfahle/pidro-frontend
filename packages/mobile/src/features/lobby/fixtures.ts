@@ -1,8 +1,12 @@
 import { emptyLobbyCategories, POSITION_TO_INDEX } from '@pidro/shared';
 import type { LobbyCategories, Position, Room, SeatInvitation } from '@pidro/shared';
+import { friendNoticeFixture } from '../friends/fixtures';
 import { answerEntry, emptyEntry, type PasswordEntry } from './passwordSeat';
 
 export function seatInvitationsFixture(value?: string): SeatInvitation[] | undefined {
+  // The seat notice's own invitation, which Home lists only once the notice has gone.
+  if (__DEV__ && (value === 'friend-seat' || value === 'friend-offline'))
+    return friendNoticeFixture(value)?.flatMap((n) => (n.kind === 'seat' ? [n.invitation] : []));
   if (!__DEV__ || value !== 'invitations') return;
   return [
     {

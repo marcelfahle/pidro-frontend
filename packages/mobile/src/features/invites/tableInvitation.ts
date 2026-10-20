@@ -1,4 +1,11 @@
-import { t, type Position, type ReadinessSnapshot, type SeatInvitation } from '@pidro/shared';
+import {
+  friendNoticeId,
+  t,
+  type FriendNotice,
+  type Position,
+  type ReadinessSnapshot,
+  type SeatInvitation,
+} from '@pidro/shared';
 
 /**
  * The seat invitation a table shows: only to a player whose every other seat
@@ -29,4 +36,18 @@ export function tableInvitationLine(invitation: SeatInvitation, name: string): s
   return invitation.join_as === 'partner' || invitation.join_as === 'opponent'
     ? t(`friend_notice.as_${invitation.join_as}`, { rules, name })
     : rules;
+}
+
+/**
+ * Home's rows: an invitation with its own notice waiting, or on screen, is
+ * answered there. The row is the way back once that notice has gone.
+ */
+export function unnoticedInvitations(
+  invitations: SeatInvitation[],
+  notices: FriendNotice[]
+): SeatInvitation[] {
+  const noticed = notices.map(friendNoticeId);
+  return invitations.filter(
+    (invitation) => !noticed.includes(friendNoticeId({ kind: 'seat', invitation }))
+  );
 }

@@ -7,7 +7,7 @@ import { sessionOf, startSignedIn } from '../support/session';
 test.use({ unavailableExpected: true });
 
 const emptyFriends =
-  "Add the people you like playing with. Once they accept, you'll see when they're online and can invite them to your table.";
+  'Add the people you like playing with. Once they accept, you’ll see when they’re online and can invite them to your table.';
 
 for (const source of ['search', 'recent'] as const) {
   test(`${source} keeps row order and updates real add/accept relations without discovery refetches`, async ({
@@ -235,7 +235,7 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   await accept.click();
   await expect.poll(() => changes).toBe(2);
   await expect.poll(() => Boolean(releaseAdd)).toBe(true);
-  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}’s profile` }).click();
   const sheet = page.getByTestId('friend-sheet');
   await sheet.getByRole('button', { name: 'Accept', exact: true }).click();
   await expect(sheet).toBeVisible();
@@ -251,7 +251,7 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
     other.user.id,
   ]);
 
-  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}’s profile` }).click();
   await expect(sheet).toBeVisible();
   await sheet.getByRole('button', { name: 'See full profile', exact: true }).click();
   const profile = page.getByTestId('player-profile-modal');
@@ -259,13 +259,13 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   await expect(profile.getByText(otherPlayer.name, { exact: true })).toBeVisible();
   await expect(profile.getByRole('button', { name: /^(Remove|Block)/ })).toHaveCount(0);
   await profile.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}’s profile` }).click();
   await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
   await expect(
     page.getByText(`Remove ${otherPlayer.name} from your friends?`, { exact: true })
   ).toBeVisible();
   await expect(
-    page.getByText(`You'll leave each other's friends lists. ${otherPlayer.name} won't be told.`, {
+    page.getByText(`You’ll leave each other’s friends lists. ${otherPlayer.name} won’t be told.`, {
       exact: true,
     })
   ).toBeVisible();
@@ -281,10 +281,10 @@ test('Friends receives a live request, accepts, removes after confirmation, and 
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByText(emptyFriends)).toBeVisible();
   await api(`/api/v1/friends/${account.user.id}`, { method: 'PUT', token: other.token });
-  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}’s profile` }).click();
   await sheet.getByRole('button', { name: 'Accept', exact: true }).click();
   await expect(accept).toHaveCount(0);
-  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}’s profile` }).click();
   await sheet.getByRole('button', { name: 'Remove from friends', exact: true }).click();
   await page.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(sheet).toBeHidden();
@@ -344,7 +344,7 @@ test('ignoring hides a request immediately, Undo restores it, and only sender ca
   await page.goto('/friends');
   const accept = page.getByRole('button', { name: `Accept ${senderPlayer.name}`, exact: true });
   const ignore = page.getByRole('button', {
-    name: `Ignore ${senderPlayer.name}'s request`,
+    name: `Ignore ${senderPlayer.name}’s request`,
     exact: true,
   });
   await expect(accept).toBeVisible();
@@ -372,7 +372,7 @@ test('ignoring hides a request immediately, Undo restores it, and only sender ca
     await ignore.click();
     await expect(accept).toHaveCount(0);
     await expect(
-      page.getByRole('button', { name: `View ${senderPlayer.name}'s profile`, exact: true })
+      page.getByRole('button', { name: `View ${senderPlayer.name}’s profile`, exact: true })
     ).toHaveCount(0);
   } finally {
     releaseIgnore();
@@ -480,10 +480,10 @@ test('Join seats the player at a real friend table and opens its game', async ({
     await expect(hostPage.getByTestId('waiting-table').last()).toBeVisible({ timeout: 30_000 });
     await startSignedIn(page, account);
     await page.goto('/friends');
-    await page.getByRole('button', { name: `View ${hostPlayer.name}'s profile` }).click();
+    await page.getByRole('button', { name: `View ${hostPlayer.name}’s profile` }).click();
     const join = page
       .getByTestId('friend-sheet')
-      .getByRole('button', { name: `Join ${hostPlayer.name}'s table`, exact: true });
+      .getByRole('button', { name: `Join ${hostPlayer.name}’s table`, exact: true });
     await join.waitFor();
     // A stale seat offer must explain the refusal and fetch a fresh list.
     await page.route(`**/api/v1/friends/${host.user.id}/join`, (route) =>
@@ -601,7 +601,7 @@ test('Play opens New table with the friend already assigned as Partner and creat
     await expect(page.getByTestId('new-table-screen')).toBeHidden();
     await page.unroute('**/api/v1/lobby');
     await page.goto('/friends');
-    await page.getByRole('button', { name: `View ${friendPlayer.name}'s profile` }).click();
+    await page.getByRole('button', { name: `View ${friendPlayer.name}’s profile` }).click();
     await page
       .getByTestId('friend-sheet')
       .getByRole('button', { name: 'Play together', exact: true })

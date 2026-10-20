@@ -203,6 +203,7 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
       'friend-accepted',
       'friend-linked',
       'friend-seat',
+      'friend-offline',
       'friend-queue',
       'friend-too-late',
     ].includes(value ?? '')
@@ -228,5 +229,5 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
   if (value === 'friend-queue') return [accepted, request, seat];
   if (value === 'friend-linked') return [{ kind: 'sent', player: players[0] }];
   if (value === 'friend-too-late') return [{ kind: 'too_late', invitation: seat.invitation }];
-  return [value === 'friend-seat' ? seat : value === 'friend-accepted' ? accepted : request];
+  return [value === 'friend-request' ? request : value === 'friend-accepted' ? accepted : seat];
 }

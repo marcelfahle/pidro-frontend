@@ -236,9 +236,12 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     ).toBeDisabled();
     await cancelPicker(page);
     const inbox = receiver.getByTestId('seat-invitations');
+    // Home shows the invitation once, as the notice; Tables lists it.
+    const notice = receiver.getByTestId('friend-notice');
     await expect(
-      inbox.getByText(`${player.name} is holding a seat for you`, { exact: true })
+      notice.getByText(`${player.name} is holding a seat for you`, { exact: true })
     ).toBeVisible();
+    await expect(inbox).toHaveCount(0);
     await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');
     await expect(
       receiver.getByRole('button', { name: 'Friends, 1 waiting for your answer', exact: true })
@@ -257,7 +260,7 @@ test('picked friends become holds only on Open; invitations arrive live, recover
     await receiver.getByRole('button', { name: 'Home', exact: true }).click();
     await expect(receiver).toHaveURL(/\/home$/);
     await receiver.reload();
-    await expect(inbox).toBeVisible();
+    await expect(notice).toBeVisible();
     // Lost seats use the same error contract whether waiting or already playing.
     for (const error of ['SEAT_TAKEN', 'ROOM_FULL']) {
       await receiver.route(
@@ -271,17 +274,17 @@ test('picked friends become holds only on Open; invitations arrive live, recover
         },
         { times: 1 }
       );
-      await inbox.getByRole('button', { name: 'Sit down', exact: true }).click();
+      await notice.getByRole('button', { name: 'Sit down', exact: true }).click();
       await expect(
-        inbox.getByText(`${player.name}'s game started without you`, { exact: true })
+        notice.getByText(`${player.name}’s game started without you`, { exact: true })
       ).toBeVisible();
-      await expect(inbox.getByRole('button', { name: 'Sit down', exact: true })).toHaveCount(0);
+      await expect(notice.getByRole('button', { name: 'Sit down', exact: true })).toHaveCount(0);
       // The badge follows the refetched server list, not this mocked refusal.
       await expect(receiver.getByTestId('friends-invitation-count')).toHaveText('1');
       await expect(receiver).toHaveURL(/\/home$/);
       // The mocked refusal did not change the real hold; /me restores it on reload.
       await receiver.reload();
-      await expect(inbox.getByRole('button', { name: 'Sit down', exact: true })).toBeVisible();
+      await expect(notice.getByRole('button', { name: 'Sit down', exact: true })).toBeVisible();
     }
     await receiver.goto('/lobby');
     // Tables is outside the shell, and its too-late card still goes by itself.
@@ -295,7 +298,7 @@ test('picked friends become holds only on Open; invitations arrive live, recover
       { times: 1 }
     );
     await inbox.getByRole('button', { name: 'Sit down', exact: true }).click();
-    const late = receiver.getByText(`${player.name}'s game started without you`, { exact: true });
+    const late = receiver.getByText(`${player.name}’s game started without you`, { exact: true });
     await expect(late).toBeVisible();
     await expect(late).toBeHidden({ timeout: 8_000 });
     await receiver.reload();

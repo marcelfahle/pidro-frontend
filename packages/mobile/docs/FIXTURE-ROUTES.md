@@ -263,14 +263,16 @@ areas or keyboard avoidance.
 
 ## Shell friend notices
 
-`/home?fixture=friend-request|friend-accepted|friend-linked|friend-seat|friend-queue|friend-too-late` shows the
+`/home?fixture=friend-request|friend-accepted|friend-linked|friend-seat|friend-offline|friend-queue|friend-too-late` shows the
 real shell notice and Friends badge without a backend. Accepted and too late stay visible in
 the fixture for capture; live ones disappear after four seconds. Too late (PID-254)
 replaces a seat notice whose seat went because the game started, the host let it go or
 the room closed, and after a refused Sit down; it has no buttons and no badge.
 Linked (PID-247) is the notice after signing up through someone's own link, which sends them
 a friend request: "Request sent. You'll be friends once Nora accepts.", with no buttons.
-On a seat notice Not now declines the seat for real. The queue
+On a seat notice Not now declines the seat for real. Home also holds that seat's invitation,
+which it does not list a second time while the notice is up. Offline is the seat notice whose
+Not now fails: "Couldn’t send that. Try again." under the buttons, and the notice stays. The queue
 fixture starts with a seat, then a request, then accepted. Not now closes only the
 prompt, keeping the badge. These fixtures also work on other shell tabs. Grammar
 cases `friend-notice-*` check containment, touch targets, tab clearance and queue

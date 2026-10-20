@@ -8,13 +8,13 @@ import {
   type FriendNotice,
 } from '@pidro/shared';
 import { NoticeCard } from '@/components/friends/NoticeCard';
-import { declineSeatInvitation, joinSeatInvitation } from '@/components/invites/SeatInvitations';
+import { joinSeatInvitation } from '@/components/invites/SeatInvitations';
 import { friendNoticeFixture } from '@/features/friends/fixtures';
 import { tableInvitationLine } from '@/features/invites/tableInvitation';
 import { relativeDay } from '@/features/relativeDay';
 import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
-import { addFriend, useFriendsStore } from '@/stores/friends';
+import { addFriend, declineSeatInvitation, useFriendsStore } from '@/stores/friends';
 import { localizedError } from '@/utils/apiErrors';
 
 export function useShellFriendNotice(enabled: boolean, fixture?: string) {
@@ -34,7 +34,7 @@ export function useShellFriendNotice(enabled: boolean, fixture?: string) {
     if (fixtures) setDismissed((previous) => [...previous, id]);
     else state.dismissNotice(id);
   };
-  return { notice, dismiss, fixture: Boolean(fixtures) };
+  return { notice, dismiss, fixture: fixtures ? fixture : undefined };
 }
 
 export function FriendNoticeHost({
@@ -46,7 +46,8 @@ export function FriendNoticeHost({
 }: {
   notice: FriendNotice;
   dismiss: () => void;
-  fixture: boolean;
+  /** The `?fixture=` the notice previews, if any. */
+  fixture?: string;
   style: StyleProp<ViewStyle>;
   onHeight: (height: number) => void;
 }) {
@@ -54,6 +55,7 @@ export function FriendNoticeHost({
   const router = useRouter();
   const busy = useRef(false);
   const [loading, setLoading] = useState(false);
+  const [declining, setDeclining] = useState(false);
   const [error, setError] = useState<string>();
   const dismissRef = useRef(dismiss);
   useEffect(() => {
@@ -94,6 +96,29 @@ export function FriendNoticeHost({
     } finally {
       busy.current = false;
       setLoading(false);
+    }
+  };
+
+  // Not now that fails says so here, and the invitation stays where it was.
+  const decline = async () => {
+    if (busy.current) return;
+    // The offline fixture fails the way a lost connection does.
+    const offline = fixture === 'friend-offline';
+    if (notice.kind !== 'seat' || (fixture && !offline)) return dismiss();
+    busy.current = true;
+    setDeclining(true);
+    setError(undefined);
+    const token = useAuthStore.getState().accessToken;
+    try {
+      if (offline) throw new Error('offline');
+      await declineSeatInvitation(notice.invitation);
+      dismiss();
+    } catch {
+      if (token === useAuthStore.getState().accessToken)
+        setError(t('seat_invitation.decline_failed'));
+    } finally {
+      busy.current = false;
+      setDeclining(false);
     }
   };
 
@@ -146,12 +171,8 @@ export function FriendNoticeHost({
           asks
             ? {
                 label: t('friend_notice.not_now'),
-                onPress: () => {
-                  if (busy.current) return;
-                  if (notice.kind === 'seat' && !fixture)
-                    void declineSeatInvitation(notice.invitation);
-                  dismiss();
-                },
+                loading: declining,
+                onPress: () => void decline(),
               }
             : undefined
         }

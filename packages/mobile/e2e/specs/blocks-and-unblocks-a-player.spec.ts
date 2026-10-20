@@ -23,14 +23,14 @@ test('blocking removes the friendship; unblocking restores nothing @responsive',
   }
   await startSignedIn(page, account);
   await page.goto('/friends');
-  await page.getByRole('button', { name: `View ${otherPlayer.name}'s profile` }).click();
+  await page.getByRole('button', { name: `View ${otherPlayer.name}’s profile` }).click();
   const sheet = page.getByTestId('friend-sheet');
   await expect(sheet).toBeVisible();
   await sheet.getByRole('button', { name: `Block ${otherPlayer.name}`, exact: true }).click();
   await expect(page.getByText(`Block ${otherPlayer.name}?`, { exact: true })).toBeVisible();
   await expect(
     page.getByText(
-      `${otherPlayer.name} won't be able to find you, add you or sit at your tables, and you won't be friends anymore. You can unblock ${otherPlayer.name} any time in Profile.`,
+      `${otherPlayer.name} won’t be able to find you, add you or sit at your tables, and you won’t be friends anymore. You can unblock ${otherPlayer.name} any time in Profile.`,
       { exact: true }
     )
   ).toBeVisible();
@@ -60,7 +60,7 @@ test('blocking removes the friendship; unblocking restores nothing @responsive',
   await expect(sheet).toBeHidden();
   await expect(
     page.getByText(
-      "Add the people you like playing with. Once they accept, you'll see when they're online and can invite them to your table."
+      'Add the people you like playing with. Once they accept, you’ll see when they’re online and can invite them to your table.'
     )
   ).toBeVisible();
   expect((await api('/api/v1/friends', { token: other.token })).payload.data.friends).toEqual([]);

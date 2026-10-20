@@ -48,6 +48,8 @@ Initials stand in for photos on the boards. In the app the avatar is the player'
 | `Win-Beats` | The win beat by beat: picture, sound and haptic, Reduce Motion, the quieter loss | Game over (PID-237) |
 | `Share-Card` | The 1080×1920 story card shared from the win screen | Share the win (PID-238) |
 
+On `Friends-Add` the link card ends "…you’ll be friends straight away"; signing up through your link sends you a friend request instead, so the app's "…their friend request waits for you here." replaces the board's line.
+
 On the boards the gold ring means a paying supporter and the gem means lifetime. Neither exists on the server yet, so until it does every avatar uses the glass ring.
 
 ## From the boards to the app

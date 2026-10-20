@@ -177,6 +177,29 @@ export function discoveryRowState(
   return row;
 }
 
+/**
+ * Rows on Add a friend follow the friends lists: a request accepted while the
+ * screen is open reads as a friend there too. Lists that do not know a
+ * player leave the row as the server last said.
+ */
+export function followFriendLists(
+  players: FriendResult[],
+  lists: Pick<FriendLists, 'friends' | 'added_you' | 'requested'>
+): FriendResult[] {
+  const has = (list: { user_id: string }[] | undefined, id: string) =>
+    !!list?.some((p) => p.user_id === id);
+  return players.map((player) => {
+    const relation = has(lists.friends, player.user_id)
+      ? 'friend'
+      : has(lists.added_you, player.user_id)
+        ? 'added_you'
+        : has(lists.requested, player.user_id)
+          ? 'added'
+          : player.relation;
+    return relation === player.relation ? player : { ...player, relation };
+  });
+}
+
 export interface FriendRowState {
   variant: 'friend' | 'request' | 'sent' | 'fresh';
   dot: 'online' | 'table' | null;

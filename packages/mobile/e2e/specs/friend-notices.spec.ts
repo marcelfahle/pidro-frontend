@@ -79,7 +79,7 @@ test('PID-246: Home accepts a live friend request and the sender sees a four-sec
     await expect(page).toHaveURL(/\/home$/);
     const accepted = sender.getByTestId('friend-notice');
     await expect(accepted).toBeVisible();
-    await expect(accepted).toContainText(`${player.name} accepted. You're friends now.`);
+    await expect(accepted).toContainText(`${player.name} accepted. You’re friends now.`);
     const list = await api('/api/v1/friends', { token: other.token });
     expect(list.status).toBe(200);
     expect(list.payload.data.friends.map((friend: { user_id: string }) => friend.user_id)).toEqual([
@@ -186,7 +186,7 @@ test('PID-254: Not now and sitting down elsewhere open the seat again and tell t
     await invitation.getByRole('button', { name: 'Not now', exact: true }).click();
     await expect(invitation).toHaveCount(0);
     await expect(declined).toBeVisible({ timeout: 1_000 });
-    await expect(declined).toContainText(`${friendPlayer.name} can't come right now`);
+    await expect(declined).toContainText(`${friendPlayer.name} can’t come right now`);
     await expect(declined).toContainText('The seat is open again');
     await expect(partner).toContainText('Open seat');
     expect(
@@ -220,7 +220,7 @@ test('PID-254: Not now and sitting down elsewhere open the seat again and tell t
       ).status
     ).toBe(200);
     await expect(declined).toBeVisible({ timeout: 1_000 });
-    await expect(declined).toContainText(`${friendPlayer.name} can't come right now`);
+    await expect(declined).toContainText(`${friendPlayer.name} can’t come right now`);
     await expect(partner).toContainText('Open seat');
     // Her own answer goes quietly on her side.
     await expect(invitation).toHaveCount(0);
@@ -271,7 +271,7 @@ test('PID-258: a seat held for you reaches your game with the bots; Not now tell
   const code = created.payload.data.code;
   await expect(card).toBeVisible({ timeout: 1_000 });
   await expect(card).toContainText(`${hostPlayer.name} is holding a seat for you`);
-  await expect(card).toContainText(`as ${hostPlayer.name}'s partner`);
+  await expect(card).toContainText(`as ${hostPlayer.name}’s partner`);
   await expect(card).toContainText('Joining ends your game with the bots.');
 
   await card.getByRole('button', { name: 'Not now', exact: true }).click();
