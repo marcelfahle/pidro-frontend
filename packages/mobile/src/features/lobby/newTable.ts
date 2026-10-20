@@ -8,6 +8,7 @@ import {
   type SeatType,
   type TranslationKey,
 } from '@pidro/shared';
+import { seatName } from '@/features/seatName';
 import { apiErrorInfo, localizedError } from '@/utils/apiErrors';
 import type { PickerFriend } from './friendPicker';
 
@@ -136,6 +137,15 @@ export function newTableRequest(ruleSet: RuleSet, draft: TableDraft): CreateRoom
     rule_set: ruleSet,
     seats: { seat_2: entry('seat_2'), seat_3: entry('seat_3'), seat_4: entry('seat_4') },
   };
+}
+
+/** Only the host's own table is "Your table"; everyone else sees whose it is. */
+export function tableTitle(room: Room, you: string): string {
+  if (room.host_id === you) return t('social.your_table');
+  const host = room.seats?.find((seat) => seat.player?.id === room.host_id)?.player;
+  return host
+    ? t('new_table.hosts_table', { name: seatName(host, t('social.player')) })
+    : (room.name ?? room.code);
 }
 
 export function tableHeader(room: Room): string {

@@ -1,4 +1,4 @@
-import { t } from '@pidro/shared';
+import { errorPayload, t } from '@pidro/shared';
 import type { Position, Room } from '@pidro/shared';
 import { apiErrorInfo } from '@/utils/apiErrors';
 import { tableRow } from './tableRow';
@@ -33,10 +33,14 @@ export function passwordAnswer(error: unknown): 'wrong' | { wait: number } | und
   const code = apiErrorInfo(error).code?.toUpperCase();
   if (code === 'SEAT_REQUIRES_PASSWORD') return 'wrong';
   if (code !== 'RATE_LIMITED') return undefined;
+  // The body first: a browser cannot read Retry-After across origins.
+  const body = errorPayload(error) as { error_params?: { retry_after?: unknown } };
   const header = (error as { response?: { headers?: Record<string, unknown> } })?.response
     ?.headers?.['retry-after'];
-  const seconds = Number(header);
-  return { wait: Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 60 };
+  const seconds = [body.error_params?.retry_after, header]
+    .map(Number)
+    .find((value) => Number.isFinite(value) && value > 0);
+  return { wait: seconds ? Math.ceil(seconds) : 60 };
 }
 
 /** The wait line: the board's minute, or the minutes the server really asks for. */

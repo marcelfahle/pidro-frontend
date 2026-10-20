@@ -40,6 +40,7 @@ import {
   seatError,
   tableFooter,
   tableHeader,
+  tableTitle,
   waitingFooter,
   type SeatChoice,
   type SeatKey,
@@ -144,9 +145,11 @@ export function NewTableScreen({
   const [query, setQuery] = useState('');
   const [pickerError, setPickerError] = useState<string>();
   const [prefilled, setPrefilled] = useState(false);
+  // No event says a friend sat down elsewhere, so ask again as each seat's picker opens or closes.
+  const picking = selected !== null;
   useEffect(() => {
     if (!fixtureFriends && user && !user.guest) void refreshFriends().catch(() => undefined);
-  }, [fixtureFriends, user]);
+  }, [fixtureFriends, user, picking]);
   const partnerFriend = friends.find((entry) => entry.user_id === partner);
   if (!room && !prefilled && partnerFriend) {
     setDraft(chooseFriend(draft, 'seat_3', partnerFriend));
@@ -456,7 +459,7 @@ export function NewTableScreen({
           />
           <View style={styles.heading}>
             <PidroText role="title" tone="gold" style={styles.title}>
-              {t(room ? 'social.your_table' : 'new_table.title')}
+              {room ? tableTitle(room, you) : t('new_table.title')}
             </PidroText>
             {room && (
               <PidroText testID="waiting-rule-set" role="metadata" tone="soft">

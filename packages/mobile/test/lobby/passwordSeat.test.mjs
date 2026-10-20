@@ -76,6 +76,24 @@ describe('reading the server', () => {
     }
   });
 
+  it('takes the wait from the body first, which a browser can read, then the header', () => {
+    const limited = (retry_after, headers = {}) => ({
+      response: {
+        status: 429,
+        headers,
+        data: {
+          errors: [{ code: 'RATE_LIMITED' }],
+          error_code: 'rate_limited',
+          error_params: { retry_after },
+        },
+      },
+    });
+    expect(passwordAnswer(limited(253))).toEqual({ wait: 253 });
+    expect(passwordWaitLine(passwordAnswer(limited(253)).wait)).toBe('Try again in 5 minutes.');
+    expect(passwordAnswer(limited(253, { 'retry-after': '42' }))).toEqual({ wait: 253 });
+    expect(passwordAnswer(limited(undefined, { 'retry-after': '42' }))).toEqual({ wait: 42 });
+  });
+
   it('reads the structured lowercase codes too', () => {
     const structured = (status, error_code) => ({ response: { status, data: { error_code } } });
     expect(passwordAnswer(structured(403, 'seat_requires_password'))).toBe('wrong');

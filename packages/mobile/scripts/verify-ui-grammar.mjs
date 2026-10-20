@@ -661,9 +661,11 @@ const allCases = [
     testId: 'seat-east',
     playLines: { west: 'Plays 9♥', north: 'Plays K♥', east: 'Plays 4♥' },
   },
-  // PID-258: in a game with bots, a seat held for you waits at the top, over
-  // North but clear of the played cards, the hand and the bids. A phone on its
-  // side has no room above the bids: there it waits until you have bid.
+  // PID-258: in a game with bots, a seat held for you waits at the top, clear
+  // of the played cards, the hand and the bids; upright the table makes room
+  // under it, so it covers no seat, the score or the menu. A phone on its side,
+  // or a short upright one, has no room for the bids too: there it waits until
+  // you have bid.
   {
     name: 'table-invitation',
     path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner',
@@ -675,6 +677,14 @@ const allCases = [
     path: '/table-dev?phase=bidding&role=player&bids=round&invitation=opponent',
     testId: 'bidding-window',
     invitation: 'Finnish · as Bertil’s opponent',
+  },
+  // Upright on a notched phone: under the score and the menu, below the island.
+  {
+    name: 'table-invitation-island',
+    path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner&safeArea=island',
+    testId: 'table-invitation',
+    invitation: "Finnish · as Bertil's partner",
+    skipViewports: ['landscape', 'compact-landscape'],
   },
   ...['island-left', 'island-right'].map((safeArea) => ({
     name: `table-invitation-${safeArea}`,
@@ -2102,7 +2112,11 @@ async function assertPasswordKeypad(page, testCase, viewport) {
     return;
   }
   if (testCase.name === 'lobby-password-wait') {
-    await keypad.getByText('Try again in a minute.', { exact: true }).waitFor();
+    const wait = keypad.getByText('Try again in a minute.', { exact: true });
+    await wait.waitFor();
+    // One line keeps the room of two, so the sheet does not jump after a two-line message.
+    const line = await wait.boundingBox();
+    assert.ok(line.height >= 43.5, `${testCase.name}: the message row holds two lines`);
     await typed(0);
     for (const name of ['1', '0', 'Delete the last number'])
       assert.equal(await key(name).isDisabled(), true, `${name} waits`);
@@ -2164,6 +2178,11 @@ async function assertCreationPresentation(page, testCase) {
     ready: "I'm ready",
   }[fixture];
   if (footer) await page.getByRole('button', { name: footer, exact: true }).waitFor();
+  // Only the host's table is theirs; a player who joined sees whose it is.
+  if (fixture === 'opened' || fixture === 'guest') {
+    const title = fixture === 'guest' ? 'Bertil’s table' : 'Your table';
+    await page.getByTestId('waiting-toolbar').getByText(title, { exact: true }).waitFor();
+  }
   if (fixture === 'setup' || fixture === 'louisiana') {
     const selected = page.getByRole('radio', {
       name: fixture === 'louisiana' ? 'Louisiana' : 'Finnish',
@@ -2193,6 +2212,14 @@ async function assertCreationPresentation(page, testCase) {
       (row) => row.top >= scroll.y - 0.5 && row.bottom <= scroll.y + scroll.height + 0.5
     );
     assert.ok(whole.length >= 8, `${whole.length} whole friend rows in the sideways picker`);
+    // The board's ✕ is a round glass button, not a bare glyph.
+    const close = page
+      .getByTestId('seat-picker-container')
+      .getByRole('button', { name: 'Cancel', exact: true });
+    const background = await close.evaluate(
+      (node) => getComputedStyle(node).backgroundImage + getComputedStyle(node).backgroundColor
+    );
+    assert.match(background, /gradient/, `the sideways picker's ✕ sits on a round button`);
   }
   if (fixture === 'declined') {
     const card = page.getByTestId('seat-declined-notice');
@@ -2873,11 +2900,8 @@ async function assertTrumpPicker(page, testCase, box, viewport) {
 async function assertTableInvitation(page, testCase, viewport) {
   if (!testCase.invitation) return;
   const card = page.getByTestId('table-invitation');
-  if (
-    testCase.testId === 'bidding-window' &&
-    viewport.width > viewport.height &&
-    viewport.height < 500
-  ) {
+  const short = viewport.width > viewport.height ? viewport.height < 500 : viewport.height < 700;
+  if (testCase.testId === 'bidding-window' && short) {
     assert.equal(
       await card.count(),
       0,
@@ -2899,6 +2923,16 @@ async function assertTableInvitation(page, testCase, viewport) {
     box.x + box.width <= viewport.width - insets.right,
     `${testCase.name}: clears the right inset`
   );
+  if (viewport.height > viewport.width) {
+    await assertNorthClear(page, testCase, viewport, box);
+    for (const seat of ['east', 'west', 'south']) {
+      const seatBox = await visibleBox(page, page.getByTestId(`seat-${seat}`));
+      assert.ok(
+        !seatBox || !boxesOverlap(box, seatBox),
+        `${testCase.name}: clears the ${seat} seat in ${viewport.name}`
+      );
+    }
+  }
   const bottom = box.y + box.height;
   const north = await getStableBox(page.getByTestId('trick-north-top').first(), page);
   assert.ok(

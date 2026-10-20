@@ -1,6 +1,6 @@
 import { expect, it } from 'bun:test';
 import { normalizeRoom, roomWithReadiness, setLocale } from '@pidro/shared';
-import { assignedFriendIds, chooseFriend, chooseSeat, createFailure, defaultSeats, isPractice, newTableRequest, pickerFriends, seatChoice, seatedHuman, seatEntry, seatError, tableFooter, tableHeader } from '../../src/features/lobby/newTable';
+import { assignedFriendIds, chooseFriend, chooseSeat, createFailure, defaultSeats, isPractice, newTableRequest, pickerFriends, seatChoice, seatedHuman, seatEntry, seatError, tableFooter, tableHeader, tableTitle } from '../../src/features/lobby/newTable';
 import { seatRow } from '../../src/features/lobby/seatRow';
 
 const maija = { user_id: 'maija', display_name: 'Maija', avatar_url: null, presence: 'online' };
@@ -41,6 +41,17 @@ it('distinguishes invite-only from practice and retranslates the footer and head
     expect(tableFooter(chooseFriend(draft(), 'seat_3', maija))).toBe('Lediga platser visas i Bord. Maija får en inbjudan.');
     expect(tableHeader(room)).toBe('Visas i Bord · Louisiana');
     expect(tableFooter(bots)).toBe('Ett övningsspel med tre botar.');
+  } finally { setLocale('en'); }
+});
+
+it('calls the table yours only for its host; a player who joined sees whose it is', () => {
+  const snapshot = { room_id: 'room', status: 'waiting', positions: { north: 'bertil', east: 'you', south: null, west: null }, seats: { north: { occupant_type: 'human', user_id: 'bertil', username: 'Bertil' }, east: { occupant_type: 'human', user_id: 'you', username: 'you' }, south: { occupant_type: 'vacant' }, west: { occupant_type: 'vacant' } } };
+  const room = roomWithReadiness({ code: 'TEST', host_id: 'bertil', seats: [] }, snapshot);
+  expect(tableTitle(room, 'bertil')).toBe('Your table');
+  expect(tableTitle(room, 'you')).toBe('Bertil’s table');
+  try {
+    setLocale('sv');
+    expect(tableTitle(room, 'you')).toBe('Bertils bord');
   } finally { setLocale('en'); }
 });
 

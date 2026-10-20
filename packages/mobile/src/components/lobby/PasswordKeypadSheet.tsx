@@ -391,8 +391,9 @@ const styles = StyleSheet.create({
   off: { opacity: 0.45 },
   digit: { fontFamily: PidroFonts.display, fontWeight: '400', fontSize: 38, lineHeight: 46 },
   caret: { width: 3, height: 36, borderRadius: 2, backgroundColor: PidroBevel.textGold },
+  // Room for two lines, so the sheet stays put when a two-line message gives way to one.
   line: {
-    minHeight: 22,
+    minHeight: 44,
     fontFamily: PidroFonts.ui,
     fontWeight: '800',
     fontSize: 16,

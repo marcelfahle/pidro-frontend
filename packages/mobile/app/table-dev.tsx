@@ -744,6 +744,7 @@ function RolePreview({
   invitation?: SeatInvitation | null;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
+  const [invitationHeight, setInvitationHeight] = useState(0);
   const tableRoom = bidRound || botTrick || outPlayers || invitation ? BOT_ROOM : WAITING_ROOM;
   useEffect(() => {
     let active = true;
@@ -1014,7 +1015,12 @@ function RolePreview({
   return (
     <View className="flex-1">
       {Table ? (
-        <Table room={tableRoom} rulesFixtureSeen={rulesFixtureSeen} onLeave={() => {}} />
+        <Table
+          room={tableRoom}
+          rulesFixtureSeen={rulesFixtureSeen}
+          onLeave={() => {}}
+          topDock={invitation ? invitationHeight : 0}
+        />
       ) : (
         <Loading />
       )}
@@ -1023,7 +1029,12 @@ function RolePreview({
         notice={feedback === 'notice' ? NORA_LOST : null}
       />
       {Table && invitation ? (
-        <TableInvitation invitation={invitation} roomCode={tableRoom.code} fixture />
+        <TableInvitation
+          invitation={invitation}
+          roomCode={tableRoom.code}
+          onHeight={setInvitationHeight}
+          fixture
+        />
       ) : null}
     </View>
   );

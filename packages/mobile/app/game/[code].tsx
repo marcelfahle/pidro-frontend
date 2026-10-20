@@ -60,6 +60,7 @@ type SkiaTableProps = {
   playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
+  topDock?: number;
 };
 
 /**
@@ -209,6 +210,7 @@ export default function GameScreen() {
   // Joining a held seat leaves this table: its channel goes first, so the
   // closing room cannot flash its own ending before the next table opens.
   const [leavingForSeat, setLeavingForSeat] = useState(false);
+  const [invitationHeight, setInvitationHeight] = useState(0);
 
   // Identity snapshots also update direct-link games without a lobby in the stack.
   useLobbyChannel();
@@ -769,6 +771,7 @@ export default function GameScreen() {
           playAgainLabel={origin === 'single-player' ? t('game.play_again') : undefined}
           showGuestSave={showGuestSave && Boolean(currentUser?.guest)}
           onSaveGuest={() => setAccountSheetOpen(true)}
+          topDock={invitation ? invitationHeight : 0}
         />
         <AuthSheet
           isOpen={accountSheetOpen}
@@ -787,6 +790,7 @@ export default function GameScreen() {
             invitation={invitation}
             roomCode={room.code}
             onLeaving={setLeavingForSeat}
+            onHeight={setInvitationHeight}
           />
         ) : null}
       </View>
