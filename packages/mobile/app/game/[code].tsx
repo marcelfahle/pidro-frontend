@@ -423,7 +423,7 @@ export default function GameScreen() {
         waitingRoomExitRef.current = true;
         refreshSchedulerRef.current?.dispose();
         if (code) removeRoom(code);
-        router.replace('/lobby');
+        router.dismissTo('/lobby');
         return;
       }
       if (event.kind === 'declined') {
@@ -586,7 +586,8 @@ export default function GameScreen() {
       });
     }
 
-    router.replace(destination);
+    // Back to the Lobby or Home under the table; a table opened from a link has none, and replaces.
+    router.dismissTo(destination);
   };
 
   const runRoomControl = useCallback(
@@ -638,7 +639,7 @@ export default function GameScreen() {
         exitLabel={destination === '/home' ? 'Back home' : 'Back to lobby'}
         onExit={() => {
           if (code) removeRoom(code);
-          router.replace(destination);
+          router.dismissTo(destination);
         }}
       />
     );
@@ -649,7 +650,7 @@ export default function GameScreen() {
       <GameJoinFailureScreen
         failure="away"
         exitLabel={exitPath === '/home' ? 'Back home' : 'Back to lobby'}
-        onExit={() => router.replace(exitPath)}
+        onExit={() => router.dismissTo(exitPath)}
         onReturn={() => setAway(false)}
       />
     );
@@ -686,7 +687,7 @@ export default function GameScreen() {
                 <BevelButton
                   label={t(origin === 'single-player' ? 'game.back_home' : 'game.lobby')}
                   material="glass"
-                  onPress={() => router.replace(exitPath)}
+                  onPress={() => router.dismissTo(exitPath)}
                   style={styles.tableLoadButton}
                 />
                 <BevelButton
