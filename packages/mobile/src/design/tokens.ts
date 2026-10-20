@@ -267,7 +267,7 @@ export const PidroPersonaColors = {
   skinShade: '#DDA27C',
   steam: 'rgba(255, 255, 255, 0.75)',
   // After the photos (2026-10-17): Marcel's trucker cap and navy jacket,
-  // Antti's black beanie, red scarf and ginger stubble, Jocke's long wavy
+  // Antti's black beanie, red scarf and full ginger beard, Jocke's long wavy
   // hair, round glasses and waistcoat.
   capFront: '#F4F1EA',
   capNavy: '#1E2E4A',
@@ -275,7 +275,7 @@ export const PidroPersonaColors = {
   hairLight: '#8A6440',
   stubble: 'rgba(122, 86, 52, 0.4)',
   ginger: '#C2703C',
-  gingerStubble: 'rgba(194, 112, 60, 0.5)',
+  gingerDeep: '#9E5527',
   beanie: '#1B1E24',
   beanieRib: '#2C313B',
   scarf: '#D3222E',

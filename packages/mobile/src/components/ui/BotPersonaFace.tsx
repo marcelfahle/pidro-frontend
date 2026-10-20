@@ -161,11 +161,21 @@ const ANTTI: ReactNode = (
     {/* Dark jacket */}
     <Path d="M12 104 C14 82 30 73 50 73 C70 73 86 82 88 104 Z" fill={C.jacketDark} {...line} />
     <Head />
-    {/* Ginger stubble */}
+    {/* Full ginger beard, sideburns to moustache, a few darker strands */}
     <Path
-      d="M35 55 C36.5 65 43 69 50 69 C57 69 63.5 65 65 55 C61 61 56 63.5 50 63.5 C44 63.5 39 61 35 55 Z"
-      fill={C.gingerStubble}
+      d="M31.5 45 C31 55 33 63 38 67.5 C42 70.5 58 70.5 62 67.5 C67 63 69 55 68.5 45 L65 45 C65 52 63 56.5 59.5 58 C56.5 56 53 56 50 57.5 C47 56 43.5 56 40.5 58 C37 56.5 35 52 35 45 Z"
+      fill={C.ginger}
+      {...line}
+      strokeWidth={1.6}
     />
+    <Path
+      d="M37 55 L38.5 60 M62.5 55 L61 60 M44 63 L44.5 66 M56 63 L55.5 66"
+      fill="none"
+      stroke={C.gingerDeep}
+      strokeWidth={1.1}
+      strokeLinecap="round"
+    />
+    <Path d="M46 61.5 Q50 63.5 54 61.5" fill="none" {...line} strokeWidth={1.8} />
     {/* Black beanie, a ribbed cuff */}
     <Path d="M29 44 C27.5 25 38 16 50 16 C62 16 72.5 25 71 44 Z" fill={C.beanie} {...line} />
     <Path
