@@ -18,7 +18,11 @@ const player = {
   avatar_url: null,
   presence: 'online' as const,
 };
-const request: FriendNotice = { kind: 'request', player, played_together_at: null };
+const request: FriendNotice = {
+  kind: 'request',
+  player,
+  played_together_at: null,
+};
 const accepted: FriendNotice = { kind: 'accepted', player, source: 'accept' };
 const seat: Extract<FriendNotice, { kind: 'seat' }> = {
   kind: 'seat',
@@ -35,7 +39,6 @@ test('friend payloads require the player, date field and known source without th
   expect(isFriendRequest(request)).toBe(true);
   expect(isFriendRequest({ ...request, played_together_at: '2026-10-18T10:00:00Z' })).toBe(true);
   expect(isFriendAccepted(accepted)).toBe(true);
-  expect(isFriendAccepted({ ...accepted, source: 'link' })).toBe(true);
   for (const invalid of [
     null,
     [],
@@ -50,6 +53,7 @@ test('friend payloads require the player, date field and known source without th
     {},
     { player },
     { ...accepted, source: 'surprise' },
+    { ...accepted, source: 'link' },
     { ...accepted, player: { ...player, presence: 'invisible' } },
   ])
     expect(isFriendAccepted(invalid)).toBe(false);
@@ -81,6 +85,26 @@ test('one notice at a time: seats before requests before accepted; no repeats af
   expect(nextFriendNotice(useFriendsStore.getState().notices)).toEqual(accepted);
   expect(useFriendsStore.getState().waiting_for_you).toBe(2);
   expect(nextFriendNotice([accepted, seat], friendNoticeId(accepted))).toEqual(accepted);
+});
+
+test('a seat notice reads the re-sent invitation, partner or opponent as it is now', () => {
+  const notice = {
+    kind: 'seat' as const,
+    invitation: { ...seat.invitation, join_as: 'partner' as const },
+  };
+  const moved = { ...seat.invitation, join_as: 'opponent' as const };
+  expect(liveFriendNotices([notice], { friends: [], added_you: [] }, [moved])).toEqual([
+    { kind: 'seat', invitation: moved },
+  ]);
+  expect(liveFriendNotices([notice], { friends: [], added_you: [] }, [])).toEqual([]);
+});
+
+test("a request sent through someone's link still lets their answer through", () => {
+  const store = useFriendsStore.getState();
+  store.queueNotice({ kind: 'sent', player });
+  store.dismissNotice(friendNoticeId({ kind: 'sent', player }));
+  store.queueNotice(accepted);
+  expect(useFriendsStore.getState().notices).toEqual([accepted]);
 });
 
 test('authoritative lists remove answered/cancelled requests; seats vanish when gone', () => {

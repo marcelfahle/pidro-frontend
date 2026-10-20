@@ -222,10 +222,11 @@ export function friendNoticeFixture(value?: string): FriendNotice[] | undefined 
       host_id: 'kalle',
       host: players[3],
       rule_set: 'finnish',
+      join_as: 'partner',
     },
   };
   if (value === 'friend-queue') return [accepted, request, seat];
-  if (value === 'friend-linked') return [{ ...accepted, source: 'link' }];
+  if (value === 'friend-linked') return [{ kind: 'sent', player: players[0] }];
   if (value === 'friend-too-late') return [{ kind: 'too_late', invitation: seat.invitation }];
   return [value === 'friend-seat' ? seat : value === 'friend-accepted' ? accepted : request];
 }

@@ -10,6 +10,7 @@ import {
 import { NoticeCard } from '@/components/friends/NoticeCard';
 import { declineSeatInvitation, joinSeatInvitation } from '@/components/invites/SeatInvitations';
 import { friendNoticeFixture } from '@/features/friends/fixtures';
+import { tableInvitationLine } from '@/features/invites/tableInvitation';
 import { relativeDay } from '@/features/relativeDay';
 import { useTranslation } from '@/i18n';
 import { useAuthStore } from '@/stores/auth';
@@ -59,7 +60,7 @@ export function FriendNoticeHost({
     dismissRef.current = dismiss;
   }, [dismiss]);
   useEffect(() => {
-    if ((notice.kind !== 'accepted' && notice.kind !== 'too_late') || fixture) return;
+    if (notice.kind === 'request' || notice.kind === 'seat' || fixture) return;
     const timer = setTimeout(() => dismissRef.current(), 4000);
     return () => clearTimeout(timer);
   }, [notice.kind, fixture]);
@@ -107,7 +108,7 @@ export function FriendNoticeHost({
       : null;
   const body =
     notice.kind === 'seat'
-      ? notice.invitation.rule_set && t(`social.${notice.invitation.rule_set}`)
+      ? tableInvitationLine(notice.invitation, name)
       : when
         ? t('friend_notice.played_together', { when })
         : undefined;
@@ -119,12 +120,12 @@ export function FriendNoticeHost({
       onLayout={(event) => onHeight(event.nativeEvent.layout.height)}>
       <NoticeCard
         testID="friend-notice"
-        variant={notice.kind}
+        variant={notice.kind === 'sent' ? 'accepted' : notice.kind}
         title={t(
           notice.kind === 'seat'
             ? 'seat_invitation.waiting'
-            : notice.kind === 'accepted' && notice.source === 'link'
-              ? 'friend_notice.linked'
+            : notice.kind === 'sent'
+              ? 'friends.sent_toast'
               : `friend_notice.${notice.kind}`,
           { name }
         )}

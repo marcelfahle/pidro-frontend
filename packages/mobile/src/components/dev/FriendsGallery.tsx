@@ -41,7 +41,7 @@ export function FriendsGallery() {
           <FriendRow
             name="Pekka"
             ring="gold"
-            row={row(person('Pekka', { asked_at: daysAgo(0) }), 'added_you')}
+            row={row(person('Pekka', { requested_at: daysAgo(0) }), 'added_you')}
             onPress={noop}
             trailing={
               <>
@@ -78,7 +78,7 @@ export function FriendsGallery() {
                 presence: 'at_table',
                 table_company: 'people',
                 join_as: 'partner',
-                seats_open: 1,
+                table_open_seats: 1,
               })
             )}
             onPress={noop}
@@ -93,7 +93,9 @@ export function FriendsGallery() {
           />
           <FriendRow
             name="Kalle"
-            row={row(person('Kalle', { presence: 'at_table', table_company: 'people', hand: 4 }))}
+            row={row(
+              person('Kalle', { presence: 'at_table', table_company: 'people', table_hand: 4 })
+            )}
             onPress={noop}
           />
           <FriendRow
@@ -106,7 +108,7 @@ export function FriendsGallery() {
           <FriendRow
             name="Pekka"
             ring="gold"
-            row={row(person('Pekka', { presence: 'with_bots' }))}
+            row={row(person('Pekka', { presence: 'at_table', table_company: 'bots' }))}
             onPress={noop}
           />
           <FriendRow
@@ -119,13 +121,13 @@ export function FriendsGallery() {
           <FriendRow
             name="Hanna"
             ring="gold"
-            row={row(person('Hanna', { presence: 'offline', last_played_at: daysAgo(1) }))}
+            row={row(person('Hanna', { presence: 'offline', played_together_at: daysAgo(1) }))}
             onPress={noop}
             trailing="chevron"
           />
           <FriendRow
             name="Sanna"
-            row={row(person('Sanna', { presence: 'offline', last_played_at: daysAgo(40) }))}
+            row={row(person('Sanna', { presence: 'offline', played_together_at: daysAgo(40) }))}
             onPress={noop}
             trailing="chevron"
           />
@@ -153,7 +155,7 @@ export function FriendsGallery() {
             trailing="sent"
           />
           <PidroText role="metadata" tone="muted">
-            What the server gives today: no seat count, hand or dates.
+            Without a seat count, hand or date:
           </PidroText>
           <FriendRow
             name="Kalle"

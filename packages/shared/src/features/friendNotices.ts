@@ -3,7 +3,9 @@ import type { SeatInvitation } from '../types/lobby';
 
 export type FriendNotice =
   | { kind: 'request'; player: FriendPlayer; played_together_at: string | null }
-  | { kind: 'accepted'; player: FriendPlayer; source: 'accept' | 'link' }
+  | { kind: 'accepted'; player: FriendPlayer; source: 'accept' }
+  /** Signing up through someone's own link sends them a request; they still answer it. */
+  | { kind: 'sent'; player: FriendPlayer }
   | { kind: 'seat'; invitation: SeatInvitation }
   | { kind: 'too_late'; invitation: SeatInvitation };
 
@@ -11,7 +13,7 @@ function object(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function player(value: unknown): value is FriendPlayer {
+export function isFriendPlayer(value: unknown): value is FriendPlayer {
   return (
     object(value) &&
     typeof value.user_id === 'string' &&
@@ -28,7 +30,7 @@ export function isFriendRequest(
 ): value is Omit<Extract<FriendNotice, { kind: 'request' }>, 'kind'> {
   return (
     object(value) &&
-    player(value.player) &&
+    isFriendPlayer(value.player) &&
     (value.played_together_at === null ||
       (typeof value.played_together_at === 'string' &&
         Number.isFinite(Date.parse(value.played_together_at))))
@@ -38,9 +40,7 @@ export function isFriendRequest(
 export function isFriendAccepted(
   value: unknown
 ): value is Omit<Extract<FriendNotice, { kind: 'accepted' }>, 'kind'> {
-  return (
-    object(value) && player(value.player) && (value.source === 'accept' || value.source === 'link')
-  );
+  return object(value) && isFriendPlayer(value.player) && value.source === 'accept';
 }
 
 export function isSeatInvitationGone(
@@ -114,19 +114,22 @@ function sameSeat(notice: FriendNotice, seat: Pick<SeatInvitation, 'code' | 'pos
   );
 }
 
+/** What is still waiting; a seat reads the latest invitation, which the server re-sends when `join_as` changes. */
 export function liveFriendNotices(
   queue: FriendNotice[],
   lists: FriendLists,
   seats: SeatInvitation[]
-) {
-  return queue.filter((notice) => {
+): FriendNotice[] {
+  return queue.flatMap((notice): FriendNotice[] => {
     if (notice.kind === 'request')
-      return lists.added_you.some((p) => p.user_id === notice.player.user_id);
-    if (notice.kind === 'seat')
-      return seats.some(
+      return lists.added_you.some((p) => p.user_id === notice.player.user_id) ? [notice] : [];
+    if (notice.kind === 'seat') {
+      const invitation = seats.find(
         (seat) => friendNoticeId({ kind: 'seat', invitation: seat }) === friendNoticeId(notice)
       );
-    return true;
+      return invitation ? [{ ...notice, invitation }] : [];
+    }
+    return [notice];
   });
 }
 

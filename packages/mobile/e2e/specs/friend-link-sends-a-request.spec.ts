@@ -5,7 +5,7 @@ import { WelcomeWindow } from '../screens/welcome-window';
 import { api, register } from '../support/api';
 import { newPlayer } from '../support/player';
 
-test("PID-247: signing up through someone's link sends them a friend request", async ({
+test("PID-247: signing up through someone's link sends them a friend request they answer with one tap", async ({
   page,
   player,
 }) => {
@@ -43,18 +43,21 @@ test("PID-247: signing up through someone's link sends them a friend request", a
     `Request sent. You'll be friends once ${bertilPlayer.name} accepts.`
   );
 
-  // A link never makes a friendship by itself: Bertil gets a request and accepts it or not.
-  const lists = async (token: string) => {
-    const lists = (await api('/api/v1/friends', { token })).payload.data;
-    const ids = (players: { user_id: string }[]) => players.map((p) => p.user_id);
-    return {
-      friends: ids(lists.friends),
-      requested: ids(lists.requested),
-      addedYou: ids(lists.added_you),
-    };
-  };
-  expect(await lists(data.token)).toMatchObject({ friends: [], requested: [bertil.user.id] });
-  expect(await lists(bertil.token)).toMatchObject({ friends: [], addedYou: [data.user.id] });
+  const lists = async (token: string) => (await api('/api/v1/friends', { token })).payload.data;
+  const ids = (players: { user_id: string }[]) => players.map((p) => p.user_id);
+  const mine = await lists(data.token);
+  expect(ids(mine.friends)).toEqual([]);
+  expect(ids(mine.requested)).toEqual([bertil.user.id]);
+  const bertils = await lists(bertil.token);
+  expect(ids(bertils.friends)).toEqual([]);
+  expect(ids(bertils.added_you)).toEqual([data.user.id]);
+
+  // Bertil accepts, and the new player hears it even after the link's own notice.
+  await api(`/api/v1/friends/${data.user.id}`, { method: 'PUT', token: bertil.token });
+  await expect(page.getByTestId('friend-notice')).toContainText(
+    `${bertilPlayer.name} accepted. You're friends now.`
+  );
+  expect(ids((await lists(data.token)).friends)).toEqual([bertil.user.id]);
 
   // The link has done its work: it is not sent again.
   await expect

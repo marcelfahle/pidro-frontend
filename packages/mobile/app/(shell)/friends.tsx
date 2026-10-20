@@ -24,7 +24,7 @@ import { DismissButton } from '@/components/ui/DismissButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Toast } from '@/components/ui/Toast';
-import { PidroFonts, PidroSpacing } from '@/design/tokens';
+import { PidroBevel, PidroFonts, PidroSpacing } from '@/design/tokens';
 import {
   classicFriendsMessage,
   friendAction,
@@ -105,6 +105,7 @@ export default function FriendsScreen() {
   const loading = preview ? fixture === 'loading' : store.isLoading && !pending;
   const error = joinError ?? (preview ? fixture === 'error' : store.error);
   const empty = discovering || (sections.length === 0 && !loading && !error);
+  const tight = empty && !landscape && height < 700;
 
   useFocusEffect(
     useCallback(() => {
@@ -276,8 +277,10 @@ export default function FriendsScreen() {
         testID="friends-screen"
         contentStyle={[
           styles.content,
+          // Empty on a small phone: a tighter rhythm keeps the board's one screen.
+          tight && styles.tight,
           {
-            paddingBottom: PidroSpacing.md + (guest ? noticeInset : clearance.bottom),
+            paddingBottom: (tight ? 0 : PidroSpacing.md) + (guest ? noticeInset : clearance.bottom),
             paddingRight: PidroSpacing.md + (guest ? 0 : clearance.right),
           },
         ]}>
@@ -330,9 +333,10 @@ export default function FriendsScreen() {
                 <View key={section.key} style={styles.section} testID={`friends-${section.key}`}>
                   <View style={styles.sectionTitle}>
                     <PidroText
-                      role="label"
-                      tone={section.key === 'requests' ? 'gold' : 'soft'}
-                      accessibilityRole="header">
+                      role="metadata"
+                      tone={section.key === 'requests' ? 'gold' : 'cyan'}
+                      accessibilityRole="header"
+                      style={styles.eyebrow}>
                       {section.title}
                     </PidroText>
                     {section.key === 'requests' ? (
@@ -408,7 +412,6 @@ export default function FriendsScreen() {
                     {t('friends.empty_help')}
                   </PidroText>
                   {landscape ? classicCard : null}
-                  {landscape ? linkCard : null}
                 </View>
                 <View style={landscape && styles.column}>
                   <FriendDiscovery
@@ -421,7 +424,8 @@ export default function FriendsScreen() {
               </View>
             ) : null}
             {!empty || !landscape ? classicCard : null}
-            {!empty || !landscape ? linkCard : null}
+            {/* Empty, the board ends with the Classic card; Add a friend has the link. */}
+            {!empty ? linkCard : null}
             {selectedPlayer ? (
               <FriendSheet
                 key={selectedPlayer.user_id}
@@ -535,9 +539,18 @@ export default function FriendsScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   content: { gap: 18 },
+  tight: { gap: 12 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 4 },
   heading: { flex: 1, gap: 1 },
-  title: { fontFamily: PidroFonts.display, fontSize: 28, lineHeight: 34, fontWeight: '400' },
+  title: {
+    fontFamily: PidroFonts.display,
+    fontSize: 28,
+    lineHeight: 34,
+    fontWeight: '400',
+    color: PidroBevel.textGold,
+    ...PidroBevel.labelShadow,
+  },
+  eyebrow: { textTransform: 'uppercase', letterSpacing: 1, fontWeight: '900', fontSize: 11 },
   section: { gap: 8 },
   sectionTitle: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
   emptyLandscape: { flexDirection: 'row', gap: 20 },
