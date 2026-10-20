@@ -12,6 +12,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, readFileSync, readdirSync } from 'node:fs';
 import { checkCommits } from './ota-check.mjs';
+import { updateName } from '../src/features/updateName.mjs';
 
 const sha = process.argv[2];
 if (!sha) {
@@ -109,6 +110,7 @@ if (verdict === 'build') {
 }
 
 const subject = sh('git', ['log', '-1', '--format=%s', sha]).trim();
+const name = updateName(sha) ?? short(sha);
 const published = spawnSync(
   'bunx',
   [
@@ -119,7 +121,7 @@ const published = spawnSync(
     '--environment',
     'production',
     '--message',
-    `${subject} (${short(sha)})`,
+    `${name} · ${subject} (${short(sha)})`,
     '--non-interactive',
     '--emit-metadata',
   ],
@@ -132,6 +134,10 @@ const published = spawnSync(
       APP_VARIANT: 'beta',
       EXPO_PUBLIC_API_URL: `https://${API}`,
       EXPO_PUBLIC_WS_URL: `wss://${API}/socket`,
+      // Settings → About the app shows which commit is running (AppUpdateSection).
+      EXPO_PUBLIC_UPDATE_NAME: name,
+      EXPO_PUBLIC_UPDATE_SHA: short(sha),
+      EXPO_PUBLIC_UPDATE_DATE: new Date().toISOString().slice(0, 10),
     },
   }
 );
@@ -158,7 +164,7 @@ if (!pointsAtProduction) {
 }
 
 summary(
-  '### Beta update published',
+  `### Beta update published: ${name}`,
   '',
   `- Commit: \`${short(sha)}\` ${subject}`,
   `- Runtime: ${runtime}, on top of \`${short(base)}\``,
