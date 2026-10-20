@@ -1,0 +1,77 @@
+name: Beta update
+
+# A green Frontend CI on main publishes that commit to beta testers over the air,
+# unless it needs a new store build (packages/mobile/scripts/publish-beta.mjs).
+on:
+  workflow_run:
+    workflows: [Frontend CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+# One publish at a time; a newer green commit replaces one still waiting, never one
+# that is publishing.
+concurrency:
+  group: beta-update
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish beta update
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 30
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha }}
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Require EXPO_TOKEN
+        id: token
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "### Beta update: skipped" >> "$GITHUB_STEP_SUMMARY"
+            echo "No \`EXPO_TOKEN\` secret yet, so ${SHA::7} was not published. Add one (expo.dev → Access tokens) under the repository's Actions secrets." >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice::Beta update skipped: no EXPO_TOKEN secret"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the green commit
+        if: steps.token.outputs.present == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+          # The native check diffs against the commit of the last beta build or update.
+          fetch-depth: 0
+
+      - name: Set up Bun
+        if: steps.token.outputs.present == 'true'
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Cache bun packages
+        if: steps.token.outputs.present == 'true'
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install workspace dependencies
+        if: steps.token.outputs.present == 'true'
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        if: steps.token.outputs.present == 'true'
+        run: bun run shared:build
+
+      - name: Publish, or say why not
+        if: steps.token.outputs.present == 'true'
+        working-directory: packages/mobile
+        env:
+          NODE_OPTIONS: --max-old-space-size=8192 --require ./scripts/tailwind-v3-resolve.cjs
+        run: node scripts/publish-beta.mjs "$SHA"
