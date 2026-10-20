@@ -6,6 +6,12 @@ This file contains information for AI coding assistants working on the Pidro mob
 
 React Native mobile app using Expo Router for a multiplayer card game. Connects to a Phoenix/Elixir backend via REST API and Phoenix Channels (WebSocket).
 
+## Shipping
+
+Prove it, push to `main`; a green `main` publishes the beta update over the air. The
+steps, the rollback command and the load-bearing paths that need an independent review
+before a push are in the root [`AGENTS.md`](../../AGENTS.md).
+
 ## Current UI Direction: Design System v2 (LOCKED — 2026-09-09)
 
 The DS v2 bevel system is the canonical UI language. **Every new screen and every
