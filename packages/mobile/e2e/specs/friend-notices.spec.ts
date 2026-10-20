@@ -4,6 +4,10 @@ import { API, api, register } from '../support/api';
 import { AGE_ANSWERED, newPlayer } from '../support/player';
 import { startSignedIn } from '../support/session';
 
+// A request notice shows once /friends confirms it, after the friends_changed refetch: two round
+// trips, over a second on a cold runner. Nothing polls, so seeing it at all proves it is live.
+const REQUEST_NOTICE = { timeout: 5_000 };
+
 // Observe the real lobby join; never inject a friends event or stub its refetch.
 async function homeAfterLobbyJoin(page: Page, account: Awaited<ReturnType<typeof register>>) {
   let joined = false;
@@ -65,7 +69,7 @@ test('PID-246: Home accepts a live friend request and the sender sees a four-sec
       (await api(`/api/v1/friends/${account.user.id}`, { method: 'PUT', token: other.token }))
         .status
     ).toBe(200);
-    await expect(notice).toBeVisible({ timeout: 1_000 });
+    await expect(notice).toBeVisible(REQUEST_NOTICE);
     await expect(notice).toContainText(`${otherPlayer.name} wants to be friends`);
     await expect(badge).toHaveText('1');
 
@@ -106,7 +110,7 @@ test('PID-246: Not now preserves the request badge; cancelling a live request re
   const badge = page.getByTestId('friends-invitation-count');
   const requestPath = `/api/v1/friends/${account.user.id}`;
   expect((await api(requestPath, { method: 'PUT', token: other.token })).status).toBe(200);
-  await expect(notice).toBeVisible({ timeout: 1_000 });
+  await expect(notice).toBeVisible(REQUEST_NOTICE);
   await expect(badge).toHaveText('1');
   await notice.getByRole('button', { name: 'Not now', exact: true }).click();
   await expect(notice).toHaveCount(0);
@@ -127,7 +131,7 @@ test('PID-246: Not now preserves the request badge; cancelling a live request re
   expect((await api(requestPath, { method: 'PUT', token: fresh.token })).status).toBe(200);
   await expect(notice).toHaveCount(0);
   await page.goBack();
-  await expect(notice).toBeVisible({ timeout: 1_000 });
+  await expect(notice).toBeVisible(REQUEST_NOTICE);
   await expect(badge).toHaveText('1');
   expect((await api(requestPath, { method: 'DELETE', token: fresh.token })).status).toBe(200);
   await expect(notice).toHaveCount(0);
