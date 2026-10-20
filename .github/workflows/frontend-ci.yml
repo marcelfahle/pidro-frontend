@@ -86,8 +86,9 @@ jobs:
             exit 1
           fi
 
-  # Balance the full viewport/case matrix by recorded duration. The aggregate
-  # verifies exact coverage before comparing the merged captures.
+  # Balance the full viewport/case matrix across ten jobs by recorded duration
+  # (scripts/ui-case-costs.json). The aggregate verifies exact coverage before
+  # comparing the merged captures.
   ui-grammar-shard:
     name: UI grammar (${{ matrix.shard }})
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
@@ -97,15 +98,25 @@ jobs:
       matrix:
         include:
           - shard: matrix-1
-            partition: 1/5
+            partition: 1/10
           - shard: matrix-2
-            partition: 2/5
+            partition: 2/10
           - shard: matrix-3
-            partition: 3/5
+            partition: 3/10
           - shard: matrix-4
-            partition: 4/5
+            partition: 4/10
           - shard: matrix-5
-            partition: 5/5
+            partition: 5/10
+          - shard: matrix-6
+            partition: 6/10
+          - shard: matrix-7
+            partition: 7/10
+          - shard: matrix-8
+            partition: 8/10
+          - shard: matrix-9
+            partition: 9/10
+          - shard: matrix-10
+            partition: 10/10
           - shard: table-behavior
             partition: ''
           - shard: lobby-and-creation
@@ -142,6 +153,15 @@ jobs:
 
       - name: Install Chromium for UI verification
         run: bunx playwright install --with-deps chromium
+
+      # Metro keys its transform cache by file content, so a warm cache only skips
+      # recompiling unchanged modules; NativeWind's CSS is never served from it.
+      - name: Cache Metro transforms
+        uses: actions/cache@v4
+        with:
+          path: /tmp/metro-cache
+          key: metro-${{ runner.os }}-${{ hashFiles('bun.lock') }}-${{ github.sha }}
+          restore-keys: metro-${{ runner.os }}-${{ hashFiles('bun.lock') }}-
 
       - name: Verify mobile UI grammar
         working-directory: packages/mobile

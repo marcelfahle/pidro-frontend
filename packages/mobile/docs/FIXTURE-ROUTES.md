@@ -509,7 +509,7 @@ Needs Expo web running (`bun run web`) and, once per machine,
 bun run test:ui            # full viewport matrix, touch targets, containment
 UI_CASES=table-bidding,home bun run test:ui      # just these
 UI_SHOT_DIR=/tmp/shots bun run test:ui           # where screenshots land
-UI_PARTITION=1/5 UI_REPORT_PATH=/tmp/ui-report.json bun run test:ui  # one CI-sized batch
+UI_PARTITION=1/10 UI_REPORT_PATH=/tmp/ui-report.json bun run test:ui  # one CI-sized batch
 node scripts/verify-ui-grammar.mjs --list        # selected viewport/case IDs, no browser
 MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-seat-decisions.mjs
 node scripts/verify-waiting-seats.mjs   # 4 target sizes; shared list, readiness, kick and live choices
@@ -521,8 +521,8 @@ node scripts/verify-dealing.mjs  # four dealers, 3/6/9 receive order, sort/biddi
 renders, so Mac captures flag font/antialiasing noise. Adopt intentional drift with
 `bun run ui:baselines <runId>`.
 
-CI balances the full matrix across five jobs using Linux case durations in
-`scripts/ui-case-costs.json` (initial calibration: Actions run `38744981024`).
+CI balances the full matrix across ten jobs using Linux case durations in
+`scripts/ui-case-costs.json` (last calibration: Actions run `39359720639`).
 New cases use the median recorded duration and are still included.
 Refresh the weights from a successful run's `ui-report-*`
 artifacts (each record's `id` maps to its `ms`); local Mac timings are not comparable.
