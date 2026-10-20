@@ -1,0 +1,167 @@
+name: Game journeys
+
+# Called by Frontend CI and by pidro-backend's Deploy workflow, which gates a
+# production deploy on these games against the backend commit it is shipping.
+on:
+  workflow_call:
+    inputs:
+      backend-sha:
+        description: Exact backend commit to play against
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  game-e2e:
+    name: Game e2e
+    env:
+      PIDRO_E2E: '1'
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 25
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out frontend
+        uses: actions/checkout@v4
+        with:
+          # Named, because a caller in pidro-backend would otherwise check out itself.
+          repository: marcelfahle/pidro-frontend
+
+      - name: Check out backend
+        uses: actions/checkout@v4
+        with:
+          repository: marcelfahle/pidro-backend
+          ref: ${{ inputs.backend-sha }}
+          path: backend
+
+      - name: Set up Erlang/Elixir
+        id: beam
+        uses: erlef/setup-beam@v1
+        with:
+          version-file: backend/.tool-versions
+          version-type: strict
+
+      - name: Cache mix deps and build
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/deps
+            backend/_build
+          key: mix-${{ runner.os }}-${{ steps.beam.outputs.otp-version }}-${{ steps.beam.outputs.elixir-version }}-${{ hashFiles('backend/mix.lock') }}
+
+      - name: Compile backend and prepare database
+        working-directory: backend
+        run: |
+          mix deps.get
+          mix compile
+          mix ecto.create
+          mix ecto.migrate
+
+      - name: Start backend with CI game pacing
+        working-directory: backend
+        env:
+          PORT: '4000'
+          LIFECYCLE_TURN_TIMER_BID_MS: '1200'
+          LIFECYCLE_TURN_TIMER_PLAY_MS: '900'
+          LIFECYCLE_BOT_DELAY_MS: '60'
+          LIFECYCLE_BOT_DELAY_VARIANCE_MS: '40'
+          LIFECYCLE_BOT_MIN_DELAY_MS: '20'
+          LIFECYCLE_TRICK_TRANSITION_DELAY_MS: '80'
+          LIFECYCLE_HAND_TRANSITION_DELAY_MS: '120'
+          LIFECYCLE_SECOND_DEAL_TRANSITION_DELAY_MS: '120'
+        run: |
+          nohup mix phx.server > /tmp/pidro-backend.log 2>&1 &
+          for attempt in $(seq 1 90); do
+            if curl -s -o /dev/null http://127.0.0.1:4000/api/v1/rooms; then
+              echo "backend ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "backend never became ready"
+          cat /tmp/pidro-backend.log
+          exit 1
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.6
+
+      - name: Cache bun packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build shared package
+        run: bun run shared:build
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+
+      - name: Install Chromium for the UI game
+        run: bunx playwright install --with-deps chromium
+
+      - name: Play full games (solo protocol + multiplayer UI with video)
+        working-directory: packages/mobile
+        env:
+          CI: '1'
+          EXPO_NO_DOTENV: '1'
+          NODE_OPTIONS: --require ./scripts/tailwind-v3-resolve.cjs
+          E2E_ARTIFACT_DIR: /tmp/game-e2e-artifacts
+        run: |
+          bunx expo start --web --port 8081 > /tmp/pidro-expo.log 2>&1 &
+          expo_pid=$!
+          cleanup() {
+            kill "$expo_pid" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          ready=false
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:8081/home >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            cat /tmp/pidro-expo.log
+            exit 1
+          fi
+
+          node scripts/ci-game-e2e.mjs
+
+      - name: Upload game video and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-e2e-artifacts
+          path: |
+            /tmp/game-e2e-artifacts/
+            /tmp/pidro-backend.log
+            /tmp/pidro-expo.log
+          if-no-files-found: ignore
+          retention-days: 14

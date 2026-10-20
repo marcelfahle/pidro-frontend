@@ -86,7 +86,8 @@ fails if either one doesn't reach game over:
    auto-play the UI seat, so a full game runs in the actual client — recorded
    as `game.webm` with milestone screenshots.
 
-CI runs this in the `Game e2e` job (`.github/workflows/frontend-ci.yml`): it
+CI runs this in the `Game e2e` job (`.github/workflows/game-e2e.yml`, called by
+Frontend CI and by pidro-backend's Deploy workflow before a production deploy): it
 checks out `marcelfahle/pidro-backend`, boots Phoenix against a Postgres
 service with fast pacing (`LIFECYCLE_BOT_DELAY_MS=60`,
 `LIFECYCLE_TURN_TIMER_BID_MS=1200`, …), starts Expo web, and uploads the video
