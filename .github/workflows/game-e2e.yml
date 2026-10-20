@@ -84,6 +84,7 @@ jobs:
           LIFECYCLE_TRICK_TRANSITION_DELAY_MS: '80'
           LIFECYCLE_HAND_TRANSITION_DELAY_MS: '120'
           LIFECYCLE_SECOND_DEAL_TRANSITION_DELAY_MS: '120'
+          LIFECYCLE_DEAL_TRANSITION_DELAY_MS: '120'
         run: |
           nohup mix phx.server > /tmp/pidro-backend.log 2>&1 &
           for attempt in $(seq 1 90); do
