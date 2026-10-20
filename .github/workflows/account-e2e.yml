@@ -63,13 +63,13 @@ jobs:
         with:
           persist-credentials: false
           # Named, because a caller in pidro-backend would otherwise check out itself.
-          repository: marcelfahle/pidro-frontend
+          repository: pidrogame/pidro-frontend
 
       - name: Check out backend
         uses: actions/checkout@v4
         with:
           persist-credentials: false
-          repository: marcelfahle/pidro-backend
+          repository: pidrogame/pidro-backend
           ref: ${{ inputs.backend-sha }}
           path: backend
 

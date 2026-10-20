@@ -22,7 +22,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sha=$(gh api repos/marcelfahle/pidro-backend/commits/main --jq .sha)
+          sha=$(gh api repos/pidrogame/pidro-backend/commits/main --jq .sha)
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "Integration backend: $sha" >> "$GITHUB_STEP_SUMMARY"
 
