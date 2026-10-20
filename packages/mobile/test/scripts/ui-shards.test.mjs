@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -48,8 +48,14 @@ describe('visual coverage gate', () => {
   });
 });
 
-test('the real five-part matrix covers every unfiltered viewport/case exactly once', () => {
+test("CI's real matrix partitions cover every unfiltered viewport/case exactly once", () => {
   const script = fileURLToPath(new URL('../../scripts/verify-ui-grammar.mjs', import.meta.url));
+  const workflow = readFileSync(
+    new URL('../../../../.github/workflows/frontend-ci.yml', import.meta.url),
+    'utf8'
+  );
+  const configured = [...workflow.matchAll(/partition: (\d+\/\d+)/g)].map(([, value]) => value);
+  expect(configured).toEqual(Array.from({ length: 10 }, (_, index) => `${index + 1}/10`));
   const list = (partition) => {
     const result = spawnSync(process.execPath, [script, '--list'], {
       env: { ...process.env, UI_PARTITION: partition, UI_CASES: '', UI_VIEWPORTS: '' },
@@ -59,8 +65,9 @@ test('the real five-part matrix covers every unfiltered viewport/case exactly on
     return JSON.parse(result.stdout);
   };
   const expected = list('');
-  const partitions = [1, 2, 3, 4, 5].map((index) => list(`${index}/5`));
+  const partitions = configured.map(list);
   expect(partitions.every((items) => items.length > 0)).toBe(true);
+  expect(new Set(expected).size).toBe(expected.length);
   expect(partitions.flat().sort()).toEqual(expected.sort());
 });
 
