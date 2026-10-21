@@ -709,6 +709,19 @@ function TableDevHarness() {
   );
 }
 
+/** `deal=true`: the server's dealt hand lands this long after the table opens. */
+const DEAL_AT_MS = 900;
+const dealtFrom = (initial: ServerGameState): ServerGameState => ({
+  ...initial,
+  phase: 'bidding',
+  players: {
+    north: { hand: 9 },
+    east: { hand: 9 },
+    west: { hand: 9 },
+    south: { hand: DEAL_HAND },
+  },
+});
+
 /** Exercise the production controller/store, not the animation-only mock model. */
 function RolePreview({
   role,
@@ -972,19 +985,7 @@ function RolePreview({
     const store = useGameStore.getState();
     const initial = store.serverState;
     if (!initial) return;
-    const dealt = {
-      ...initial,
-      phase: 'bidding' as const,
-      players: {
-        north: { hand: 9 },
-        east: { hand: 9 },
-        west: { hand: 9 },
-        south: {
-          hand: DEAL_HAND,
-        },
-      },
-    };
-    const timer = setTimeout(() => store.setServerState(dealt), 900);
+    const timer = setTimeout(() => store.setServerState(dealtFrom(initial)), DEAL_AT_MS);
     return () => clearTimeout(timer);
     // Re-arm whenever the initialization effect above resets the fixture.
   }, [Table, deal, dealer, role, phase, canPass]);
@@ -993,8 +994,11 @@ function RolePreview({
   useEffect(() => {
     if (!Table || !bidRound) return;
     const store = useGameStore.getState();
-    const initial = store.serverState;
-    if (!initial) return;
+    const served = store.serverState;
+    if (!served) return;
+    // With `deal=true` the bots bid while the cards are still being dealt (PID-267).
+    const initial = deal === 'true' ? dealtFrom(served) : served;
+    const start = deal === 'true' ? DEAL_AT_MS : 0;
     const timers = bidRound.bids.map((bid, index) =>
       setTimeout(
         () => {
@@ -1007,11 +1011,11 @@ function RolePreview({
             ...(high ? { highest_bid: high } : {}),
           } as unknown as ServerGameState);
         },
-        BID_STEP_MS * (index + 1)
+        start + BID_STEP_MS * (index + 1)
       )
     );
     return () => timers.forEach(clearTimeout);
-  }, [Table, bidRound, role, phase, canPass, dealer]);
+  }, [Table, bidRound, role, phase, canPass, dealer, deal]);
   return (
     <View className="flex-1">
       {Table ? (

@@ -630,6 +630,16 @@ const allCases = [
     bidLines: { north: 'Bid 7', east: 'Passed', south: 'Bid 9 · high' },
     viewports: { 'compact-landscape': { width: 640, height: 360 } },
   },
+  // PID-267: the bots bid while the cards are still being dealt. Until the
+  // deal ends no seat and no log line shows a bid; then all three show.
+  {
+    name: 'table-bid-during-deal',
+    path: '/table-dev?phase=bidding&role=player&deal=true&bids=round&count=on',
+    testId: 'bidding-window',
+    dealHold: true,
+    bidLines: { west: 'Passed', north: 'Bid 7', east: 'Bid 9 · high' },
+    viewports: { 'compact-landscape': { width: 640, height: 360 } },
+  },
   // PID-220: with count help on, the plaque's bid line carries the bidders'
   // count and "Last trick" sits under it, clear of every seat, also on the
   // small phones that leave the ticker out. Marcel is out of trumps: dimmed,
@@ -2768,6 +2778,50 @@ async function assertCrew(page, testCase) {
   }
 }
 
+// PID-267: the fixture's bots bid within 1.4s of the deal starting. Every
+// sample while the seats still say they are dealing shows no bid, in a seat or
+// in the log, and the deal must outlast the last bid for that to mean anything.
+async function assertDealHold(page, testCase, viewport) {
+  if (!testCase.dealHold) return;
+  const dealing = /, (dealing|delar ut)$/i;
+  const bid = /\b(bid|bud|passed|passat|high|högst)\b/i;
+  const sample = () =>
+    page.evaluate(() => ({
+      labels: ['north', 'east', 'south', 'west'].map(
+        (rel) =>
+          document.querySelector(`[data-testid="seat-${rel}"]`)?.getAttribute('aria-label') ?? ''
+      ),
+      log: [...document.querySelectorAll('[data-testid^="ticker-line-"],[data-testid="bid-line"]')]
+        .map((node) => node.textContent)
+        .filter(Boolean),
+    }));
+  await page.waitForFunction(
+    (pattern) =>
+      new RegExp(pattern, 'i').test(
+        document.querySelector('[data-testid="seat-east"]')?.getAttribute('aria-label') ?? ''
+      ),
+    dealing.source,
+    { timeout: 20_000 }
+  );
+  const started = Date.now();
+  let held = 0;
+  for (;;) {
+    const { labels, log } = await sample();
+    if (!labels.every((label) => dealing.test(label))) break;
+    const shown = labels.filter((label) => bid.test(label));
+    if (shown.length || log.length) {
+      throw new Error(
+        `${testCase.name}: a bid shows while dealing in ${viewport.name}: ${[...shown, ...log].join(' | ')}`
+      );
+    }
+    held = Date.now() - started;
+    await page.waitForTimeout(150);
+  }
+  if (held < 1_600) {
+    throw new Error(`${testCase.name}: the deal ended before the bots bid in ${viewport.name}`);
+  }
+}
+
 async function assertBidLines(page, testCase, viewport) {
   if (!testCase.bidLines) return;
   for (const [seat, line] of Object.entries(testCase.bidLines)) {
@@ -3682,6 +3736,7 @@ async function main() {
           if (testCase.name === 'table-bidding') {
             await assertBiddingRevealSequence(page, viewport);
           }
+          await assertDealHold(page, testCase, caseViewport);
           if (testCase.verifyPlayedCardPersistence) {
             await assertPlayedCardPersistence(page, viewport);
           }
