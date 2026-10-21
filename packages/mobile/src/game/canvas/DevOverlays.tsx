@@ -76,7 +76,7 @@ const HANDS: [Position, number, Suit, number, number, number, number][] = [
   ['south', 14, 'hearts', 14, 0, 62, 29],
 ];
 
-function handHistory(winner: TeamKey): ServerHandSummary[] {
+export function handHistory(winner: TeamKey): ServerHandSummary[] {
   let before = { north_south: 0, east_west: 0 };
   return HANDS.map(([bidder, bid, trump, ns, ew, nsTotal, ewTotal], index) => {
     const swap = winner === 'east_west';
@@ -145,7 +145,14 @@ function handHistory(winner: TeamKey): ServerHandSummary[] {
                 team: team('north_south'),
               },
             ]
-          : [],
+          : index === 9
+            ? [14, 11, 10, 2, 5, 5].map((rank, i) => ({
+                card: { rank, suit: i === 5 ? 'diamonds' : 'hearts' },
+                points: rank === 5 ? 5 : 1,
+                position: at('south'),
+                team: team('north_south'),
+              }))
+            : [],
     };
     before = scores;
     return hand;

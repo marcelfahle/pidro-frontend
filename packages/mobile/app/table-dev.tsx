@@ -15,7 +15,7 @@ import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { BOT_CREW } from '@/features/lobby/fixtures';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
 import { TableInvitation } from '@/components/invites/TableInvitation';
-import { DevOverlays } from '@/game/canvas/DevOverlays';
+import { DevOverlays, handHistory } from '@/game/canvas/DevOverlays';
 import { loadGameCanvasDev } from '@/game/canvas/loadGameCanvasDev';
 import type { GameCanvasDevProps } from '@/game/canvas/GameCanvasDev';
 import type { Position, Room } from '@/types/lobby';
@@ -509,7 +509,7 @@ function TableDevHarness() {
   }
 
   if (
-    fixture !== 'play-motion' &&
+    !['play-motion', 'scores-game-over', 'all-14', 'all-14-theirs'].includes(fixture ?? '') &&
     (fixture || params.role || phase === 'second_deal' || phase === 'declaring') &&
     !phase.startsWith('waiting') &&
     !phase.startsWith('ready')
@@ -535,6 +535,7 @@ function TableDevHarness() {
             countHelp={params.count === 'on'}
             details={fixture === 'details'}
             bidder={params.bidder}
+            scoreHistory={fixture === 'scores'}
             invitation={INVITATIONS[params.invitation ?? ''] ?? null}
           />
         </FixtureInsets>
@@ -756,6 +757,7 @@ function RolePreview({
   botTrick = false,
   invitation = null,
   fold,
+  scoreHistory = false,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -775,6 +777,7 @@ function RolePreview({
   botTrick?: boolean;
   invitation?: SeatInvitation | null;
   fold?: 'count' | 'legacy';
+  scoreHistory?: boolean;
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   const [invitationHeight, setInvitationHeight] = useState(0);
@@ -839,8 +842,12 @@ function RolePreview({
             : 'south',
       trump: previewPhase === 'playing' || previewPhase === 'second_deal' ? 'spades' : null,
       dealer: dealerPosition,
-      scores: { north_south: previewPhase === 'game_over' ? 62 : 36, east_west: 29 },
-      hand_number: 4,
+      scores: {
+        north_south: scoreHistory ? 48 : previewPhase === 'game_over' ? 62 : 36,
+        east_west: 29,
+      },
+      hand_history: scoreHistory ? handHistory('north_south').slice(0, 9) : undefined,
+      hand_number: scoreHistory ? 10 : 4,
       players: {
         north: {
           hand:
@@ -1011,6 +1018,7 @@ function RolePreview({
     bidder,
     botTrick,
     tableRoom,
+    scoreHistory,
   ]);
 
   useEffect(() => {

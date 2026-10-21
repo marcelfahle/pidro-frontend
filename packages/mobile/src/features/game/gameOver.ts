@@ -74,7 +74,31 @@ export function raceLine(
   for (let index = 0; index <= last; index++) {
     if (Math.sign(ours[index] - theirs[index]) !== lead) turn = index;
   }
-  return { us: ours, them: theirs, turn: lead === 0 || turn === 0 ? null : turn };
+  return { us: ours, them: theirs, turn: lead === 0 || turn === 0 ? null : turn + 1 };
+}
+
+/** Prefer lead changes, then every third hand; keep paired totals legible. */
+export function raceLabels(
+  us: readonly number[],
+  them: readonly number[],
+  slots: number
+): number[] {
+  const last = us.length - 1;
+  if (last < 1) return [];
+  const changes: number[] = [];
+  let leader = 0;
+  for (let i = 1; i < last; i++) {
+    const next = Math.sign(us[i] - them[i]);
+    if (next && leader && next !== leader) changes.push(i);
+    if (next) leader = next;
+  }
+  const selected = [0, last];
+  const gap = Math.max(1, last / Math.max(1, slots - 1));
+  const regular = Array.from({ length: Math.floor(last / 3) }, (_, i) => (i + 1) * 3);
+  for (const i of [...changes, ...regular]) {
+    if (selected.every((j) => Math.abs(i - j) >= gap)) selected.push(i);
+  }
+  return selected.sort((a, b) => a - b);
 }
 
 /** "Kalle", "Kalle and Mikko", "Nora, Kalle and Mikko". */

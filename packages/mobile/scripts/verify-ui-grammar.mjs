@@ -56,6 +56,44 @@ const ageGateFixture = JSON.stringify({
 });
 
 const allCases = [
+  ...['en', 'sv'].flatMap((locale) => [
+    {
+      name: `scores-${locale}-table`,
+      path: `/table-dev?fixture=scores&locale=${locale}`,
+      testId: 'hand-history',
+      scores: 'table',
+      locale,
+    },
+    {
+      name: `scores-${locale}-game-over`,
+      path: `/table-dev?fixture=scores-game-over&locale=${locale}`,
+      testId: 'hand-history',
+      scores: 'game-over',
+      locale,
+    },
+    {
+      name: `scores-${locale}-chart`,
+      path: `/table-dev?fixture=scores-game-over&locale=${locale}`,
+      testId: 'game-over-window',
+      scores: 'chart',
+      locale,
+      gameOver: {},
+    },
+    {
+      name: `scores-${locale}-all-14`,
+      path: `/table-dev?fixture=all-14&locale=${locale}`,
+      testId: 'hand-result',
+      scores: 'all-14',
+      locale,
+    },
+    {
+      name: `scores-${locale}-all-14-theirs`,
+      path: `/table-dev?fixture=all-14-theirs&locale=${locale}`,
+      testId: 'hand-result',
+      scores: 'all-14-theirs',
+      locale,
+    },
+  ]),
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
   {
     name: 'home-waiting',
@@ -1330,7 +1368,7 @@ async function assertNorthClear(page, testCase, viewport, windowBox) {
   const header = waiting
     ? { rules: page.getByTestId('waiting-rule-set') }
     : {
-        'score plaque': page.getByRole('button', { name: /Recent scores\.|Senaste poäng\./ }),
+        'score plaque': page.getByRole('button', { name: /Every hand\.|Alla givar\./ }),
         menu: page.getByRole('button', { name: /^(Table settings|Bordsinställningar)$/ }),
       };
   const covers = { ...header, ...(windowBox ? { window: windowBox } : {}) };
@@ -3862,7 +3900,13 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
-        if (testCase.words || testCase.ownPace || testCase.homeProfile || testCase.details)
+        if (
+          testCase.words ||
+          testCase.ownPace ||
+          testCase.homeProfile ||
+          testCase.details ||
+          testCase.scores
+        )
           return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
             viewport.name
           );
@@ -4195,6 +4239,70 @@ async function main() {
                 })
                 .click();
             await waitForScreenshotReady(page);
+          }
+          if (testCase.scores) {
+            const sv = testCase.locale === 'sv';
+            if (testCase.scores === 'table' || testCase.scores === 'game-over') {
+              if (testCase.scores === 'table')
+                await page
+                  .getByRole('button', { name: sv ? /Alla givar\.$/ : /Every hand\.$/ })
+                  .click();
+              else await page.getByTestId('every-hand').click();
+              const list = page.getByTestId('hand-history');
+              await list.waitFor();
+              const newest = testCase.scores === 'table' ? 9 : 10;
+              const seen = [];
+              const older = page.getByRole('button', { name: sv ? 'Äldre' : 'Older', exact: true });
+              do {
+                const rows = list.locator('[data-testid^="history-hand-"]');
+                for (const row of await rows.all()) {
+                  const number = Number((await row.getAttribute('data-testid')).split('-').at(-1));
+                  seen.push(number);
+                  assertInsideViewport('hand row', await row.boundingBox(), caseViewport);
+                }
+                if (!(await older.count()) || (await older.isDisabled())) break;
+                await older.click();
+              } while (true);
+              assert.deepEqual(
+                seen,
+                Array.from({ length: newest }, (_, i) => newest - i)
+              );
+              const newer = page.getByRole('button', { name: sv ? 'Nyare' : 'Newer', exact: true });
+              while ((await newer.count()) && !(await newer.isDisabled())) await newer.click();
+              const latest = page.getByTestId(`history-hand-${newest}`);
+              assert.match(await latest.innerText(), newest === 10 ? /14–0/ : /7–7/);
+              assert.match(await latest.innerText(), newest === 10 ? /62–29/ : /48–29/);
+              assert.match(await latest.innerText(), newest === 10 ? /14 ♥/ : /12 ♥/);
+              assert.match(
+                await latest.innerText(),
+                newest === 10 ? (sv ? /Klarat/ : /Made/) : sv ? /Missat/ : /Missed/
+              );
+            } else if (testCase.scores.startsWith('all-14')) {
+              await page.getByTestId('hand-result').waitFor();
+              await page.getByText(sv ? 'Alla 14!' : 'All 14!', { exact: true }).waitFor();
+              const team = testCase.scores.endsWith('theirs') ? 'east_west' : 'north_south';
+              assert.equal(await page.getByTestId(`hand-tray-${team}`).locator('img').count(), 6);
+              for (const tray of await page.locator('[data-testid^="hand-tray-"]').all()) {
+                const box = await tray.boundingBox();
+                assertInsideViewport('point-card tray', box, caseViewport);
+                for (const image of await tray.locator('img').all()) {
+                  const card = await image.boundingBox();
+                  assertInsideViewport('point card', card, caseViewport);
+                  assert.ok(
+                    card.x >= box.x && card.x + card.width <= box.x + box.width,
+                    'fan fits tray'
+                  );
+                }
+              }
+            } else {
+              await page.getByTestId('race-chart').waitFor();
+              assert.match(await page.getByTestId('race-chart').textContent(), /62–29/);
+              await page
+                .getByText(sv ? '● Ledde härifrån · giv 9' : '● Led from here · hand 9', {
+                  exact: true,
+                })
+                .waitFor();
+            }
           }
           if (testCase.name.endsWith('friends-guest')) {
             await page.getByTestId('auth-sheet').waitFor();

@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import Svg, { Circle, Line, Polyline, Text as SvgText } from 'react-native-svg';
 import { PidroFonts, PidroGameOver } from '@/design/tokens';
+import { raceLabels } from '@/features/game/gameOver';
+import { formatNumber } from '@/i18n';
 
 /**
  * Both teams' totals after each hand as two lines, ours gold and theirs
@@ -24,19 +26,24 @@ export function RaceChart({
   scale?: number;
 }) {
   const [width, setWidth] = useState(0);
-  const pad = 8 * scale;
+  const pad = 20 * scale;
   const low = Math.min(0, ...us, ...them);
   const high = Math.max(target, ...us, ...them);
   const steps = Math.max(1, us.length - 1);
   const x = (index: number) => pad + ((width - pad * 2) * index) / steps;
-  const y = (score: number) => pad + ((height - pad * 2) * (high - score)) / (high - low || 1);
+  const y = (score: number) =>
+    8 * scale + ((height - 40 * scale) * (high - score)) / (high - low || 1);
   const line = (scores: number[]) => scores.map((score, i) => `${x(i)},${y(score)}`).join(' ');
   const last = us.length - 1;
   const oursWon = us[last] > them[last];
-  const font = 9 * scale;
+  const font = 12 * scale;
+  const labels = raceLabels(us, them, Math.floor(width / (62 * scale)));
 
   return (
-    <View style={{ height }} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
+    <View
+      testID="race-chart"
+      style={{ height }}
+      onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
       {width > 0 ? (
         <Svg width={width} height={height}>
           <Line
@@ -76,27 +83,28 @@ export function RaceChart({
             strokeLinecap="round"
           />
           {turn != null ? (
-            <>
-              <Circle
-                cx={x(turn)}
-                cy={y(us[turn])}
-                r={4.5 * scale}
-                fill={PidroGameOver.markerFill}
-                stroke={PidroGameOver.markerEdge}
-                strokeWidth={2}
-              />
-              <SvgText
-                x={Math.min(Math.max(x(turn), pad + 14 * scale), width - pad - 14 * scale)}
-                y={Math.min(y(Math.min(us[turn], them[turn])) + font + 8 * scale, height - 1)}
-                fill={PidroGameOver.markerFill}
-                fontFamily={PidroFonts.ui}
-                fontWeight="800"
-                fontSize={font}
-                textAnchor="middle">
-                {`${us[turn]}–${them[turn]}`}
-              </SvgText>
-            </>
+            <Circle
+              cx={x(turn)}
+              cy={y(oursWon ? us[turn] : them[turn])}
+              r={4.5 * scale}
+              fill={PidroGameOver.markerFill}
+              stroke={PidroGameOver.markerEdge}
+              strokeWidth={2}
+            />
           ) : null}
+          {labels.map((index) => (
+            <SvgText
+              key={index}
+              x={x(index)}
+              y={height - 3 * scale}
+              fill={PidroGameOver.markerFill}
+              fontFamily={PidroFonts.ui}
+              fontWeight="800"
+              fontSize={font}
+              textAnchor={index === 0 ? 'start' : index === last ? 'end' : 'middle'}>
+              {`${formatNumber(us[index])}–${formatNumber(them[index])}`}
+            </SvgText>
+          ))}
           {last > 0 ? (
             <Circle
               cx={x(last)}

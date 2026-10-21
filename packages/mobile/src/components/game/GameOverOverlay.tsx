@@ -11,6 +11,9 @@ import { PidroText } from '@/components/ui/PidroText';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
+import { TextLink } from '@/components/ui/TextLink';
+import { HandHistory } from './HandHistory';
+import { all14Team } from '@/features/game/handResult';
 import {
   PidroBevel,
   PidroColors,
@@ -222,12 +225,17 @@ export function GameOverOverlay({
   const theirs: TeamKey = ours === 'north_south' ? 'east_west' : 'north_south';
   const viewerWon = !spectator && winningTeam === ours;
   const history = serverState.hand_history ?? [];
+  const [historyOpen, setHistoryOpen] = useState(false);
   const lastHand = serverState.last_hand ?? null;
-  const reveal = viewerWon && tier < 2 ? lastTrickReveal(lastHand) : null;
-  const best = !spectator && !viewerWon ? bestHand(history, ours) : null;
+  const ourBest = bestHand(history, ours);
+  const best = !spectator && !viewerWon ? ourBest : null;
   const race = history.length ? raceLine(history, ours) : null;
   const streak = spectator ? null : streakChip(progressionSummary?.partner);
   const xp = spectator ? null : xpChip(progressionSummary);
+  const reveal =
+    viewerWon && (tier === 0 || (landscape && tier === 1 && !streak && !xp && !showGuestSave))
+      ? lastTrickReveal(lastHand)
+      : null;
   const partner = viewModel.players.find(
     (player) => !player.isYou && you && teamOf(player) === ours
   );
@@ -277,10 +285,8 @@ export function GameOverOverlay({
   const headlineSize = z(
     viewerWon ? (landscape || tier > 0 ? 30 : 36) : landscape || tier > 0 ? 24 : 28
   );
-  const chartHeight = z(
-    landscape ? (tier === 1 ? 64 : 48) : tier === 0 ? 78 : tier === 1 ? 60 : 48
-  );
-  const gap = z(tier === 0 ? PidroSpacing.md : tier === 1 ? PidroSpacing.sm : PidroSpacing.xs);
+  const chartHeight = z(tier === 0 ? 94 : tier === 2 ? 64 : 78);
+  const gap = z(tier === 0 ? PidroSpacing.md : tier === 1 ? PidroSpacing.sm : PidroSpacing.xxs);
 
   const eyebrowText = (text: string, color: string) => (
     <PidroText
@@ -294,7 +300,7 @@ export function GameOverOverlay({
   const heading = (
     <Animated.View style={[styles.heading, rise(beat.headline)]}>
       <View style={styles.eyebrowRow}>
-        {eyebrow
+        {eyebrow && tier < 2
           ? eyebrowText(eyebrow, viewerWon ? PidroColors.textOnWood : PidroColors.cyanText)
           : null}
         <RuleSetChip
@@ -325,10 +331,12 @@ export function GameOverOverlay({
       <Animated.View style={[styles.plaque, rise(beat.plaque), reveal && { marginTop: -z(14) }]}>
         <Icon name="star" size={z(14)} color={PidroBevel.textGold} />
         <PidroText role="label" style={[styles.plaqueText, { fontSize: z(13), lineHeight: z(17) }]}>
-          {t('game.last_hand_plaque', {
-            bid: lastHand.bid,
-            captured: lastHand.captured[lastHand.bidding_team],
-          })}
+          {ourBest && all14Team(ourBest) === ours
+            ? `${t('game.all_14')} · ${t('game.hand_number', { number: ourBest.hand_number })}`
+            : t('game.last_hand_plaque', {
+                bid: lastHand.bid,
+                captured: lastHand.captured[lastHand.bidding_team],
+              })}
         </PidroText>
       </Animated.View>
     ) : null;
@@ -422,7 +430,10 @@ export function GameOverOverlay({
       <Surface
         testID="best-hand"
         variant="window"
-        style={[styles.best, { padding: z(tier === 0 ? 16 : 12), gap: z(tier === 0 ? 12 : 8) }]}>
+        style={[
+          styles.best,
+          { padding: z(tier === 0 ? 16 : tier === 1 ? 12 : 8), gap: z(tier === 0 ? 12 : 8) },
+        ]}>
         <View style={styles.between}>
           {eyebrowText(t('game.best_hand'), PidroBevel.textGold)}
           <PidroText role="metadata" tone="soft" style={{ fontSize: z(13), lineHeight: z(17) }}>
@@ -442,21 +453,25 @@ export function GameOverOverlay({
                 styles.bestTitle,
                 { fontSize: z(tier === 0 ? 26 : 22), lineHeight: z(tier === 0 ? 31 : 27) },
               ]}>
-              {t('game.won_of', {
-                captured: best.captured[ours],
-                total: serverState.config?.max_bid ?? 14,
-              })}
+              {all14Team(best) === ours
+                ? t('game.all_14')
+                : t('game.won_of', {
+                    captured: best.captured[ours],
+                    total: serverState.config?.max_bid ?? 14,
+                  })}
             </PidroText>
-            <PidroText role="body" style={{ fontSize: z(14), lineHeight: z(20) }}>
-              {bestHandLine(
-                best,
-                ours,
-                displayName(
-                  viewModel.players.find((player) => player.absolutePosition === best.bidder) ??
-                    you!
-                )
-              )}
-            </PidroText>
+            {tier < 2 ? (
+              <PidroText role="body" style={{ fontSize: z(14), lineHeight: z(20) }}>
+                {bestHandLine(
+                  best,
+                  ours,
+                  displayName(
+                    viewModel.players.find((player) => player.absolutePosition === best.bidder) ??
+                      you!
+                  )
+                )}
+              </PidroText>
+            ) : null}
           </View>
         </View>
       </Surface>
@@ -467,7 +482,6 @@ export function GameOverOverlay({
     <Animated.View style={rise(beat.chart)}>
       <View
         testID="how-it-went"
-        accessible
         accessibilityLabel={`${t('game.how_it_went')}. ${t('game.how_it_went_label', {
           us: rawScores[ours],
           them: rawScores[theirs],
@@ -476,12 +490,17 @@ export function GameOverOverlay({
           styles.chart,
           { paddingHorizontal: z(12), paddingVertical: z(tier === 2 ? 6 : 10) },
         ]}>
-        <View style={styles.between}>
-          {eyebrowText(t('game.how_it_went'), PidroColors.cyanText)}
-          <PidroText role="metadata" tone="soft" style={{ fontSize: z(13), lineHeight: z(17) }}>
-            {t('game.over_hands_short', { count: history.length })}
-          </PidroText>
-        </View>
+        {tier < 2 ? (
+          <View style={styles.between}>
+            {eyebrowText(t('game.how_it_went'), PidroColors.cyanText)}
+            <PidroText role="metadata" tone="soft" style={{ fontSize: z(13), lineHeight: z(17) }}>
+              {t('game.over_hands_short', { count: history.length })}
+            </PidroText>
+          </View>
+        ) : null}
+        <PidroText role="metadata" tone="soft">
+          {t('game.race_totals', { first: firstLabel, second: secondLabel })}
+        </PidroText>
         <RaceChart
           us={race.us}
           them={race.them}
@@ -490,7 +509,17 @@ export function GameOverOverlay({
           height={chartHeight}
           scale={k}
         />
+        {race.turn != null ? (
+          <PidroText role="metadata" tone="soft">
+            {`● ${t('game.led_from_here', { number: history[race.turn - 1].hand_number })}`}
+          </PidroText>
+        ) : null}
       </View>
+      <TextLink
+        testID="every-hand"
+        label={t('game.every_hand')}
+        onPress={() => setHistoryOpen(true)}
+      />
     </Animated.View>
   ) : null;
 
@@ -617,12 +646,10 @@ export function GameOverOverlay({
               <View style={[styles.side, { gap }]}>
                 {revealBlock}
                 {bestHandCard}
+                {chips}
               </View>
               <View style={[styles.side, styles.sideRight, { gap }]}>
-                <View style={{ gap }}>
-                  {chart}
-                  {chips}
-                </View>
+                {chart}
                 {footer}
               </View>
             </>
@@ -640,6 +667,13 @@ export function GameOverOverlay({
         </View>
       </View>
       {viewerWon ? <VictoryConfetti /> : null}
+      {historyOpen ? (
+        <HandHistory
+          history={history}
+          viewer={you?.absolutePosition ?? null}
+          onClose={() => setHistoryOpen(false)}
+        />
+      ) : null}
     </View>
   );
 }

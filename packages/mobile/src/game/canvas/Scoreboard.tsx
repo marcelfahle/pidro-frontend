@@ -1,5 +1,5 @@
 /**
- * Mounted navy-and-brass score plaque. Tap for locally observed score changes.
+ * Mounted navy-and-brass score plaque. Tap for the server's full hand history.
  * Under it in portrait, beside it in landscape where the West seat sits below,
  * the action ticker: the latest table actions, resting on who holds the bid as
  * Classic's "Bet 6" did. Tap the ticker for the hand's log. With count help
@@ -27,20 +27,16 @@ import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@
 import type { Position } from '@/types/lobby';
 import type { PointsSide } from '@/features/game/points';
 import { isStillCapture } from '@/utils/stillCapture';
+import type { ServerHandSummary } from '@pidro/shared';
+import { HandHistory } from '@/components/game/HandHistory';
 import { handLogEntries, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
 import { SCORE_COUNT } from './HandResult';
 import { HandLogWindow } from './HandLogWindow';
-import { TableUtilityWindow } from './TableUtilityWindow';
 import { formatNumber, useTranslation } from '@/i18n';
 
 type Scores = { north_south: number; east_west: number } | null | undefined;
 type ConcreteScores = { north_south: number; east_west: number };
-type ScoreHistoryEntry = {
-  handNumber: number;
-  previous: ConcreteScores;
-  totals: ConcreteScores;
-};
 
 // The plaque's fonts are capped, so its height is fixed: rim, padding, label, figure.
 const RIM = 1.5;
@@ -155,25 +151,10 @@ function teams(scores: Scores, you: Position | null) {
   return { us: youAreNS ? ns : ew, them: youAreNS ? ew : ns };
 }
 
-function copyScores(scores: ConcreteScores): ConcreteScores {
-  return {
-    north_south: scores.north_south,
-    east_west: scores.east_west,
-  };
-}
-
-function scoresChanged(a: ConcreteScores, b: ConcreteScores): boolean {
-  return a.north_south !== b.north_south || a.east_west !== b.east_west;
-}
-
-function formatDelta(value: number): string {
-  return `${value > 0 ? '+' : ''}${formatNumber(value)}`;
-}
-
 export function Scoreboard({
   scores,
   youPosition,
-  handNumber = null,
+  history,
   roomCode = null,
   top = 0,
   left = 0,
@@ -188,7 +169,7 @@ export function Scoreboard({
 }: {
   scores: Scores;
   youPosition: Position | null;
-  handNumber?: number | null;
+  history?: readonly ServerHandSummary[];
   roomCode?: string | null;
   top?: number;
   left?: number;
@@ -237,8 +218,6 @@ export function Scoreboard({
   const [isOpen, setIsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
   const entries = useMemo(() => handLogEntries(log), [log]);
-  const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
-  const prevScoresRef = useRef<ConcreteScores | null>(scores ? copyScores(scores) : null);
   const prevRoomRef = useRef<string | null>(roomCode);
 
   useEffect(() => {
@@ -246,38 +225,7 @@ export function Scoreboard({
     prevRoomRef.current = roomCode;
     setIsOpen(false);
     setLogOpen(false);
-    setScoreHistory([]);
-    prevScoresRef.current = scores ? copyScores(scores) : null;
-  }, [roomCode, scores]);
-
-  useEffect(() => {
-    if (!scores) return;
-
-    const previous = prevScoresRef.current;
-    if (!previous) {
-      prevScoresRef.current = copyScores(scores);
-      return;
-    }
-
-    if (!scoresChanged(previous, scores)) return;
-
-    setScoreHistory((entries) => {
-      const inferredHandNumber =
-        handNumber != null ? Math.max(1, handNumber - 1) : entries.length + 1;
-      const lastHandNumber = entries[entries.length - 1]?.handNumber ?? 0;
-      const nextHandNumber =
-        inferredHandNumber > lastHandNumber ? inferredHandNumber : lastHandNumber + 1;
-      return [
-        ...entries,
-        {
-          handNumber: nextHandNumber,
-          previous: copyScores(previous),
-          totals: copyScores(scores),
-        },
-      ].slice(-8);
-    });
-    prevScoresRef.current = copyScores(scores);
-  }, [scores, handNumber]);
+  }, [roomCode]);
 
   return (
     <View
@@ -335,60 +283,9 @@ export function Scoreboard({
       {/* Closed, the log builds nothing. */}
       <HandLogWindow open={logOpen} onClose={() => setLogOpen(false)} groups={logOpen ? log : []} />
 
-      <TableUtilityWindow
-        title={t('game.recent_scores')}
-        open={isOpen}
-        onClose={() => setIsOpen(false)}>
-        <PidroText role="metadata" tone="muted">
-          {t('game.score_description')}
-        </PidroText>
-        <View style={styles.historyHeader}>
-          <PidroText role="metadata" tone="gold" style={styles.historyDelta}>
-            {usLabel}
-          </PidroText>
-          <PidroText role="metadata" tone="gold" style={styles.historyDelta}>
-            {themLabel}
-          </PidroText>
-        </View>
-        {scoreHistory.length === 0 ? (
-          <PidroText role="metadata" tone="muted" align="center" style={styles.historyEmpty}>
-            {t('game.no_scores')}
-          </PidroText>
-        ) : (
-          [...scoreHistory].reverse().map((entry) => {
-            const totalScores = teams(entry.totals, youPosition);
-            const deltaScores = teams(
-              {
-                north_south: entry.totals.north_south - entry.previous.north_south,
-                east_west: entry.totals.east_west - entry.previous.east_west,
-              },
-              youPosition
-            );
-            return (
-              <View
-                key={`${entry.handNumber}-${entry.totals.north_south}-${entry.totals.east_west}`}
-                style={styles.historyRow}>
-                <View style={styles.historyDelta}>
-                  <PidroText role="label" align="center">
-                    {formatDelta(deltaScores.us)}
-                  </PidroText>
-                  <PidroText role="metadata" tone="muted" align="center">
-                    {t('game.total', { number: formatNumber(totalScores.us) })}
-                  </PidroText>
-                </View>
-                <View style={styles.historyDelta}>
-                  <PidroText role="label" align="center">
-                    {formatDelta(deltaScores.them)}
-                  </PidroText>
-                  <PidroText role="metadata" tone="muted" align="center">
-                    {t('game.total', { number: formatNumber(totalScores.them) })}
-                  </PidroText>
-                </View>
-              </View>
-            );
-          })
-        )}
-      </TableUtilityWindow>
+      {isOpen ? (
+        <HandHistory history={history} viewer={youPosition} onClose={() => setIsOpen(false)} />
+      ) : null}
     </View>
   );
 }
@@ -441,29 +338,5 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     backgroundColor: PidroColors.goldSoft,
     marginVertical: 2,
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: PidroColors.border,
-    paddingBottom: 6,
-  },
-  historyEmpty: {
-    paddingVertical: PidroSpacing.sm,
-  },
-  historyRow: {
-    marginTop: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: PidroRadii.tight,
-    backgroundColor: PidroColors.panel,
-    paddingHorizontal: PidroSpacing.xs,
-    paddingVertical: 6,
-    gap: PidroSpacing.xs,
-  },
-  historyDelta: {
-    flex: 1,
-    textAlign: 'center',
   },
 });

@@ -223,7 +223,7 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
   // now and then, so allow a rejoin before judging.
   await page.getByText('DOM', { exact: true }).first().waitFor({ timeout: 30_000 });
   await page
-    .getByRole('button', { name: 'VI 0, DOM 0. Senaste poäng.', exact: true })
+    .getByRole('button', { name: 'VI 0, DOM 0. Alla givar.', exact: true })
     .waitFor({ timeout: 15_000 });
   await page.waitForTimeout(3_000);
   if (

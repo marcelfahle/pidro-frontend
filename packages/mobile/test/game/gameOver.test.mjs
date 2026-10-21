@@ -4,6 +4,7 @@ import {
   bestHandLine,
   lastTrickReveal,
   raceLine,
+  raceLabels,
   rematchLines,
   streakChip,
   xpChip,
@@ -97,7 +98,7 @@ describe('how it went', () => {
       hand(index + 1, 0, 0, { scores: { north_south: ns, east_west: ew } })
     );
 
-  it('marks the last hand the winner was not ahead, from either seat', () => {
+  it('marks the first hand of the lasting lead, from either seat', () => {
     const history = totals([
       [8, 6],
       [14, 4],
@@ -109,9 +110,9 @@ describe('how it went', () => {
     expect(raceLine(history, 'north_south')).toEqual({
       us: [0, 8, 14, 20, 41, 53, 62],
       them: [0, 6, 4, 26, 41, 29, 29],
-      turn: 4,
+      turn: 5,
     });
-    expect(raceLine(history, 'east_west').turn).toBe(4);
+    expect(raceLine(history, 'east_west').turn).toBe(5);
   });
 
   it('marks nothing when the winner led from the first hand, or nobody won', () => {
@@ -134,6 +135,24 @@ describe('how it went', () => {
         'north_south'
       ).turn
     ).toBeNull();
+  });
+});
+
+describe('race labels', () => {
+  it('keeps both ends and gives lead changes priority over regular intervals', () => {
+    const us = [0, 8, 12, 16, 18, 22, 28, 36, 48, 56, 64];
+    const them = [0, 6, 10, 14, 24, 26, 27, 29, 30, 31, 32];
+    expect(raceLabels(us, them, 6)).toEqual([0, 4, 6, 10]);
+    expect(raceLabels(them, us, 6)).toEqual([0, 4, 6, 10]);
+    expect(raceLabels(us, them, 3)).toEqual([0, 10]);
+  });
+
+  it('labels every few hands without a lead change, including negative totals', () => {
+    const us = [0, -6, -2, 4, 7, 10, 16, 22, 28, 34];
+    const them = [0, 8, 12, 18, 24, 28, 32, 38, 43, 47];
+    expect(raceLabels(us, them, 5)).toEqual([0, 3, 6, 9]);
+    expect(raceLabels([0], [0], 5)).toEqual([]);
+    expect(raceLabels([0, 14], [0, -14], 5)).toEqual([0, 1]);
   });
 });
 

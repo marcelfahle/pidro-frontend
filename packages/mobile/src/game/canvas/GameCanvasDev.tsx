@@ -16,6 +16,7 @@ import type { SeatLine } from '@/features/game/seatLine';
 import { TableSignals, scoreGlow, tablePidro } from './TableSignals';
 import { HandResultPanel, useHandResult, viewerOf } from './HandResult';
 import { Scoreboard } from './Scoreboard';
+import { handHistory } from './DevOverlays';
 import { TableSettings } from './TableSettings';
 import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { computeLayout, tickerPlacement } from './layout';
@@ -250,9 +251,13 @@ const FIXTURE_HANDS = {
 const fixtureHand = (name: string | undefined) =>
   name === 'own'
     ? FIXTURE_HANDS.made
-    : name && name in FIXTURE_HANDS
-      ? FIXTURE_HANDS[name as keyof typeof FIXTURE_HANDS]
-      : null;
+    : name === 'all-14'
+      ? handHistory('north_south').at(-1)!
+      : name === 'all-14-theirs'
+        ? handHistory('east_west').at(-1)!
+        : name && name in FIXTURE_HANDS
+          ? FIXTURE_HANDS[name as keyof typeof FIXTURE_HANDS]
+          : null;
 
 /** The bidding behind the seats' "Passed" / "Bid 6", in order from the dealer's left. */
 const FIXTURE_BIDS: ServerBid[] = [
@@ -340,7 +345,7 @@ export default function GameCanvasDev({
     names,
     timer,
     signals,
-    hand: handFixture,
+    hand: handParam,
     ticker,
     count,
     fixture,
@@ -367,6 +372,7 @@ export default function GameCanvasDev({
     menu?: string;
     solo?: string;
   }>();
+  const handFixture = fixture?.startsWith('all-14') ? fixture : handParam;
   const motionFixture = fixture === 'play-motion';
   const transitionMs =
     transition === '0' ? 0 : transition === '80' ? 80 : transition === '3000' ? 3000 : 1500;
@@ -385,18 +391,9 @@ export default function GameCanvasDev({
   const turnTimer = useFixtureTurnTimer(timer === 'running', turn);
   const [scores, setScores] = useState(
     scoreFixture === 'history'
-      ? { north_south: -21, east_west: 100 }
+      ? { north_south: 48, east_west: 29 }
       : { north_south: 36, east_west: 29 }
   );
-  useEffect(() => {
-    if (scoreFixture !== 'history') return;
-    const first = setTimeout(() => setScores({ north_south: -12, east_west: 105 }), 500);
-    const second = setTimeout(() => setScores({ north_south: -21, east_west: 110 }), 1000);
-    return () => {
-      clearTimeout(first);
-      clearTimeout(second);
-    };
-  }, [scoreFixture]);
 
   const [lastHand, setLastHand] = useState<ServerLastHand | null>(null);
   const [continued, setContinued] = useState(false);
@@ -708,7 +705,13 @@ export default function GameCanvasDev({
           <Scoreboard
             scores={scores}
             youPosition="south"
-            handNumber={4}
+            history={
+              scoreFixture === 'history' || fixture === 'scores'
+                ? handHistory('north_south').slice(0, 9)
+                : lastHand
+                  ? [lastHand]
+                  : []
+            }
             roomCode="DEV01"
             glow={countHelp ? scoreGlow(model.lastTrick, model.seats, trickKey) : null}
             delta={handResult.result?.hand.delta ?? null}

@@ -218,6 +218,10 @@ export function HandResultPanel({
   let index = 0;
   const trays = view.trays.map((tray) => {
     const tone = TONES[tray.side];
+    const sweep = view.all14 === tray.team;
+    // Overlap buys larger faces without taking more horizontal room. The fan
+    // stays fully posed with Reduce Motion; only the existing fly-in animates.
+    const faceW = sweep ? Math.min(52, cardW * 1.2) : cardW;
     return (
       <View
         key={tray.team}
@@ -227,7 +231,8 @@ export function HandResultPanel({
           {
             backgroundColor: tone.tray,
             borderColor: tone.edge,
-            minHeight: cardW * CARD_RATIO + 22,
+            minHeight: faceW * CARD_RATIO + (sweep ? 38 : 22),
+            boxShadow: sweep ? PidroColors.handAll14Glow : undefined,
           },
         ]}>
         <View style={styles.who}>
@@ -238,17 +243,31 @@ export function HandResultPanel({
             {formatNumber(tray.points)}
           </PidroText>
         </View>
-        <View style={styles.cards}>
-          {tray.cards.map(({ card, points }) => (
-            <PointCard
+        <View style={[styles.cards, sweep ? { gap: 0, paddingHorizontal: 4 } : null]}>
+          {tray.cards.map(({ card, points }, cardIndex) => (
+            <View
               key={`${card.suit}-${card.rank}`}
-              card={card}
-              points={points}
-              side={tray.side}
-              width={cardW}
-              delay={CARDS_FROM_MS + CARD_STAGGER_MS * index++}
-              still={still}
-            />
+              style={
+                sweep
+                  ? {
+                      marginLeft: cardIndex ? -faceW * 0.22 : 0,
+                      transform: [
+                        { translateY: Math.abs(cardIndex - (tray.cards.length - 1) / 2) * 2 },
+                        { rotate: `${(cardIndex - (tray.cards.length - 1) / 2) * 5}deg` },
+                      ],
+                    }
+                  : null
+              }>
+              <PointCard
+                card={card}
+                points={points}
+                side={tray.side}
+                width={faceW}
+                delay={CARDS_FROM_MS + CARD_STAGGER_MS * index++}
+                still={still}
+                fanned={sweep}
+              />
+            </View>
           ))}
         </View>
       </View>
@@ -268,7 +287,9 @@ export function HandResultPanel({
           waiting
             ? undefined
             : t('game.result_accessibility', {
-                headline: [t(spoken, { team: bidders }), pidroLine].filter(Boolean).join('. '),
+                headline: [view.all14 ? headline : null, t(spoken, { team: bidders }), pidroLine]
+                  .filter(Boolean)
+                  .join('. '),
                 bid: view.bid,
                 captured: formatNumber(view.won),
                 usLabel: teamLabel(us),
@@ -436,6 +457,7 @@ function PointCard({
   width,
   delay,
   still,
+  fanned,
 }: {
   card: Card;
   points: number;
@@ -443,6 +465,7 @@ function PointCard({
   width: number;
   delay: number;
   still: boolean;
+  fanned: boolean;
 }) {
   const fly = useSharedValue(still ? 1 : 0);
   useEffect(() => {
@@ -471,6 +494,7 @@ function PointCard({
       <View
         style={[
           styles.chip,
+          fanned ? { top: -18, right: (width - 24) / 2 } : null,
           chip.gradient ? gradientBg(chip.gradient) : { backgroundColor: chip.bg },
           side === 'neutral' ? { borderColor: PidroColors.cyanBorderStrong } : null,
         ]}>

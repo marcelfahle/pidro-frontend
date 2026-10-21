@@ -44,11 +44,13 @@ export type HandResultTray = {
 
 export type HandResultView = {
   outcome: HandOutcome;
-  /** Only our made bid is gold and stamped in; everything else is quiet. */
+  /** The team that captured all 14, independent of the bid and viewer. */
+  all14: TeamKey | null;
+  /** Our made bid or either team's all-14 is gold and stamped in. */
   loud: boolean;
   /** Says whose bid it was: ours, theirs, or a team by name for a spectator. */
   headline:
-    | { key: 'game.we_made_it' | 'game.they_made_it' | 'game.team_made_it' }
+    | { key: 'game.we_made_it' | 'game.they_made_it' | 'game.team_made_it' | 'game.all_14' }
     | { key: 'game.we_missed_by' | 'game.they_missed_by' | 'game.team_missed_by'; n: number };
   bidder: Position;
   bid: number;
@@ -66,8 +68,16 @@ const teamOf = (position: Position): TeamKey =>
   position === 'north' || position === 'south' ? 'north_south' : 'east_west';
 const other = (team: TeamKey): TeamKey => (team === 'north_south' ? 'east_west' : 'north_south');
 
+/** Captured points are authoritative; a bid or score delta of 14 is not a sweep. */
+export function all14Team(hand: ServerLastHand): TeamKey | null {
+  if (hand.captured.north_south === 14) return 'north_south';
+  if (hand.captured.east_west === 14) return 'east_west';
+  return null;
+}
+
 export function handResultView(hand: ServerLastHand, viewer: Position | null): HandResultView {
   const us = viewer ? teamOf(viewer) : 'north_south';
+  const all14 = all14Team(hand);
   const ours = hand.bidding_team === us;
   const outcome: HandOutcome = !viewer
     ? hand.made
@@ -90,13 +100,20 @@ export function handResultView(hand: ServerLastHand, viewer: Position | null): H
       : undefined;
   return {
     outcome,
-    loud: outcome === 'we-made',
-    headline: hand.made
-      ? { key: !viewer ? 'game.team_made_it' : ours ? 'game.we_made_it' : 'game.they_made_it' }
-      : {
-          key: !viewer ? 'game.team_missed_by' : ours ? 'game.we_missed_by' : 'game.they_missed_by',
-          n: hand.bid - won,
-        },
+    all14,
+    loud: all14 !== null || outcome === 'we-made',
+    headline: all14
+      ? { key: 'game.all_14' }
+      : hand.made
+        ? { key: !viewer ? 'game.team_made_it' : ours ? 'game.we_made_it' : 'game.they_made_it' }
+        : {
+            key: !viewer
+              ? 'game.team_missed_by'
+              : ours
+                ? 'game.we_missed_by'
+                : 'game.they_missed_by',
+            n: hand.bid - won,
+          },
     bidder: hand.bidder,
     bid: hand.bid,
     trump: hand.trump ?? null,

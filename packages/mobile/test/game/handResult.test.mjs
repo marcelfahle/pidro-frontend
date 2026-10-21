@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { handResultView, waitsForContinue } from '../../src/features/game/handResult.ts';
+import { all14Team, handResultView, waitsForContinue } from '../../src/features/game/handResult.ts';
 
 it('waits only for the server own-pace Continue gate, including old and partial payloads', () => {
   expect(waitsForContinue({ pace: 'own', awaiting_continue: true })).toBe(true);
@@ -65,6 +65,63 @@ const westMissed = {
 };
 
 describe('the end-of-hand panel', () => {
+  for (const team of ['north_south', 'east_west']) {
+    for (const defense of [false, true]) {
+      it(`celebrates ${team}'s ${defense ? 'defense' : 'bidding'} sweep from every seat`, () => {
+        const other = team === 'north_south' ? 'east_west' : 'north_south';
+        const biddingTeam = defense ? other : team;
+        const hand = {
+          ...eastMade,
+          bidding_team: biddingTeam,
+          bidder: biddingTeam === 'north_south' ? 'north' : 'east',
+          captured: { [team]: 14, [other]: 0 },
+          made: !defense,
+          point_cards: eastMade.point_cards.map((pointCard) => ({ ...pointCard, team })),
+        };
+        expect(all14Team(hand)).toBe(team);
+        for (const viewer of ['north', 'east', 'south', 'west', null]) {
+          const view = handResultView(hand, viewer);
+          expect(view).toMatchObject({
+            all14: team,
+            loud: true,
+            headline: { key: 'game.all_14' },
+            bidder: hand.bidder,
+            bid: 9,
+            won: defense ? 0 : 14,
+          });
+          expect(view.outcome.endsWith(defense ? 'missed' : 'made')).toBe(true);
+          const winner = view.trays.find((tray) => tray.team === team);
+          expect(winner.points).toBe(14);
+          expect(winner.cards).toHaveLength(6);
+          expect(winner.cards.reduce((sum, card) => sum + card.points, 0)).toBe(14);
+          expect(view.trays.find((tray) => tray.team === other).cards).toEqual([]);
+        }
+        const { point_cards: _, ...older } = hand;
+        expect(all14Team(older)).toBe(team);
+        const view = handResultView(older, 'south');
+        expect(view.headline).toEqual({ key: 'game.all_14' });
+        expect(view.trays.every((tray) => tray.cards.length === 0)).toBe(true);
+      });
+    }
+  }
+
+  it('requires exactly 14 captured, not a bid or delta of 14', () => {
+    for (const captured of [13, 15]) {
+      for (const team of ['north_south', 'east_west']) {
+        const hand = {
+          ...eastMade,
+          bid: 14,
+          made: false,
+          captured: { north_south: 0, east_west: 0, [team]: captured },
+          delta: { north_south: 14, east_west: -14 },
+        };
+        expect(all14Team(hand)).toBeNull();
+        expect(handResultView(hand, 'east').headline.key).toBe('game.we_missed_by');
+        expect(handResultView(hand, 'east').all14).toBeNull();
+      }
+    }
+  });
+
   it('stamps our made bid in gold, our cards in the first tray, in play order', () => {
     const view = handResultView(eastMade, 'west');
     expect(view.outcome).toBe('we-made');

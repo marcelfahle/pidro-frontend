@@ -183,8 +183,15 @@ felt below the header in landscape, below the toolbar in the waiting room. The
 grammar fails when the header, a notice or a protected window covers the north
 seat or its cards.
 
-Top-bar checks: `scores=history` seeds two observed score changes (including a negative total)
-in the mock table. `safeArea=island-left` / `island-right` simulate landscape side cutouts.
+Score checks (PID-275): `fixture=scores` rejoins the real store/controller with nine
+completed hands; tap the score plaque for the server ledger, newest first.
+`fixture=scores-game-over` shows the labelled race chart and its **Every hand** link.
+`fixture=all-14|all-14-theirs` shows either team's six point cards and **All 14!**.
+Add `locale=sv` for Swedish. The `scores-{en,sv}-{table,game-over,chart,all-14,all-14-theirs}`
+grammar cases check every page of the ledger and the result at 390×844, 375×667,
+844×390 and 768×1024. Older/Newer pages keep the panel bounded without screen scrolling.
+`scores=history` also seeds nine hands in the mock table.
+`safeArea=island-left` / `island-right` simulate landscape side cutouts.
 Run `MOBILE_BASE_URL=http://localhost:8081 node scripts/verify-table-chrome.mjs` for
 five-size score/history/settings checks. Sound is marked Coming soon; the haptics switch
 controls the native gameplay feedback.

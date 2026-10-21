@@ -59,12 +59,13 @@ export const PidroColors = {
   theirPidro: '#ffb4b9',
   theirPidroSoft: 'rgba(255, 180, 185, 0.32)',
   // The end of a hand (PID-236): the table dims under one panel, each team's
-  // point cards in its own tray, gold edge ours and coral theirs.
+  // point cards in its own tray, gold edge ours and quiet glass theirs.
   handScrim: 'rgba(2, 14, 28, 0.62)',
   trayOurs: 'rgba(10, 35, 64, 0.9)',
   trayOursEdge: 'rgba(226, 175, 69, 0.8)',
-  trayTheirs: 'rgba(40, 16, 30, 0.82)',
-  trayTheirsEdge: 'rgba(255, 180, 185, 0.7)',
+  trayTheirs: 'rgba(7, 45, 82, 0.82)',
+  trayTheirsEdge: 'rgba(213, 239, 252, 0.38)',
+  handAll14Glow: '0px 0px 18px rgba(255, 212, 71, 0.28)',
   theirPidroInk: '#3a1520',
   theirScore: '#ffd9dc',
   scoreDownBg: 'rgba(255, 180, 185, 0.18)',

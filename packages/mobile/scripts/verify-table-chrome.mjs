@@ -37,7 +37,7 @@ try {
   ]) {
     const page = await browser.newPage({ viewport, deviceScaleFactor: 2 });
     await page.goto(`${base}/table-dev?phase=playing&safeArea=${viewport.safeArea}&scores=history`);
-    const score = page.getByRole('button', { name: 'US -21, THEM 110. Recent scores.' });
+    const score = page.getByRole('button', { name: 'US 48, THEM 29. Every hand.' });
     await score.waitFor();
     await suppressDevOverlays(page);
     const settings = page.getByRole('button', { name: 'Table settings', exact: true });
@@ -75,21 +75,18 @@ try {
     await page.screenshot({ path: `${shots}/${viewport.name}.png` });
 
     await score.click();
-    await page.getByRole('button', { name: 'Close recent scores' }).waitFor();
+    await page.getByRole('button', { name: 'Close every hand' }).waitFor();
     assertInsideViewport(
       'history window',
       await page.getByTestId('table-utility-window').boundingBox(),
       viewport
     );
-    // Independent expected deltas: -12→-21 is -9; 105→110 is +5.
-    const totals = await page.getByText(/^Total /).allTextContents();
-    assert.deepEqual(totals, ['Total -21', 'Total 110', 'Total -12', 'Total 105']);
-    assert.equal(await page.getByText('-9', { exact: true }).count(), 1);
-    assert.equal(await page.getByText('+9', { exact: true }).count(), 1);
-    assert.equal(await page.getByText('+5', { exact: true }).count(), 2);
+    // The ledger is already present on mount, not inferred from score changes.
+    assert.match(await page.getByTestId('history-hand-9').innerText(), /12 ♥/);
+    assert.match(await page.getByTestId('history-hand-9').innerText(), /48–29/);
     await page.screenshot({ path: `${shots}/${viewport.name}-history.png` });
     await page.keyboard.press('Escape');
-    await page.getByRole('button', { name: 'Close recent scores' }).waitFor({ state: 'hidden' });
+    await page.getByRole('button', { name: 'Close every hand' }).waitFor({ state: 'hidden' });
 
     await settings.click();
     const close = page.getByRole('button', { name: 'Close table settings' });
@@ -131,8 +128,8 @@ try {
     await page.getByRole('button', { name: 'Leave table', exact: true }).click();
     await page.getByTestId('table-utility-window').waitFor({ state: 'hidden' });
     await page.goto(`${base}/table-dev?phase=playing&safeArea=${viewport.safeArea}`);
-    await page.getByRole('button', { name: 'US 36, THEM 29. Recent scores.' }).click();
-    await page.getByText('No score changes recorded yet', { exact: true }).waitFor();
+    await page.getByRole('button', { name: 'US 36, THEM 29. Every hand.' }).click();
+    await page.getByText('No completed hands yet', { exact: true }).waitFor();
     console.log(
       `PASS ${viewport.name}: safe areas, 44pt targets, history deltas/order, settings, cancel, Escape/outside dismissal`
     );

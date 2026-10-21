@@ -572,7 +572,7 @@ export function GameCanvasTable({
         <Scoreboard
           scores={serverState?.scores ?? null}
           youPosition={youPositionAbs}
-          handNumber={serverState?.hand_number ?? serverState?.round_number ?? null}
+          history={serverState?.hand_history}
           roomCode={viewModel?.roomCode ?? room.code}
           top={headerTop(insets.top)}
           left={insets.left}
