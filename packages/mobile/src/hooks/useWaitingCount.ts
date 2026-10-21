@@ -10,6 +10,7 @@ export function useWaitingCount(fixture?: string) {
   const seats = useAuthStore((state) => state.seatInvitations);
   const requests = useFriendsStore((state) => state.requests_waiting);
   const addedYou = useFriendsStore((state) => state.added_you);
+  const waiting = useFriendsStore((state) => state.waiting_for_you);
   const notices = friendNoticeFixture(fixture);
   const previewSeats = seatInvitationsFixture(fixture);
   if (notices) {
@@ -25,6 +26,8 @@ export function useWaitingCount(fixture?: string) {
     {
       added_you: addedYou,
       requests_waiting: guest ? 0 : __DEV__ && fixture === 'waiting' ? 3 : requests,
+      waiting_for_you:
+        guest || previewSeats || (__DEV__ && fixture === 'waiting') ? undefined : waiting,
     },
     previewSeats ?? seats
   );

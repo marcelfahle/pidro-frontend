@@ -511,7 +511,7 @@ export default function FriendsScreen() {
           isOpen={accountOpen}
           onClose={() => {
             setAccountOpen(false);
-            if (guest) router.replace('/home');
+            if (guest) router.replace(from === 'profile' ? '/profile' : '/home');
           }}
           onSaved={() => setAccountOpen(false)}
           onClaimClassic={() => {

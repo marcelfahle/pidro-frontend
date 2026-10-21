@@ -131,6 +131,14 @@ const allCases = [
     authenticated: true,
     homeProfile: true,
   },
+  {
+    name: 'profile-friends-guest',
+    path: '/friends?from=profile',
+    testId: 'auth-sheet',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+    homeProfile: true,
+  },
   ...['android-gesture', 'android-buttons'].flatMap((safeArea) =>
     [
       { screen: 'home', path: '/home', testId: 'home-screen' },
@@ -1043,7 +1051,7 @@ allCases.push(
       return {
         ...testCase,
         name: `locale-sv-${testCase.name}`,
-        path: `/ui-dev?state=${path.pathname.slice(1)}&fixture=${path.searchParams.get('fixture') ?? ''}&locale=sv&language=sv`,
+        path: `/ui-dev?state=${path.pathname.slice(1)}&fixture=${path.searchParams.get('fixture') ?? ''}&locale=sv&language=sv${path.searchParams.get('from') === 'profile' ? '&from=profile' : ''}`,
         locale: 'sv',
         open: testCase.open ? 'Visa profilen för Nora' : undefined,
       };
@@ -2518,6 +2526,15 @@ async function assertCreationPresentation(page, testCase) {
 
 async function assertHomeProfile(page, testCase, viewport) {
   const name = testCase.name;
+  if (name === 'profile-friends-guest') {
+    await page
+      .getByTestId('auth-sheet')
+      .getByRole('button', { name: 'Not now', exact: true })
+      .click();
+    await page.waitForURL((url) => url.pathname.endsWith('/profile'));
+    await page.getByTestId('profile-friends-row').waitFor();
+    assert.equal(await page.getByTestId('tab-pill').count(), 0);
+  }
   if (name === 'home-waiting' || name === 'home-waiting-guest') {
     const count = name.endsWith('-guest') ? '2' : '3';
     assert.equal(await page.getByTestId('home-waiting-count').innerText(), count);
@@ -2546,6 +2563,13 @@ async function assertHomeProfile(page, testCase, viewport) {
   if (name === 'friends-from-profile') {
     const back = page.getByTestId('friends-profile-back');
     assertInsideViewport(name, await back.boundingBox(), viewport);
+    await page
+      .getByTestId('tab-pill')
+      .getByRole('button', { name: 'Friends', exact: true })
+      .click();
+    await back.waitFor({ state: 'detached' });
+    await page.goto(new URL(testCase.path, baseUrl).href);
+    await back.waitFor();
     await back.click();
     await page.waitForURL((url) => url.pathname.endsWith('/profile'));
     await page

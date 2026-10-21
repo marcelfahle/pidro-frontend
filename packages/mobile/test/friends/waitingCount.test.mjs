@@ -18,3 +18,9 @@ test('older lists fall back to incoming requests; guests can have only seats', (
   expect(waitingCount({ added_you: [{}, {}] }, [{}])).toBe(3);
   expect(waitingCount({ added_you: [], requests_waiting: 0 }, [{}, {}])).toBe(2);
 });
+
+test('the server total wins when a refused join or stale cache disagrees', () => {
+  expect(waitingCount({ added_you: [], requests_waiting: 0, waiting_for_you: 1 }, [])).toBe(1);
+  expect(waitingCount({ added_you: [{}], requests_waiting: 1, waiting_for_you: 0 }, [{}])).toBe(0);
+  expect(waitingCount({ added_you: [{}], requests_waiting: 1, waiting_for_you: 3 }, [{}, {}])).toBe(3);
+});
