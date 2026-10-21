@@ -446,6 +446,8 @@ function TableDevHarness() {
     you?: string;
     end?: string;
     invitation?: string;
+    botTurn?: Position;
+    botHand?: string;
   }>();
   const fixture = params.fixture;
   const ruleSet: RuleSet = fixture?.startsWith('louisiana') ? 'louisiana' : 'finnish';
@@ -531,6 +533,9 @@ function TableDevHarness() {
             bidRound={BID_ROUNDS[params.bids ?? ''] ?? null}
             outPlayers={OUT_PLAYERS[params.out as keyof typeof OUT_PLAYERS] ?? null}
             botTrick={params.trick === 'bots'}
+            botCrew={fixture === 'bot-crew'}
+            botTurn={params.botTurn}
+            botHand={Number(params.botHand) || 4}
             fold={fixture === 'fold' ? 'count' : fixture === 'fold-legacy' ? 'legacy' : undefined}
             countHelp={params.count === 'on'}
             details={fixture === 'details'}
@@ -755,6 +760,9 @@ function RolePreview({
   details = false,
   bidder = 'east',
   botTrick = false,
+  botCrew = false,
+  botTurn = 'west',
+  botHand = 4,
   invitation = null,
   fold,
   scoreHistory = false,
@@ -775,6 +783,9 @@ function RolePreview({
   details?: boolean;
   bidder?: Position;
   botTrick?: boolean;
+  botCrew?: boolean;
+  botTurn?: Position;
+  botHand?: number;
   invitation?: SeatInvitation | null;
   fold?: 'count' | 'legacy';
   scoreHistory?: boolean;
@@ -782,7 +793,7 @@ function RolePreview({
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   const [invitationHeight, setInvitationHeight] = useState(0);
   const tableRoom =
-    bidRound || botTrick || outPlayers || invitation || fold ? BOT_ROOM : WAITING_ROOM;
+    bidRound || botTrick || botCrew || outPlayers || invitation || fold ? BOT_ROOM : WAITING_ROOM;
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
@@ -839,7 +850,9 @@ function RolePreview({
           ? dealerPosition
           : bidRound
             ? bidRound.bids[0].position
-            : 'south',
+            : botCrew
+              ? botTurn
+              : 'south',
       trump: previewPhase === 'playing' || previewPhase === 'second_deal' ? 'spades' : null,
       dealer: dealerPosition,
       scores: {
@@ -847,7 +860,7 @@ function RolePreview({
         east_west: 29,
       },
       hand_history: scoreHistory ? handHistory('north_south').slice(0, 9) : undefined,
-      hand_number: scoreHistory ? 10 : 4,
+      hand_number: scoreHistory ? 10 : botCrew ? botHand : 4,
       players: {
         north: {
           hand:
@@ -879,7 +892,9 @@ function RolePreview({
         },
       },
       current_trick:
-        previewPhase === 'playing' ? [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }] : [],
+        previewPhase === 'playing' && !botCrew
+          ? [{ player: 'west', card: { rank: 5, suit: 'diamonds' } }]
+          : [],
       ...(outPlayers && {
         dealer: 'north',
         players: outPlayers,
@@ -1017,6 +1032,9 @@ function RolePreview({
     details,
     bidder,
     botTrick,
+    botCrew,
+    botTurn,
+    botHand,
     tableRoom,
     scoreHistory,
   ]);

@@ -67,6 +67,18 @@ PID-214 bid presentation uses `/table-dev?phase=bidding&role=player&bids=round|h
 `table-bid-*` and `locale-sv-table-bid-*` check every seat's visible/spoken bid,
 the high-bid tone and compact south status without changing bid event identities.
 
+PID-277 uses `/table-dev?fixture=bot-crew&locale=en|sv`: Marcel is thinking,
+and all three drawn bots open their short card through their avatar or nameplate.
+`table-bot-card-{marcel,antti,jocke}-{en,sv}` checks the copy, Close/reopen,
+44pt targets and no scrolling; `table-bot-thinking[-antti|-jocke]-{en,sv}`
+checks each voice's visible nameplate line and that reloading keeps it.
+`botTurn=north|east|west&botHand=1|2|3|4` tries every line of the crew.
+All run at 390×844, 375×667,
+844×390 and 768×1024. Persona keys live beside `BotPersonaFace.tsx` in
+`botPersonas.ts`; all editable English/Swedish persona copy is together in
+`packages/shared/src/i18n/sections/bots.ts`. These describe the bots at play,
+not the real people's biographies or a guarantee about their bidding strategy.
+
 Friends locale previews use `/ui-dev?state=friends&fixture=added-you&locale=sv`
 or `/ui-dev?state=friends-add&fixture=results&locale=sv`. They reuse the actual
 screens and existing fixture data; `/friends` and `/friends-add` ignore locale

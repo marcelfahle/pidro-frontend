@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { localizedError, publicPlayerName, type ProfileIdentity } from '@pidro/shared';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
+import {
+  localizedError,
+  publicPlayerName,
+  type BotPersona,
+  type ProfileIdentity,
+} from '@pidro/shared';
 import { profileApi } from '@/api/profile';
 import { FriendState } from '@/components/friends/FriendRow';
 import { ActionPill } from '@/components/ui/ActionPill';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
+import { botPersonas } from '@/components/ui/botPersonas';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Modal } from '@/components/ui/Modal';
 import { PidroText } from '@/components/ui/PidroText';
@@ -15,6 +21,7 @@ import { useTranslation } from '@/i18n';
 
 interface PlayerProfileProps {
   playerId: string | null;
+  persona?: BotPersona | null;
   onClose: () => void;
   hideActions?: boolean;
   /** Opened from their link: Add, or Sent once asked. */
@@ -24,11 +31,36 @@ interface PlayerProfileProps {
 
 export function PlayerProfileModal({
   playerId,
+  persona,
   onClose,
   hideActions,
   add,
   fixture,
 }: PlayerProfileProps) {
+  const { t } = useTranslation();
+  const { width, height } = useWindowDimensions();
+  if (persona) {
+    const bot = botPersonas[persona];
+    return (
+      <Modal isOpen title={t('bots.title')} onClose={onClose} testID="bot-profile-modal">
+        <View style={[styles.bot, width > height && styles.botLandscape]}>
+          <PlayerAvatar kind="bot" persona={persona} size={104} style={styles.avatar} />
+          <View style={styles.botCopy} testID="bot-profile-copy">
+            <PidroText role="title" align="center">
+              {bot.name}
+            </PidroText>
+            <PidroText role="body" align="center">
+              {t(bot.play)}
+            </PidroText>
+            <PidroText role="body" tone="soft" align="center">
+              {t(bot.saying)}
+            </PidroText>
+          </View>
+        </View>
+        <BevelButton label={t('profile.close')} material="glass" onPress={onClose} />
+      </Modal>
+    );
+  }
   return playerId ? (
     <PlayerProfileContent
       key={playerId}
@@ -234,4 +266,7 @@ const styles = StyleSheet.create({
   content: { gap: PidroSpacing.sm },
   avatar: { alignSelf: 'center' },
   offer: { alignSelf: 'center' },
+  bot: { alignItems: 'center', gap: PidroSpacing.md },
+  botLandscape: { flexDirection: 'row' },
+  botCopy: { flexShrink: 1, gap: PidroSpacing.sm },
 });

@@ -67,6 +67,7 @@ export type HandResultState = {
 export function useHandResult(
   hand: ServerLastHand | null | undefined,
   viewer: Position | null,
+  room: string,
   waiting = false
 ): { result: HandResultState | null; opening: boolean; close: () => void } {
   const handNumber = hand === undefined ? undefined : (hand?.hand_number ?? null);
@@ -86,9 +87,9 @@ export function useHandResult(
   }
   const result = useMemo(() => {
     if (!hand || (!waiting && shown !== hand.hand_number)) return null;
-    const view = handResultView(hand, viewer);
+    const view = handResultView(hand, viewer, room);
     return { view, hand, closeMs: view.closeMs, waiting };
-  }, [hand, shown, viewer, waiting]);
+  }, [hand, shown, viewer, waiting, room]);
   const closeMs = result?.closeMs ?? null;
   useEffect(() => {
     if (waiting || closeMs == null || isStillCapture()) return;
@@ -160,7 +161,7 @@ export function HandResultPanel({
   const bidders = t(result.hand.bidding_team === 'north_south' ? 'game.ns' : 'game.ew');
   const headline = t(view.headline.key, {
     team: bidders,
-    n: 'n' in view.headline ? view.headline.n : 0,
+    n: view.headline.n ?? 0,
   });
   const pidroLine = view.pidro ? t('game.took_their_pidro', { name: name(view.pidro) }) : null;
   const bidLine = t('game.bid_took', { bid: view.bid, captured: formatNumber(view.won) });

@@ -242,6 +242,32 @@ const allCases = [
     open: /^View mfios1’s profile/,
     playerProfile: true,
   })),
+  ...['en', 'sv'].flatMap((locale) => [
+    ...['Marcel', 'Antti', 'Jocke'].map((name) => ({
+      name: `table-bot-card-${name.toLowerCase()}-${locale}`,
+      path: `/table-dev?fixture=bot-crew&locale=${locale}`,
+      testId: 'bot-profile-modal',
+      open:
+        locale === 'sv'
+          ? new RegExp(`^Visa profilen för ${name},`)
+          : new RegExp(`^View ${name}’s profile,`),
+      botCard: name,
+      botVoice: true,
+      locale,
+    })),
+    ...[
+      { name: '', seat: 'west', en: 'Let’s see…', sv: 'Ska vi se…' },
+      { name: '-antti', seat: 'north', en: 'One moment…', sv: 'Ett ögonblick…' },
+      { name: '-jocke', seat: 'east', en: 'A trump…', sv: 'Trumf, månne…' },
+    ].map(({ name, seat, ...text }) => ({
+      name: `table-bot-thinking${name}-${locale}`,
+      path: `/table-dev?fixture=bot-crew&botTurn=${seat}&locale=${locale}`,
+      testId: `seat-${seat}`,
+      thinkingText: text[locale],
+      botVoice: true,
+      locale,
+    })),
+  ]),
   {
     name: 'block-profile-guest',
     path: '/table-dev?phase=game_over&role=player',
@@ -3153,6 +3179,56 @@ async function assertCrew(page, testCase) {
   }
 }
 
+async function assertBotVoice(page, testCase, viewport) {
+  if (!testCase.botVoice) return;
+  if (testCase.botCard) {
+    const card = page.getByTestId('bot-profile-modal');
+    const copy = page.getByTestId('bot-profile-copy');
+    await copy.getByText(testCase.botCard, { exact: true }).waitFor();
+    await copy.getByText(testCase.locale === 'sv' ? /^Som bot / : /^As a bot,/).waitFor();
+    assert.equal(await card.getByRole('button').count(), 1, 'bots have Close, no social actions');
+    for (const text of await copy.locator('[dir="auto"]').all()) {
+      assertInsideViewport('bot card text', await getStableBox(text, page), viewport);
+    }
+    assert.equal(
+      await card.evaluate((node) =>
+        [...node.querySelectorAll('*')].some(
+          (child) =>
+            ['auto', 'scroll'].includes(getComputedStyle(child).overflowY) &&
+            child.scrollHeight > child.clientHeight + 1
+        )
+      ),
+      false,
+      'the short card needs no scrolling'
+    );
+    await card
+      .getByRole('button', { name: testCase.locale === 'sv' ? 'Stäng' : 'Close', exact: true })
+      .click();
+    await card.waitFor({ state: 'detached' });
+    const entry = page.getByRole('button', { name: testCase.open });
+    await entry.getByText(testCase.botCard, { exact: true }).click();
+    await copy.waitFor();
+    await card.getByRole('button').click();
+    await card.waitFor({ state: 'detached' });
+    await entry.locator('svg').first().click();
+    await copy.waitFor();
+    await waitForScreenshotReady(page);
+  } else {
+    const line = page
+      .getByTestId(testCase.testId)
+      .getByText(testCase.thinkingText, { exact: true });
+    await line.waitFor();
+    assertInsideViewport('thinking line', await getStableBox(line, page), viewport);
+    assert.equal(
+      await line.evaluate((node) => node.scrollWidth > node.clientWidth + 1),
+      false,
+      'thinking line fits the nameplate'
+    );
+    await page.reload();
+    await line.waitFor();
+  }
+}
+
 // PID-267: the fixture's bots bid within 1.4s of the deal starting. Every
 // sample while the seats still say they are dealing shows no bid, in a seat or
 // in the log, and the deal must outlast the last bid for that to mean anything.
@@ -3938,7 +4014,8 @@ async function main() {
           testCase.ownPace ||
           testCase.homeProfile ||
           testCase.details ||
-          testCase.scores
+          testCase.scores ||
+          testCase.botVoice
         )
           return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
             viewport.name
@@ -4358,6 +4435,7 @@ async function main() {
           await assertTargetGeometry(page, testCase, caseViewport);
           await assertBidLines(page, testCase, caseViewport);
           await assertCrew(page, testCase);
+          await assertBotVoice(page, testCase, caseViewport);
           await assertPlayLines(page, testCase, caseViewport);
           if (testCase.locale && testCase.path.includes('game_over')) {
             await page

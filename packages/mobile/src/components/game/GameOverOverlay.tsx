@@ -272,7 +272,7 @@ export function GameOverOverlay({
         bot,
         agreed: seat ? seat.agreed : bot,
         avatarUrl: player.avatar_url,
-        playerId: canViewPlayer(player) ? player.playerId : null,
+        playerId: canViewPlayer(player) || player.bot_persona ? player.playerId : null,
       };
     });
   const youAgreed = !!rematch?.youAgreed;

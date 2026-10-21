@@ -6,6 +6,7 @@
 import type { Card, ServerGameState, ServerLastHand, Suit, TeamKey } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { PIDRO_POINTS, type PointsSide } from './points';
+import { handHeadlines, tableLine } from './tableVoice';
 
 export function waitsForContinue(
   state: Pick<ServerGameState, 'pace' | 'awaiting_continue'>
@@ -49,9 +50,7 @@ export type HandResultView = {
   /** Our made bid or either team's all-14 is gold and stamped in. */
   loud: boolean;
   /** Says whose bid it was: ours, theirs, or a team by name for a spectator. */
-  headline:
-    | { key: 'game.we_made_it' | 'game.they_made_it' | 'game.team_made_it' | 'game.all_14' }
-    | { key: 'game.we_missed_by' | 'game.they_missed_by' | 'game.team_missed_by'; n: number };
+  headline: { key: (typeof handHeadlines)[HandOutcome][number] | 'game.all_14'; n?: number };
   bidder: Position;
   bid: number;
   trump: Suit | null;
@@ -75,7 +74,11 @@ export function all14Team(hand: ServerLastHand): TeamKey | null {
   return null;
 }
 
-export function handResultView(hand: ServerLastHand, viewer: Position | null): HandResultView {
+export function handResultView(
+  hand: ServerLastHand,
+  viewer: Position | null,
+  room: string
+): HandResultView {
   const us = viewer ? teamOf(viewer) : 'north_south';
   const all14 = all14Team(hand);
   const ours = hand.bidding_team === us;
@@ -104,16 +107,10 @@ export function handResultView(hand: ServerLastHand, viewer: Position | null): H
     loud: all14 !== null || outcome === 'we-made',
     headline: all14
       ? { key: 'game.all_14' }
-      : hand.made
-        ? { key: !viewer ? 'game.team_made_it' : ours ? 'game.we_made_it' : 'game.they_made_it' }
-        : {
-            key: !viewer
-              ? 'game.team_missed_by'
-              : ours
-                ? 'game.we_missed_by'
-                : 'game.they_missed_by',
-            n: hand.bid - won,
-          },
+      : {
+          key: tableLine(room, hand.hand_number, handHeadlines[outcome], 'result'),
+          ...(!hand.made && { n: hand.bid - won }),
+        },
     bidder: hand.bidder,
     bid: hand.bid,
     trump: hand.trump ?? null,

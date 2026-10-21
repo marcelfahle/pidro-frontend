@@ -590,6 +590,7 @@ export default function GameCanvasDev({
   const handResult = useHandResult(
     lastHand,
     viewerOf(model.seats),
+    'TABLE-DEV',
     handParam === 'own' && !!lastHand && !continued
   );
   const handLog = useMemo(
