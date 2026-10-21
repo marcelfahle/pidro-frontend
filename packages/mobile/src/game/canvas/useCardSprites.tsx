@@ -12,7 +12,7 @@
  * the cold-load rule: the first model snaps into place, only
  * later diffs animate. M3 adds, all diff-triggered:
  *   • deal-in   — hand grows from empty → stagger from a deck origin w/ overshoot
- *   • history   — completed tricks keep stable sprites on the table for the full hand
+ *   • history   — completed tricks keep stable slots after collecting off the table
  *   • trump     — null→suit pops the trump glyph (exposed via `trumpPop`)
  *   • reflow    — layout change tweens sprites to new slots (falls out of the effect)
  */
@@ -29,12 +29,14 @@ import {
   useSharedValue,
   withDelay,
   withSequence,
+  withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import type { Card, Suit } from '@/types/game';
 import { trumpsIn } from '@/features/game/trump';
 import { isStillCapture } from '@/utils/stillCapture';
+import { playSelectionHaptic } from '@/utils/haptics';
 import {
   handLift,
   handScale as handScaleFor,
@@ -61,8 +63,34 @@ import {
   PLAY_CARD_TRAVEL_MS,
   PLAY_CARD_CURVE,
   PLAY_CARD_LIFT,
+  OPPONENT_CARD_LIFT,
+  PLAY_CARD_LIFT_MS,
+  PLAY_CARD_LIFT_CURVE,
+  PLAY_CARD_SCALE,
+  OPPONENT_CARD_SCALE,
+  HAND_CLOSE_SPRING,
+  TRICK_GATHER_MS,
+  TRICK_SWEEP_MS,
+  TRICK_GATHER_PROGRESS,
+  TRICK_GATHER_CURVE,
+  TRICK_SWEEP_CURVE,
+  TRICK_SWEEP_SCALE,
 } from './animationTiming';
 import { T } from './tokens';
+
+function motionEasing(curve: readonly [number, number, number, number]) {
+  return {
+    factory: () => {
+      'worklet';
+      const bezier = Easing.bezier(...curve).factory();
+      return (time: number) => {
+        'worklet';
+        // Web's first rAF can predate the effect that starts the animation.
+        return bezier(Math.max(0, Math.min(1, time)));
+      };
+    },
+  };
+}
 
 const MAX = 36;
 /** A played card's glow waits for the card to land. */
@@ -113,6 +141,8 @@ type SlotInfo = {
   flashing: boolean;
   /** Would be trump under the suit being considered. */
   previewed: boolean;
+  lift: number;
+  collectTo?: { x: number; y: number };
 } | null;
 
 type Opts = {
@@ -140,6 +170,7 @@ export function useCardSprites({
   const srot = Array.from({ length: MAX }, () => useSharedValue(0));
   const sop = Array.from({ length: MAX }, () => useSharedValue(0));
   const flight = Array.from({ length: MAX }, () => useSharedValue(1));
+  const collection = Array.from({ length: MAX }, () => useSharedValue(0));
   /* eslint-enable react-hooks/rules-of-hooks */
 
   const [slots, setSlots] = useState<SlotInfo[]>(() => Array(MAX).fill(null));
@@ -167,7 +198,11 @@ export function useCardSprites({
     () => () => {
       retirementTimers.current.forEach(clearTimeout);
       retirementTimers.current.clear();
+      flight.forEach(cancelAnimation);
+      collection.forEach(cancelAnimation);
     },
+    // Fixed shared-value pools live for this mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -253,6 +288,8 @@ export function useCardSprites({
       blocked: boolean;
       previewed: boolean;
       topacity: number;
+      ownPlay?: boolean;
+      completed?: boolean;
     };
     const desired: Desired[] = [];
     const preview = new Set<string>(
@@ -335,6 +372,8 @@ export function useCardSprites({
           blocked: false,
           previewed: false,
           topacity: 1,
+          ownPlay: rel === 'south',
+          completed: !tc.isCurrentTrick,
         });
       });
     });
@@ -376,13 +415,15 @@ export function useCardSprites({
       keyToSlot.current.set(d.key, old);
     }
 
-    // Retire slots only when cards leave the server's round history. Completed
-    // tricks remain in `playedCards`, so they stay visible for the full hand.
+    // Retire slots only when cards leave the server's round history. Collected
+    // tricks remain in `playedCards`, so their slots persist invisibly.
     for (const [key, sl] of Array.from(keyToSlot.current.entries())) {
       if (!desiredKeys.has(key)) {
         nextSlots[sl] = slots[sl];
         if (retirementTimers.current.has(key)) continue;
 
+        cancelAnimation(flight[sl]);
+        cancelAnimation(collection[sl]);
         // SeatLayer takes over your folded cards as backs in the same frame.
         const folding = slots[sl]?.kind === 'hand' && model.seats.south?.out;
         const duration = folding ? 0 : 180;
@@ -416,7 +457,7 @@ export function useCardSprites({
 
     const ht: HandTarget[] = [];
     const cfg = { duration: 320, easing: Easing.out(Easing.cubic) };
-    const playCfg = { duration: PLAY_CARD_TRAVEL_MS, easing: Easing.bezier(...PLAY_CARD_CURVE) };
+    const playCfg = { duration: PLAY_CARD_TRAVEL_MS, easing: motionEasing(PLAY_CARD_CURVE) };
     const dealCfg = {
       duration: packetDeal ? DEAL_PACKET_TRAVEL_MS : DEAL_CARD_TRAVEL_MS,
       easing: Easing.out(Easing.back(1.5)),
@@ -470,7 +511,12 @@ export function useCardSprites({
               ? 1
               : d.tscale;
         sop[sl].value = dealCard || cutCard ? 0 : d.topacity;
+        flight[sl].value = 1;
+        collection[sl].value = 0;
       }
+      const ownLanding = d.ownPlay && slots[sl]?.kind === 'hand';
+      const lift = d.ownPlay ? PLAY_CARD_LIFT : OPPONENT_CARD_LIFT;
+      const collectTo = isNew ? undefined : slots[sl]?.collectTo;
       nextSlots[sl] = {
         key: d.key,
         textureKey: d.textureKey,
@@ -482,6 +528,8 @@ export function useCardSprites({
         leading: d.kind === 'played' && d.key === model.winningKey,
         flashing: d.kind === 'played' && d.key === flashKey.current,
         previewed: d.previewed,
+        lift,
+        collectTo,
       };
 
       const pressed = pressSlot.value === sl;
@@ -512,6 +560,7 @@ export function useCardSprites({
         sscale[sl].value = d.tscale;
         sop[sl].value = d.topacity;
         flight[sl].value = 1;
+        if (ownLanding) playSelectionHaptic();
       } else if (d.kind === 'cut' && model.phase === 'dealer_selection') {
         // A dealer snapshot can re-render while this sequence is in flight
         // (notably React Strict Mode and when the dealer field arrives). Keep
@@ -556,6 +605,7 @@ export function useCardSprites({
       } else if (
         !pressed &&
         targetChanged &&
+        !collectTo &&
         !(
           d.kind === 'hand' &&
           model.dealStage &&
@@ -568,15 +618,75 @@ export function useCardSprites({
         if (playingFlight) {
           // A refusal can arrive mid-flight: start the return at the drawn
           // position, including the lift, rather than jumping to its baseline.
-          sy[sl].value -= Math.sin(Math.PI * flight[sl].value) * cardH * PLAY_CARD_LIFT;
+          sy[sl].value -= Math.sin(Math.PI * flight[sl].value) * cardH * (slots[sl]?.lift ?? lift);
           flight[sl].value = 0;
-          flight[sl].value = withTiming(1, playCfg);
+          flight[sl].value = withTiming(1, playCfg, (finished) => {
+            if (finished && ownLanding) runOnJS(playSelectionHaptic)();
+          });
         }
-        sx[sl].value = withTiming(d.tx, motion);
-        sy[sl].value = withTiming(d.ty, motion);
-        srot[sl].value = withTiming(d.trot, motion);
-        sscale[sl].value = withTiming(d.tscale, motion);
+        const closingHand = d.kind === 'hand' && model.phase === 'playing' && !playingFlight;
+        // Start springs on a frame timestamp too, never an earlier web rAF.
+        sx[sl].value = closingHand
+          ? withDelay(0, withSpring(d.tx, HAND_CLOSE_SPRING))
+          : withTiming(d.tx, motion);
+        sy[sl].value = closingHand
+          ? withDelay(0, withSpring(d.ty, HAND_CLOSE_SPRING))
+          : withTiming(d.ty, motion);
+        srot[sl].value = closingHand
+          ? withDelay(0, withSpring(d.trot, HAND_CLOSE_SPRING))
+          : withTiming(d.trot, motion);
+        const raisedScale = d.ownPlay
+          ? Math.max(
+              sscale[sl].value,
+              (handTargets.value.find((t) => t.slot === sl)?.scale ?? handScale) * PLAY_CARD_SCALE
+            )
+          : sscale[sl].value * OPPONENT_CARD_SCALE;
+        sscale[sl].value =
+          playingFlight && d.kind === 'played'
+            ? withSequence(
+                withTiming(raisedScale, {
+                  duration: PLAY_CARD_LIFT_MS,
+                  easing: motionEasing(PLAY_CARD_LIFT_CURVE),
+                }),
+                withTiming(d.tscale, {
+                  ...playCfg,
+                  duration: PLAY_CARD_TRAVEL_MS - PLAY_CARD_LIFT_MS,
+                })
+              )
+            : closingHand
+              ? withDelay(0, withSpring(d.tscale, HAND_CLOSE_SPRING))
+              : withTiming(d.tscale, motion);
         sop[sl].value = withTiming(d.topacity, { duration: 150 });
+      }
+
+      // Keep the history slots, but collect only newly completed tricks. A
+      // reconnect never replays old wins, and new plays never restart a sweep.
+      if (d.completed && model.collectAt !== undefined && !collectTo) {
+        const result = model.lastTrick;
+        const newlyCompleted = !firstLoad && result && result.number !== prev?.lastTrick?.number;
+        const inLastTrick = result?.plays.some(({ card }) => cardKey(card) === d.textureKey);
+        const seat = L.seats[result?.winner ?? 'north'];
+        nextSlots[sl]!.collectTo = { x: seat.x, y: seat.y };
+        if (!newlyCompleted || !inLastTrick) {
+          collection[sl].value = 1;
+        } else {
+          collection[sl].value = withDelay(
+            Math.max(0, model.collectAt - Date.now()),
+            reduceMotion
+              ? withTiming(1, { duration: 0, reduceMotion: ReduceMotion.Never })
+              : withSequence(
+                  withTiming(TRICK_GATHER_PROGRESS, {
+                    duration: TRICK_GATHER_MS,
+                    easing: motionEasing(TRICK_GATHER_CURVE),
+                  }),
+                  withTiming(1, {
+                    duration: TRICK_SWEEP_MS,
+                    easing: motionEasing(TRICK_SWEEP_CURVE),
+                  })
+                ),
+            ReduceMotion.Never
+          );
+        }
       }
 
       if (d.kind === 'hand' && d.legal)
@@ -744,6 +854,10 @@ export function useCardSprites({
             rot={srot[i]}
             opacity={sop[i]}
             flight={flight[i]}
+            lift={s.lift}
+            collection={collection[i]}
+            collectTo={s.collectTo}
+            center={{ x: L.trick.cx, y: L.trick.cy }}
             w={cardW}
             h={cardH}
             dimmed={s.blocked}
@@ -759,7 +873,7 @@ export function useCardSprites({
       </>
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [slots, textures, cardW, cardH]);
+  }, [slots, textures, cardW, cardH, L]);
 
   const renderedPlayedCardCount = slots.reduce(
     (count, slot) => count + (slot?.kind === 'played' ? 1 : 0),
@@ -773,6 +887,33 @@ export function useCardSprites({
     (count, slot) => count + (slot?.kind === 'hand' ? 1 : 0),
     0
   );
+
+  useEffect(() => {
+    if (!__DEV__) return;
+    const debug = globalThis as { __pidroCardMotion?: () => unknown };
+    debug.__pidroCardMotion = () =>
+      slots.flatMap((slot, i) =>
+        slot
+          ? [
+              {
+                key: slot.key,
+                kind: slot.kind,
+                x: sx[i].value,
+                y: sy[i].value,
+                scale: sscale[i].value,
+                flight: flight[i].value,
+                collection: collection[i].value,
+                collectTo: slot.collectTo,
+              },
+            ]
+          : []
+      );
+    return () => {
+      delete debug.__pidroCardMotion;
+    };
+    // Dev-only sampling reads the UI values on demand, never through React per frame.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots]);
 
   return {
     gesture,
@@ -794,6 +935,10 @@ function CardSprite({
   rot,
   opacity,
   flight,
+  lift,
+  collection,
+  collectTo,
+  center,
   w,
   h,
   dimmed,
@@ -812,6 +957,10 @@ function CardSprite({
   rot: SharedValue<number>;
   opacity: SharedValue<number>;
   flight: SharedValue<number>;
+  lift: number;
+  collection: SharedValue<number>;
+  collectTo?: { x: number; y: number };
+  center: { x: number; y: number };
   w: number;
   h: number;
   dimmed: boolean;
@@ -823,16 +972,35 @@ function CardSprite({
   flashGlow: SharedValue<number>;
   previewed: boolean;
 }) {
-  const transform = useDerivedValue(() => [
-    { translateX: x.value },
-    { translateY: y.value - Math.sin(Math.PI * flight.value) * h * PLAY_CARD_LIFT },
-    { rotate: rot.value },
-    {
-      scale:
-        scale.value *
-        (winner ? 1 + winnerReveal.value * 0.1 : leading ? 1 + leadGlow.value * 0.06 : 1),
-    },
-  ]);
+  const sweep = useDerivedValue(() =>
+    Math.max(0, (collection.value - TRICK_GATHER_PROGRESS) / (1 - TRICK_GATHER_PROGRESS))
+  );
+  const transform = useDerivedValue(() => {
+    const gather = Math.min(1, collection.value / TRICK_GATHER_PROGRESS);
+    return [
+      {
+        translateX:
+          x.value +
+          (center.x - x.value) * gather +
+          ((collectTo?.x ?? center.x) - center.x) * sweep.value,
+      },
+      {
+        translateY:
+          y.value +
+          (center.y - y.value) * gather +
+          ((collectTo?.y ?? center.y) - center.y) * sweep.value -
+          Math.sin(Math.PI * flight.value) * h * lift,
+      },
+      { rotate: rot.value * (1 - gather) },
+      {
+        scale:
+          scale.value *
+          (1 - (1 - TRICK_SWEEP_SCALE) * sweep.value) *
+          (winner ? 1 + winnerReveal.value * 0.1 : leading ? 1 + leadGlow.value * 0.06 : 1),
+      },
+    ];
+  });
+  const visible = useDerivedValue(() => opacity.value * (1 - sweep.value));
   const winnerOpacity = useDerivedValue(() =>
     Math.max(
       winner ? winnerReveal.value : leading ? leadGlow.value * 0.85 : 0,
@@ -841,7 +1009,7 @@ function CardSprite({
   );
   const r = Math.min(10, w * 0.12);
   return (
-    <Group transform={transform} opacity={opacity}>
+    <Group transform={transform} opacity={visible}>
       <RoundedRect
         x={-w / 2 - 5}
         y={-h / 2 - 5}

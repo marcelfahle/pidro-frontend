@@ -144,6 +144,7 @@ export function usePlayPresentation(
         ? presented
         : {
             ...presented,
+            collectAt: collectUntil,
             seats: Object.fromEntries(
               Object.entries(presented.seats).map(([rel, seat]) => [
                 rel,
@@ -151,7 +152,7 @@ export function usePlayPresentation(
               ])
             ) as TableModel['seats'],
           },
-    [presented, lit, source.phase, source.dealStage]
+    [presented, lit, collectUntil, source.phase, source.dealStage]
   );
   return { model, playCard };
 }

@@ -9,7 +9,7 @@ import {
   CUT_WINNER_PAUSE_MS,
 } from './canvas/animationTiming';
 import type { TableModel } from './canvas/tableModel';
-import { getTableHapticEvents, isYourTurn } from './hapticTransitions';
+import { getTableHapticEvents } from './hapticTransitions';
 export { playSelectionHaptic } from '@/utils/haptics';
 
 export function playActionHaptic() {
@@ -26,14 +26,6 @@ export function playWrongHaptic() {
     Platform.OS === 'android'
       ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Reject)
       : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-  );
-}
-
-export function playCardHaptic() {
-  runHaptic(() =>
-    Platform.OS === 'android'
-      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Gesture_End)
-      : Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Rigid)
   );
 }
 
@@ -85,10 +77,6 @@ function playTurnHaptic() {
   runHaptic(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success));
 }
 
-/** Lets the card or trick that handed you the turn land first, so the two taps stay apart. */
-const TURN_AFTER_CARD_MS = 250;
-const TURN_AFTER_TRICK_MS = 450;
-
 export function useTableHaptics(model: TableModel) {
   const reducedMotion = useReducedMotion();
   const previousModel = useRef<TableModel | null>(null);
@@ -103,21 +91,10 @@ export function useTableHaptics(model: TableModel) {
       timers.current.add(timer);
     };
 
-    // A delayed turn tap only lands if the turn is still yours by then.
-    const turnHapticIfStillYours = () => {
-      if (previousModel.current && isYourTurn(previousModel.current)) playTurnHaptic();
-    };
     const events = getTableHapticEvents(previousModel.current, model);
     for (const event of events) {
-      if (event === 'your_turn') {
-        if (events.includes('trick_complete'))
-          schedule(turnHapticIfStillYours, TURN_AFTER_TRICK_MS);
-        else if (events.includes('card_landed'))
-          schedule(turnHapticIfStillYours, TURN_AFTER_CARD_MS);
-        else playTurnHaptic();
-      }
-      if (event === 'deal_packet' || event === 'card_landed') playDealPacketHaptic();
-      if (event === 'trick_complete') playTrickHaptic();
+      if (event === 'your_turn') playTurnHaptic();
+      if (event === 'deal_packet') playDealPacketHaptic();
       if (event === 'hand_shuffle') {
         playDealPacketHaptic();
         if (!reducedMotion) {

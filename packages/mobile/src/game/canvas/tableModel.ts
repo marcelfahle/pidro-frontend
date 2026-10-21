@@ -65,6 +65,8 @@ export type TableSeat = {
 export type TableModel = {
   phase: GamePhase;
   transitionDelayMs?: number;
+  /** Presentation deadline only; collecting never extends the server's turn gate. */
+  collectAt?: number;
   trumpSuit: Suit | null;
   /** Server-selected dealer, already mapped into the viewer's seat orientation. */
   dealerRelative: RelativePosition | null;

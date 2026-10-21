@@ -42,7 +42,7 @@ describe('table haptic transitions', () => {
     expect(getTableHapticEvents(packet, sorting)).toEqual(['hand_shuffle']);
   });
 
-  it('marks opponent card landings and gives the fourth card one trick pulse', () => {
+  it('keeps server play updates silent; only your sprite landing gives a tick', () => {
     const first = model({ playedCards: { west: [card('1')] } });
     const second = model({ playedCards: { west: [card('1')], north: [card('2')] } });
     const third = model({
@@ -56,9 +56,9 @@ describe('table haptic transitions', () => {
         south: [card('4')],
       },
     });
-    expect(getTableHapticEvents(model(), first)).toEqual(['card_landed']);
-    expect(getTableHapticEvents(first, second)).toEqual(['card_landed']);
-    expect(getTableHapticEvents(third, fourth)).toEqual(['trick_complete']);
+    expect(getTableHapticEvents(model(), first)).toEqual([]);
+    expect(getTableHapticEvents(first, second)).toEqual([]);
+    expect(getTableHapticEvents(third, fourth)).toEqual([]);
   });
 
   it('starts one sequence when dealer cut cards arrive', () => {

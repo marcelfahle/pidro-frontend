@@ -20,7 +20,7 @@ import type {
 } from '@/types/game';
 import { useGameStore, useGameViewModel } from '@/stores/game';
 import { pushGameAction } from '@/channels/hooks/useGameChannel';
-import { playActionHaptic, playCardHaptic } from './useGameHaptics';
+import { playActionHaptic } from './useGameHaptics';
 import { useTableNotices } from '@/components/game/TableFeedback';
 import type { TableNotice } from './tableNotices';
 
@@ -168,7 +168,6 @@ export function useGameTableController(): GameTableController {
         const promise = pushGameAction('play_card', { card: { rank: card.rank, suit: card.suit } });
         if (!promise) return false;
         await promise;
-        playCardHaptic();
         return true;
       } catch (error) {
         showActionError('Play card', error);

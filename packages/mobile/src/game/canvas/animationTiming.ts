@@ -7,8 +7,21 @@ export const HAND_PRESENTATION_TIMEOUT_MS = 2_000;
 export const FOLD_FLIGHT_MS = 360;
 
 export const PLAY_CARD_TRAVEL_MS = 340;
-export const PLAY_CARD_CURVE = [0.33, 0, 0.2, 1] as const;
+// A bounded overshoot settles on the same deadline as the turn light.
+export const PLAY_CARD_CURVE = [0.22, 0.8, 0.3, 1.06] as const;
 export const PLAY_CARD_LIFT = 0.12;
+export const OPPONENT_CARD_LIFT = 0.055;
+export const PLAY_CARD_LIFT_MS = 70;
+export const PLAY_CARD_LIFT_CURVE = [0.2, 0.8, 0.3, 1] as const;
+export const PLAY_CARD_SCALE = 1.06;
+export const OPPONENT_CARD_SCALE = 1.025;
+export const HAND_CLOSE_SPRING = { stiffness: 260, damping: 29, mass: 0.8 } as const;
+export const TRICK_GATHER_MS = 100;
+export const TRICK_SWEEP_MS = 220;
+export const TRICK_GATHER_PROGRESS = 0.3;
+export const TRICK_GATHER_CURVE = [0.2, 0.65, 0.3, 1] as const;
+export const TRICK_SWEEP_CURVE = [0.4, 0, 0.75, 1] as const;
+export const TRICK_SWEEP_SCALE = 0.8;
 export const PLAY_CONFIRM_TIMEOUT_MS = 5_000;
 // Older snapshots without transition metadata.
 export const TRICK_TRANSITION_MS = 1_500;
