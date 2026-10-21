@@ -40,6 +40,8 @@ export type TableLayout = {
   sides: { cy: number };
   seats: Record<RelativePosition, Seat>;
   hand: { cx: number; cy: number; maxWidth: number };
+  /** The table's lowest edge: above the home indicator and anything docked under it. */
+  bottom: number;
 };
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -49,6 +51,13 @@ const CARD_RATIO = 110 / 78; // from the legacy card art (spike)
  * seats sit on top of them, under the header row, and need air between.
  */
 const LANDSCAPE_SIDE_DROP = 16;
+/**
+ * Portrait lowers East and West a little below the trick's center line, as a
+ * share of a card's height, so the three other players stop reading as one
+ * row across the top. Only as far as the hand allows; their backs stay in
+ * full view below them, so they can still be counted.
+ */
+const PORTRAIT_SIDE_DROP = 0.45;
 /**
  * Portrait North, top to bottom, as SeatLayer draws it: a gap, the fan of
  * backs, a gap, then the seat (avatar, level chip, name and status).
@@ -62,13 +71,22 @@ export const northBackWidth = (cardW: number, compact = false) =>
 /** Landscape phones keep North's smaller fan: its row is shared with the name, chip and menu. */
 export const compactNorth = (L: Pick<TableLayout, 'profile'>) => L.profile === 'phone-landscape';
 /**
- * Where the pack waits in the second deal: the bottom-right corner, low
- * beside your hand and clear of East's stack, out of the middle where the
- * thrown piles land. Its center; the pack's backs are North's size.
+ * Where the pack waits in the second deal: the bottom-right corner, under the
+ * right end of your hand and clear of East's stack, out of the middle where
+ * the thrown piles land, so it never covers your cards. Where the table has
+ * no room below the hand (landscape, the shortest phones) it rises only as
+ * far as it must, at worst back beside the hand. Its center; the pack's backs
+ * are North's size.
  */
 export function packSpot(L: TableLayout) {
   const w = northBackWidth(L.cardW, compactNorth(L));
-  return { x: L.hand.cx + L.hand.maxWidth / 2 - w / 2 + 8, y: L.hand.cy + L.cardH * 0.45 };
+  const h = w * CARD_RATIO;
+  const beside = L.hand.cy + L.cardH * 0.45;
+  const below = L.hand.cy + (L.cardH * handScale(L.profile)) / 2 + 10 + h / 2;
+  return {
+    x: Math.min(L.hand.cx + L.hand.maxWidth / 2 - w / 2 + 8, L.width - w / 2 - 12),
+    y: Math.max(beside, Math.min(below, L.bottom - h / 2 - 4)),
+  };
 }
 /**
  * How a hand holds its cards. `still`: a dead straight row. `tilt`: each card
@@ -131,11 +149,17 @@ export const northSeatBottom = (L: TableLayout, tableTop: number) =>
   12 +
   (L.tight ? TIGHT_AVATAR : NORTH_SEAT_STACK[L.profile.startsWith('tablet') ? 'tablet' : 'phone']);
 
+/** How tall a full East or West stack draws. */
+const sideStackReach = (cardW: number) =>
+  sideBackWidth(cardW) + legacySideBack(cardW) * SIDE_ROOM * 5;
+
 /** East and west's backs along the edges, up to six, as SeatLayer stacks them. */
 export function sideStacks(L: TableLayout) {
   const backW = sideBackWidth(L.cardW);
-  const maxHeight = backW + legacySideBack(L.cardW) * SIDE_ROOM * 5;
-  const top = L.trick.cy - maxHeight / 2;
+  const maxHeight = sideStackReach(L.cardW);
+  // Portrait stacks follow the lowered side line; landscape seats keep to the
+  // trick's line and only their stacks drop (LANDSCAPE_SIDE_DROP).
+  const top = (L.profile.endsWith('portrait') ? L.sides.cy : L.trick.cy) - maxHeight / 2;
   const handTop = L.hand.cy - L.cardH / 2;
   return { backW, maxHeight, top, lowestTop: Math.max(top, handTop - 12 - maxHeight) };
 }
@@ -489,7 +513,17 @@ export function computeLayout(
       : usualR;
 
   const northY = tableTop + cardH * (portrait ? 0.48 : 0.22) + 10;
-  const sideCy = portrait ? trickCy : trickCy + LANDSCAPE_SIDE_DROP;
+  // Portrait drops the side line only as far as a full stack still ends above
+  // your hand (`sideStacks().lowestTop`); tight phones keep their seats up by North.
+  const portraitDrop =
+    portrait && !tight
+      ? clamp(
+          handY - cardH / 2 - 12 - sideStackReach(cardW) / 2 - trickCy,
+          0,
+          cardH * PORTRAIT_SIDE_DROP
+        )
+      : 0;
+  const sideCy = portrait ? trickCy + portraitDrop : trickCy + LANDSCAPE_SIDE_DROP;
   // Played cards leave from here; portrait keeps its historical screen-center origin.
   const sideY = portrait ? cy : sideCy;
 
@@ -538,6 +572,7 @@ export function computeLayout(
     tight,
     sides: { cy: sideCy },
     seats,
+    bottom: tableBottom,
     // A tight hand makes room on its left for your avatar.
     hand: portrait
       ? {

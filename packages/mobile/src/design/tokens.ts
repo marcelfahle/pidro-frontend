@@ -58,6 +58,10 @@ export const PidroColors = {
   // Their Pidro (PID-230): coral, so the other side's five never reads as ours.
   theirPidro: '#ffb4b9',
   theirPidroSoft: 'rgba(255, 180, 185, 0.32)',
+  // Teams at the table: a soft light under each seat, green for you and your
+  // partner, coral for the other two, so the table reads two against two.
+  teamUsGlow: 'rgba(146, 230, 178, 0.55)',
+  teamThemGlow: 'rgba(255, 180, 185, 0.5)',
   // The end of a hand (PID-236): the table dims under one panel, each team's
   // point cards in its own tray, gold edge ours and quiet glass theirs.
   handScrim: 'rgba(2, 14, 28, 0.62)',

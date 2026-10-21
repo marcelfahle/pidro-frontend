@@ -115,7 +115,9 @@ function avatarFor(
     name: kind === 'open' ? null : data.username,
     status: line?.text ?? null,
     pulse: line?.pulse ?? null,
-    nameTone: data.isYou ? 'you' : data.isTeammate ? 'partner' : 'default',
+    nameTone: data.isYou ? 'you' : data.isTeammate ? 'partner' : 'opponent',
+    // Two against two at a glance: you and your partner in green, the others coral.
+    team: kind === 'open' ? null : data.isYou || data.isTeammate ? 'us' : 'them',
     statusTone:
       line?.tone === 'now' && onTurn && turn?.urgent
         ? 'warning'
@@ -650,10 +652,15 @@ function BacksStackV({
   );
 }
 
-/** The pack in the middle while the dealer deals from it: thicker the more it holds. */
+/**
+ * The pack while the dealer deals from it: thicker the more it holds. Each
+ * card sits a touch off square, fixed by its place in the pack, so it looks
+ * handled rather than machine-stacked and never wobbles between frames.
+ */
 function Pack({ count, backW, cx, cy }: { count: number; backW: number; cx: number; cy: number }) {
   const h = backW * (110 / 78);
   const layers = Math.min(count, 16);
+  const pose = (i: number) => heldPose('tilt', `pack-${i}`, 0);
   return (
     <View
       testID="second-deal-pack"
@@ -666,7 +673,14 @@ function Pack({ count, backW, cx, cy }: { count: number; backW: number; cx: numb
           source={BACK}
           style={[
             styles.back,
-            { position: 'absolute', left: i * 0.6, top: -i * 1.1, width: backW, height: h },
+            {
+              position: 'absolute',
+              left: i * 0.6 + pose(i).dy * 1.2,
+              top: -i * 1.1,
+              width: backW,
+              height: h,
+              transform: [{ rotate: `${pose(i).tilt * 2.2}deg` }],
+            },
           ]}
         />
       ))}

@@ -20,6 +20,7 @@ import {
   northFanTop,
   northFanWidth,
   northSeatBottom,
+  packSpot,
   playedCardTarget,
   sideSeatTop,
   seatNameGap,
@@ -78,7 +79,31 @@ describe('side stacks and the hand', () => {
     expect(landscape.seats.west.y).toBe(landscape.sides.cy);
 
     const portrait = computeLayout(402, 874, { top: 62, bottom: 34, left: 0, right: 0 }, 60, 72);
-    expect(portrait.sides.cy).toBe(portrait.trick.cy);
+    expect(portrait.sides.cy).toBeGreaterThan(portrait.trick.cy);
+    expect(portrait.sides.cy - portrait.trick.cy).toBeLessThanOrEqual(portrait.cardH * 0.45 + 0.01);
+  });
+
+  it('lowers portrait side stacks only as far as a full stack still clears your hand', () => {
+    for (const [width, height, insets] of [
+      [375, 667, { top: 20, bottom: 0, left: 0, right: 0 }],
+      [390, 844, { top: 47, bottom: 34, left: 0, right: 0 }],
+      [430, 932, { top: 59, bottom: 34, left: 0, right: 0 }],
+      [834, 1194, { top: 24, bottom: 20, left: 0, right: 0 }],
+    ]) {
+      const L = computeLayout(width, height, insets, 60, utilityDockReserve(height));
+      const stacks = sideStacks(L);
+      expect(stacks.top).toBeGreaterThanOrEqual(L.trick.cy - stacks.maxHeight / 2);
+      expect(stacks.top + stacks.maxHeight).toBeLessThanOrEqual(L.hand.cy - L.cardH / 2 - 12 + 0.01);
+    }
+  });
+
+  it('keeps the second-deal pack off your hand where the table has room below it', () => {
+    const L = computeLayout(430, 932, { top: 59, bottom: 34, left: 0, right: 0 }, 60, 72);
+    const pack = packSpot(L);
+    const packH = (Math.min(Math.max(L.cardW * 0.8, 36), 68) * 110) / 78;
+    const handBottom = L.hand.cy + (L.cardH * handScale(L.profile)) / 2;
+    expect(pack.y - packH / 2).toBeGreaterThanOrEqual(handBottom);
+    expect(pack.y + packH / 2).toBeLessThanOrEqual(L.bottom);
   });
 
   it('puts the left edge of a fuller hand further left', () => {
