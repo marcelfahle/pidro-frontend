@@ -586,11 +586,11 @@ export default function GameCanvasDev({
   const playCard = motionFixture ? presentation.playCard : onPlayCard;
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
   // Own pace keeps the completed hand's number until Continue deals again.
-  const handNumber = fixtureHand(handFixture) && (handFixture !== 'own' || continued) ? 5 : 4;
+  const handNumber = fixtureHand(handFixture) && (handParam !== 'own' || continued) ? 5 : 4;
   const handResult = useHandResult(
     lastHand,
     viewerOf(model.seats),
-    handFixture === 'own' && !!lastHand && !continued
+    handParam === 'own' && !!lastHand && !continued
   );
   const handLog = useMemo(
     () =>

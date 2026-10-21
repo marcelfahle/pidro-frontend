@@ -79,20 +79,15 @@ const allCases = [
       locale,
       gameOver: {},
     },
-    {
-      name: `scores-${locale}-all-14`,
-      path: `/table-dev?fixture=all-14&locale=${locale}`,
-      testId: 'hand-result',
-      scores: 'all-14',
-      locale,
-    },
-    {
-      name: `scores-${locale}-all-14-theirs`,
-      path: `/table-dev?fixture=all-14-theirs&locale=${locale}`,
-      testId: 'hand-result',
-      scores: 'all-14-theirs',
-      locale,
-    },
+    ...['all-14', 'all-14-theirs'].flatMap((result) =>
+      [false, true].map((waiting) => ({
+        name: `scores-${locale}-${result}${waiting ? '-own' : ''}`,
+        path: `/table-dev?fixture=${result}&locale=${locale}${waiting ? '&hand=own' : ''}`,
+        testId: 'hand-result',
+        scores: result,
+        locale,
+      }))
+    ),
   ]),
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
   {
@@ -1427,7 +1422,11 @@ async function assertClassicLogin(page, testCase) {
 }
 
 async function assertTableMessageReadable(page, name, viewport) {
-  if (name === 'table-hand-own' || name === 'table-hand-own-sv') {
+  if (
+    name === 'table-hand-own' ||
+    name === 'table-hand-own-sv' ||
+    (name.startsWith('scores-') && name.endsWith('-own'))
+  ) {
     const button = page.getByTestId('hand-continue');
     const box = await button.boundingBox();
     assertInsideViewport(`${name}: Continue`, box, viewport);
