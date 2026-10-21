@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { extractGamePresentation } from '../src/channels/gamePayloads';
+import { extractGamePresentation, extractGameState } from '../src/channels/gamePayloads';
 
 const publicRob = {
   dealer: 'south',
@@ -7,6 +7,25 @@ const publicRob = {
   started_at_ms: 10,
   ends_at_ms: 20,
 };
+
+test('keeps the completed snapshot and its transition delay together, including zero', () => {
+  const state = {
+    phase: 'playing',
+    current_player: 'east',
+    current_trick: [],
+    tricks: [],
+  };
+  for (const delay of [0, 80, 1500, 3000]) {
+    for (const envelope of [{ state }, { game_state: state }, { data: { state } }]) {
+      expect(extractGameState({ ...envelope, transition_delay_ms: delay })).toEqual({
+        ...state,
+        transition_delay_ms: delay,
+      });
+    }
+  }
+  expect(state).not.toHaveProperty('transition_delay_ms');
+  expect(extractGameState({ state })).toEqual(state);
+});
 
 test('accepts public and private dealer rob presentations', () => {
   expect(extractGamePresentation({ presentation: { dealer_rob: publicRob } })).toEqual({
@@ -26,7 +45,9 @@ test('accepts public and private dealer rob presentations', () => {
 
 test('rejects malformed dealer rob card arrays and metadata', () => {
   expect(
-    extractGamePresentation({ presentation: { dealer_rob: { ...publicRob, pool: {} } } }),
+    extractGamePresentation({
+      presentation: { dealer_rob: { ...publicRob, pool: {} } },
+    }),
   ).toBeNull();
   expect(
     extractGamePresentation({

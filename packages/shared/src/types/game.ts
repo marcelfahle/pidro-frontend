@@ -153,6 +153,8 @@ export interface ServerLastHand extends ServerHandSummary {
 
 export interface ServerGameState {
   phase: GamePhase;
+  /** Presentation delay carried alongside this snapshot on the channel. */
+  transition_delay_ms?: number;
   variant?: RuleSet;
   winner?: 'north_south' | 'east_west' | null;
   hand_number?: number | null;

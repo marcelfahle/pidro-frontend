@@ -120,7 +120,10 @@ export function extractGameState(
 
   for (const candidate of candidates) {
     if (candidate && typeof candidate === 'object' && 'phase' in candidate) {
-      return candidate as ServerGameState;
+      const delay = asNumber(data.transition_delay_ms ?? nestedData?.transition_delay_ms);
+      return delay != null && delay >= 0
+        ? { ...(candidate as ServerGameState), transition_delay_ms: delay }
+        : (candidate as ServerGameState);
     }
   }
 
