@@ -23,10 +23,9 @@ import { FriendNoticeHost, useShellFriendNotice } from '@/components/shell/Frien
 import { useAppUpdate } from '@/hooks/useAppUpdate';
 import { PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
-import { useFriendsStore } from '@/stores/friends';
+import { useWaitingCount } from '@/hooks/useWaitingCount';
 import { useLobbyStore } from '@/stores/lobby';
 import { gameRoute } from '@/navigation/gameRoute';
-import { seatInvitationsFixture } from '@/features/lobby/fixtures';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 
 const TAB_ROUTES: Record<ShellTab, string> = {
@@ -53,31 +52,23 @@ export default function ShellLayout() {
       <Shell
         forceUpdateNotice={__DEV__ && params.fixture === 'update-notice'}
         fixture={__DEV__ ? params.fixture : undefined}
-        fixtureInvitationCount={seatInvitationsFixture(params.fixture)?.length}
       />
     </FixtureInsets>
   );
 }
 
-function Shell({
-  forceUpdateNotice,
-  fixture,
-  fixtureInvitationCount,
-}: {
-  forceUpdateNotice: boolean;
-  fixture?: string;
-  fixtureInvitationCount?: number;
-}) {
+function Shell({ forceUpdateNotice, fixture }: { forceUpdateNotice: boolean; fixture?: string }) {
   useLobbyChannel();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
   const router = useRouter();
   const pathname = usePathname();
+  const { from } = useGlobalSearchParams<{ from?: string }>();
   const active = activeTabForPath(pathname);
   const reduceMotion = useReducedMotion();
   const focused = useIsFocused();
   const guest = useAuthStore((state) => Boolean(state.user?.guest));
-  const invitationCount = useFriendsStore((state) => state.waiting_for_you ?? 0);
+  const invitationCount = useWaitingCount(fixture);
   const friend = useShellFriendNotice(focused && !guest, fixture);
   const rejoinable = useLobbyStore((state) => state.lobby.my_rejoinable);
   const waitingGame = rejoinable.length > 0 ? rejoinable[0] : null;
@@ -120,7 +111,8 @@ function Shell({
       if (active !== 'table') router.replace('/home');
       return;
     }
-    if (tab !== active) router.replace(TAB_ROUTES[tab] as never);
+    if (tab !== active || (tab === 'friends' && from === 'profile'))
+      router.replace(TAB_ROUTES[tab] as never);
   };
 
   return (
@@ -174,15 +166,7 @@ function Shell({
           orientation={landscape ? 'rail' : 'bottom'}
           active={active}
           tableBadge={Boolean(waitingGame)}
-          invitationCount={
-            friend.fixture
-              ? fixture === 'friend-queue'
-                ? 2
-                : fixture === 'friend-too-late'
-                  ? 0
-                  : 1
-              : (fixtureInvitationCount ?? invitationCount)
-          }
+          invitationCount={invitationCount}
           onSelect={handleSelect}
         />
       ) : null}

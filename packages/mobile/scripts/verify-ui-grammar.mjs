@@ -57,6 +57,42 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  {
+    name: 'home-waiting',
+    path: '/home?fixture=waiting',
+    testId: 'home-screen',
+    authenticated: true,
+    homeProfile: true,
+  },
+  {
+    name: 'home-waiting-guest',
+    path: '/home?fixture=invitations',
+    testId: 'home-screen',
+    authenticated: true,
+    authFixture: guestAuthFixture,
+    homeProfile: true,
+  },
+  {
+    name: 'profile-friends',
+    path: '/profile?fixture=list',
+    testId: 'profile-screen',
+    authenticated: true,
+    homeProfile: true,
+  },
+  {
+    name: 'profile-friends-zero',
+    path: '/profile?fixture=empty',
+    testId: 'profile-screen',
+    authenticated: true,
+    homeProfile: true,
+  },
+  {
+    name: 'friends-from-profile',
+    path: '/friends?fixture=list&from=profile',
+    testId: 'friends-screen',
+    authenticated: true,
+    homeProfile: true,
+  },
   ...['android-gesture', 'android-buttons'].flatMap((safeArea) =>
     [
       { screen: 'home', path: '/home', testId: 'home-screen' },
@@ -987,7 +1023,10 @@ async function assertLocalization(page, testCase, viewport) {
         })
       );
       assert.equal(gaps.length, 3);
-      assert.ok(gaps.every((gap) => gap >= 8), `${testCase.name}: rule badge crowds seat count`);
+      assert.ok(
+        gaps.every((gap) => gap >= 8),
+        `${testCase.name}: rule badge crowds seat count`
+      );
     }
     const flag = target.locator('svg[viewBox="0 0 18 12"]').first();
     if (['header', 'settings'].includes(testCase.words)) {
@@ -1383,7 +1422,7 @@ async function assertNothingUnderNotice(page, screen, viewport) {
 async function assertFriendNotice(page, name, viewport) {
   if (!name.startsWith('friend-notice-')) return;
   const notice = page.getByTestId('friend-notice');
-  const count = name.endsWith('queue') ? 2 : name.endsWith('too-late') ? 0 : 1;
+  const count = name.endsWith('queue') ? 2 : /too-late|accepted|linked$/.test(name) ? 0 : 1;
   assert.equal(await notice.count(), 1);
   if (count) {
     assert.equal(await page.getByTestId('friends-invitation-count').innerText(), String(count));
@@ -2415,6 +2454,49 @@ async function assertCreationPresentation(page, testCase) {
     await page.getByRole('button', { name: /^(Manage |Move to |Lock joins|Unlock joins)/ }).count(),
     0
   );
+}
+
+async function assertHomeProfile(page, testCase, viewport) {
+  const name = testCase.name;
+  if (name === 'home-waiting' || name === 'home-waiting-guest') {
+    const count = name.endsWith('-guest') ? '2' : '3';
+    assert.equal(await page.getByTestId('home-waiting-count').innerText(), count);
+    assertInsideViewport(
+      name,
+      await page.getByTestId('home-waiting-count').boundingBox(),
+      viewport
+    );
+    if (name.endsWith('-guest')) assert.equal(await page.getByTestId('tab-pill').count(), 0);
+    else assert.equal(await page.getByTestId('friends-invitation-count').innerText(), count);
+  }
+  if (name === 'home' || name === 'home-guest')
+    assert.equal(await page.getByTestId('home-waiting-count').count(), 0);
+  if (name === 'profile-friends' || name === 'profile-friends-zero') {
+    const row = page.getByTestId('profile-friends-row');
+    const count = name.endsWith('-zero') ? 0 : 6;
+    assert.equal(await row.getAttribute('aria-label'), `Friends, ${count}`);
+    assertInsideViewport(name, await row.boundingBox(), viewport);
+    await row.click();
+    await page.getByTestId('friends-profile-back').waitFor();
+    assert.equal(new URL(page.url()).searchParams.get('from'), 'profile');
+    await page.getByTestId('friends-profile-back').click();
+    await page.waitForURL((url) => url.pathname.endsWith('/profile'));
+    await page.getByTestId('profile-friends-row').waitFor();
+  }
+  if (name === 'friends-from-profile') {
+    const back = page.getByTestId('friends-profile-back');
+    assertInsideViewport(name, await back.boundingBox(), viewport);
+    await back.click();
+    await page.waitForURL((url) => url.pathname.endsWith('/profile'));
+    await page
+      .getByTestId('tab-pill')
+      .getByRole('button', { name: 'Friends', exact: true })
+      .click();
+    await page.waitForURL((url) => url.pathname.endsWith('/friends'));
+    assert.equal(await page.getByTestId('friends-profile-back').count(), 0);
+  }
+  if (name === 'friends-list')
+    assert.equal(await page.getByTestId('friends-profile-back').count(), 0);
 }
 
 async function assertRuleInteractions(page, testCase, viewport, screenshotDir) {
@@ -3652,7 +3734,7 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
-        if (testCase.words || testCase.ownPace)
+        if (testCase.words || testCase.ownPace || testCase.homeProfile)
           return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
             viewport.name
           );
@@ -3866,6 +3948,7 @@ async function main() {
             'settings',
             'league',
           ].includes(testCase.name) ||
+          testCase.homeProfile ||
           testCase.name.startsWith('edge-home-') ||
           testCase.name.startsWith('edge-profile-')
         ) {
@@ -4051,7 +4134,7 @@ async function main() {
             await page.getByText('Guest · 1 game', { exact: true }).waitFor();
           }
           if (viewport.name === 'landscape' && testCase.name.startsWith('home')) {
-            const expectedHeight = testCase.name === 'home-guest' ? 150 : 170;
+            const expectedHeight = testCase.name.endsWith('-guest') ? 150 : 170;
             for (const tile of ['home-quick-game', 'home-play-online']) {
               const box = await getStableBox(page.getByTestId(tile), page);
               assert.equal(Math.round(box?.height ?? 0), expectedHeight, `${tile} height`);
@@ -4129,6 +4212,7 @@ async function main() {
             fullPage: false,
           });
           await assertHomeHeaderClear(page, testCase.path, caseViewport);
+          await assertHomeProfile(page, testCase, caseViewport);
           await assertLocalization(page, testCase, caseViewport);
           if (testCase.lobbyFixture !== 'locked') await assertLobbyPresentation(page, testCase);
           await assertFriendsPresentation(page, testCase.name);

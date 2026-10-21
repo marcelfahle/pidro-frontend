@@ -43,6 +43,8 @@ import { authStore, useAuthStore } from '@/stores/auth';
 import { useSettingsStore } from '@/stores/settings';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
 import { usePillClearance } from '@/components/shell/TabPill';
+import { friendsFixture } from '@/features/friends/fixtures';
+import { refreshFriends, useFriendsStore } from '@/stores/friends';
 
 type AvatarDraft = Blob | { uri: string; name: string; type: string };
 
@@ -66,7 +68,13 @@ function ProfileContent() {
   const pillClearance = usePillClearance();
   const horizontalPadding = width > height ? PidroSpacing.lg : PidroSpacing.md;
   const user = useAuthStore((state) => state.user);
-  const { classicClaimed } = useLocalSearchParams<{ classicClaimed?: string }>();
+  const { classicClaimed, fixture } = useLocalSearchParams<{
+    classicClaimed?: string;
+    fixture?: string;
+  }>();
+  const previewFriends = friendsFixture(fixture);
+  const storedFriends = useFriendsStore((state) => state.friends);
+  const friendCount = (previewFriends?.friends ?? storedFriends).length;
   const router = useRouter();
   const navigation = useNavigation();
   const refreshIdentity = useProfileIdentity();
@@ -144,6 +152,7 @@ function ProfileContent() {
 
   useFocusEffect(
     useCallback(() => {
+      if (!user?.guest && !friendsFixture(fixture)) void refreshFriends().catch(() => undefined);
       void refreshIdentity()
         .then((next) => {
           if (next) setIdentity(next);
@@ -151,7 +160,7 @@ function ProfileContent() {
         })
         .catch(() => setRefreshError(true))
         .finally(() => setAnswered(true));
-    }, [refreshIdentity])
+    }, [refreshIdentity, user?.guest, fixture])
   );
 
   const updateAvatarForCurrentSession = (
@@ -349,7 +358,26 @@ function ProfileContent() {
             ) : null
           }
         />
-        <TextLink label={t('social.friends')} onPress={() => router.push('/friends')} />
+        <PressableFX
+          testID="profile-friends-row"
+          accessibilityRole="button"
+          accessibilityLabel={`${t('social.friends')}, ${formatNumber(friendCount)}`}
+          onPress={() =>
+            router.push({
+              pathname: '/friends',
+              params: { from: 'profile', ...(__DEV__ && fixture ? { fixture } : {}) },
+            })
+          }
+          style={styles.accountRow}>
+          <Icon name="friends" size={20} />
+          <PidroText role="label" style={styles.accountCopy}>
+            {t('social.friends')}
+          </PidroText>
+          <PidroText role="label" tone="soft">
+            {formatNumber(friendCount)}
+          </PidroText>
+          <Icon name="chevron-right" size={18} />
+        </PressableFX>
         {!user?.guest ? (
           <TextLink label={t('blocks.title')} onPress={() => router.push('/blocked-players')} />
         ) : null}

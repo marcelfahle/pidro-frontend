@@ -291,6 +291,16 @@ areas or keyboard avoidance.
 
 ## Shell friend notices
 
+PID-276: `/home?fixture=waiting` puts three incoming requests on both the avatar
+and Friends tab. `/home?fixture=invitations` also shows the avatar's seat count,
+including with guest auth (no tab). `/profile?fixture=list|empty` shows the full
+Friends row with six or zero friends; tapping it opens Friends with Back to Profile.
+`/friends?fixture=list&from=profile` opens that header directly. Plain tab entry has
+no Back. Grammar cases `home-waiting`, `home-waiting-guest`, `profile-friends`,
+`profile-friends-zero` and `friends-from-profile` check the count, visible controls
+and return/tab navigation at 390×844, 375×667, 844×390 and 768×1024. Long profiles
+and friend lists retain their existing scrolling.
+
 `/home?fixture=friend-request|friend-accepted|friend-linked|friend-seat|friend-offline|friend-queue|friend-too-late` shows the
 real shell notice and Friends badge without a backend. Accepted and too late stay visible in
 the fixture for capture; live ones disappear after four seconds. Too late (PID-254)

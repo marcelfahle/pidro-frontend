@@ -18,6 +18,7 @@ import { InfoCard } from '@/components/friends/InfoCard';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { useNoticeInset, usePillClearance } from '@/components/shell/TabPill';
 import { ActionPill } from '@/components/ui/ActionPill';
+import { BackButton } from '@/components/ui/BackButton';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { CountBadge } from '@/components/ui/CountBadge';
 import { DismissButton } from '@/components/ui/DismissButton';
@@ -62,9 +63,14 @@ function LiveFriends() {
 export default function FriendsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { fixture, player: linkSlug } = useLocalSearchParams<{
+  const {
+    fixture,
+    player: linkSlug,
+    from,
+  } = useLocalSearchParams<{
     fixture?: string;
     player?: string;
+    from?: string;
   }>();
   const preview = friendsFixture(fixture);
   const [previewLists, setPreviewLists] = useState<FriendLists>();
@@ -286,6 +292,9 @@ export default function FriendsScreen() {
         ]}>
         {!guest && !preview ? <LiveFriends /> : null}
         <View style={styles.header}>
+          {from === 'profile' ? (
+            <BackButton testID="friends-profile-back" onPress={() => router.replace('/profile')} />
+          ) : null}
           <View style={styles.heading}>
             <PidroText role="display" accessibilityRole="header" style={styles.title}>
               {t('social.friends')}

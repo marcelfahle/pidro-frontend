@@ -17,6 +17,7 @@ import { useNoticeInset, usePillClearance } from '@/components/shell/TabPill';
 import { UpdateNoticeSlot } from '@/components/shell/UpdateNotice';
 import { Background } from '@/components/ui/Background';
 import { BevelButton } from '@/components/ui/BevelButton';
+import { CountBadge } from '@/components/ui/CountBadge';
 import { HomeTileButton, type HomeTileSize } from '@/components/ui/HomeTileButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroLogo } from '@/components/ui/PidroLogo';
@@ -25,6 +26,7 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { Surface } from '@/components/ui/Surface';
 import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { useProfileIdentity } from '@/hooks/useProfileIdentity';
+import { useWaitingCount } from '@/hooks/useWaitingCount';
 import { TABLE_UNKNOWN_ERROR, useQuickGame } from '@/hooks/useQuickGame';
 import { useAuthStore } from '@/stores/auth';
 import { useFriendsStore } from '@/stores/friends';
@@ -44,6 +46,7 @@ export default function HomeScreen() {
   const tileSize: HomeTileSize = tablet ? 'tablet' : compactLandscape ? 'landscape' : 'phone';
   const params = useLocalSearchParams<{ fixture?: string }>();
   const fixture = __DEV__ ? params.fixture : undefined;
+  const waiting = useWaitingCount(fixture);
   const fixtureInvitations = seatInvitationsFixture(fixture);
   const user = useAuthStore((state) => state.user);
   const storedInvitations = useAuthStore((state) => state.seatInvitations);
@@ -130,15 +133,26 @@ export default function HomeScreen() {
     <View testID="home-header" style={[styles.topBar, tablet && styles.topBarTablet]}>
       <PressableFX
         accessibilityRole="button"
-        accessibilityLabel={t('social.open_profile')}
+        accessibilityLabel={
+          waiting > 0
+            ? `${t('social.open_profile')}, ${t('friend_notice.badge', { count: waiting })}`
+            : t('social.open_profile')
+        }
         onPress={() => router.push('/profile')}
         style={styles.identity}>
-        <PlayerAvatar
-          uri={user?.avatar_url}
-          size={tablet ? 56 : compactLandscape ? 44 : 48}
-          level={level}
-          accessibilityLabel={t('social.profile_picture')}
-        />
+        <View>
+          <PlayerAvatar
+            uri={user?.avatar_url}
+            size={tablet ? 56 : compactLandscape ? 44 : 48}
+            level={level}
+            accessibilityLabel={t('social.profile_picture')}
+          />
+          {waiting > 0 ? (
+            <View testID="home-waiting-count" pointerEvents="none" style={styles.waitingBadge}>
+              <CountBadge count={waiting} size="sm" />
+            </View>
+          ) : null}
+        </View>
         <View style={styles.identityCopy}>
           <PidroText
             style={[styles.playerName, tablet && styles.playerNameTablet]}
@@ -375,6 +389,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   topBarTablet: { gap: 14 },
+  waitingBadge: { position: 'absolute', top: 0, right: -PidroSpacing.xxs },
   identity: {
     minWidth: 0,
     flex: 1,
