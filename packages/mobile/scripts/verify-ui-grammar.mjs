@@ -4447,7 +4447,7 @@ async function main() {
                 }
               }
             } else {
-              await page.getByTestId('race-chart').waitFor();
+              await page.getByTestId('race-chart').getByText('62–29', { exact: true }).waitFor();
               assert.match(await page.getByTestId('race-chart').textContent(), /62–29/);
               await page
                 .getByText(sv ? '● Ledde härifrån · giv 9' : '● Led from here · hand 9', {
