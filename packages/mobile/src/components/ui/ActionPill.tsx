@@ -14,6 +14,7 @@ import { PidroBevel, PidroColors, PidroLayout, PidroRadii, PidroType } from '@/d
 import { Icon, type IconName } from './Icon';
 import { PidroText } from './PidroText';
 import { PressableFX } from './PressableFX';
+import { playSelectionHaptic } from '@/utils/haptics';
 
 export interface ActionPillProps {
   label: string;
@@ -63,7 +64,15 @@ export function ActionPill({
       }
       aria-checked={selected}
       disabled={inert}
-      onPress={onPress}
+      onPress={
+        onPress
+          ? () => {
+              if (inert) return;
+              playSelectionHaptic();
+              onPress();
+            }
+          : undefined
+      }
       onPressIn={pressIn}
       onPressOut={pressOut}
       onFocus={focus}

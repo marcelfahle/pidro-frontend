@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useReducedMotion } from 'react-native-reanimated';
-import { useSettingsStore } from '@/stores/settings';
+import { runHaptic } from '@/utils/haptics';
 import {
   CUT_CARD_STAGGER_MS,
   CUT_CARD_TRAVEL_MS,
@@ -10,12 +10,7 @@ import {
 } from './canvas/animationTiming';
 import type { TableModel } from './canvas/tableModel';
 import { getTableHapticEvents, isYourTurn } from './hapticTransitions';
-
-function runHaptic(effect: () => Promise<void>) {
-  if (Platform.OS === 'web' || !useSettingsStore.getState().hapticEnabled) return;
-  // Haptics are polish, never part of whether a game action succeeds.
-  void effect().catch(() => {});
-}
+export { playSelectionHaptic } from '@/utils/haptics';
 
 export function playActionHaptic() {
   runHaptic(() =>
@@ -31,15 +26,6 @@ export function playWrongHaptic() {
     Platform.OS === 'android'
       ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Reject)
       : Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error)
-  );
-}
-
-/** A choice settled in a set of options: the lightest tick. */
-export function playSelectionHaptic() {
-  runHaptic(() =>
-    Platform.OS === 'android'
-      ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Segment_Tick)
-      : Haptics.selectionAsync()
   );
 }
 

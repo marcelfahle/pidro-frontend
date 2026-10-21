@@ -16,6 +16,7 @@ import {
 } from '@/design/tokens';
 import { gradientBg } from './Bevel';
 import { PidroText } from './PidroText';
+import { playSelectionHaptic } from '@/utils/haptics';
 
 interface PidroSwitchProps {
   value: boolean;
@@ -43,6 +44,13 @@ export function PidroSwitch({
   }, [position, value]);
   const thumbPosition = useAnimatedStyle(() => ({ transform: [{ translateX: position.value }] }));
 
+  const activate = () => {
+    if (disabled) return;
+    onValueChange(!value);
+    // Read the setting after changing it: off is silent immediately.
+    playSelectionHaptic();
+  };
+
   // RN Web's Pressable does not activate switch roles with Space. Own both
   // activation keys in capture so its Enter handler cannot toggle a second time.
   const keyboardProps =
@@ -52,7 +60,7 @@ export function PidroSwitch({
             if (event.key !== ' ' && event.key !== 'Enter') return;
             event.preventDefault();
             event.stopPropagation();
-            if (!disabled && !event.repeat) onValueChange(!value);
+            if (!event.repeat) activate();
           },
         }
       : {};
@@ -65,7 +73,7 @@ export function PidroSwitch({
       aria-checked={value}
       aria-disabled={disabled}
       disabled={disabled}
-      onPress={() => onValueChange(!value)}
+      onPress={activate}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       style={[styles.target, disabled && styles.disabled]}>

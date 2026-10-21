@@ -22,6 +22,7 @@ import { CountBadge } from '@/components/ui/CountBadge';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { gradientBg } from '@/components/ui/Bevel';
 import { useTranslation } from '@/i18n';
+import { playSelectionHaptic } from '@/utils/haptics';
 
 export type ShellTab = 'league' | 'stats' | 'table' | 'friends' | 'settings';
 
@@ -121,7 +122,10 @@ function TabItem({
           : t(`shell.${tab}`)
       }
       accessibilityState={{ selected: active }}
-      onPress={() => onSelect(tab)}
+      onPress={() => {
+        if (!active) playSelectionHaptic();
+        onSelect(tab);
+      }}
       style={[styles.item, active && styles.itemActive]}>
       <Feather
         name={TAB_ICONS[tab]}
@@ -175,7 +179,11 @@ export function TabPill({
             accessibilityRole="button"
             accessibilityLabel={t(tableBadge ? 'shell.rejoinGame' : 'shell.table')}
             accessibilityState={{ selected: active === 'table' }}
-            onPress={() => onSelect('table')}
+            onPress={() => {
+              if (!onSelect || (active === 'table' && !tableBadge)) return;
+              playSelectionHaptic();
+              onSelect('table');
+            }}
             style={styles.item}>
             <View style={[styles.tableRing, gradientBg(PidroBevel.goldRimGradient)]}>
               <View

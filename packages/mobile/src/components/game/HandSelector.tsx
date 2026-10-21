@@ -71,6 +71,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
       footer={
         <BevelButton
           label={t('game.keep_cards')}
+          haptic={false}
           onPress={handleConfirm}
           loading={isSubmitting}
           disabled={selected.size !== TARGET_COUNT}

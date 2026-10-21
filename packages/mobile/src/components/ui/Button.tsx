@@ -3,6 +3,7 @@ import { isValidElement, type ReactNode } from 'react';
 import { PidroColors, PidroLayout, PidroRadii, PidroSpacing, PidroType } from '@/design/tokens';
 import { PidroText } from './PidroText';
 import { PressableFX } from './PressableFX';
+import { playSelectionHaptic } from '@/utils/haptics';
 
 type ButtonVariant = 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
 type ButtonSize = 'default' | 'sm' | 'lg' | 'icon';
@@ -29,6 +30,7 @@ export function Button({
   className,
   textClassName,
   style,
+  onPress,
   ...props
 }: ButtonProps) {
   const isDisabled = disabled || loading;
@@ -64,6 +66,15 @@ export function Button({
       accessibilityLabel={props.accessibilityLabel ?? label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       disabled={isDisabled}
+      onPress={
+        onPress
+          ? (event) => {
+              if (isDisabled) return;
+              playSelectionHaptic();
+              onPress(event);
+            }
+          : undefined
+      }
       className={className}
       style={[
         styles.base,

@@ -31,6 +31,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { PidroBevel } from '@/design/tokens';
+import { playSelectionHaptic } from '@/utils/haptics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -227,6 +228,8 @@ export interface BevelPressableProps extends Omit<PressableProps, 'style' | 'chi
   weight?: BevelWeight;
   radius?: number;
   disabled?: boolean;
+  /** Opt out when the action already owns game-specific feedback. */
+  haptic?: boolean;
   /** The face fills a rim with a set height (tiles, fixed-height CTAs).
    *  Off by default: in native Yoga a growing keyline stretches every
    *  wood button to the free height of its column. */
@@ -242,11 +245,13 @@ export function BevelPressable({
   weight = 'lite',
   radius = 14,
   disabled = false,
+  haptic = true,
   fill = false,
   style,
   contentStyle,
   onPressIn,
   onPressOut,
+  onPress,
   children,
   ...rest
 }: BevelPressableProps) {
@@ -277,6 +282,15 @@ export function BevelPressable({
     <AnimatedPressable
       {...rest}
       disabled={disabled}
+      onPress={
+        onPress
+          ? (event) => {
+              if (disabled) return;
+              if (haptic) playSelectionHaptic();
+              onPress(event);
+            }
+          : undefined
+      }
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       style={[

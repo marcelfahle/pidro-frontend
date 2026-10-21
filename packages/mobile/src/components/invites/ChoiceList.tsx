@@ -4,6 +4,7 @@ import { Icon, type IconName } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroRadii } from '@/design/tokens';
+import { playSelectionHaptic } from '@/utils/haptics';
 
 export interface ChoiceItem {
   id: string;
@@ -47,6 +48,11 @@ export function ChoiceList({
     choices.find((item) => item.id === selectedId)?.id ??
     choices[0]?.id;
   const displayed = compact ? [{ title: '', items: choices }] : sections;
+  const activate = (item: ChoiceItem) => {
+    const handler = item.kind === 'deeper' ? onNavigate : onSelect;
+    playSelectionHaptic();
+    handler(item.id);
+  };
   return (
     <View
       testID="choice-list"
@@ -94,13 +100,13 @@ export function ChoiceList({
                                 choices.length
                             ];
                           refs.current[next.id]?.focus();
-                          if (!step) onSelect(next.id);
+                          if (!step && !event.repeat) activate(next);
                         },
                       }
                     : {})}
                   onFocus={() => setFocused(item.id)}
                   onBlur={() => setFocused(undefined)}
-                  onPress={() => (deeper ? onNavigate(item.id) : onSelect(item.id))}
+                  onPress={() => activate(item)}
                   style={[
                     styles.row,
                     compact && styles.compactRow,
