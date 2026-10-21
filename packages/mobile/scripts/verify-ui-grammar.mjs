@@ -3206,7 +3206,14 @@ async function assertBotVoice(page, testCase, viewport) {
     const card = page.getByTestId('bot-profile-modal');
     const copy = page.getByTestId('bot-profile-copy');
     await copy.getByText(testCase.botCard, { exact: true }).waitFor();
-    await copy.getByText(testCase.locale === 'sv' ? /^Som bot / : /^As a bot,/).waitFor();
+    await copy
+      .getByText(
+        testCase.locale === 'sv'
+          ? 'Alla tre botarna spelar samma ärliga spel: de bjuder vad handen är värd, räknar trumf och stöttar sin partner.'
+          : 'All three bots play the same honest game: they bid what the hand is worth, count trumps and back up their partner.',
+        { exact: true }
+      )
+      .waitFor();
     assert.equal(await card.getByRole('button').count(), 1, 'bots have Close, no social actions');
     for (const text of await copy.locator('[dir="auto"]').all()) {
       assertInsideViewport('bot card text', await getStableBox(text, page), viewport);
