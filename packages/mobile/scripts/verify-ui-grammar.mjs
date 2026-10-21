@@ -1066,7 +1066,7 @@ async function assertLocalization(page, testCase, viewport) {
     }
     if (['pills', 'bots'].includes(testCase.words)) {
       await assertTeamLayout(page, viewport, testCase.name);
-      for (const team of sv ? ['Vi', 'Dom'] : ['Us', 'Them'])
+      for (const team of sv ? ['Vi', 'De'] : ['Us', 'Them'])
         await target.getByText(team, { exact: true }).waitFor();
     }
     if (testCase.words === 'bots')
@@ -1075,7 +1075,7 @@ async function assertLocalization(page, testCase, viewport) {
         `${sv ? 'Snabbspel' : 'Quick game'} · ${label}`
       );
     if (testCase.words === 'loss') {
-      for (const team of sv ? ['Vi', 'Dom'] : ['Us', 'Them'])
+      for (const team of sv ? ['Vi', 'De'] : ['Us', 'Them'])
         await target.getByText(team, { exact: true }).waitFor();
     }
     if (testCase.words === 'lobby') {

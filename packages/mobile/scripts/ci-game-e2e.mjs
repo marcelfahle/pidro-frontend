@@ -221,9 +221,9 @@ async function fillTheOpenSeatThroughUi(page, roomCode, seen) {
   // Still a seated player in the new game: the scoreboard reads Us/Them for a
   // player and N/S – E/W for anybody else. Headless Chromium drops the socket
   // now and then, so allow a rejoin before judging.
-  await page.getByText('DOM', { exact: true }).first().waitFor({ timeout: 30_000 });
+  await page.getByText('DE', { exact: true }).first().waitFor({ timeout: 30_000 });
   await page
-    .getByRole('button', { name: 'VI 0, DOM 0. Alla givar.', exact: true })
+    .getByRole('button', { name: 'VI 0, DE 0. Alla givar.', exact: true })
     .waitFor({ timeout: 15_000 });
   await page.waitForTimeout(3_000);
   if (
