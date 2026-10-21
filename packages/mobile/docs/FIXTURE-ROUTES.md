@@ -383,6 +383,13 @@ testID `home-screen`.
 The away screen that replaces the table after the server removed the player for
 missed turns: a bot is taking the seat, I'm back joins again. testID `game-away-window`.
 
+`fixture=joining|restoring|loading` holds each real game loader for capture, including
+the Skia import loader. testID `game-loading-screen`. The `game-*` grammar cases and
+`edge-{home|profile|table|hand-log}-android-{gesture|buttons}` cover 390×844,
+375×667, 844×390 and 820×1180. Edge cases use synthetic insets, check full-viewport
+image coverage and the hand-log backdrop, and do not certify Android system bars.
+The native modal measures its own insets, independently of the route's fixture.
+
 ## `/join/<code>?fixture=open`
 
 Renders the invite preview with no backend.

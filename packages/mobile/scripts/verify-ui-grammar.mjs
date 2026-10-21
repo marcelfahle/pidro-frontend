@@ -57,6 +57,30 @@ const ageGateFixture = JSON.stringify({
 
 const allCases = [
   { name: 'home', path: '/home', testId: 'home-screen', authenticated: true },
+  ...['android-gesture', 'android-buttons'].flatMap((safeArea) =>
+    [
+      { screen: 'home', path: '/home', testId: 'home-screen' },
+      { screen: 'profile', path: '/profile', testId: 'profile-screen' },
+      { screen: 'table', path: '/table-dev?phase=playing', testId: 'seat-south' },
+      {
+        screen: 'hand-log',
+        path: '/table-dev?phase=playing&count=on',
+        open: "Recent table actions. Opens this hand's log.",
+        testId: 'hand-log-entry-trump-4',
+      },
+    ].map(({ screen, path, ...props }) => ({
+      ...props,
+      name: `edge-${screen}-${safeArea}`,
+      path: `${path}${path.includes('?') ? '&' : '?'}safeArea=${safeArea}`,
+      authenticated: true,
+    }))
+  ),
+  ...['joining', 'restoring', 'loading'].map((fixture) => ({
+    name: `game-${fixture}`,
+    path: `/game/7KQ4M2XB?fixture=${fixture}`,
+    testId: 'game-loading-screen',
+    authenticated: true,
+  })),
   ...['request', 'accepted', 'linked', 'seat', 'offline', 'queue', 'too-late'].map((kind) => ({
     name: `friend-notice-${kind}`,
     path: `/home?fixture=friend-${kind}`,
@@ -3717,7 +3741,9 @@ async function main() {
             'profile-badges',
             'settings',
             'league',
-          ].includes(testCase.name)
+          ].includes(testCase.name) ||
+          testCase.name.startsWith('edge-home-') ||
+          testCase.name.startsWith('edge-profile-')
         ) {
           await page.route('**/api/v1/profile', async (route) => {
             await profileAnswered;
@@ -3920,6 +3946,33 @@ async function main() {
             await page.waitForTimeout(1_200);
           }
           await waitForScreenshotReady(page);
+          if (testCase.name.startsWith('edge-') || testCase.testId === 'game-loading-screen') {
+            const background = await page.evaluate(() =>
+              [...document.images].some((image) => {
+                if (!image.src.includes('/bg.png')) return false;
+                const box = image.getBoundingClientRect();
+                return (
+                  box.top <= 0 &&
+                  box.left <= 0 &&
+                  box.bottom >= innerHeight &&
+                  box.right >= innerWidth
+                );
+              })
+            );
+            assert.ok(background, `${testCase.name}: the image covers all four viewport edges`);
+            if (testCase.open) {
+              const backdrop = await page.getByTestId('table-utility-window').evaluate((window) => {
+                const box = window.parentElement.getBoundingClientRect();
+                return { top: box.top, bottom: box.bottom };
+              });
+              assert.equal(backdrop.top, 0, `${testCase.name}: backdrop reaches the top`);
+              assert.equal(
+                backdrop.bottom,
+                caseViewport.height,
+                `${testCase.name}: backdrop reaches the bottom`
+              );
+            }
+          }
           if (pageErrors.length) {
             throw new Error(`${testCase.name} page errors: ${pageErrors.join(' | ')}`);
           }

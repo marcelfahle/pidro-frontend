@@ -51,6 +51,15 @@ const appUpdateCases = ['en', 'sv'].flatMap((locale) =>
   ['named', 'embedded', 'fallback'].map((fixture) => `locale-${locale}-settings-update-${fixture}`)
 );
 
+const backgroundCases = [
+  ...['android-gesture', 'android-buttons'].flatMap((mode) =>
+    ['home', 'profile', 'table', 'hand-log'].map((screen) => `edge-${screen}-${mode}`)
+  ),
+  'game-joining',
+  'game-restoring',
+  'game-loading',
+];
+
 export const UI_VIEWPORTS = [
   {
     name: 'iphone-insets-portrait',
@@ -73,6 +82,7 @@ export const UI_VIEWPORTS = [
     width: 375,
     height: 667,
     cases: [
+      ...backgroundCases,
       'classic-login',
       'friends-all',
       'friends-classic',
@@ -194,6 +204,7 @@ export const UI_VIEWPORTS = [
     height: 1180,
     lobbyViewport: { name: 'lobby-tablet-portrait', width: 834, height: 1194 },
     cases: [
+      ...backgroundCases,
       'welcome',
       'home',
       'home-guest',
