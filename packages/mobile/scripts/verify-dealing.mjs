@@ -19,10 +19,10 @@ const sorted = [
   'hearts_12',
   'hearts_10',
   'hearts_3',
-  'diamonds_11',
-  'diamonds_6',
   'clubs_13',
   'clubs_8',
+  'diamonds_11',
+  'diamonds_6',
 ];
 // Explicit expectations, independent of the production clockwise helper.
 const orders = {
