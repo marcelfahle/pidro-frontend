@@ -4455,6 +4455,10 @@ async function main() {
           if (testCase.paceSettings) {
             const pace = page.getByTestId('settings-pace');
             await pace.scrollIntoViewIfNeeded();
+            for (const choice of await pace.getByRole('radio').all()) {
+              const box = await choice.boundingBox();
+              assert.ok(box.height >= 48, 'Every Pace choice must be at least 48 points tall');
+            }
             const own = pace.getByRole('radio').nth(1);
             await own.click();
             assert.equal(await own.getAttribute('aria-checked'), 'true');

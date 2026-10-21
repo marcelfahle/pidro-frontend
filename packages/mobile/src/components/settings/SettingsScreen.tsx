@@ -99,6 +99,7 @@ export function SettingsScreen({
               {(['quick', 'own'] as const).map((value) => (
                 <ActionPill
                   key={value}
+                  size="lg"
                   label={t(value === 'quick' ? 'settings.paceQuick' : 'settings.paceOwn')}
                   selected={pace === value}
                   onPress={() => setPace(value)}

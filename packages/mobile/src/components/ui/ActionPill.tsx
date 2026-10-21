@@ -20,7 +20,7 @@ export interface ActionPillProps {
   label: string;
   icon?: IconName;
   variant?: 'default' | 'gold';
-  size?: 'md' | 'sm';
+  size?: 'lg' | 'md' | 'sm';
   /** Makes the pill a choice chip (a radio); the chosen one is gold. */
   selected?: boolean;
   loading?: boolean;
@@ -82,6 +82,7 @@ export function ActionPill({
         style={[
           styles.pill,
           sm ? styles.sm : styles.md,
+          size === 'lg' && styles.lg,
           icon || loading ? (sm ? styles.smWithIcon : styles.mdWithIcon) : null,
           gold ? styles.gold : styles.cyan,
           pressed && (gold ? styles.goldPressed : styles.cyanPressed),
@@ -120,6 +121,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   md: { height: 44, paddingHorizontal: 14 },
+  lg: { height: 48 },
   sm: { height: 38, paddingHorizontal: 12 },
   mdWithIcon: { paddingLeft: 11 },
   smWithIcon: { paddingLeft: 9 },
