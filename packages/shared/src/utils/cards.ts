@@ -52,19 +52,42 @@ function isSameColor(a: Suit, b: Suit): boolean {
   return aIsRed === bIsRed;
 }
 
-const SUIT_ORDER: Suit[] = ['spades', 'hearts', 'diamonds', 'clubs'];
+const SUIT_ORDER: Suit[] = ['spades', 'hearts', 'clubs', 'diamonds'];
 
 export function sortCards(cards: Card[], trumpSuit: Suit | null | undefined): Card[] {
+  const isTrump = (card: Card) =>
+    !!trumpSuit &&
+    (card.suit === trumpSuit || (card.rank === 5 && isSameColor(card.suit, trumpSuit)));
+  const sideSuits = SUIT_ORDER.filter((suit) =>
+    cards.some((card) => card.suit === suit && !isTrump(card))
+  );
+  const black = sideSuits.filter((suit) => isSameColor(suit, 'spades'));
+  const red = sideSuits.filter((suit) => isSameColor(suit, 'hearts'));
+  // Start with the majority color, so a lone opposite suit separates its pair.
+  // Ties continue the alternation from trump, if the hand holds any.
+  let useRed =
+    red.length > black.length ||
+    (red.length === black.length && !!trumpSuit && cards.some(isTrump) &&
+      isSameColor(trumpSuit, 'spades'));
+  const order: Suit[] = [];
+  while (black.length || red.length) {
+    const next = (useRed ? red : black).shift() ?? (useRed ? black : red).shift();
+    if (next) order.push(next);
+    useRed = !useRed;
+  }
+  const rank = (card: Card) =>
+    card.rank === 1 ? 14 : isTrump(card) && card.rank === 5 && card.suit !== trumpSuit ? 4.5 : card.rank;
   return [...cards].sort((a, b) => {
-    const aIsTrump = trumpSuit && a.suit === trumpSuit;
-    const bIsTrump = trumpSuit && b.suit === trumpSuit;
+    const aIsTrump = isTrump(a);
+    const bIsTrump = isTrump(b);
     if (aIsTrump && !bIsTrump) return -1;
     if (!aIsTrump && bIsTrump) return 1;
+    if (aIsTrump && bIsTrump) return rank(b) - rank(a);
 
-    const aSuitIndex = SUIT_ORDER.indexOf(a.suit);
-    const bSuitIndex = SUIT_ORDER.indexOf(b.suit);
+    const aSuitIndex = order.indexOf(a.suit);
+    const bSuitIndex = order.indexOf(b.suit);
     if (aSuitIndex !== bSuitIndex) return aSuitIndex - bSuitIndex;
 
-    return b.rank - a.rank;
+    return rank(b) - rank(a);
   });
 }
