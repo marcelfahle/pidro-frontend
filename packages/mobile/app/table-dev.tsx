@@ -66,6 +66,15 @@ const BID_ROUNDS: Record<string, { dealer: Position; bids: ServerBid[] }> = {
 };
 const BID_STEP_MS = 450;
 
+const DETAILS_HAND: Card[] = [
+  { rank: 13, suit: 'diamonds' },
+  { rank: 5, suit: 'clubs' },
+  { rank: 13, suit: 'hearts' },
+  { rank: 5, suit: 'spades' },
+  { rank: 13, suit: 'clubs' },
+  { rank: 14, suit: 'spades' },
+];
+
 // `out=`: hand 4 against the bot crew, two tricks in. Jocke (East) bid 6 and
 // took the first trick for 2; you took the second, where Antti's 2 of trump
 // fell. Marcel (West) is out of trumps and folds two cards face down. `lone`:
@@ -432,6 +441,7 @@ function TableDevHarness() {
     out?: string;
     trick?: string;
     count?: string;
+    bidder?: Position;
     hand?: string;
     you?: string;
     end?: string;
@@ -523,6 +533,8 @@ function TableDevHarness() {
             botTrick={params.trick === 'bots'}
             fold={fixture === 'fold' ? 'count' : fixture === 'fold-legacy' ? 'legacy' : undefined}
             countHelp={params.count === 'on'}
+            details={fixture === 'details'}
+            bidder={params.bidder}
             invitation={INVITATIONS[params.invitation ?? ''] ?? null}
           />
         </FixtureInsets>
@@ -739,6 +751,8 @@ function RolePreview({
   bidRound = null,
   outPlayers = null,
   countHelp = false,
+  details = false,
+  bidder = 'east',
   botTrick = false,
   invitation = null,
   fold,
@@ -756,6 +770,8 @@ function RolePreview({
   bidRound?: (typeof BID_ROUNDS)[string] | null;
   outPlayers?: (typeof OUT_PLAYERS)[keyof typeof OUT_PLAYERS] | null;
   countHelp?: boolean;
+  details?: boolean;
+  bidder?: Position;
   botTrick?: boolean;
   invitation?: SeatInvitation | null;
   fold?: 'count' | 'legacy';
@@ -805,7 +821,7 @@ function RolePreview({
       automaticRobbed[3],
       automaticRobbed[4],
     ];
-    useSettingsStore.setState({ countHelp });
+    useSettingsStore.setState({ countHelp, showBid: true });
     store.reset();
     store.initFromRoom({ room: tableRoom, youPlayerId: 'p-south' });
     store.setRole(role);
@@ -882,6 +898,16 @@ function RolePreview({
         highest_bid: { position: 'east', amount: 6 },
         current_trick: BOT_TRICK,
       }),
+      ...(details && {
+        highest_bid: { position: bidder, amount: 7 },
+        players: {
+          north: { hand: 6 },
+          east: { hand: 6 },
+          west: { hand: 6 },
+          south: { hand: DETAILS_HAND },
+        },
+        current_trick: [],
+      }),
       // PID-209: you dealt and won the bid; hearts, with the 5♦, is your best suit.
       ...(previewPhase === 'declaring' && {
         dealer: 'south',
@@ -940,8 +966,8 @@ function RolePreview({
                   { type: 'play_card', card: { rank: 13, suit: 'hearts' } },
                   { type: 'play_card', card: { rank: 5, suit: 'clubs' } },
                 ]
-              : outPlayers || botTrick
-                ? (botTrick ? BOT_TRICK_HAND : OUT_HAND).map((card) => ({
+              : outPlayers || botTrick || details
+                ? (details ? DETAILS_HAND : botTrick ? BOT_TRICK_HAND : OUT_HAND).map((card) => ({
                     type: 'play_card' as const,
                     card,
                   }))
@@ -981,6 +1007,8 @@ function RolePreview({
     bidRound,
     outPlayers,
     countHelp,
+    details,
+    bidder,
     botTrick,
     tableRoom,
   ]);

@@ -35,6 +35,8 @@ export function SettingsScreen({
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
   const countHelp = useSettingsStore((state) => state.countHelp);
   const toggleCountHelp = useSettingsStore((state) => state.toggleCountHelp);
+  const showBid = useSettingsStore((state) => state.showBid);
+  const toggleShowBid = useSettingsStore((state) => state.toggleShowBid);
   const pace = useSettingsStore((state) => state.pace);
   const setPace = useSettingsStore((state) => state.setPace);
   const signedIn = useAuthStore((state) => Boolean(state.user));
@@ -84,6 +86,12 @@ export function SettingsScreen({
             subtitle={t('settings.countHelpHint')}
             value={countHelp}
             onValueChange={toggleCountHelp}
+          />
+          <SettingRow
+            title={t('settings.showBid')}
+            subtitle={t('settings.showBidHint')}
+            value={showBid}
+            onValueChange={toggleShowBid}
           />
           <Surface variant="subtle" style={styles.rulesRow} testID="settings-pace">
             <PidroText role="label">{t('settings.pace')}</PidroText>

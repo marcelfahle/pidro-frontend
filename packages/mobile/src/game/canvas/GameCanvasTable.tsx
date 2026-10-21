@@ -213,6 +213,7 @@ function TimedSeatLayer({
   quiet,
   secondDeal,
   held,
+  bid,
 }: {
   seats: TableModel['seats'];
   dealerRel: RelativePosition | null;
@@ -225,6 +226,7 @@ function TimedSeatLayer({
   quiet: boolean;
   secondDeal: ComponentProps<typeof SeatLayer>['secondDeal'];
   held: ComponentProps<typeof SeatLayer>['held'];
+  bid: ComponentProps<typeof SeatLayer>['bid'];
 }) {
   const turnTimer = useGameStore((state) => state.turnTimer);
   const ownPace = useGameStore((state) => state.serverState?.pace === 'own');
@@ -253,6 +255,7 @@ function TimedSeatLayer({
       quiet={quiet}
       secondDeal={secondDeal}
       held={held}
+      bid={bid}
       onProfile={Object.fromEntries(
         players
           .filter(canViewPlayer)
@@ -288,6 +291,7 @@ export function GameCanvasTable({
   const isSpectator = role === 'spectator';
   const textures = useCardTextures();
   const countHelp = useSettingsStore((state) => state.countHelp);
+  const showBid = useSettingsStore((state) => state.showBid);
   // Your own pick from the pack plays out in your hand: the pool lands in it,
   // and what you keep is what the server sends once the pick is done.
   const serverModel = useTableModel(
@@ -496,6 +500,27 @@ export function GameCanvasTable({
         quiet={handResult.result != null}
         secondDeal={model.secondDealShow}
         held={model.held}
+        bid={
+          showBid &&
+          !dealing &&
+          [
+            'declaring',
+            'declaring_trump',
+            'trump_declaration',
+            'discarding',
+            'second_deal',
+            'playing',
+          ].includes(controller.phase ?? '') &&
+          highBid &&
+          typeof highBid.amount === 'number'
+            ? {
+                seat: viewModel?.players.find(
+                  (player) => player.absolutePosition === highBid.position
+                )?.relativePosition,
+                amount: highBid.amount,
+              }
+            : undefined
+        }
       />
       {countHelp ? (
         <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />

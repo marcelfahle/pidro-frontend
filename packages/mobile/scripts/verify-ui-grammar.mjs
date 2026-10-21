@@ -731,6 +731,28 @@ const allCases = [
     bidLines: { north: 'Bid 7', east: 'Passed', south: 'Bid 9 · high' },
     viewports: { 'compact-landscape': { width: 640, height: 360 } },
   },
+  ...['north', 'east', 'south', 'west'].map((seat) => ({
+    name: `table-details-${seat}`,
+    path: `/table-dev?fixture=details&bidder=${seat}`,
+    testId: `seat-${seat}-bid`,
+    details: seat,
+  })),
+  {
+    name: 'table-details-bidding',
+    path: '/table-dev?fixture=details&phase=bidding',
+    testId: 'bidding-window',
+    details: 'bidding',
+  },
+  ...['declaring', 'second_deal', 'game_over'].map((phase) => ({
+    name: `table-details-${phase}`,
+    path: `/table-dev?fixture=details&phase=${phase}`,
+    testId:
+      phase === 'game_over'
+        ? 'game-over-overlay'
+        : `seat-${phase === 'declaring' ? 'south' : 'east'}-bid`,
+    details: phase === 'game_over' ? 'ended' : phase === 'declaring' ? 'south' : 'east',
+    detailsPhase: phase,
+  })),
   // PID-267: the bots bid while the cards are still being dealt. Until the
   // deal ends no seat and no log line shows a bid; then all three show.
   {
@@ -2961,7 +2983,11 @@ async function assertPlayMotion(page, position) {
         observer.disconnect();
       }
     });
-    observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['aria-label'] });
+    observer.observe(document, {
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['aria-label'],
+    });
   });
   // Hit the exposed left edge, not the neighbour overlapping the card's centre.
   await page.mouse.click(target.x - target.w / 2 + 10, target.y);
@@ -2980,15 +3006,14 @@ async function assertPlayMotion(page, position) {
   await page.waitForFunction(() => window.__pidroPlayHold, null, { timeout: 10_000 });
   const hold = await page.evaluate(() => window.__pidroPlayHold);
   assert.equal(hold[0].lit, null, 'the next turn lit before the fourth card landed');
-  assert.ok(hold.slice(0, -1).every(({ lit }) => lit === null), 'a seat flashed during the hold');
+  assert.ok(
+    hold.slice(0, -1).every(({ lit }) => lit === null),
+    'a seat flashed during the hold'
+  );
   const heldMs = hold.at(-1).time - hold[0].time;
   assert.ok(heldMs >= 1450, `the 1500ms trick hold lasted only ${heldMs.toFixed(0)}ms`);
   console.log(`play hold ${position}: ${heldMs.toFixed(0)}ms, no intervening seat light`);
-  assert.equal(
-    hold.at(-1).lit,
-    'south',
-    'the server-selected leader did not light after the hold'
-  );
+  assert.equal(hold.at(-1).lit, 'south', 'the server-selected leader did not light after the hold');
   assert.equal(await page.getByTestId('rendered-played-card-count-4').count(), 1);
 }
 
@@ -3141,6 +3166,101 @@ async function assertBidLines(page, testCase, viewport) {
       throw new Error(`${testCase.name}: your bid line leaves its seat in ${viewport.name}`);
     }
   }
+}
+
+async function assertTableDetails(page, testCase, viewport) {
+  if (!testCase.details) return;
+  const chips = page.locator('[data-testid$="-bid"]');
+  if (testCase.details === 'bidding' || testCase.details === 'ended') {
+    assert.equal(await chips.count(), 0, 'no reminder chip before or after the hand');
+    return;
+  }
+  assert.equal(await chips.count(), 1, 'only the bidder has a chip');
+  assert.equal(await chips.innerText(), testCase.detailsPhase === 'declaring' ? '8' : '7');
+  assert.equal(
+    await chips.evaluate((chip) => getComputedStyle(chip).borderTopColor),
+    ['north', 'south'].includes(testCase.details) ? 'rgb(225, 173, 58)' : 'rgb(255, 180, 185)',
+    'chip uses the bidding team tone'
+  );
+  assertInsideViewport('bid chip', await chips.boundingBox(), viewport);
+  const hand = await page.getByTestId('player-hand-top').boundingBox();
+  const targets = JSON.parse(
+    await page.getByTestId('play-presentation').getAttribute('aria-label')
+  );
+  const chip = await chips.boundingBox();
+  assert.ok(
+    chip.y + chip.height <= hand.y ||
+      chip.x + chip.width <= hand.x ||
+      chip.y >= hand.y + (targets.hand[0]?.h ?? 0),
+    'bid chip stays clear of your hand'
+  );
+  const dealt = JSON.parse(await page.getByTestId('deal-presentation').getAttribute('aria-label'));
+  if (!testCase.detailsPhase)
+    assert.deepEqual(dealt.hand, [
+      'spades_14',
+      'spades_5',
+      'clubs_5',
+      'hearts_13',
+      'clubs_13',
+      'diamonds_13',
+    ]);
+  assert.equal(await page.getByTestId('last-trick').count(), 0, 'count help is independent');
+  const poses = () =>
+    page.locator('[data-testid$="-cards"] img').evaluateAll((images) =>
+      images.map((image) => {
+        const card = image.parentElement;
+        const flight = card.parentElement;
+        const fan = flight.parentElement;
+        const north = !!image.closest('[data-testid="seat-north-cards"]');
+        const count = fan.querySelectorAll('img').length;
+        const index = [...fan.querySelectorAll('img')].indexOf(image);
+        const step =
+          count <= 1
+            ? 0
+            : north
+              ? (parseFloat(fan.style.width) - parseFloat(flight.style.width)) / (count - 1)
+              : (parseFloat(fan.style.height) - parseFloat(flight.style.height)) / (count - 1);
+        return {
+          north,
+          index,
+          step,
+          rotation: card.style.transform,
+          translation: flight.style.transform,
+        };
+      })
+    );
+  const before = await poses();
+  assert.equal(
+    before.length,
+    testCase.detailsPhase === 'declaring' ? 27 : 18,
+    'actual opponent backs'
+  );
+  for (const pose of before) {
+    const angle = Number(pose.rotation.match(/rotate\(([-\d.]+)deg\)/)?.[1]);
+    const x = Number(pose.translation.match(/translateX\(([-\d.]+)px\)/)?.[1]);
+    const y = Number(pose.translation.match(/translateY\(([-\d.]+)px\)/)?.[1]);
+    assert.ok(Math.abs(angle - (pose.north ? 0 : 90)) <= 1, 'at most one degree');
+    assert.ok(
+      Math.abs(x - (pose.north ? pose.index * pose.step : 0)) <= 1.01,
+      'at most one pixel x'
+    );
+    assert.ok(
+      Math.abs(y - (pose.north ? 0 : pose.index * pose.step)) <= 1.01,
+      'at most one pixel y'
+    );
+  }
+  await page.waitForTimeout(150);
+  assert.deepEqual(await poses(), before, 'backs never jitter between frames');
+  await page.getByRole('button', { name: 'Table settings', exact: true }).click();
+  const toggle = page.getByRole('switch', { name: 'Show the bid during play', exact: true });
+  assert.equal(await toggle.getAttribute('aria-checked'), 'true');
+  await toggle.click();
+  assert.equal(await toggle.getAttribute('aria-checked'), 'false');
+  assert.equal(await chips.count(), 0, 'off hides the bid immediately');
+  await toggle.click();
+  assert.equal(await chips.count(), 1, 'on restores it without count help');
+  assert.deepEqual(await poses(), before, 'backs stay fixed across preference rerenders');
+  await page.getByRole('button', { name: 'Close Table settings', exact: true }).click();
 }
 
 // A seat that played says so aloud and on screen, inside the viewport.
@@ -3580,10 +3700,18 @@ async function assertSwitchInteractions(page, name, screenshotDir) {
       .getByTestId('ui-switch-panel')
       .screenshot({ path: resolve(screenshotDir, 'ui-switches.png') });
   } else {
+    const bid = page.getByRole('switch', { name: 'Show the bid during play', exact: true });
+    const count = page.getByRole('switch', { name: 'Help me keep count', exact: true });
+    const originalCount = await checked(count);
+    assert.equal(await checked(bid), 'true');
+    await bid.click();
+    assert.equal(await checked(bid), 'false');
+    assert.equal(await checked(count), originalCount, 'Bid reminder is independent of count help');
     await page.reload();
     await first.waitFor();
     assert.equal(await checked(first), 'false', 'Sound preference must survive reload');
     assert.equal(await checked(second), 'true', 'Haptics must remain unchanged');
+    assert.equal(await checked(bid), 'false', 'Bid preference must survive reload');
   }
 }
 
@@ -3734,7 +3862,7 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
-        if (testCase.words || testCase.ownPace || testCase.homeProfile)
+        if (testCase.words || testCase.ownPace || testCase.homeProfile || testCase.details)
           return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
             viewport.name
           );
@@ -4231,6 +4359,7 @@ async function main() {
           await assertDeleteAccountConfirmation(page, testCase.name, screenshotDir);
           await assertAuthSheetKeepsTyping(page, testCase.name);
           await assertSwitchInteractions(page, testCase.name, screenshotDir);
+          await assertTableDetails(page, testCase, caseViewport);
           await assertRowControls(page, testCase.name, screenshotDir);
           await assertFriendComponents(page, testCase.name, screenshotDir);
           await assertRuleInteractions(page, testCase, viewport, screenshotDir);

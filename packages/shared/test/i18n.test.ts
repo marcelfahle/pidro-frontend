@@ -130,6 +130,7 @@ describe("settings language migration and hydration", () => {
       soundEnabled: false,
       pins: { player: "none" },
       preferredRuleSet: "louisiana",
+      showBid: true,
     });
   });
 

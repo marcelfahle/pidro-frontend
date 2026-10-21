@@ -38,6 +38,8 @@ export function TableSettings({
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
   const countHelp = useSettingsStore((state) => state.countHelp);
   const toggleCountHelp = useSettingsStore((state) => state.toggleCountHelp);
+  const showBid = useSettingsStore((state) => state.showBid);
+  const toggleShowBid = useSettingsStore((state) => state.toggleShowBid);
   const pace = useSettingsStore((state) => state.pace);
   const setPace = useSettingsStore((state) => state.setPace);
   const close = () => setPanel(null);
@@ -129,6 +131,19 @@ export function TableSettings({
                   accessibilityLabel={t('settings.countHelp')}
                   value={countHelp}
                   onValueChange={toggleCountHelp}
+                />
+              </View>
+              <View style={styles.row}>
+                <View style={styles.copy}>
+                  <PidroText role="label">{t('settings.showBid')}</PidroText>
+                  <PidroText role="metadata" tone="muted">
+                    {t('settings.showBidHint')}
+                  </PidroText>
+                </View>
+                <PidroSwitch
+                  accessibilityLabel={t('settings.showBid')}
+                  value={showBid}
+                  onValueChange={toggleShowBid}
                 />
               </View>
             </View>

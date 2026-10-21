@@ -19,6 +19,7 @@ interface SettingsState {
   hasSeenLouisianaRules: boolean;
   /** Beginner aids at the table: the bidders' count and the last trick (PID-220). */
   countHelp: boolean;
+  showBid: boolean;
   /** Requested pace at tables where this player is the only human. */
   pace: TablePace;
 
@@ -30,6 +31,7 @@ interface SettingsState {
   setLobbyRuleSetFilter: (lobbyRuleSetFilter: RuleSet | 'all') => void;
   markLouisianaRulesSeen: () => void;
   toggleCountHelp: () => void;
+  toggleShowBid: () => void;
   setPace: (pace: TablePace) => void;
 }
 
@@ -60,6 +62,7 @@ export function createSettingsStore({
         lobbyRuleSetFilter: null,
         hasSeenLouisianaRules: false,
         countHelp: false,
+        showBid: true,
         pace: 'quick',
 
         setTheme: (theme) => set({ theme }),
@@ -70,6 +73,7 @@ export function createSettingsStore({
         setLobbyRuleSetFilter: (lobbyRuleSetFilter) => set({ lobbyRuleSetFilter }),
         markLouisianaRulesSeen: () => set({ hasSeenLouisianaRules: true }),
         toggleCountHelp: () => set((state) => ({ countHelp: !state.countHelp })),
+        toggleShowBid: () => set((state) => ({ showBid: !state.showBid })),
         setPace: (pace) => set({ pace }),
       }),
       {

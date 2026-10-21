@@ -18,6 +18,8 @@ export const en = {
   "settings.countHelp": "Help me keep count",
   "settings.countHelpHint":
     "Show the hand's log, the points as each trick is taken, which card is winning, and the last trick.",
+  "settings.showBid": "Show the bid during play",
+  "settings.showBidHint": "Keep the winning bid beside the bidder until the hand ends.",
   "settings.pace": "Pace",
   "settings.paceQuick": "Quick",
   "settings.paceOwn": "At my own pace",
@@ -132,6 +134,8 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "settings.countHelp": "Hjälp mig hålla räkningen",
   "settings.countHelpHint":
     "Visa handens logg, poängen när varje stick tas, vilket kort som vinner och förra sticket.",
+  "settings.showBid": "Visa budet under spelet",
+  "settings.showBidHint": "Visa det vinnande budet vid budgivaren tills handen är slut.",
   "settings.pace": "Tempo",
   "settings.paceQuick": "Snabbt",
   "settings.paceOwn": "I min egen takt",

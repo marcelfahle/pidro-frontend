@@ -29,7 +29,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlayerAvatar, type PlayerAvatarProps } from '@/components/ui/PlayerAvatar';
 import { PressableFX } from '@/components/ui/PressableFX';
-import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
+import { PidroText } from '@/components/ui/PidroText';
+import { PidroBevel, PidroColors, PidroLayout, PidroRadii, PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts, textFits } from '@/features/avatar';
 import { seatLine, type SeatLine } from '@/features/game/seatLine';
 import {
@@ -139,6 +140,7 @@ type Props = {
   secondDeal?: SecondDealShow;
   /** How every hand holds its cards. */
   held?: HeldStyle;
+  bid?: { seat: RelativePosition | undefined; amount: number };
 };
 
 export function SeatLayer({
@@ -153,6 +155,7 @@ export function SeatLayer({
   quiet = false,
   secondDeal,
   held = HELD_STYLE,
+  bid,
 }: Props) {
   useTranslation();
   const out = REL.map((rel) => !!seats[rel]?.out);
@@ -366,6 +369,40 @@ export function SeatLayer({
               })}
           />
         );
+        const bidInset =
+          portrait && !tight
+            ? ((rel === 'north' || rel === 'south' ? centerColumn : sideColumn) - size) / 2 -
+              PidroSpacing.xxs
+            : 0;
+        const decorated = (
+          <View>
+            {identity}
+            {!quiet && bid?.seat === rel ? (
+              <View
+                testID={`seat-${rel}-bid`}
+                pointerEvents="none"
+                style={[
+                  styles.bid,
+                  rel === 'east' ? { right: bidInset } : { left: bidInset },
+                  {
+                    borderColor:
+                      data.isYou || data.isTeammate ? PidroColors.gold : PidroColors.theirPidro,
+                  },
+                ]}>
+                <PidroText
+                  role="label"
+                  maxFontSizeMultiplier={1}
+                  accessibilityLabel={t('game.bid', { amount: bid.amount })}
+                  style={{
+                    color:
+                      data.isYou || data.isTeammate ? PidroColors.gold : PidroColors.theirPidro,
+                  }}>
+                  {bid.amount}
+                </PidroText>
+              </View>
+            ) : null}
+          </View>
+        );
         const avatar = onProfile?.[rel] ? (
           <PressableFX
             accessibilityRole="button"
@@ -374,10 +411,10 @@ export function SeatLayer({
             })}, ${avatarLabel({ ...seat, ...(tight && { level: null, pin: null }) })}`}
             onPress={onProfile[rel]}
             style={{ minHeight: PidroLayout.touchTarget, minWidth: PidroLayout.touchTarget }}>
-            {identity}
+            {decorated}
           </PressableFX>
         ) : (
-          <View pointerEvents="none">{identity}</View>
+          <View pointerEvents="none">{decorated}</View>
         );
 
         if (rel === 'south' && tight) {
@@ -499,6 +536,7 @@ export function SeatLayer({
                 backsEdge,
               ]}>
               <BacksStackV
+                seat={rel}
                 count={data.out ? 0 : (data.cardCount ?? 0)}
                 cardW={L.cardW}
                 held={held}
@@ -551,9 +589,9 @@ function BacksFan({
           source={BACK}
           index={i}
           dealing={dealing}
-          x={i * overlap}
+          x={i * overlap + heldPose(held, `north-x-${i}`, 0).dy}
           // North faces you: its fan turns the other way.
-          y={heldPose(held, `north-${i}`, (n - 1) / 2 - i).dy * 0.6}
+          y={heldPose(held, `north-${i}`, (n - 1) / 2 - i).dy}
           tilt={heldPose(held, `north-${i}`, (n - 1) / 2 - i).tilt}
           originX={total / 2 - w / 2 + originX}
           originY={originY - h / 2}
@@ -566,6 +604,7 @@ function BacksFan({
 }
 
 function BacksStackV({
+  seat,
   count,
   cardW,
   dealing,
@@ -573,6 +612,7 @@ function BacksStackV({
   originDy = 0,
   held = HELD_STYLE,
 }: {
+  seat: RelativePosition;
   held?: HeldStyle;
   count: number;
   cardW: number;
@@ -596,9 +636,9 @@ function BacksStackV({
           source={BACK}
           index={i}
           dealing={dealing}
-          x={heldPose(held, `side-${i}`, i - (n - 1) / 2).dy * 0.6}
-          y={i * overlap}
-          tilt={heldPose(held, `side-${i}`, i - (n - 1) / 2).tilt}
+          x={heldPose(held, `${seat}-${i}`, i - (n - 1) / 2).dy}
+          y={i * overlap + heldPose(held, `${seat}-y-${i}`, 0).dy}
+          tilt={heldPose(held, `${seat}-${i}`, i - (n - 1) / 2).tilt}
           originX={originX - visW / 2}
           originY={((n - 1) * overlap) / 2 + originDy}
           w={cw}
@@ -813,6 +853,17 @@ function FlyingBack({
 }
 
 const styles = StyleSheet.create({
+  bid: {
+    position: 'absolute',
+    top: -PidroSpacing.xs,
+    minWidth: 28,
+    height: 28,
+    borderRadius: PidroRadii.full,
+    borderWidth: 1,
+    backgroundColor: PidroColors.panelStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   out: { opacity: 0.6 },
   // Under the hand result's scrim the seats fade back further, as on the board.
   quiet: { opacity: 0.8 },

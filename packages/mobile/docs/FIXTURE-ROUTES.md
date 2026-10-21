@@ -157,6 +157,13 @@ Quick note. Add `locale=sv` for Swedish. Grammar cases `table-hand-own(-sv)`,
 390×844, 375×667, 844×390 and 768×1024. The table windows fit without scrolling;
 the existing full Settings page still scrolls to its account and update sections.
 
+`/table-dev?fixture=details&bidder=east` (PID-272) shows a winning bid of 7,
+count help off, six subtly offset backs at each opponent, and a spade hand with
+5♣ directly after 5♠, then hearts/clubs/diamonds. `bidder=north|south|west`
+checks the other seats and team tones. Add `phase=bidding|declaring|second_deal|game_over`
+for the chip's lifecycle. The `table-details-*` grammar cases cover 390×844,
+375×667, 844×390 and 768×1024, including the menu switch and fixed back poses.
+
 Game-over checks: `phase=game_over` supports `result=loss|east|spectator|tie`,
 `xp=earned|level`, `rematch=open|one|two|asked|waiting|missing|pending`, and
 `playerName=` for the partner's long name. The default is a win (62–29) with no
