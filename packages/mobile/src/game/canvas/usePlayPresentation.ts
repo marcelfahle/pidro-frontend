@@ -66,7 +66,16 @@ export function usePlayPresentation(
           : completed
             ? Math.max(landsAt, now + (source.transitionDelayMs ?? TRICK_TRANSITION_MS))
             : motion.collectUntil,
-      previousTurn: changed ? motion.source.currentTurnRelative : motion.previousTurn,
+      previousTurn: changed
+        ? turnLight({
+            turn: motion.source.currentTurnRelative,
+            previousTurn: motion.previousTurn,
+            now,
+            landsAt: motion.landsAt,
+            collectUntil: motion.collectUntil,
+            pending: false,
+          })
+        : motion.previousTurn,
     });
   }
   // A live trick uses its own snapshot's delay, even zero. Timer events can
@@ -115,7 +124,7 @@ export function usePlayPresentation(
         reject();
       }
     },
-    [source, send]
+    [source, send, setPending]
   );
 
   const lit =

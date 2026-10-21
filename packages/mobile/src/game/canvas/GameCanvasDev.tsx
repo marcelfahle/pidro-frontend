@@ -452,17 +452,18 @@ export default function GameCanvasDev({
           });
         }
         const delay = reply === 'fast' ? 80 : reply === 'late' ? 5400 : 800;
+        const gap = reply === 'burst' ? 80 : 700;
         const plays = [{ player: 'south' as Position, card }, ...OPP_PLAYS];
         after(delay, () => {
           setHand((h) => h.filter((c) => !sameCard(c, card)));
           setTrick(plays.slice(0, 1));
           setTurn('west');
         });
-        after(delay + 700, () => {
+        after(delay + gap, () => {
           setTrick(plays.slice(0, 2));
           setTurn('north');
         });
-        after(delay + 1400, () => {
+        after(delay + gap * 2, () => {
           setTrick(plays.slice(0, 3));
           setTurn('east');
         });

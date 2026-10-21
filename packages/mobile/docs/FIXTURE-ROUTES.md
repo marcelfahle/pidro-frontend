@@ -233,7 +233,9 @@ Replies take 800 ms; the fourth card completes the trick and the server-selected
 leader differs from its winner. `autoplay=false` leaves the hand for real taps;
 `play=right|left|middle` fixes the loop's card. `reply=fast|reject|early-reject|timeout|late`
 exercises confirmation during flight, rejection after/before landing, no reply and
-confirmation after rollback. `transition=0|80|1500|3000` varies the snapshot's hold;
+confirmation after rollback. `reply=burst` puts opponent updates 80 ms apart;
+the left-card grammar case uses it to catch lights advancing during overlapping flights.
+`transition=0|80|1500|3000` varies the snapshot's hold;
 the cancelled/new turn-timer events follow separately. Grammar cases
 `table-play-right`, `table-play-left` and `table-play-middle` check immediate
 departure, stable sprite identity and the ring through trick completion at

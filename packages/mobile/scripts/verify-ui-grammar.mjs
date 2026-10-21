@@ -624,7 +624,7 @@ const allCases = [
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
   ...['right', 'left', 'middle'].map((position) => ({
     name: `table-play-${position}`,
-    path: `/table-dev?fixture=play-motion&autoplay=false&play=${position}`,
+    path: `/table-dev?fixture=play-motion&autoplay=false&play=${position}${position === 'left' ? '&reply=burst' : ''}`,
     testId: 'seat-north',
     playPosition: position,
   })),
@@ -3035,12 +3035,11 @@ async function assertPlayMotion(page, position) {
       const fixture = JSON.parse(
         document.querySelector('[data-testid="play-fixture"]').getAttribute('aria-label')
       );
-      if (!fixture.completed) return;
       const { lit } = JSON.parse(
         document.querySelector('[data-testid="play-presentation"]').getAttribute('aria-label')
       );
-      frames.push({ time: performance.now(), lit });
-      if (lit) {
+      frames.push({ time: performance.now(), lit, ...fixture });
+      if (fixture.completed && lit) {
         window.__pidroPlayHold = frames;
         observer.disconnect();
       }
@@ -3066,7 +3065,18 @@ async function assertPlayMotion(page, position) {
     'confirmation replaced the sprite slot'
   );
   await page.waitForFunction(() => window.__pidroPlayHold, null, { timeout: 10_000 });
-  const hold = await page.evaluate(() => window.__pidroPlayHold);
+  const frames = await page.evaluate(() => window.__pidroPlayHold);
+  for (const seat of ['north', 'east']) {
+    const received = frames.find((frame) => frame.turn === seat && !frame.completed);
+    assert.ok(received, `missing ${seat} turn snapshot`);
+    assert.ok(
+      frames
+        .filter((frame) => frame.lit === seat && !frame.completed)
+        .every((frame) => frame.time >= received.time + 300),
+      `${seat} lit ahead of the preceding card's landing`
+    );
+  }
+  const hold = frames.filter((frame) => frame.completed);
   assert.equal(hold[0].lit, null, 'the next turn lit before the fourth card landed');
   assert.ok(
     hold.slice(0, -1).every(({ lit }) => lit === null),
