@@ -152,7 +152,12 @@ export function tableHeader(room: Room): string {
   const listed = room.seats?.some(
     (seat) => !seat.player && !seat.held_for && seat.status === 'free'
   );
-  return t(listed ? 'new_table.listed' : 'new_table.invite_only', {
+  const quick =
+    room.seats?.length === 4 &&
+    room.seats.every(
+      (seat) => seat.player && (seat.player.id === room.host_id || !seatedHuman(seat))
+    );
+  return t(quick ? 'new_table.quick_game' : listed ? 'new_table.listed' : 'new_table.invite_only', {
     rules: t(`social.${room.config?.rule_set ?? 'finnish'}`),
   });
 }

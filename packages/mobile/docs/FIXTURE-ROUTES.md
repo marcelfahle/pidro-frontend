@@ -246,7 +246,7 @@ Upright the root is a centered column (436 on a phone, 660 on an iPad); sideways
 teams sit side by side with `vs` between. Nothing scrolls; the picker's friend list scrolls
 inside itself and shows four whole rows of two on a 390pt-tall phone (`dense` `FriendRow`).
 Add `&safeArea=island-left|island-right` to fake a notch on either side in a browser.
-Setup seats are all open, with Finnish/Louisiana ActionPill radios. Footer actions
+Setup seats are all open, with Ostrobothnian/Louisiana ActionPill radios. Footer actions
 are Open the table, Start the game (three bots), Share the table link (opened),
 and I'm ready (full). The picker has five subtitle-named radios: Anyone, Bot,
 100+ games played, 1000+ games played, With password, plus the deeper A friend row.
@@ -494,9 +494,15 @@ Grammar cases: `new-table-setup`, `new-table-louisiana`,
 `table-finnish`, `table-louisiana`, `table-louisiana-bidding`, `table-louisiana-explainer`, `table-louisiana-game-over`,
 `table-louisiana-waiting`, `table-louisiana-waiting-explainer`.
 New-table cases use the four sizes documented above; other rule cases run at
-390×844, 844×390 and 667×375. Finnish playing, waiting and
+390×844, 844×390 and 667×375. Ostrobothnian playing, waiting and
 game-over cases also check badges; playing/waiting reopen the rules from the menu
 and capture an additional `-rules-reopened.png` screenshot.
+
+PID-273's `words-en-*` and `words-sv-*` grammar cases reuse these fixtures for the
+header flag, settings selector, new-table pills, bot waiting room
+(`/table-dev?fixture=finnish&phase=ready-solo`) and losing game-over team headings.
+They check the red/yellow flag, Ostrobothnian/Österbottnisk and Us/Them (Vi/Dom)
+at 390×844, 375×667, 844×390 and 768×1024. The internal rule value stays `finnish`.
 
 ---
 

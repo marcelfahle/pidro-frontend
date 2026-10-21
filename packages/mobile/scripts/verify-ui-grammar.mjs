@@ -680,27 +680,27 @@ const allCases = [
     name: 'table-invitation',
     path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner',
     testId: 'table-invitation',
-    invitation: 'Finnish · as Bertil’s partner',
+    invitation: 'Ostrobothnian · as Bertil’s partner',
   },
   {
     name: 'table-invitation-bidding',
     path: '/table-dev?phase=bidding&role=player&bids=round&invitation=opponent',
     testId: 'bidding-window',
-    invitation: 'Finnish · as Bertil’s opponent',
+    invitation: 'Ostrobothnian · as Bertil’s opponent',
   },
   // Upright on a notched phone: under the score and the menu, below the island.
   {
     name: 'table-invitation-island',
     path: '/table-dev?phase=playing&role=player&trick=bots&invitation=partner&safeArea=island',
     testId: 'table-invitation',
-    invitation: 'Finnish · as Bertil’s partner',
+    invitation: 'Ostrobothnian · as Bertil’s partner',
     skipViewports: ['landscape', 'compact-landscape'],
   },
   ...['island-left', 'island-right'].map((safeArea) => ({
     name: `table-invitation-${safeArea}`,
     path: `/table-dev?phase=playing&role=player&trick=bots&invitation=rules&safeArea=${safeArea}`,
     testId: 'table-invitation',
-    invitation: 'Finnish',
+    invitation: 'Ostrobothnian',
     skipViewports: ['portrait'],
     insets: safeArea === 'island-left' ? { left: 59, right: 0 } : { left: 0, right: 59 },
   })),
@@ -786,6 +786,19 @@ const allCases = [
 ];
 
 const localizationCases = ['en', 'sv'].flatMap((locale) => [
+  ...[
+    ['header', '/table-dev?fixture=finnish', 'table-rule-set'],
+    ['settings', '/ui-dev?state=settings&fixture=finnish', 'settings-preferred-rules'],
+    ['pills', '/ui-dev?state=new-table&fixture=setup', 'new-table-screen'],
+    ['bots', '/table-dev?fixture=finnish&phase=ready-solo', 'waiting-table'],
+    ['loss', '/table-dev?phase=game_over&result=loss', 'game-over-window'],
+  ].map(([words, path, testId]) => ({
+    name: `words-${locale}-${words}`,
+    path: `${path}&locale=${locale}`,
+    testId,
+    locale,
+    words,
+  })),
   // Settings → About the app names the running update (PID-265).
   ...['named', 'embedded', 'fallback'].map((fixture) => ({
     name: `locale-${locale}-settings-update-${fixture}`,
@@ -870,6 +883,35 @@ allCases.push(
 
 async function assertLocalization(page, testCase, viewport) {
   if (!testCase.locale) return;
+  if (testCase.words) {
+    const sv = testCase.locale === 'sv';
+    const label = sv ? 'Österbottnisk' : 'Ostrobothnian';
+    const target = page.getByTestId(testCase.testId);
+    if (testCase.words === 'header') {
+      assert.equal(await target.getAttribute('aria-label'), label);
+    } else if (testCase.words !== 'bots') {
+      await target.getByText(label, { exact: true }).first().waitFor();
+    }
+    if (['pills', 'bots'].includes(testCase.words)) {
+      await assertTeamLayout(page, viewport, testCase.name);
+      for (const team of sv ? ['Vi', 'Dom'] : ['Us', 'Them'])
+        await target.getByText(team, { exact: true }).waitFor();
+    }
+    if (testCase.words === 'bots')
+      assert.equal(
+        await page.getByTestId('waiting-rule-set').innerText(),
+        `${sv ? 'Snabbspel' : 'Quick game'} · ${label}`
+      );
+    if (testCase.words === 'loss') {
+      for (const team of sv ? ['Vi', 'Dom'] : ['Us', 'Them'])
+        await target.getByText(team, { exact: true }).waitFor();
+    }
+    const flag = target.locator('svg[viewBox="0 0 18 12"]').first();
+    if (['header', 'settings'].includes(testCase.words)) {
+      assert.equal(await flag.locator('rect').first().getAttribute('fill'), '#d21034');
+      assert.equal(await flag.locator('path').first().getAttribute('fill'), '#ffce00');
+    }
+  }
   const clipped = await page.locator('[dir="auto"]').evaluateAll((nodes) =>
     nodes
       .filter((node) => node.getBoundingClientRect().width && node.getClientRects().length)
@@ -1424,7 +1466,7 @@ async function assertFocused(locator, message) {
   }
 }
 
-const ruleLabels = { finnish: 'Finnish', louisiana: 'Louisiana' };
+const ruleLabels = { finnish: 'Ostrobothnian', louisiana: 'Louisiana' };
 const ruleFacts = {
   finnish: [
     'Only trumps are played, including the same-color five.',
@@ -2138,7 +2180,7 @@ async function assertPasswordKeypad(page, testCase, viewport) {
       assert.ok(box.height >= 64, `${testCase.name}: key ${name} is at least 64pt tall`);
     }
     await keypad.getByText('Bertil’s table', { exact: true }).waitFor();
-    await keypad.getByText('Finnish · Bertil’s partner', { exact: true }).waitFor();
+    await keypad.getByText('Ostrobothnian · Bertil’s partner', { exact: true }).waitFor();
     await keypad.getByText('Type the four numbers Bertil gave you.', { exact: true }).waitFor();
     // The fixture answers every password wrong.
     for (const digit of '4821') await key(digit).click();
@@ -2224,7 +2266,7 @@ async function assertCreationPresentation(page, testCase) {
   }
   if (fixture === 'setup' || fixture === 'louisiana') {
     const selected = page.getByRole('radio', {
-      name: fixture === 'louisiana' ? 'Louisiana' : 'Finnish',
+      name: fixture === 'louisiana' ? 'Louisiana' : 'Ostrobothnian',
       exact: true,
     });
     assert.equal(await selected.getAttribute('aria-checked'), 'true');
@@ -3319,7 +3361,7 @@ async function assertRowControls(page, name, screenshotDir) {
     .boundingBox();
   assert.ok(sm.height >= 44, 'The sm pill keeps a 44pt target');
   assert.equal(await panel.getByRole('button', { name: 'Adding' }).isDisabled(), true);
-  const finnish = page.getByRole('radio', { name: 'Finnish', exact: true });
+  const finnish = page.getByRole('radio', { name: 'Ostrobothnian', exact: true });
   const louisiana = page.getByRole('radio', { name: 'Louisiana', exact: true });
   assert.equal(await finnish.getAttribute('aria-checked'), 'true');
   await louisiana.click();
@@ -3452,6 +3494,10 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
+        if (testCase.words)
+          return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
+            viewport.name
+          );
         if (testCase.newTableFixture)
           return [
             'portrait',

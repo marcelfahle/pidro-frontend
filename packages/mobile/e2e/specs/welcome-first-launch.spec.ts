@@ -15,6 +15,6 @@ test('the welcome screen offers a quick game, online play, Classic and sign in, 
   await expect(welcome.root.getByRole('link', { name: 'Sign in' })).toBeVisible();
 
   // The tab pill belongs to signed-in players.
-  for (const tab of ['League', 'Stats', 'Friends'])
+  for (const tab of ['League', 'Profile', 'Friends'])
     await expect(page.getByRole('button', { name: tab, exact: true })).toHaveCount(0);
 });

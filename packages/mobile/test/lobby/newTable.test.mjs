@@ -6,7 +6,7 @@ import { seatRow } from '../../src/features/lobby/seatRow';
 const maija = { user_id: 'maija', display_name: 'Maija', avatar_url: null, presence: 'online' };
 const draft = () => ({ seats: { ...defaultSeats } });
 
-it('opens a public Finnish table in one tap, with three open seats and no link positions', () => {
+it('opens a public Ostrobothnian table in one tap, with three open seats and no link positions', () => {
   expect(newTableRequest('finnish', draft())).toEqual({ rule_set: 'finnish', seats: { seat_2: 'open', seat_3: 'open', seat_4: 'open' } });
   expect(tableFooter(draft())).toBe('Open seats are listed in Tables.');
   expect(isPractice(draft())).toBe(false);
@@ -41,6 +41,25 @@ it('distinguishes invite-only from practice and retranslates the footer and head
     expect(tableFooter(chooseFriend(draft(), 'seat_3', maija))).toBe('Lediga platser visas i Bord. Maija får en inbjudan.');
     expect(tableHeader(room)).toBe('Visas i Bord · Louisiana');
     expect(tableFooter(bots)).toBe('Ett övningsspel med tre botar.');
+  } finally { setLocale('en'); }
+});
+
+it('calls three bots a quick game, not invite-only, and keeps human tables distinct', () => {
+  const host = { status: 'occupied', player: { id: 'host', username: 'Bertil' } };
+  const bots = [2, 3, 4].map((id) => ({ status: 'occupied', player: { id: `bot_${id}`, is_bot: true } }));
+  const room = { host_id: 'host', seats: [host, ...bots] };
+  expect(tableHeader(room)).toBe('Quick game · Ostrobothnian');
+  const positions = { north: 'host', east: 'bot_TEST_east', south: 'bot_TEST_south', west: 'bot_TEST_west' };
+  const readiness = { room_id: 'room', status: 'ready', positions, seats: Object.fromEntries(Object.keys(positions).map((position) => [position, { occupant_type: position === 'north' ? 'human' : 'bot', user_id: position === 'north' ? 'host' : null }])) };
+  expect(tableHeader(roomWithReadiness(room, readiness))).toBe('Quick game · Ostrobothnian');
+  expect(tableHeader({ ...room, config: { rule_set: 'louisiana' } })).toBe('Quick game · Louisiana');
+  expect(tableHeader({ ...room, seats: [host, ...bots.map((seat) => ({ ...seat, player: { id: seat.player.id } }))] })).toBe('Quick game · Ostrobothnian');
+  expect(tableHeader({ ...room, seats: [host, ...bots.slice(0, 2), { status: 'free', player: null }] })).toBe('Listed in Tables · Ostrobothnian');
+  expect(tableHeader({ ...room, seats: [host, ...bots.slice(0, 2), { status: 'free', player: null, held_for: maija }] })).toBe('Invite only · Ostrobothnian');
+  expect(tableHeader({ ...room, seats: [host, ...bots.slice(0, 2), { status: 'occupied', player: { id: 'maija' } }] })).toBe('Invite only · Ostrobothnian');
+  try {
+    setLocale('sv');
+    expect(tableHeader(room)).toBe('Snabbspel · Österbottnisk');
   } finally { setLocale('en'); }
 });
 

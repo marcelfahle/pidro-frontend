@@ -170,7 +170,7 @@ function SeatRowToken({ token, size }: { token: SeatToken; size: (typeof SIZES)[
   );
 }
 
-/** A group of seats under its title: "Your team" in gold, "Opponents" in cyan. */
+/** A group of seats under its title: "Us" in gold, "Them" in cyan. */
 export function TeamSection({
   team,
   children,

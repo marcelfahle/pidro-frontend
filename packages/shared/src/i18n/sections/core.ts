@@ -90,7 +90,7 @@ export const en = {
   'table.rematch.tableChanged':
     'The table changed. Press Play again once more.',
   'table.rematch.failed': 'The rematch did not go through. Try again.',
-  'rules.finnish': 'Finnish',
+  'rules.finnish': 'Ostrobothnian',
   'rules.louisiana': 'Louisiana',
   'rules.all': 'All',
   'rules.preferred': 'Preferred rules',
@@ -217,7 +217,7 @@ export const sv: Record<keyof typeof en, string> = {
   'table.rematch.tableChanged':
     'Bordet har ändrats. Tryck på Spela igen en gång till.',
   'table.rematch.failed': 'Returmatchen kunde inte startas. Försök igen.',
-  'rules.finnish': 'Finska',
+  'rules.finnish': 'Österbottnisk',
   'rules.louisiana': 'Louisiana',
   'rules.all': 'Alla',
   'rules.preferred': 'Föredragna regler',

@@ -252,7 +252,8 @@ export const PidroSwitchTokens = {
 /** The rule sets' flags keep their own colours; nothing else may use these. */
 export const PidroFlagColors = {
   field: '#ffffff',
-  finnishCross: '#16457f',
+  ostrobothnianField: '#d21034',
+  ostrobothnianCross: '#ffce00',
   usStripe: '#b8293a',
   usCanton: '#2b3a7a',
 } as const;

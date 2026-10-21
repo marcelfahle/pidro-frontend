@@ -19,9 +19,14 @@ export function ruleSetLabel(ruleSet: RuleSet) {
 export function RuleSetFlag({ ruleSet, height = 12 }: { ruleSet: RuleSet; height?: number }) {
   return (
     <Svg width={height * 1.5} height={height} viewBox="0 0 18 12">
-      <Rect width={18} height={12} rx={1.5} fill={PidroFlagColors.field} />
+      <Rect
+        width={18}
+        height={12}
+        rx={1.5}
+        fill={ruleSet === 'finnish' ? PidroFlagColors.ostrobothnianField : PidroFlagColors.field}
+      />
       {ruleSet === 'finnish' ? (
-        <Path d="M5 0h3v12H5zM0 4.5h18v3H0z" fill={PidroFlagColors.finnishCross} />
+        <Path d="M5 0h3v12H5zM0 4.5h18v3H0z" fill={PidroFlagColors.ostrobothnianCross} />
       ) : (
         <>
           <Path

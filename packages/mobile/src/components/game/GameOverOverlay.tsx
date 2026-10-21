@@ -249,13 +249,7 @@ export function GameOverOverlay({
       : hands
         ? t('game.over_hands', { count: hands })
         : null;
-  const firstLabel = spectator
-    ? t(ours === 'north_south' ? 'game.ns' : 'game.ew')
-    : viewerWon
-      ? t('game.us')
-      : partner
-        ? t('game.you_and', { partner: displayName(partner) })
-        : t('game.your_team');
+  const firstLabel = spectator ? t(ours === 'north_south' ? 'game.ns' : 'game.ew') : t('game.us');
   const secondLabel = spectator
     ? t(theirs === 'north_south' ? 'game.ns' : 'game.ew')
     : t('game.them');

@@ -50,7 +50,7 @@ test('a Louisiana table shows its rules and explains them only once @responsive'
   await expect(
     page
       .getByTestId('settings-preferred-rules')
-      .getByRole('button', { name: 'Finnish', exact: true })
+      .getByRole('button', { name: 'Ostrobothnian', exact: true })
   ).toHaveAttribute('aria-selected', 'true');
   await page.goto('/lobby');
   await expect(page.getByTestId('lobby-screen')).toBeVisible({ timeout: 30_000 });

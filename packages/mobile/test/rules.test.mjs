@@ -7,13 +7,16 @@ import {
   ruleSets,
   shouldExplainLouisiana,
 } from '../src/features/rules/ruleSets.ts';
-const english = catalogs.en;
 
-test('rules have one label each', () => {
-  expect(Object.values(ruleSets).map(({ labelKey }) => english[labelKey])).toEqual([
-    'Finnish',
-    'Louisiana',
-  ]);
+test('rules have one label each in both languages, without changing the server values', () => {
+  expect(Object.keys(ruleSets)).toEqual(['finnish', 'louisiana']);
+  for (const [locale, label] of [['en', 'Ostrobothnian'], ['sv', 'Österbottnisk']]) {
+    expect(Object.values(ruleSets).map(({ labelKey }) => catalogs[locale][labelKey])).toEqual([
+      label,
+      'Louisiana',
+    ]);
+    expect(catalogs[locale]['social.finnish']).toBe(label);
+  }
 });
 
 test('the lobby follows preference until a filter is saved, including All and legacy rooms', () => {

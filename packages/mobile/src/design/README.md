@@ -123,8 +123,8 @@ Group the host and partner together, opposite the two opponents. On Tables the
 `vs` stays quiet: `PidroText` metadata, muted tone, no badge or ornamental plaque.
 New table uses `TeamSection` and `VsDivider` (`components/lobby/SeatRow.tsx`): a
 gold Bree Serif `vs`, on a fading gold line when stacked on a phone, the word
-alone between columns and on iPad. The groups are `Your team` (gold) and
-`Opponents`, and each seat is one `SeatRow`, whose words come from
+alone between columns and on iPad. The groups are `Us` (gold) and
+`Them`, and each seat is one `SeatRow`, whose words come from
 `features/lobby/seatRow.ts` (sheet: `/ui-dev?state=seat-rows`).
 Table names are generated at creation, not an extra form step.
 
