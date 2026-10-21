@@ -181,8 +181,9 @@ export function HandResultPanel({
   const tablet = L.profile.startsWith('tablet');
   const scale = tablet ? 1.25 : 1;
   const landscape = width > height;
+  const sideContinue = waiting && view.all14 !== null && landscape;
   const room = (width - insets.left - insets.right) / scale - PidroSpacing.md * 2;
-  const panelWidth = Math.min(room, landscape ? 560 : 358);
+  const panelWidth = Math.min(room, landscape ? (sideContinue ? 720 : 560) : 358);
   // Cards shrink before a tray wraps: six in one tray still fit a small phone.
   const trayFixed = 3 + 28 + 52 + PidroSpacing.sm;
   const gaps = (n: number) => Math.max(0, n - 1) * PidroSpacing.xs;
@@ -302,6 +303,7 @@ export function HandResultPanel({
         onPress={waiting ? undefined : onClose}
         style={[StyleSheet.absoluteFill, styles.scrim]}>
         <View
+          testID="hand-result-panel"
           onLayout={(event) => setPanelHeight(event.nativeEvent.layout.height)}
           style={[
             styles.panel,
@@ -312,7 +314,7 @@ export function HandResultPanel({
               transform: [{ scale }],
             },
           ]}>
-          <View style={styles.heading}>
+          <View style={[styles.heading, sideContinue ? { marginRight: 240 } : null]}>
             <PidroText role="metadata" style={styles.eyebrow} numberOfLines={1}>
               {t('game.log_bid', { who: name(view.bidder), amount: view.bid }).toLocaleUpperCase()}
               {view.trump ? (
@@ -346,23 +348,26 @@ export function HandResultPanel({
           </View>
           <View style={landscape ? styles.traysRow : styles.traysColumn}>{trays}</View>
           {waiting && onContinue ? (
-            <BevelButton
-              testID="hand-continue"
-              material="wood"
-              size="lg"
-              fullWidth
-              label={t('game.continue_hand')}
-              loading={pending}
-              onPress={async () => {
-                if (pending) return;
-                setPending(true);
-                try {
-                  await onContinue();
-                } finally {
-                  setPending(false);
-                }
-              }}
-            />
+            <View
+              style={sideContinue ? { position: 'absolute', top: 0, right: 0, width: 220 } : null}>
+              <BevelButton
+                testID="hand-continue"
+                material="wood"
+                size="lg"
+                fullWidth
+                label={t('game.continue_hand')}
+                loading={pending}
+                onPress={async () => {
+                  if (pending) return;
+                  setPending(true);
+                  try {
+                    await onContinue();
+                  } finally {
+                    setPending(false);
+                  }
+                }}
+              />
+            </View>
           ) : null}
         </View>
         {!waiting ? (

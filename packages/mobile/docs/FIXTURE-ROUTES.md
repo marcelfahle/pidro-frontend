@@ -200,7 +200,8 @@ completed hands; tap the score plaque for the server ledger, newest first.
 `fixture=scores-game-over` shows the labelled race chart and its **Every hand** link.
 `fixture=all-14|all-14-theirs` shows either team's six point cards and **All 14!**.
 Add `hand=own` to either sweep for the combined all-14 + Continue gate; the
-`scores-{en,sv}-all-14(-theirs)-own` cases also check that only Continue dismisses it.
+`scores-{en,sv}-all-14(-theirs)-own` cases also check that only Continue dismisses it
+and that the entire panel clears synthetic Android 24/48 insets (`safeArea=android`).
 Add `locale=sv` for Swedish. The `scores-{en,sv}-{table,game-over,chart,all-14,all-14-theirs}`
 grammar cases check every page of the ledger and the result at 390×844, 375×667,
 844×390 and 768×1024. Older/Newer pages keep the panel bounded without screen scrolling.

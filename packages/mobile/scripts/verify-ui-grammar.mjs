@@ -82,7 +82,7 @@ const allCases = [
     ...['all-14', 'all-14-theirs'].flatMap((result) =>
       [false, true].map((waiting) => ({
         name: `scores-${locale}-${result}${waiting ? '-own' : ''}`,
-        path: `/table-dev?fixture=${result}&locale=${locale}${waiting ? '&hand=own' : ''}`,
+        path: `/table-dev?fixture=${result}&locale=${locale}${waiting ? '&hand=own&safeArea=android' : ''}`,
         testId: 'hand-result',
         scores: result,
         locale,
@@ -1457,6 +1457,17 @@ async function assertTableMessageReadable(page, name, viewport) {
     const box = await button.boundingBox();
     assertInsideViewport(`${name}: Continue`, box, viewport);
     assert.ok(box.height >= 44, `${name}: Continue has a senior-friendly target`);
+    if (name.startsWith('scores-')) {
+      const panel = await page.getByTestId('hand-result-panel').boundingBox();
+      assert.ok(
+        panel.y >= 24 && panel.y + panel.height <= viewport.height - 48,
+        `${name}: the whole sweep and Continue clear Android's 24/48 insets`
+      );
+      assert.ok(
+        box.y >= 24 && box.y + box.height <= viewport.height - 48,
+        `${name}: Continue clears Android's bottom inset`
+      );
+    }
     assert.equal(await page.getByTestId('hand-result-timer').count(), 0);
     await page.getByTestId('hand-result').click({ position: { x: 10, y: viewport.height / 2 } });
     assert.ok(await button.isVisible(), 'tapping the scrim cannot dismiss an own-pace result');
