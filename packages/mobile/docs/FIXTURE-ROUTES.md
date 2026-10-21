@@ -515,7 +515,9 @@ and capture an additional `-rules-reopened.png` screenshot.
 
 PID-273's `words-en-*` and `words-sv-*` grammar cases reuse these fixtures for the
 header flag, settings selector, new-table pills, bot waiting room
-(`/table-dev?fixture=finnish&phase=ready-solo`) and losing game-over team headings.
+(`/table-dev?fixture=finnish&phase=ready-solo`), losing game-over team headings and
+compact lobby badges (`/ui-dev?state=lobby-seats`). The lobby cases also check that
+the longer rule label leaves a clear gap before the seat count.
 They check the red/yellow flag, Ostrobothnian/Österbottnisk and Us/Them (Vi/Dom)
 at 390×844, 375×667, 844×390 and 768×1024. The internal rule value stays `finnish`.
 

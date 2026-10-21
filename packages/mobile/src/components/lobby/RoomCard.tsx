@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
   },
   mine: { backgroundColor: PidroColors.choiceOn, borderColor: PidroBevel.rim, borderWidth: 1.5 },
   top: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 44 },
-  side: { flex: 1, minWidth: 0 },
+  side: { flexGrow: 1, flexShrink: 0 },
   action: { alignItems: 'flex-end' },
   status: { textAlign: 'center', flexShrink: 1 },
   gold: { color: PidroBevel.textGold },

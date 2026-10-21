@@ -823,6 +823,7 @@ const localizationCases = ['en', 'sv'].flatMap((locale) => [
     ['pills', '/ui-dev?state=new-table&fixture=setup', 'new-table-screen'],
     ['bots', '/table-dev?fixture=finnish&phase=ready-solo', 'waiting-table'],
     ['loss', '/table-dev?phase=game_over&result=loss', 'game-over-window'],
+    ['lobby', '/ui-dev?state=lobby-seats', 'lobby-table-SAMPLE0'],
   ].map(([words, path, testId]) => ({
     name: `words-${locale}-${words}`,
     path: `${path}&locale=${locale}`,
@@ -937,6 +938,16 @@ async function assertLocalization(page, testCase, viewport) {
       for (const team of sv ? ['Vi', 'Dom'] : ['Us', 'Them'])
         await target.getByText(team, { exact: true }).waitFor();
     }
+    if (testCase.words === 'lobby') {
+      const gaps = await page.getByTestId(/^room-rules-/).evaluateAll((badges) =>
+        badges.map((badge) => {
+          const status = badge.parentElement.nextElementSibling;
+          return status.getBoundingClientRect().left - badge.getBoundingClientRect().right;
+        })
+      );
+      assert.equal(gaps.length, 3);
+      assert.ok(gaps.every((gap) => gap >= 8), `${testCase.name}: rule badge crowds seat count`);
+    }
     const flag = target.locator('svg[viewBox="0 0 18 12"]').first();
     if (['header', 'settings'].includes(testCase.words)) {
       assert.equal(await flag.locator('rect').first().getAttribute('fill'), '#d21034');
@@ -947,7 +958,10 @@ async function assertLocalization(page, testCase, viewport) {
     nodes
       .filter((node) => node.getBoundingClientRect().width && node.getClientRects().length)
       // Public player names deliberately ellipsize; localized sentences may not.
-      .filter((node) => !['Alexandria the Long-Named Player'].includes(node.textContent))
+      .filter(
+        (node) =>
+          !['Alexandria the Long-Named Player', 'AlexandriaLongName'].includes(node.textContent)
+      )
       .filter(
         (node) =>
           getComputedStyle(node).overflow === 'hidden' &&
