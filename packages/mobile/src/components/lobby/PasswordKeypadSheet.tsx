@@ -62,6 +62,8 @@ export function PasswordKeypadSheet({
   return (
     <Modal
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       visible
       supportedOrientations={['portrait', 'landscape']}
       animationType={reduceMotion ? 'none' : layout === 'sheet' ? 'slide' : 'fade'}

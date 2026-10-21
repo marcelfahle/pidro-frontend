@@ -57,6 +57,8 @@ export function InviteLinkModal({ roomCode, onClose, fixture }: Props) {
     <Modal
       visible
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       onShow={() => {
         if (!fixture && !started.current) {
           started.current = true;

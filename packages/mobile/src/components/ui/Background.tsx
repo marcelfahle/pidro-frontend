@@ -1,5 +1,6 @@
 import { ImageBackground, StyleSheet } from 'react-native';
 import { ReactNode } from 'react';
+import { PidroColors } from '@/design/tokens';
 
 interface BackgroundProps {
   children: ReactNode;
@@ -26,6 +27,7 @@ export function Background({ children }: BackgroundProps) {
 const styles = StyleSheet.create({
   background: {
     flex: 1,
+    backgroundColor: PidroColors.ink,
     width: '100%',
     height: '100%',
   },

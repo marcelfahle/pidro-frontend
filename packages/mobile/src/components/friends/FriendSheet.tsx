@@ -89,6 +89,8 @@ export function FriendSheet({
   return (
     <Modal
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       visible={!handoff}
       onDismiss={finishHandoff}
       supportedOrientations={['portrait', 'landscape']}

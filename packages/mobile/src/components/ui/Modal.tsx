@@ -37,6 +37,8 @@ export function Modal({
     <RNModal
       visible={isOpen}
       transparent={transparent}
+      navigationBarTranslucent
+      statusBarTranslucent
       animationType={reduceMotion ? 'none' : animationType}
       onRequestClose={handleRequestClose}
       {...props}>

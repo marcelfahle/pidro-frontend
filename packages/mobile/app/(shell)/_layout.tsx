@@ -7,10 +7,11 @@
 import { Slot, useGlobalSearchParams, usePathname, useRouter, useIsFocused } from 'expo-router';
 import { friendNoticeId } from '@pidro/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, { FadeIn, useReducedMotion } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FixtureInsets } from '@/components/dev/FixtureInsets';
+import { Background } from '@/components/ui/Background';
 import {
   FloatingNotice,
   TabPill,
@@ -20,7 +21,7 @@ import {
 import { UpdateNotice, UpdateNoticeHost } from '@/components/shell/UpdateNotice';
 import { FriendNoticeHost, useShellFriendNotice } from '@/components/shell/FriendNoticeHost';
 import { useAppUpdate } from '@/hooks/useAppUpdate';
-import { PidroColors, PidroSpacing } from '@/design/tokens';
+import { PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { useFriendsStore } from '@/stores/friends';
 import { useLobbyStore } from '@/stores/lobby';
@@ -123,7 +124,7 @@ function Shell({
   };
 
   return (
-    <View style={styles.root}>
+    <Background>
       {/* The notice floats over the screen; screens learn how far up it reaches, or place it. */}
       <UpdateNoticeHost.Provider value={host}>
         <FloatingNotice.Provider
@@ -185,13 +186,12 @@ function Shell({
           onSelect={handleSelect}
         />
       ) : null}
-    </View>
+    </Background>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: PidroColors.feltBottom,
   },
 });

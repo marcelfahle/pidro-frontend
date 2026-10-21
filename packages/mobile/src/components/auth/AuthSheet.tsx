@@ -185,6 +185,8 @@ export function AuthSheet({
       visible={isOpen && !handingOff}
       onDismiss={finishHandOff}
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       animationType={reduceMotion ? 'none' : 'slide'}
       onRequestClose={onClose}>
       <SafeAreaProvider>

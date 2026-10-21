@@ -55,6 +55,8 @@ export function SeatPickerContainer({
   return (
     <Modal
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       onRequestClose={onClose}
       supportedOrientations={['portrait', 'landscape-left', 'landscape-right']}
       animationType={reduceMotion ? 'none' : 'fade'}>

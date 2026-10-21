@@ -57,6 +57,8 @@ export function RulesExplainer({
     <Modal
       visible={open}
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       animationType="none"
       onRequestClose={onClose}
       supportedOrientations={['portrait', 'landscape']}>

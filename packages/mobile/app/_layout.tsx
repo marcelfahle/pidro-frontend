@@ -11,7 +11,7 @@ import { initSentry } from '../src/bootstrap/sentry';
 import { canAccessProtectedRoutes } from '../src/navigation/initialRoute';
 import { useAuthStore } from '../src/stores/auth';
 import { useAgeGateStore } from '../src/stores/ageGate';
-import { PidroColors } from '../src/design/tokens';
+import { Background } from '../src/components/ui/Background';
 import { useLocaleBootstrap } from '../src/i18n';
 
 initSentry();
@@ -42,7 +42,7 @@ export default function RootLayout() {
   }, []);
 
   if (fontError) throw fontError;
-  if (!fontsLoaded || !authHydrated || !localeReady) return null;
+  if (!fontsLoaded || !authHydrated || !localeReady) return <Background>{null}</Background>;
 
   return (
     <AnalyticsProvider>
@@ -50,41 +50,43 @@ export default function RootLayout() {
       {/* Explicit provider: expo-router 56 no longer guarantees one, and every
           table surface positions itself off useSafeAreaInsets(). */}
       <SafeAreaProvider>
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            animation: 'none', // Instant transitions for game feel
-            // Felt behind every route so fades/swaps never reveal white.
-            contentStyle: { backgroundColor: PidroColors.feltBottom },
-          }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(onboarding)/age" />
-          <Stack.Screen name="welcome" />
-          <Stack.Screen name="device-settings" />
-          <Stack.Screen name="join-code" />
-          <Stack.Screen name="join/[code]" />
-          <Stack.Screen name="play/[slug]" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Protected guard={canAccessApp}>
-            <Stack.Screen name="(shell)" />
-            <Stack.Screen name="new-table" options={{ animation: 'none' }} />
-            <Stack.Screen
-              name="lobby"
-              options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
-            />
-            <Stack.Screen
-              name="help"
-              options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
-            />
-            <Stack.Screen
-              name="game"
-              options={{
-                animation: 'none',
-                gestureEnabled: false,
-              }}
-            />
-          </Stack.Protected>
-        </Stack>
+        <Background>
+          <Stack
+            screenOptions={{
+              headerShown: false,
+              animation: 'none', // Instant transitions for game feel
+              // Keep the image visible while routes swap or the table loads.
+              contentStyle: { backgroundColor: 'transparent' },
+            }}>
+            <Stack.Screen name="index" />
+            <Stack.Screen name="(onboarding)/age" />
+            <Stack.Screen name="welcome" />
+            <Stack.Screen name="device-settings" />
+            <Stack.Screen name="join-code" />
+            <Stack.Screen name="join/[code]" />
+            <Stack.Screen name="play/[slug]" />
+            <Stack.Screen name="(auth)" />
+            <Stack.Protected guard={canAccessApp}>
+              <Stack.Screen name="(shell)" />
+              <Stack.Screen name="new-table" options={{ animation: 'none' }} />
+              <Stack.Screen
+                name="lobby"
+                options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
+              />
+              <Stack.Screen
+                name="help"
+                options={{ animation: menuAnimation, gestureEnabled: !reduceMotion }}
+              />
+              <Stack.Screen
+                name="game"
+                options={{
+                  animation: 'none',
+                  gestureEnabled: false,
+                }}
+              />
+            </Stack.Protected>
+          </Stack>
+        </Background>
       </SafeAreaProvider>
     </AnalyticsProvider>
   );

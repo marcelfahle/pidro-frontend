@@ -50,6 +50,8 @@ export function BadgeSheet({
     <Modal
       visible={isOpen}
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       animationType={reduceMotion ? 'none' : 'slide'}
       onRequestClose={onClose}>
       <SafeAreaProvider>

@@ -26,6 +26,8 @@ export function KeepProgressPrompt({ isOpen, onClose, onSave }: KeepProgressProm
     <Modal
       visible={isOpen}
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       animationType={reduceMotion ? 'none' : 'fade'}
       onRequestClose={onClose}>
       <SafeAreaProvider>

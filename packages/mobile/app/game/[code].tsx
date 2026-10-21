@@ -8,14 +8,7 @@ import { terminalGameJoinFailure } from '@/channels/gameJoinFailure';
 import type { WaitingRoomEvent } from '@/channels/gameRoomEvents';
 import { useLobbyChannel } from '@/channels/hooks/useLobbyChannel';
 import { createCoalescedCallback } from '@/channels/gameRoomEvents';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ActivityIndicator,
-  StatusBar,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StatusBar, StyleSheet } from 'react-native';
 import { Redirect, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +22,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ComponentType } f
 import type { Position, Room } from '@/types/lobby';
 import type { LegalAction, ServerGameState } from '@/types/game';
 import { GameJoinFailureScreen } from '@/components/game/GameJoinFailureScreen';
+import { GameLoadingScreen } from '@/components/game/GameLoadingScreen';
 import { AuthSheet } from '@/components/auth/AuthSheet';
 import { NewTableScreen } from '@/components/lobby/NewTableScreen';
 import { InviteLinkModal } from '@/components/invites/InviteLinkModal';
@@ -125,14 +119,7 @@ function SkiaGameTable(props: SkiaTableProps) {
   }
 
   if (!Comp) {
-    return (
-      <Background>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-white/60">{t('game.loading')}</Text>
-        </View>
-      </Background>
-    );
+    return <GameLoadingScreen label={t('game.loading')} />;
   }
   return <Comp {...props} />;
 }
@@ -627,6 +614,10 @@ export default function GameScreen() {
     [canManage, room, runRoomControl]
   );
 
+  if (__DEV__ && (fixture === 'joining' || fixture === 'restoring' || fixture === 'loading')) {
+    return <GameLoadingScreen label={t(`game.${fixture}`)} />;
+  }
+
   if (authHydrated && !accessToken) {
     return <Redirect href="/welcome" />;
   }
@@ -659,14 +650,7 @@ export default function GameScreen() {
   }
 
   if (!room && roomLookup?.roomCode !== code) {
-    return (
-      <Background>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-white/60">{t('game.joining')}</Text>
-        </View>
-      </Background>
-    );
+    return <GameLoadingScreen label={t('game.joining')} />;
   }
 
   if (shouldRestoreServerState && authHydrated && accessToken) {
@@ -707,14 +691,7 @@ export default function GameScreen() {
       );
     }
 
-    return (
-      <Background>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#3b82f6" />
-          <Text className="mt-4 text-white/60">{t('game.restoring')}</Text>
-        </View>
-      </Background>
-    );
+    return <GameLoadingScreen label={t('game.restoring')} />;
   }
 
   if (!room) {

@@ -1,8 +1,8 @@
 /**
  * The slowly turning shimmer behind the logo — the legacy game's glow,
  * recreated procedurally so it stays resolution-independent and can later
- * breathe (pulse on level-up, brighten on wins). Twelve soft rays plus a
- * radial halo, one full turn every 80 seconds. Honors reduced motion.
+ * breathe (pulse on level-up, brighten on wins). Twelve rays sharing one
+ * radial fade, one full turn every 80 seconds. Honors reduced motion.
  */
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -15,7 +15,8 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
-import Svg, { Circle, Defs, Path, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Defs, Path, RadialGradient, Stop } from 'react-native-svg';
+import { PidroColors } from '@/design/tokens';
 
 const RAY_COUNT = 12;
 const RAY_HALF_ANGLE = (5 * Math.PI) / 180;
@@ -61,20 +62,15 @@ export function LogoGlow({ size = 460 }: LogoGlowProps) {
       <Animated.View style={[{ width: size, height: size }, spin]}>
         <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
           <Defs>
-            <RadialGradient id="glow-fade" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#8ce0ff" stopOpacity="0.22" />
-              <Stop offset="45%" stopColor="#8ce0ff" stopOpacity="0.10" />
-              <Stop offset="100%" stopColor="#8ce0ff" stopOpacity="0" />
-            </RadialGradient>
-            <RadialGradient id="glow-halo" cx="50%" cy="50%" r="50%">
-              <Stop offset="0%" stopColor="#aee8ff" stopOpacity="0.16" />
-              <Stop offset="100%" stopColor="#aee8ff" stopOpacity="0" />
+            <RadialGradient id="glow-fade" gradientUnits="userSpaceOnUse" cx={r} cy={r} r={r}>
+              <Stop offset="0%" stopColor={PidroColors.cyanText} stopOpacity="0.22" />
+              <Stop offset="45%" stopColor={PidroColors.cyanText} stopOpacity="0.10" />
+              <Stop offset="100%" stopColor={PidroColors.cyanText} stopOpacity="0" />
             </RadialGradient>
           </Defs>
           {rayPaths(r).map((d) => (
             <Path key={d} d={d} fill="url(#glow-fade)" />
           ))}
-          <Circle cx={r} cy={r} r={r * 0.55} fill="url(#glow-halo)" />
         </Svg>
       </Animated.View>
     </View>

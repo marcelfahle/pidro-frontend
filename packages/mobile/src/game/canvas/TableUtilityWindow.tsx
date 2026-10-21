@@ -8,7 +8,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
@@ -32,7 +32,6 @@ export function TableUtilityWindow({
   children: ReactNode;
 }) {
   const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
   const scroll = useRef<ScrollView>(null);
   const pinned = useRef(true);
   const viewportHeight = useRef(0);
@@ -47,6 +46,8 @@ export function TableUtilityWindow({
     <Modal
       visible={open}
       transparent
+      navigationBarTranslucent
+      statusBarTranslucent
       animationType="none"
       supportedOrientations={[
         'portrait',
@@ -55,57 +56,50 @@ export function TableUtilityWindow({
         'landscape-right',
       ]}
       onRequestClose={onClose}>
-      <View
-        style={[
-          styles.backdrop,
-          {
-            paddingTop: insets.top + PidroSpacing.sm,
-            paddingBottom: insets.bottom + PidroSpacing.sm,
-            paddingLeft: insets.left + PidroSpacing.sm,
-            paddingRight: insets.right + PidroSpacing.sm,
-          },
-        ]}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-          accessible={false}
-          focusable={false}
-        />
-        <Surface
-          testID="table-utility-window"
-          variant="card"
-          style={styles.window}
-          accessibilityViewIsModal>
-          <View style={styles.header}>
-            <PidroText role="title" style={styles.title}>
-              {title}
-            </PidroText>
-            <BevelButton
-              material="glass"
-              size="icon"
-              accessibilityLabel={t('game.close', { title })}
-              onPress={onClose}>
-              <Icon name="close" size={20} />
-            </BevelButton>
-          </View>
-          <ScrollView
-            ref={scroll}
-            style={styles.scroll}
-            contentContainerStyle={styles.content}
-            onScroll={followEnd ? onScroll : undefined}
-            scrollEventThrottle={100}
-            onLayout={(event) => {
-              viewportHeight.current = event.nativeEvent.layout.height;
-            }}
-            onContentSizeChange={(_width, contentHeight) => {
-              // Content that fits needs no scrolling, so it follows again from here.
-              if (contentHeight <= viewportHeight.current) pinned.current = true;
-              if (followEnd && pinned.current) scroll.current?.scrollToEnd({ animated: false });
-            }}>
-            {children}
-          </ScrollView>
-        </Surface>
-      </View>
+      <SafeAreaProvider>
+        <SafeAreaView style={styles.backdrop}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={onClose}
+            accessible={false}
+            focusable={false}
+          />
+          <Surface
+            testID="table-utility-window"
+            variant="card"
+            style={styles.window}
+            accessibilityViewIsModal>
+            <View style={styles.header}>
+              <PidroText role="title" style={styles.title}>
+                {title}
+              </PidroText>
+              <BevelButton
+                material="glass"
+                size="icon"
+                accessibilityLabel={t('game.close', { title })}
+                onPress={onClose}>
+                <Icon name="close" size={20} />
+              </BevelButton>
+            </View>
+            <ScrollView
+              ref={scroll}
+              style={styles.scroll}
+              contentContainerStyle={styles.content}
+              onScroll={followEnd ? onScroll : undefined}
+              scrollEventThrottle={100}
+              onLayout={(event) => {
+                viewportHeight.current = event.nativeEvent.layout.height;
+              }}
+              onContentSizeChange={(_width, contentHeight) => {
+                // Content that fits needs no scrolling, so it follows again from here.
+                if (contentHeight <= viewportHeight.current) pinned.current = true;
+                if (followEnd && pinned.current) scroll.current?.scrollToEnd({ animated: false });
+              }}>
+              {children}
+            </ScrollView>
+          </Surface>
+        </SafeAreaView>
+      </SafeAreaProvider>
     </Modal>
   );
 }
@@ -116,6 +110,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: PidroColors.backdrop,
+    padding: PidroSpacing.sm,
   },
   window: { width: '100%', maxWidth: 360, maxHeight: '100%' },
   header: {
