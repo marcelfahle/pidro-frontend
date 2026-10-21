@@ -54,8 +54,8 @@ export type TableSeat = {
   lastPlayedCard: TableCard | null;
   /** Out of trumps for the rest of the hand, as the server says. */
   out: boolean;
-  /** What an out player lays face up. */
-  revealedCards: TableCard[];
+  /** Remaining cards folded face down. No faces enter the render model. */
+  foldedCount: number;
   /**
    * The second deal as the server tells it: trumps kept after the discard,
    * cards drawn to refill. Never the dealer's: that stays the dealer's.
@@ -130,7 +130,7 @@ export type TableModelInput = {
   currentTurnRelative: RelativePosition | null;
   canPlay: boolean;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
-  /** The server's per-seat view: who is out of trumps and what they revealed. */
+  /** The server's per-seat view: who is out of trumps and how many they folded. */
   serverPlayers?: Partial<Record<Position, ServerPlayerView>> | null;
   /** "Help me keep count": lights the card winning the trick. */
   countHelp?: boolean;
@@ -197,10 +197,10 @@ export function buildTableModel(input: TableModelInput): TableModel {
   // Out of trumps only means something while the hand is played.
   const playing = input.phase === 'playing';
   const outOf = (abs: Position) => playing && !!input.serverPlayers?.[abs]?.eliminated;
-  const revealedOf = (abs: Position) =>
-    outOf(abs) && Array.isArray(input.serverPlayers?.[abs]?.revealed_cards)
-      ? sortCards(input.serverPlayers[abs].revealed_cards, trumpSuit).map((card) => toCard(card))
-      : [];
+  const foldedOf = (abs: Position) => {
+    const view = input.serverPlayers?.[abs];
+    return outOf(abs) ? (view?.folded_count ?? view?.revealed_cards?.length ?? 0) : 0;
+  };
   // Every seat's second deal is public once the discard is done.
   const afterDiscard = input.phase === 'second_deal' || playing;
   const secondDealOf = (abs: Position) => {
@@ -213,13 +213,11 @@ export function buildTableModel(input: TableModelInput): TableModel {
       : null;
   };
   const you = input.players.find((player) => player.isYou);
-  // Gone cold, the cards you laid face up stay where you held them.
+  const yourOut = !!you && outOf(you.absolutePosition);
   const heldHand =
-    input.yourHand && input.yourHand.length > 0
+    !yourOut && input.yourHand
       ? sortCards(input.yourHand, trumpSuit).map((card) => toCard(card))
-      : you
-        ? revealedOf(you.absolutePosition)
-        : [];
+      : [];
   const yourHand = concealPrivateDealerPool ? [] : heldHand;
 
   const absToRel = new Map<Position, RelativePosition>();
@@ -341,7 +339,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
           secondDeal: secondDealOf(p.absolutePosition),
           lastPlayedCard: currentTrick[rel] ?? null,
           out: outOf(p.absolutePosition),
-          revealedCards: p.isYou ? [] : revealedOf(p.absolutePosition),
+          foldedCount: foldedOf(p.absolutePosition),
         }
       : null;
   }
@@ -352,7 +350,8 @@ export function buildTableModel(input: TableModelInput): TableModel {
     dealerRelative: input.dealerRelative ?? null,
     seats,
     yourHand,
-    dealtHand: concealPrivateDealerPool ? [] : (input.yourHand ?? []).map((card) => toCard(card)),
+    dealtHand:
+      concealPrivateDealerPool || yourOut ? [] : (input.yourHand ?? []).map((card) => toCard(card)),
     yourCardCount: concealPrivateDealerPool ? null : input.yourCardCount,
     dealerCuts,
     currentTrick,

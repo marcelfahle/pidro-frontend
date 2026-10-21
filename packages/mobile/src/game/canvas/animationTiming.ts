@@ -3,6 +3,9 @@ export const DEAL_CARD_TRAVEL_MS = 460;
 export const DEAL_ACTION_REVEAL_BUFFER_MS = 100;
 export const HAND_PRESENTATION_TIMEOUT_MS = 2_000;
 
+/** All remaining cards fold together, without a per-card stagger. */
+export const FOLD_FLIGHT_MS = 360;
+
 // Twelve little packets, rather than 36 individual throws. The last packet
 // settles before the player gets a beat to read their hand and then sort it.
 export const DEAL_PACKET_INTERVAL_MS = 260;

@@ -8,11 +8,12 @@
  * Only player identities handle presses; card backs leave gestures to the canvas.
  * Skia-free (only the pure layout module), safe to import anywhere.
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Animated, {
   Easing,
   FadeOut,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withTiming,
@@ -31,8 +32,6 @@ import { PressableFX } from '@/components/ui/PressableFX';
 import { PidroBevel, PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { avatarLabel, avatarParts, textFits } from '@/features/avatar';
 import { seatLine, type SeatLine } from '@/features/game/seatLine';
-import { getCardImage } from '@/utils/cardImages';
-import type { Card } from '@/types/game';
 import {
   AVATAR_SIZE,
   compactNorth,
@@ -45,6 +44,7 @@ import {
   northChipBehind,
   HELD_STYLE,
   heldPose,
+  handStep,
   type HeldStyle,
   northFanTop,
   packSpot,
@@ -64,6 +64,7 @@ import type { TableSeat } from './tableModel';
 import {
   DEAL_PACKET_CARD_STAGGER_MS,
   DEAL_PACKET_TRAVEL_MS,
+  FOLD_FLIGHT_MS,
   SECOND_DEAL_FLIGHT_MS,
   SECOND_DEAL_SWOOP_STAGGER_MS,
 } from './animationTiming';
@@ -154,6 +155,13 @@ export function SeatLayer({
   held = HELD_STYLE,
 }: Props) {
   useTranslation();
+  const out = REL.map((rel) => !!seats[rel]?.out);
+  const [previousOut, setPreviousOut] = useState(out);
+  const [folding, setFolding] = useState<RelativePosition[]>([]);
+  if (out.some((cold, i) => cold !== previousOut[i])) {
+    setPreviousOut(out);
+    setFolding(REL.filter((_, i) => out[i] && !previousOut[i]));
+  }
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { top, bottom, left, right } = insets;
@@ -188,11 +196,7 @@ export function SeatLayer({
   const landscapeSouthLeft = insets.left + LANDSCAPE_SOUTH_LEFT;
   // Landscape South's name runs toward the hand and North's toward the menu:
   // each gets what those leave (`landscapeNameReach`).
-  const northBacks = clamp(
-    seats.north?.revealedCards.length || (seats.north?.cardCount ?? 0),
-    0,
-    9
-  );
+  const northBacks = clamp(seats.north?.out ? 0 : (seats.north?.cardCount ?? 0), 0, 9);
   const chipW = parts.dealer ? parts.dealer.size + gap : 0;
   // On the narrowest phones North's chip tucks behind its avatar, as South's
   // does, and its fan and seat move left (`landscapeNorthShift`).
@@ -282,35 +286,43 @@ export function SeatLayer({
           cy={pack.y}
         />
       ) : null}
-      {secondDeal
-        ? REL.map((rel) => {
-            const thrown = secondDeal.thrown[rel] ?? 0;
-            if (!seats[rel] || thrown === 0) return null;
-            const backH = northBackWidth(L.cardW, compactNorth(L)) * (110 / 78);
-            const from =
-              rel === 'north'
-                ? { x: width / 2 - northShift, y: northBackTop + backH / 2 }
-                : rel === 'south'
-                  ? { x: L.hand.cx, y: L.hand.cy }
-                  : {
-                      x:
-                        rel === 'west'
-                          ? insets.left + sideBackW * 0.7
-                          : width - insets.right - sideBackW * 0.7,
-                      y: sideStackCy,
-                    };
-            return (
-              <ThrownPile
-                key={`thrown-${rel}`}
-                rel={rel}
-                count={thrown}
-                from={from}
-                at={playedCardTarget(L, rel, 0, 1)}
-                cardW={L.cardW * L.trick.pileScale * 0.82}
-              />
-            );
-          })
-        : null}
+      {REL.map((rel) => {
+        const folded = seats[rel]?.foldedCount ?? 0;
+        const thrown = secondDeal?.thrown[rel] ?? folded;
+        if (!seats[rel] || thrown === 0) return null;
+        const backH = northBackWidth(L.cardW, compactNorth(L)) * (110 / 78);
+        const from =
+          rel === 'north'
+            ? { x: width / 2 - northShift, y: northBackTop + backH / 2 }
+            : rel === 'south'
+              ? { x: L.hand.cx, y: L.hand.cy }
+              : {
+                  x:
+                    rel === 'west'
+                      ? insets.left + sideBackW * 0.7
+                      : width - insets.right - sideBackW * 0.7,
+                  y: sideStackCy,
+                };
+        return (
+          <ThrownPile
+            key={`thrown-${rel}`}
+            rel={rel}
+            count={thrown}
+            folded={folded > 0}
+            animate={folded === 0 || folding.includes(rel)}
+            fromStep={
+              rel === 'south'
+                ? handStep(L, thrown)
+                : rel === 'north'
+                  ? northFanStep(L.cardW, thrown, compactNorth(L))
+                  : sideStackStep(L.cardW, thrown)
+            }
+            from={from}
+            at={playedCardTarget(L, rel, 0, 1)}
+            cardW={L.cardW * L.trick.pileScale * 0.82}
+          />
+        );
+      })}
       {REL.map((rel) => {
         const data = seats[rel];
         if (!data) return null;
@@ -424,9 +436,7 @@ export function SeatLayer({
                   transform: [{ translateX: -northShift }],
                 }}>
                 <BacksFan
-                  testID={data.revealedCards.length > 0 ? 'seat-north-revealed' : undefined}
-                  faces={data.revealedCards.map((card) => card.card)}
-                  count={data.cardCount ?? 0}
+                  count={data.out ? 0 : (data.cardCount ?? 0)}
                   cardW={L.cardW}
                   compact={compactNorth(L)}
                   held={held}
@@ -464,13 +474,7 @@ export function SeatLayer({
         // landscape the Dynamic Island sits on one of these sides.
         const edgeOffset = Math.min(L.cardW * 0.28, 18);
         const sideEdge = rel === 'east' ? insets.right : insets.left;
-        // Cards laid face up stay whole on screen, to be read.
-        const backsInset =
-          data.revealedCards.length > 0
-            ? sideEdge + PidroSpacing.xs
-            : sideEdge > 0
-              ? sideEdge
-              : -edgeOffset;
+        const backsInset = sideEdge > 0 ? sideEdge : -edgeOffset;
         const seatPos =
           rel === 'east'
             ? { ...sideSeatPos, right: insets.right + sideInset }
@@ -495,9 +499,7 @@ export function SeatLayer({
                 backsEdge,
               ]}>
               <BacksStackV
-                testID={data.revealedCards.length > 0 ? `seat-${rel}-revealed` : undefined}
-                faces={data.revealedCards.map((card) => card.card)}
-                count={data.cardCount ?? 0}
+                count={data.out ? 0 : (data.cardCount ?? 0)}
                 cardW={L.cardW}
                 held={held}
                 dealing={dealing}
@@ -518,20 +520,15 @@ export function SeatLayer({
 
 function BacksFan({
   count,
-  faces = [],
   cardW,
   dealing,
   originX = 0,
   originY,
   compact = false,
   held = HELD_STYLE,
-  testID,
 }: {
   held?: HeldStyle;
   count: number;
-  /** Cards laid face up (out of trumps) instead of the backs. */
-  faces?: Card[];
-  testID?: string;
   cardW: number;
   /** Landscape phones' smaller fan (`compactNorth`). */
   compact?: boolean;
@@ -540,18 +537,18 @@ function BacksFan({
   originX?: number;
   originY: number;
 }) {
-  const n = clamp(faces.length || count, 0, 13);
+  const n = clamp(count, 0, 13);
   if (n === 0) return null;
   const w = northBackWidth(cardW, compact);
   const h = w * (110 / 78);
   const overlap = northFanStep(cardW, n, compact);
   const total = w + (n - 1) * overlap;
   return (
-    <View testID={testID} style={{ width: total, height: h }}>
+    <View style={{ width: total, height: h }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
-          source={faces[i] ? getCardImage(faces[i]) : BACK}
+          source={BACK}
           index={i}
           dealing={dealing}
           x={i * overlap}
@@ -570,40 +567,33 @@ function BacksFan({
 
 function BacksStackV({
   count,
-  faces = [],
   cardW,
   dealing,
   originX,
   originDy = 0,
   held = HELD_STYLE,
-  testID,
 }: {
   held?: HeldStyle;
   count: number;
-  /** Cards laid face up (out of trumps) instead of the backs. */
-  faces?: Card[];
-  testID?: string;
   cardW: number;
   dealing: boolean;
   originX: number;
   /** How far the felt's center sits below (+) or above (−) the stack's own. */
   originDy?: number;
 }) {
-  const n = clamp(faces.length || count, 0, 13);
+  const n = clamp(count, 0, 13);
   if (n === 0) return null;
   const cw = sideBackWidth(cardW); // portrait back
   const ch = cw * (110 / 78);
-  // Backs lie sideways; cards laid face up stand upright, each showing its corner.
-  const up = faces.length > 0;
-  const visW = up ? cw : ch; // backs: after 90° rotation
-  const visH = up ? ch : cw;
-  const overlap = up ? ch * 0.36 * Math.min(1, 5 / Math.max(1, n - 1)) : sideStackStep(cardW, n);
+  const visW = ch;
+  const visH = cw;
+  const overlap = sideStackStep(cardW, n);
   return (
-    <View testID={testID} style={{ width: visW, height: visH + (n - 1) * overlap }}>
+    <View style={{ width: visW, height: visH + (n - 1) * overlap }}>
       {Array.from({ length: n }, (_, i) => (
         <FlyingBack
           key={i}
-          source={faces[i] ? getCardImage(faces[i]) : BACK}
+          source={BACK}
           index={i}
           dealing={dealing}
           x={heldPose(held, `side-${i}`, i - (n - 1) / 2).dy * 0.6}
@@ -613,7 +603,7 @@ function BacksStackV({
           originY={((n - 1) * overlap) / 2 + originDy}
           w={cw}
           h={ch}
-          sideways={!up}
+          sideways
         />
       ))}
     </View>
@@ -655,36 +645,56 @@ function ThrownPile({
   from,
   at,
   cardW,
+  folded = false,
+  animate = true,
+  fromStep = 0,
 }: {
   rel: RelativePosition;
   count: number;
   from: { x: number; y: number };
   at: { x: number; y: number };
   cardW: number;
+  folded?: boolean;
+  animate?: boolean;
+  fromStep?: number;
 }) {
+  const reducedMotion = useReducedMotion();
+  // Joining an already-cold table shows the pile without replaying a fold.
+  const [moving] = useState(animate && !reducedMotion);
   const cardH = cardW * (110 / 78);
   const sideways = rel === 'east' || rel === 'west';
-  const step = cardW * 0.44;
+  const step = cardW * (folded ? 0.1 : 0.44);
   return (
     <Animated.View
-      testID={`second-deal-thrown-${rel}`}
+      testID={folded ? `seat-${rel}-folded` : `second-deal-thrown-${rel}`}
       accessibilityElementsHidden
       pointerEvents="none"
-      exiting={FadeOut.duration(SECOND_DEAL_FLIGHT_MS)}
+      exiting={folded ? undefined : FadeOut.duration(SECOND_DEAL_FLIGHT_MS)}
       style={StyleSheet.absoluteFill}>
       {Array.from({ length: count }, (_, i) => {
         const off = (i - (count - 1) / 2) * step;
+        const heldOff = (i - (count - 1) / 2) * fromStep;
         return (
           <ThrownBack
             key={i}
-            from={from}
+            from={
+              folded
+                ? {
+                    x: from.x + (sideways ? 0 : heldOff),
+                    y: from.y + (sideways ? heldOff : 0),
+                  }
+                : from
+            }
             x={sideways ? at.x : at.x + off}
             y={sideways ? at.y + off : at.y}
             w={cardW}
             h={cardH}
             // A thrown card never lands quite square.
             rot={(sideways ? 90 : 0) + (((i * 37) % 7) - 3)}
-            delay={i * SECOND_DEAL_SWOOP_STAGGER_MS}
+            delay={folded ? 0 : i * SECOND_DEAL_SWOOP_STAGGER_MS}
+            duration={folded ? FOLD_FLIGHT_MS : SECOND_DEAL_FLIGHT_MS}
+            moving={moving}
+            folded={folded}
           />
         );
       })}
@@ -700,7 +710,13 @@ function ThrownBack({
   h,
   rot,
   delay,
+  duration,
+  moving,
+  folded,
 }: {
+  duration: number;
+  moving: boolean;
+  folded: boolean;
   delay: number;
   from: { x: number; y: number };
   x: number;
@@ -709,15 +725,15 @@ function ThrownBack({
   h: number;
   rot: number;
 }) {
-  const tx = useSharedValue(from.x - w / 2);
-  const ty = useSharedValue(from.y - h / 2);
-  const turn = useSharedValue(rot - 25);
+  const tx = useSharedValue((moving ? from.x : x) - w / 2);
+  const ty = useSharedValue((moving ? from.y : y) - h / 2);
+  const turn = useSharedValue(rot - (moving && !folded ? 25 : 0));
   useEffect(() => {
-    const config = { duration: SECOND_DEAL_FLIGHT_MS, easing: Easing.out(Easing.cubic) };
+    const config = { duration: moving ? duration : 0, easing: Easing.out(Easing.cubic) };
     tx.value = withDelay(delay, withTiming(x - w / 2, config));
     ty.value = withDelay(delay, withTiming(y - h / 2, config));
     turn.value = withDelay(delay, withTiming(rot, config));
-  }, [x, y, w, h, rot, delay, tx, ty, turn]);
+  }, [x, y, w, h, rot, delay, duration, moving, tx, ty, turn]);
   const motion = useAnimatedStyle(() => ({
     transform: [{ translateX: tx.value }, { translateY: ty.value }, { rotate: `${turn.value}deg` }],
   }));

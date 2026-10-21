@@ -358,8 +358,10 @@ export function useCardSprites({
         nextSlots[sl] = slots[sl];
         if (retirementTimers.current.has(key)) continue;
 
-        const duration = 180;
-        sop[sl].value = withTiming(0, { duration });
+        // SeatLayer takes over your folded cards as backs in the same frame.
+        const folding = slots[sl]?.kind === 'hand' && model.seats.south?.out;
+        const duration = folding ? 0 : 180;
+        sop[sl].value = folding ? 0 : withTiming(0, { duration });
 
         retirementTimers.current.set(
           key,

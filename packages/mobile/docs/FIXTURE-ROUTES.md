@@ -138,7 +138,7 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 | `hand`       | `made` · `set` · `they-set`                                                               | table (mock model): 1.6 s after the table opens the last hand is scored: the table dims under its result and the point cards each team took (PID-236). `made`: you made 8, stamped gold; `set`: you missed 10 by 3; `they-set`: Eli missed 9 by 3 and Nora took their Pidro. It closes by itself after 3 s (2 s for `set`) |
 | `ticker`     | `full`                                                                                    | table (mock model): the table opens with West's pass, and the other three bids land 0.3 s later, so the plaque's action ticker shows three lines; tap it for the hand log |
 | `bids`       | `round` · `high` (with `phase=bidding&role=player`)                                       | you and three bots; the bids land one by one. `round`: West passes, North bids 7, East goes to 9, then it is your turn. `high`: you hold the high bid at 9 and West is still to bid |
-| `out`        | `one` · `lone` (with `phase=playing&role=player`)                                         | you and three bots, two tricks into hand 4 after Jocke bid 6. `one`: Marcel is out of trumps (dimmed, "Out", two cards face up). `lone`: the other three are out, and your seat says the rest is yours |
+| `out`        | `one` · `lone` (with `phase=playing&role=player`)                                         | you and three bots, two tricks into hand 4 after Jocke bid 6. `one`: Marcel is out of trumps (dimmed, "Out", two cards folded face down). `lone`: the other three are out, and your seat says the rest is yours |
 | `trick`      | `bots` (with `phase=playing&role=player`)                                                 | you and three bots, hearts trump: Wynn, Nora and Eli have played 9♥, K♥ and 4♥ to the first trick, and each seat says what it played; it is your turn |
 | `count`      | `on`                                                                                      | turns on "Help me keep count": the plaque’s bid line reads "Jocke bid 6 · 2 of 6" (small phones too; a name with no room beside the bid takes a row of its own), "Last trick" sits under it, and the card winning the trick glows (mock table too) |
 | `playerName` | any string                                                                                | name in the first seat decision                                                                                                                                           |
@@ -186,7 +186,9 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 /table-dev?phase=bidding&role=player&pass=disabled   # real store, no pass
 /table-dev?phase=bidding&role=player&bids=round   # who bid what, against bots (PID-214)
 /table-dev?phase=playing&role=player&trick=bots  # bots say what they played (PID-214)
-/table-dev?phase=playing&role=player&out=one&count=on # out of trumps, the count meter, Last trick (PID-220)
+/table-dev?phase=playing&role=player&out=one&count=on # out of trumps, face-down pile, Last trick
+/table-dev?fixture=fold&count=on               # count-only folds: West, North, then you; clears and loops (PID-269)
+/table-dev?fixture=fold-legacy&count=on        # same loop with old revealed_cards payloads; no faces rendered
 /table-dev?phase=bidding&role=player&deal=true&dealer=north # clockwise packets, unsorted hand → sort → bid
 /table-dev?phase=bidding&role=player&deal=cold      # reconnect: already-dealt hand, no replay
 /table-dev?phase=second_deal&role=player&dealer=south # dealer sees the authoritative pool and keeps six
@@ -196,6 +198,12 @@ The normal ready fixtures delay confirmation briefly to expose the pending state
 /table-dev?phase=ready-host&role=spectator        # spectator sees no controls
 /table-dev?phase=playing&autoplay=true            # played-card persistence
 ```
+
+`table-fold`, `table-fold-legacy` and `table-fold-reduced` check the pile counts,
+back images, containment and the still-active East hand at 390×844, 375×667,
+844×390 and 768×1024. The loop folds at 1.2/2.1/3 seconds, holds until 16 seconds,
+clears with the hand, and restarts at 18 seconds. Reduced motion shows the piles
+without a flight; joining an already-cold table does not replay the fold.
 
 ---
 

@@ -69,7 +69,9 @@ export interface ServerPlayerView {
   card_count?: number;
   /** Out of trumps ("cold"): the player sits out the rest of the hand. */
   eliminated?: boolean;
-  /** What a cold player lays face up, as Classic does. */
+  /** Remaining cards folded face down; public, without their faces. */
+  folded_count?: number;
+  /** Legacy cold-player payload. Render only its count, never its faces. */
   revealed_cards?: Card[];
   /**
    * The second deal, public to every seat: trumps kept after the discard and

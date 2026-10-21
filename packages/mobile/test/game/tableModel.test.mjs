@@ -336,7 +336,7 @@ describe('trick signals from the server (PID-218)', () => {
   });
 });
 
-describe('out of trumps (PID-220)', () => {
+describe('out of trumps (PID-269)', () => {
   // Viewer is East (rendered south). West (rendered north) and the viewer have gone cold.
   const players = (revealed) => ({
     north: { hand: 2 },
@@ -345,7 +345,7 @@ describe('out of trumps (PID-220)', () => {
     west: { hand: 0, eliminated: true, revealed_cards: [{ suit: 'clubs', rank: 9 }] },
   });
 
-  it('marks who is out and lays their cards face up, yours where you held them', () => {
+  it('keeps only folded counts from legacy faces, including your own rotated seat', () => {
     const model = build({
       phase: 'playing',
       trumpSuit: 'spades',
@@ -353,18 +353,41 @@ describe('out of trumps (PID-220)', () => {
       serverPlayers: players([{ suit: 'hearts', rank: 13 }]),
     });
     expect(model.seats.north.out).toBe(true);
-    expect(model.seats.north.revealedCards.map((card) => card.key)).toEqual(['clubs_9']);
+    expect(model.seats.north.foldedCount).toBe(1);
+    expect(model.seats.north).not.toHaveProperty('revealedCards');
     expect(model.seats.east.out).toBe(false);
-    expect(model.seats.west.revealedCards).toEqual([]);
+    expect(model.seats.west.foldedCount).toBe(0);
     expect(model.seats.south.out).toBe(true);
-    expect(model.yourHand.map((card) => card.key)).toEqual(['hearts_13']);
-    expect(model.yourHand[0].isLegalPlay).toBe(false);
+    expect(model.seats.south.foldedCount).toBe(1);
+    expect(model.yourHand).toEqual([]);
+  });
+
+  it('uses count-only payloads, with explicit zero winning over old faces', () => {
+    const model = build({
+      phase: 'playing',
+      yourHand: [{ suit: 'hearts', rank: 13 }],
+      serverPlayers: {
+        north: { hand: 2, folded_count: 4 },
+        east: { hand: [], eliminated: true, folded_count: 2 },
+        south: { hand: 0, eliminated: true, folded_count: 3 },
+        west: { ...players([]).west, folded_count: 0 },
+      },
+    });
+    expect(['north', 'east', 'south', 'west'].map((rel) => model.seats[rel].foldedCount)).toEqual([
+      0, 0, 2, 3,
+    ]);
+    expect(model.yourHand).toEqual([]);
+    expect(model.dealtHand).toEqual([]);
+    for (const seat of Object.values(model.seats)) expect(seat).not.toHaveProperty('revealedCards');
   });
 
   it('is only a thing while the hand is played', () => {
     const model = build({ phase: 'bidding', serverPlayers: players([]) });
     expect(model.seats.north.out).toBe(false);
-    expect(model.seats.north.revealedCards).toEqual([]);
+    expect(model.seats.north.foldedCount).toBe(0);
+    const nextHand = build({ phase: 'playing', serverPlayers: { west: { hand: 6 } } });
+    expect(nextHand.seats.north.foldedCount).toBe(0);
+    expect(nextHand.seats.north.out).toBe(false);
   });
 });
 

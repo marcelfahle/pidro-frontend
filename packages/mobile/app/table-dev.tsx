@@ -68,7 +68,7 @@ const BID_STEP_MS = 450;
 
 // `out=`: hand 4 against the bot crew, two tricks in. Jocke (East) bid 6 and
 // took the first trick for 2; you took the second, where Antti's 2 of trump
-// fell. Marcel (West) is out of trumps and lays two cards face up. `lone`:
+// fell. Marcel (West) is out of trumps and folds two cards face down. `lone`:
 // everyone else has gone cold and the rest is yours.
 const spade = (rank: number): Card => ({ rank, suit: 'spades' });
 const OUT_TRICKS = [
@@ -520,6 +520,7 @@ function TableDevHarness() {
             bidRound={BID_ROUNDS[params.bids ?? ''] ?? null}
             outPlayers={OUT_PLAYERS[params.out as keyof typeof OUT_PLAYERS] ?? null}
             botTrick={params.trick === 'bots'}
+            fold={fixture === 'fold' ? 'count' : fixture === 'fold-legacy' ? 'legacy' : undefined}
             countHelp={params.count === 'on'}
             invitation={INVITATIONS[params.invitation ?? ''] ?? null}
           />
@@ -739,6 +740,7 @@ function RolePreview({
   countHelp = false,
   botTrick = false,
   invitation = null,
+  fold,
 }: {
   role: 'player' | 'spectator';
   phase: string;
@@ -755,10 +757,12 @@ function RolePreview({
   countHelp?: boolean;
   botTrick?: boolean;
   invitation?: SeatInvitation | null;
+  fold?: 'count' | 'legacy';
 }) {
   const [Table, setTable] = useState<Awaited<ReturnType<typeof loadGameCanvasTable>> | null>(null);
   const [invitationHeight, setInvitationHeight] = useState(0);
-  const tableRoom = bidRound || botTrick || outPlayers || invitation ? BOT_ROOM : WAITING_ROOM;
+  const tableRoom =
+    bidRound || botTrick || outPlayers || invitation || fold ? BOT_ROOM : WAITING_ROOM;
   useEffect(() => {
     let active = true;
     const store = useGameStore.getState();
@@ -979,6 +983,87 @@ function RolePreview({
     botTrick,
     tableRoom,
   ]);
+
+  useEffect(() => {
+    if (!Table || !fold) return;
+    const store = useGameStore.getState();
+    const initial = store.serverState;
+    if (!initial) return;
+    const leftovers: Record<Position, Card[]> = {
+      north: [
+        { rank: 8, suit: 'clubs' },
+        { rank: 7, suit: 'diamonds' },
+        { rank: 6, suit: 'hearts' },
+      ],
+      east: [],
+      south: [
+        { rank: 14, suit: 'hearts' },
+        { rank: 10, suit: 'diamonds' },
+        { rank: 9, suit: 'clubs' },
+        { rank: 6, suit: 'clubs' },
+      ],
+      west: [
+        { rank: 12, suit: 'hearts' },
+        { rank: 9, suit: 'diamonds' },
+      ],
+    };
+    const timers: ReturnType<typeof setTimeout>[] = [];
+    let hand = 4;
+    const cycle = () => {
+      timers.length = 0;
+      let state = {
+        ...initial,
+        phase: 'playing',
+        hand_number: hand++,
+        current_player: 'east',
+        current_trick: [],
+        tricks: [],
+        players: {
+          north: { hand: 3 },
+          east: { hand: 4 },
+          south: { hand: leftovers.south },
+          west: { hand: 2 },
+        },
+      } as ServerGameState;
+      store.setLegalActions([]);
+      store.setTurnTimer(null);
+      store.setServerState(state);
+      for (const [i, position] of (['west', 'north', 'south'] as const).entries()) {
+        timers.push(
+          setTimeout(
+            () => {
+              state = {
+                ...state,
+                players: {
+                  ...state.players,
+                  [position]: {
+                    hand: 0,
+                    eliminated: true,
+                    ...(fold === 'count'
+                      ? { folded_count: leftovers[position].length }
+                      : { revealed_cards: leftovers[position] }),
+                  },
+                },
+              };
+              store.setServerState(state);
+            },
+            1200 + i * 900
+          )
+        );
+      }
+      timers.push(
+        setTimeout(() => {
+          store.setServerState({ ...state, phase: 'bidding', current_trick: [], tricks: [] });
+        }, 16000)
+      );
+    };
+    cycle();
+    const loop = setInterval(cycle, 18000);
+    return () => {
+      clearInterval(loop);
+      timers.forEach(clearTimeout);
+    };
+  }, [Table, fold]);
 
   useEffect(() => {
     if (!Table || deal !== 'true') return;

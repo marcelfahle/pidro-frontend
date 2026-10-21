@@ -643,12 +643,12 @@ const allCases = [
   // PID-220: with count help on, the plaque's bid line carries the bidders'
   // count and "Last trick" sits under it, clear of every seat, also on the
   // small phones that leave the ticker out. Marcel is out of trumps: dimmed,
-  // "Out", the two cards laid face up on screen.
+  // "Out", the two cards folded face down on the felt.
   {
     name: 'table-count-help',
     path: '/table-dev?phase=playing&role=player&out=one&count=on',
     testId: 'last-trick',
-    countHelp: { bidder: 'Jocke', line: 'bid 6', out: ['west'], revealed: ['west'] },
+    countHelp: { bidder: 'Jocke', line: 'bid 6', out: ['west'], folded: ['west'] },
   },
   {
     name: 'table-last-trick',
@@ -661,8 +661,15 @@ const allCases = [
     name: 'table-takes-the-rest',
     path: '/table-dev?phase=playing&role=player&out=lone&count=on',
     testId: 'seat-south',
-    countHelp: { out: ['north', 'east', 'west'], revealed: ['east', 'west'], lone: 'south' },
+    countHelp: { out: ['north', 'east', 'west'], folded: ['east', 'west'], lone: 'south' },
   },
+  ...['fold', 'fold-legacy', 'fold-reduced'].map((fixture) => ({
+    name: `table-${fixture}`,
+    path: `/table-dev?fixture=${fixture === 'fold-legacy' ? fixture : 'fold'}&count=on`,
+    testId: 'seat-south-folded',
+    fold: true,
+    reducedMotion: fixture === 'fold-reduced',
+  })),
   // PID-214: a bot seat says what it played, like anyone, also on the small
   // phones where the seats wear nameplates.
   {
@@ -2929,7 +2936,7 @@ async function assertPlayLines(page, testCase, viewport) {
 
 // Count help (PID-220): the bid line reads in full and, with "Last trick",
 // keeps off every seat and North's cards. An out seat says so aloud and lays
-// its cards face up where they can be read.
+// its cards face down on the felt.
 async function assertCountHelp(page, testCase, viewport) {
   const help = testCase.countHelp;
   if (!help) return;
@@ -2946,14 +2953,17 @@ async function assertCountHelp(page, testCase, viewport) {
     );
   const words = help.words ?? { out: 'out', lone: 'takes the rest' };
   for (const seat of help.out) await spoken(seat, words.out);
-  for (const seat of help.revealed) {
-    const cards = page.getByTestId(`seat-${seat}-revealed`);
+  for (const seat of help.folded) {
+    const cards = page.getByTestId(`seat-${seat}-folded`);
     await cards.waitFor({ timeout: 10_000 });
-    assertInsideViewport(
-      `${testCase.name} ${seat} cards`,
-      await getStableBox(cards, page),
-      viewport
-    );
+    for (const image of await cards.locator('img').all()) {
+      assert.match(await image.getAttribute('src'), /cardback\.png/);
+      assertInsideViewport(
+        `${testCase.name} ${seat} back`,
+        await getStableBox(image, page),
+        viewport
+      );
+    }
   }
   if (help.lone) await spoken(help.lone, words.lone);
   if (!help.line) return;
@@ -3583,6 +3593,7 @@ async function main() {
         if (!selectedIds.has(`${viewport.name}/${testCase.name}`)) continue;
         const started = performance.now();
         const page = await context.newPage();
+        if (testCase.reducedMotion) await page.emulateMedia({ reducedMotion: 'reduce' });
         // Reuse CI's existing tablet shards without resizing any other screen.
         const caseViewport = testCase.lobbyFixture
           ? (viewport.lobbyViewport ?? viewport)
@@ -3849,6 +3860,26 @@ async function main() {
               .waitFor({ state: 'detached', timeout: 7000 });
           }
           await assertCountHelp(page, testCase, caseViewport);
+          if (testCase.fold) {
+            await page.getByTestId('rendered-hand-card-count-0').waitFor();
+            for (const [seat, count] of Object.entries({ north: 3, west: 2, south: 4 })) {
+              const pile = page.getByTestId(`seat-${seat}-folded`);
+              await pile.waitFor();
+              assert.equal(await pile.locator('img').count(), count);
+              for (const image of await pile.locator('img').all()) {
+                assert.match(await image.getAttribute('src'), /cardback\.png/);
+                assertInsideViewport(
+                  `${testCase.name} ${seat} back`,
+                  await getStableBox(image, page),
+                  caseViewport
+                );
+              }
+            }
+            assert.equal(await page.getByTestId('seat-east-folded').count(), 0);
+            assert.equal(await page.getByTestId('seat-east-cards').locator('img').count(), 4);
+            assert.equal(await page.getByTestId('seat-north-cards').locator('img').count(), 0);
+            assert.equal(await page.getByTestId('seat-west-cards').locator('img').count(), 0);
+          }
           await assertGameOver(page, testCase, caseViewport);
           await assertRulePresentation(page, testCase);
           if (testCase.name === 'home') {
