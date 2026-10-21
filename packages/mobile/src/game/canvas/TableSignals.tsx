@@ -29,8 +29,6 @@ import { computeLayout, playedCardTarget, type TableLayout } from './layout';
 import type { TableModel, TrickResult } from './tableModel';
 import type { ScoreGlow } from './Scoreboard';
 import { useTranslation } from '@/i18n';
-import { paced } from '@/features/game/tableHelp';
-import type { TablePace } from '@pidro/shared';
 
 const POP_MS = 1500;
 const easeOutCubic = (t: number) => {
@@ -42,10 +40,9 @@ type Props = {
   model: TableModel;
   topReserve?: number;
   bottomReserve?: number;
-  pace?: TablePace;
 };
 
-export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 'normal' }: Props) {
+export function TableSignals({ model, topReserve = 0, bottomReserve = 0 }: Props) {
   const { width, height } = useWindowDimensions();
   const { top, bottom, left, right } = useSafeAreaInsets();
   const L = useMemo(
@@ -54,7 +51,7 @@ export function TableSignals({ model, topReserve = 0, bottomReserve = 0, pace = 
   );
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      <TrickPop trick={model.lastTrick} seats={model.seats} L={L} popMs={paced(POP_MS, pace)} />
+      <TrickPop trick={model.lastTrick} seats={model.seats} L={L} popMs={POP_MS} />
     </View>
   );
 }

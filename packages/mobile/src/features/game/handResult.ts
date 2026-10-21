@@ -3,9 +3,15 @@
  * bid, how it went, and the point cards each team took. The server says what
  * every card was worth and who kept it; this only sorts it into the trays.
  */
-import type { Card, ServerLastHand, Suit, TeamKey } from '@/types/game';
+import type { Card, ServerGameState, ServerLastHand, Suit, TeamKey } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { PIDRO_POINTS, type PointsSide } from './points';
+
+export function waitsForContinue(
+  state: Pick<ServerGameState, 'pace' | 'awaiting_continue'>
+): boolean {
+  return state.pace === 'own' && state.awaiting_continue === true;
+}
 
 /**
  * How long the panel stays before the next hand is dealt: long enough to see

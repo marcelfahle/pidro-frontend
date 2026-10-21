@@ -222,6 +222,29 @@ const allCases = [
     open: 'Your badges',
   },
   { name: 'settings', path: '/settings', testId: 'settings-screen', authenticated: true },
+  ...['en', 'sv'].flatMap((locale) => [
+    {
+      name: `settings-pace-${locale}`,
+      path: `/ui-dev?state=settings&locale=${locale}`,
+      testId: 'settings-screen',
+      ownPace: true,
+      paceSettings: true,
+    },
+    {
+      name: `table-pace-solo-${locale}`,
+      path: `/table-dev?phase=playing&menu=pace&solo=true&locale=${locale}`,
+      testId: 'table-utility-window',
+      ownPace: true,
+      paceSettings: true,
+    },
+    {
+      name: `table-pace-human-${locale}`,
+      path: `/table-dev?phase=playing&menu=pace&locale=${locale}`,
+      testId: 'table-utility-window',
+      ownPace: true,
+      paceSettings: true,
+    },
+  ]),
   {
     name: 'update-notice',
     path: '/home?fixture=update-notice&safeArea=island',
@@ -591,6 +614,18 @@ const allCases = [
   // PID-236: the table dims under the hand's result and the point cards each
   // team took; ours made is stamped gold, the rest is quiet.
   { name: 'table-hand-made', path: '/table-dev?phase=playing&hand=made', testId: 'hand-result' },
+  {
+    name: 'table-hand-own',
+    path: '/table-dev?phase=playing&hand=own',
+    testId: 'hand-continue',
+    ownPace: true,
+  },
+  {
+    name: 'table-hand-own-sv',
+    path: '/table-dev?phase=playing&hand=own&locale=sv',
+    testId: 'hand-continue',
+    ownPace: true,
+  },
   { name: 'table-hand-set', path: '/table-dev?phase=playing&hand=set', testId: 'hand-result' },
   {
     name: 'table-hand-they-set',
@@ -1285,6 +1320,18 @@ async function assertClassicLogin(page, testCase) {
 }
 
 async function assertTableMessageReadable(page, name, viewport) {
+  if (name === 'table-hand-own' || name === 'table-hand-own-sv') {
+    const button = page.getByTestId('hand-continue');
+    const box = await button.boundingBox();
+    assertInsideViewport(`${name}: Continue`, box, viewport);
+    assert.ok(box.height >= 44, `${name}: Continue has a senior-friendly target`);
+    assert.equal(await page.getByTestId('hand-result-timer').count(), 0);
+    await page.getByTestId('hand-result').click({ position: { x: 10, y: viewport.height / 2 } });
+    assert.ok(await button.isVisible(), 'tapping the scrim cannot dismiss an own-pace result');
+    await button.click();
+    await page.getByTestId('hand-result').waitFor({ state: 'detached' });
+    return;
+  }
   const message = TABLE_MESSAGES[name];
   if (!message) return;
   const container = page.getByTestId(message.testId).first();
@@ -3583,7 +3630,7 @@ async function main() {
   const matrix = selectViewports().flatMap((viewport) =>
     cases
       .filter((testCase) => {
-        if (testCase.words)
+        if (testCase.words || testCase.ownPace)
           return ['portrait', 'small-portrait', 'landscape', 'tablet-portrait'].includes(
             viewport.name
           );
@@ -4029,6 +4076,26 @@ async function main() {
                 caseViewport.height,
                 `${testCase.name}: backdrop reaches the bottom`
               );
+            }
+          }
+          if (testCase.paceSettings) {
+            const pace = page.getByTestId('settings-pace');
+            await pace.scrollIntoViewIfNeeded();
+            const own = pace.getByRole('radio').nth(1);
+            await own.click();
+            assert.equal(await own.getAttribute('aria-checked'), 'true');
+            assertInsideViewport('Pace', await pace.boundingBox(), caseViewport);
+            if (testCase.path.startsWith('/table-dev')) {
+              const overflow = await page
+                .getByTestId('table-utility-window')
+                .evaluate((window) =>
+                  [...window.querySelectorAll('*')].some(
+                    (node) =>
+                      ['auto', 'scroll'].includes(getComputedStyle(node).overflowY) &&
+                      node.scrollHeight > node.clientHeight + 2
+                  )
+                );
+              assert.equal(overflow, false, 'Table settings must fit without scrolling');
             }
           }
           if (pageErrors.length) {

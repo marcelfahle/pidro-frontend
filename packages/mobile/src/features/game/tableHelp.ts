@@ -4,11 +4,13 @@
  */
 import type { Position } from '@/types/lobby';
 import type { ServerPlayerView } from '@/types/game';
-import type { TablePace } from '@pidro/shared';
+import type { ReadinessSnapshot } from '@pidro/shared';
 
-/** Slow keeps what the table shows for a moment on screen twice as long. */
-export function paced(ms: number, pace: TablePace): number {
-  return pace === 'slow' ? ms * 2 : ms;
+export function isSoloTable(readiness: ReadinessSnapshot | null, you: Position | null): boolean {
+  if (!you || readiness?.seats[you]?.occupant_type !== 'human') return false;
+  return (['north', 'east', 'south', 'west'] as const).every(
+    (position) => position === you || readiness.seats[position]?.occupant_type === 'bot'
+  );
 }
 
 /** The one player still holding trumps once the other three have gone cold. */

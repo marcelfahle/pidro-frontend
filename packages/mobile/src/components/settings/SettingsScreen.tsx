@@ -8,6 +8,7 @@ import { useTranslation } from '@/i18n';
 import { LanguageSelector } from './LanguageSelector';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
+import { ActionPill } from '@/components/ui/ActionPill';
 import { ScreenHeader } from '@/components/ui/ScreenHeader';
 import { ScreenShell } from '@/components/ui/ScreenShell';
 import { Surface } from '@/components/ui/Surface';
@@ -84,12 +85,22 @@ export function SettingsScreen({
             value={countHelp}
             onValueChange={toggleCountHelp}
           />
-          <SettingRow
-            title={t('settings.slowPace')}
-            subtitle={t('settings.slowPaceHint')}
-            value={pace === 'slow'}
-            onValueChange={() => setPace(pace === 'slow' ? 'normal' : 'slow')}
-          />
+          <Surface variant="subtle" style={styles.rulesRow} testID="settings-pace">
+            <PidroText role="label">{t('settings.pace')}</PidroText>
+            <View style={styles.choices}>
+              {(['quick', 'own'] as const).map((value) => (
+                <ActionPill
+                  key={value}
+                  label={t(value === 'quick' ? 'settings.paceQuick' : 'settings.paceOwn')}
+                  selected={pace === value}
+                  onPress={() => setPace(value)}
+                />
+              ))}
+            </View>
+            <PidroText role="metadata" tone="muted">
+              {t('settings.paceHint')} {t('settings.paceSolo')}
+            </PidroText>
+          </Surface>
         </View>
       </Surface>
       {signedIn ? <AccountSection /> : null}
@@ -128,6 +139,7 @@ const styles = StyleSheet.create({
   languageColumn: { flexGrow: 1, flexBasis: 280, minWidth: 0 },
   preferencesColumn: { flexGrow: 1, flexBasis: 280, minWidth: 0, gap: PidroSpacing.sm },
   rulesRow: { gap: PidroSpacing.xs, padding: PidroSpacing.sm },
+  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
   row: {
     minHeight: 72,
     flexDirection: 'row',

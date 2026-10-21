@@ -19,7 +19,7 @@ interface SettingsState {
   hasSeenLouisianaRules: boolean;
   /** Beginner aids at the table: the bidders' count and the last trick (PID-220). */
   countHelp: boolean;
-  /** How long tricks and results stay on screen. */
+  /** Requested pace at tables where this player is the only human. */
   pace: TablePace;
 
   setTheme: (theme: 'light' | 'dark' | 'system') => void;
@@ -34,7 +34,7 @@ interface SettingsState {
 }
 
 export type PinChoice = 'classic' | 'none';
-export type TablePace = 'normal' | 'slow';
+export type TablePace = 'quick' | 'own';
 
 interface CreateSettingsStoreOptions {
   storage: PersistStorage;
@@ -60,7 +60,7 @@ export function createSettingsStore({
         lobbyRuleSetFilter: null,
         hasSeenLouisianaRules: false,
         countHelp: false,
-        pace: 'normal',
+        pace: 'quick',
 
         setTheme: (theme) => set({ theme }),
         toggleSound: () => set((state) => ({ soundEnabled: !state.soundEnabled })),
@@ -78,11 +78,13 @@ export function createSettingsStore({
         partialize: ({ hydrated, ...state }) => state,
         // Default merge migrates old version-0 stores without losing their preferences.
         merge: (persisted, current) => {
-          const saved = persisted as Partial<SettingsState> | undefined;
+          const saved = persisted as
+            (Omit<Partial<SettingsState>, 'pace'> & { pace?: string }) | undefined;
           const language = saved?.language;
           return {
             ...current,
             ...saved,
+            pace: saved?.pace === 'slow' || saved?.pace === 'own' ? 'own' : 'quick',
             hydrated: false,
             language: language === 'en' || language === 'sv' ? language : 'system',
           };

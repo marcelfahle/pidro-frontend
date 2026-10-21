@@ -27,7 +27,6 @@ import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@
 import type { Position } from '@/types/lobby';
 import type { PointsSide } from '@/features/game/points';
 import { isStillCapture } from '@/utils/stillCapture';
-import type { TablePace } from '@pidro/shared';
 import { handLogEntries, type HandLogEntry, type HandLogGroup } from '@/game/handLog';
 import { ActionTicker, type TickerRestingLine } from './ActionTicker';
 import { SCORE_COUNT } from './HandResult';
@@ -180,10 +179,8 @@ export function Scoreboard({
   left = 0,
   log = [],
   resting = null,
-  yourTurn = false,
   ticker,
   stateArrived = true,
-  tickerPace = 'normal',
   restingOnly = false,
   help = null,
   glow = null,
@@ -198,14 +195,12 @@ export function Scoreboard({
   /** The hand log behind the ticker. */
   log?: HandLogGroup[];
   resting?: TickerRestingLine | null;
-  /** The log steps aside when it becomes your turn. */
+  /** Kept for fixture callers; a turn change never dismisses the log. */
   yourTurn?: boolean;
   /** Where the ticker keeps off North's fan (layout's tickerPlacement); null leaves it out. */
   ticker?: { lineMaxWidth: number; drop: number } | null;
   /** False until the table has its first server state; the ticker waits for it. */
   stateArrived?: boolean;
-  /** The table's pace: slow holds each ticker line longer. */
-  tickerPace?: TablePace;
   /** Only the resting line, where the table has no room for the passing ones. */
   restingOnly?: boolean;
   /** Under the ticker: the count help's "Last trick". */
@@ -241,12 +236,6 @@ export function Scoreboard({
   };
   const [isOpen, setIsOpen] = useState(false);
   const [logOpen, setLogOpen] = useState(false);
-  // The log steps aside the moment it becomes your turn.
-  const [turnSeen, setTurnSeen] = useState(yourTurn);
-  if (yourTurn !== turnSeen) {
-    setTurnSeen(yourTurn);
-    if (yourTurn) setLogOpen(false);
-  }
   const entries = useMemo(() => handLogEntries(log), [log]);
   const [scoreHistory, setScoreHistory] = useState<ScoreHistoryEntry[]>([]);
   const prevScoresRef = useRef<ConcreteScores | null>(scores ? copyScores(scores) : null);
@@ -339,7 +328,6 @@ export function Scoreboard({
             onOpenLog={() => setLogOpen(true)}
             stateArrived={stateArrived}
             lineMaxWidth={ticker?.lineMaxWidth}
-            pace={tickerPace}
           />
           {help}
         </View>

@@ -19,6 +19,8 @@ import { waitingRoomEvent, type WaitingRoomEvent } from '../gameRoomEvents';
 import { terminalGameJoinFailure } from '../gameJoinFailure';
 import { reconnectsAfterClose } from '@/features/game/channelReconnect';
 import type { TableNotice } from '@/game/tableNotices';
+import { useSettingsStore } from '@/stores/settings';
+import { isSoloTable } from '@/features/game/tableHelp';
 
 let globalGameChannel: Channel | null = null;
 let notifySeatEvent: ((event: SeatEvent) => void) | undefined;
@@ -137,6 +139,19 @@ export const useGameChannel = ({
   const setError = useGameStore((s) => s.setError);
   const setAway = useGameStore((s) => s.setAway);
   const away = useGameStore((s) => s.isAway);
+  const joined = useGameStore((s) => s.isChannelJoined);
+  const solo = useGameStore(
+    (s) => s.role === 'player' && isSoloTable(s.readiness, s.youPositionAbs)
+  );
+  const supportsPace = useGameStore((s) => s.serverState?.pace != null);
+  const pace = useSettingsStore((s) => s.pace);
+  const settingsHydrated = useSettingsStore((s) => s.hydrated);
+
+  useEffect(() => {
+    if (!enabled || !joined || !solo || !settingsHydrated || !supportsPace) return;
+    // Older channels cannot handle this intent; wait for the server to advertise pace.
+    void pushGameAction('set_pace', { pace }).catch(() => {});
+  }, [enabled, joined, solo, settingsHydrated, supportsPace, pace, roomCode]);
 
   const onSeatEventRef = useRef(onSeatEvent);
   const onProgressionSummaryRef = useRef(onProgressionSummary);

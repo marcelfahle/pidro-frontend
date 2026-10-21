@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BevelButton } from '@/components/ui/BevelButton';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroSwitch } from '@/components/ui/PidroSwitch';
+import { ActionPill } from '@/components/ui/ActionPill';
 import { PidroColors, PidroSpacing } from '@/design/tokens';
 import { useSettingsStore } from '@/stores/settings';
 import { headerTop } from './TableChrome';
@@ -14,17 +15,25 @@ import { useTranslation } from '@/i18n';
 export function TableSettings({
   onLeave,
   isSpectator = false,
+  isSolo = false,
   isGameOver = false,
   onRules,
+  initiallyOpen = false,
 }: {
   onLeave: () => void;
   isSpectator?: boolean;
+  isSolo?: boolean;
   isGameOver?: boolean;
   onRules?: () => void;
+  initiallyOpen?: boolean;
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const [panel, setPanel] = useState<'settings' | 'leave' | null>(null);
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
+  const [panel, setPanel] = useState<'settings' | 'leave' | null>(
+    initiallyOpen ? 'settings' : null
+  );
   const hapticEnabled = useSettingsStore((state) => state.hapticEnabled);
   const toggleHaptic = useSettingsStore((state) => state.toggleHaptic);
   const countHelp = useSettingsStore((state) => state.countHelp);
@@ -54,6 +63,7 @@ export function TableSettings({
       <TableUtilityWindow
         title={t(panel === 'leave' ? 'game.leave_question' : 'game.settings')}
         open={panel !== null}
+        wide={landscape && panel === 'settings'}
         onClose={close}>
         {panel === 'leave' ? (
           <>
@@ -68,83 +78,104 @@ export function TableSettings({
             />
           </>
         ) : (
-          <>
-            {onRules && (
-              <BevelButton
-                material="glass"
-                label={t('rules.menu')}
-                testID="table-rules-menu"
-                onPress={() => {
-                  close();
-                  onRules();
-                }}
-              />
-            )}
-            <View style={styles.row}>
-              <View style={styles.copy}>
-                <PidroText role="label">{t('game.sound')}</PidroText>
+          <View style={[styles.columns, landscape && styles.landscape]}>
+            <View style={[styles.column, landscape && styles.half]}>
+              {onRules && !landscape && (
+                <BevelButton
+                  material="glass"
+                  label={t('rules.menu')}
+                  testID="table-rules-menu"
+                  onPress={() => {
+                    close();
+                    onRules();
+                  }}
+                />
+              )}
+              <View style={styles.row}>
+                <View style={styles.copy}>
+                  <PidroText role="label">{t('game.sound')}</PidroText>
+                  <PidroText role="metadata" tone="muted">
+                    {t('game.soon')}
+                  </PidroText>
+                </View>
+                <PidroSwitch
+                  accessibilityLabel={t('game.sound')}
+                  value={false}
+                  disabled
+                  onValueChange={() => {}}
+                />
+              </View>
+              <View style={styles.row}>
+                <View style={styles.copy}>
+                  <PidroText role="label">{t('game.haptics')}</PidroText>
+                  <PidroText role="metadata" tone="muted">
+                    {t('game.haptics_description')}
+                  </PidroText>
+                </View>
+                <PidroSwitch
+                  accessibilityLabel={t('game.haptics')}
+                  value={hapticEnabled}
+                  onValueChange={toggleHaptic}
+                />
+              </View>
+              <View style={styles.row}>
+                <View style={styles.copy}>
+                  <PidroText role="label">{t('settings.countHelp')}</PidroText>
+                  <PidroText role="metadata" tone="muted">
+                    {t('settings.countHelpHint')}
+                  </PidroText>
+                </View>
+                <PidroSwitch
+                  accessibilityLabel={t('settings.countHelp')}
+                  value={countHelp}
+                  onValueChange={toggleCountHelp}
+                />
+              </View>
+            </View>
+            <View style={[styles.column, landscape && styles.half]}>
+              {onRules && landscape && (
+                <BevelButton
+                  material="glass"
+                  label={t('rules.menu')}
+                  testID="table-rules-menu"
+                  onPress={() => {
+                    close();
+                    onRules();
+                  }}
+                />
+              )}
+              <View style={styles.pace} testID="settings-pace">
+                <PidroText role="label">{t('settings.pace')}</PidroText>
+                <View style={styles.choices}>
+                  {(['quick', 'own'] as const).map((value) => (
+                    <ActionPill
+                      key={value}
+                      label={t(value === 'quick' ? 'settings.paceQuick' : 'settings.paceOwn')}
+                      selected={pace === value}
+                      onPress={() => setPace(value)}
+                    />
+                  ))}
+                </View>
                 <PidroText role="metadata" tone="muted">
-                  {t('game.soon')}
+                  {t('settings.paceHint')}
+                </PidroText>
+                <PidroText role="metadata" tone="muted">
+                  {t(isSolo ? 'settings.paceSolo' : 'settings.paceTableQuick')}
                 </PidroText>
               </View>
-              <PidroSwitch
-                accessibilityLabel={t('game.sound')}
-                value={false}
-                disabled
-                onValueChange={() => {}}
-              />
-            </View>
-            <View style={styles.row}>
-              <View style={styles.copy}>
-                <PidroText role="label">{t('game.haptics')}</PidroText>
-                <PidroText role="metadata" tone="muted">
-                  {t('game.haptics_description')}
-                </PidroText>
+              <View style={styles.exit}>
+                <BevelButton
+                  material="glass"
+                  tone={isSpectator ? 'default' : 'danger'}
+                  size="sm"
+                  fullWidth
+                  accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
+                  label={t(isSpectator ? 'game.lobby' : 'game.leave')}
+                  onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}
+                />
               </View>
-              <PidroSwitch
-                accessibilityLabel={t('game.haptics')}
-                value={hapticEnabled}
-                onValueChange={toggleHaptic}
-              />
             </View>
-            <View style={styles.row}>
-              <View style={styles.copy}>
-                <PidroText role="label">{t('settings.countHelp')}</PidroText>
-                <PidroText role="metadata" tone="muted">
-                  {t('settings.countHelpHint')}
-                </PidroText>
-              </View>
-              <PidroSwitch
-                accessibilityLabel={t('settings.countHelp')}
-                value={countHelp}
-                onValueChange={toggleCountHelp}
-              />
-            </View>
-            <View style={styles.row}>
-              <View style={styles.copy}>
-                <PidroText role="label">{t('settings.slowPace')}</PidroText>
-                <PidroText role="metadata" tone="muted">
-                  {t('settings.slowPaceHint')}
-                </PidroText>
-              </View>
-              <PidroSwitch
-                accessibilityLabel={t('settings.slowPace')}
-                value={pace === 'slow'}
-                onValueChange={() => setPace(pace === 'slow' ? 'normal' : 'slow')}
-              />
-            </View>
-            <View style={styles.exit}>
-              <BevelButton
-                material="glass"
-                tone={isSpectator ? 'default' : 'danger'}
-                size="sm"
-                fullWidth
-                accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
-                label={t(isSpectator ? 'game.lobby' : 'game.leave')}
-                onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}
-              />
-            </View>
-          </>
+          </View>
         )}
       </TableUtilityWindow>
     </>
@@ -152,6 +183,10 @@ export function TableSettings({
 }
 
 const styles = StyleSheet.create({
+  columns: { gap: PidroSpacing.sm },
+  landscape: { flexDirection: 'row', gap: PidroSpacing.lg },
+  column: { gap: PidroSpacing.sm },
+  half: { flex: 1 },
   trigger: { position: 'absolute', zIndex: 44, elevation: 44 },
   row: {
     flexDirection: 'row',
@@ -160,5 +195,7 @@ const styles = StyleSheet.create({
     paddingVertical: PidroSpacing.xs,
   },
   copy: { flex: 1, gap: PidroSpacing.xxs },
+  pace: { gap: PidroSpacing.xxs },
+  choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
   exit: { borderTopWidth: 1, borderTopColor: PidroColors.border, paddingTop: PidroSpacing.sm },
 });

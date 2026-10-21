@@ -149,6 +149,14 @@ UI_SHOT_DIR=/tmp/pidro-locales node scripts/verify-ui-grammar.mjs
 
 ### Recipes
 
+PID-268: `/table-dev?phase=playing&hand=own` holds the result without a timer;
+Continue releases this local fixture (it does not send a channel intent).
+`menu=pace&solo=true` opens Pace for a bot table; omit `solo` for the human-table
+Quick note. Add `locale=sv` for Swedish. Grammar cases `table-hand-own(-sv)`,
+`table-pace-solo-en|sv`, `table-pace-human-en|sv` and `settings-pace-en|sv` cover
+390×844, 375×667, 844×390 and 768×1024. The table windows fit without scrolling;
+the existing full Settings page still scrolls to its account and update sections.
+
 Game-over checks: `phase=game_over` supports `result=loss|east|spectator|tie`,
 `xp=earned|level`, `rematch=open|one|two|asked|waiting|missing|pending`, and
 `playerName=` for the partner's long name. The default is a win (62–29) with no

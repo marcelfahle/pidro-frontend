@@ -133,6 +133,33 @@ describe("settings language migration and hydration", () => {
     });
   });
 
+  it("migrates the old pace and persists both new choices without losing other settings", () => {
+    for (const [saved, expected] of [
+      ["slow", "own"],
+      ["normal", "quick"],
+      ["own", "own"],
+      ["quick", "quick"],
+      [undefined, "quick"],
+    ]) {
+      const storage = memory(
+        JSON.stringify({
+          version: 0,
+          state: { pace: saved, language: "sv", countHelp: true },
+        }),
+      );
+      const store = createSettingsStore({ storage });
+      expect(store.getState()).toMatchObject({
+        pace: expected,
+        language: "sv",
+        countHelp: true,
+      });
+      for (const pace of ["quick", "own"] as const) {
+        store.getState().setPace(pace);
+        expect(createSettingsStore({ storage }).getState().pace).toBe(pace);
+      }
+    }
+  });
+
   it("persists language choices and never persists hydration state", () => {
     const storage = memory();
     const store = createSettingsStore({ storage });

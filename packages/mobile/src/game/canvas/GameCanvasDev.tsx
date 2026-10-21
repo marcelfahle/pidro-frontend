@@ -248,7 +248,11 @@ const FIXTURE_HANDS = {
   },
 } satisfies Record<string, ServerLastHand>;
 const fixtureHand = (name: string | undefined) =>
-  name && name in FIXTURE_HANDS ? FIXTURE_HANDS[name as keyof typeof FIXTURE_HANDS] : null;
+  name === 'own'
+    ? FIXTURE_HANDS.made
+    : name && name in FIXTURE_HANDS
+      ? FIXTURE_HANDS[name as keyof typeof FIXTURE_HANDS]
+      : null;
 
 /** The bidding behind the seats' "Passed" / "Bid 6", in order from the dealer's left. */
 const FIXTURE_BIDS: ServerBid[] = [
@@ -344,6 +348,8 @@ export default function GameCanvasDev({
     reply,
     autoplay,
     transition,
+    menu,
+    solo,
   } = useLocalSearchParams<{
     scores?: string;
     dealer?: string;
@@ -358,6 +364,8 @@ export default function GameCanvasDev({
     reply?: string;
     autoplay?: string;
     transition?: string;
+    menu?: string;
+    solo?: string;
   }>();
   const motionFixture = fixture === 'play-motion';
   const transitionMs =
@@ -391,6 +399,7 @@ export default function GameCanvasDev({
   }, [scoreFixture]);
 
   const [lastHand, setLastHand] = useState<ServerLastHand | null>(null);
+  const [continued, setContinued] = useState(false);
   useEffect(() => {
     const fixture = fixtureHand(handFixture);
     if (!fixture) return;
@@ -578,9 +587,13 @@ export default function GameCanvasDev({
   const model = motionFixture ? presentation.model : serverModel;
   const playCard = motionFixture ? presentation.playCard : onPlayCard;
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
-  // A `hand=` fixture's result belongs to the hand before this one.
-  const handNumber = fixtureHand(handFixture) ? 5 : 4;
-  const handResult = useHandResult(lastHand, viewerOf(model.seats), 'normal');
+  // Own pace keeps the completed hand's number until Continue deals again.
+  const handNumber = fixtureHand(handFixture) && (handFixture !== 'own' || continued) ? 5 : 4;
+  const handResult = useHandResult(
+    lastHand,
+    viewerOf(model.seats),
+    handFixture === 'own' && !!lastHand && !continued
+  );
   const handLog = useMemo(
     () =>
       buildHandLog({
@@ -645,7 +658,11 @@ export default function GameCanvasDev({
         />
       ) : null}
       <GameCanvas
-        model={model}
+        model={
+          handResult.result?.waiting
+            ? { ...model, yourHand: [], currentTrick: {}, playedCards: {} }
+            : model
+        }
         textures={textures}
         onPlayCard={playCard}
         topReserve={topReserve}
@@ -681,6 +698,7 @@ export default function GameCanvasDev({
           result={handResult.result}
           seats={model.seats}
           onClose={handResult.close}
+          onContinue={() => setContinued(true)}
           topReserve={topReserve}
           bottomReserve={bottomReserve}
         />
@@ -717,7 +735,12 @@ export default function GameCanvasDev({
                 : null
             }
           />
-          <TableSettings onLeave={() => {}} />
+          <TableSettings
+            onLeave={() => {}}
+            onRules={menu === 'pace' ? () => {} : undefined}
+            initiallyOpen={menu === 'pace'}
+            isSolo={solo === 'true'}
+          />
         </>
       )}
     </View>

@@ -22,6 +22,7 @@ export function TableUtilityWindow({
   open,
   onClose,
   followEnd = false,
+  wide = false,
   children,
 }: {
   title: string;
@@ -29,6 +30,7 @@ export function TableUtilityWindow({
   onClose: () => void;
   /** Open at the newest content and stay there as it grows, unless scrolled back. */
   followEnd?: boolean;
+  wide?: boolean;
   children: ReactNode;
 }) {
   const { t } = useTranslation();
@@ -67,7 +69,7 @@ export function TableUtilityWindow({
           <Surface
             testID="table-utility-window"
             variant="card"
-            style={styles.window}
+            style={[styles.window, wide && styles.wide]}
             accessibilityViewIsModal>
             <View style={styles.header}>
               <PidroText role="title" style={styles.title}>
@@ -113,6 +115,7 @@ const styles = StyleSheet.create({
     padding: PidroSpacing.sm,
   },
   window: { width: '100%', maxWidth: 360, maxHeight: '100%' },
+  wide: { maxWidth: 720 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',

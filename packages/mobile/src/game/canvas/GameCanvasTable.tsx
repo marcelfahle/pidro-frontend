@@ -25,7 +25,7 @@ import { DealerSecondDeal } from '@/components/game/DealerSecondDeal';
 import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { canViewPlayer } from '@/features/friends';
-import type { ProgressionSummary } from '@/channels/hooks/useGameChannel';
+import { pushGameAction, type ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { useCardTextures } from './cardTextures';
 import { useTableModel, type TableModel } from './tableModel';
@@ -41,7 +41,8 @@ import { SCORE_PLAQUE_HEIGHT, Scoreboard } from './Scoreboard';
 import type { TickerRestingLine } from './ActionTicker';
 import { buildHandLog } from '@/game/handLog';
 import { bidSeatLine, bidsShown } from '@/features/game/bidding';
-import { loneTrumpHolder } from '@/features/game/tableHelp';
+import { isSoloTable, loneTrumpHolder } from '@/features/game/tableHelp';
+import { waitsForContinue } from '@/features/game/handResult';
 import { useSettingsStore } from '@/stores/settings';
 import { LastTrick, type LastTrickView } from './LastTrick';
 
@@ -138,7 +139,7 @@ function statusText(
     case 'playing':
       if (playedCard) return { text: t('game.plays', { card: cardLabel(playedCard) }) };
       // The others are out of trumps: what is left is this player's.
-      if (loneTrumpHolder(state?.players) === absolutePosition) {
+      if (state?.pace !== 'own' && loneTrumpHolder(state?.players) === absolutePosition) {
         return { text: t('game.takes_rest'), short: t('game.all_yours'), tone: 'now' };
       }
       if (player.isCurrentTurn) return now(t('game.playing'));
@@ -226,7 +227,8 @@ function TimedSeatLayer({
   held: ComponentProps<typeof SeatLayer>['held'];
 }) {
   const turnTimer = useGameStore((state) => state.turnTimer);
-  const timerProgress = useTurnTimerProgress(turnTimer);
+  const ownPace = useGameStore((state) => state.serverState?.pace === 'own');
+  const timerProgress = useTurnTimerProgress(ownPace ? null : turnTimer);
   const turnByRel = timerProgress
     ? players.reduce(
         (acc, player) => {
@@ -293,12 +295,12 @@ export function GameCanvasTable({
     isPrivateDealerRob ? dealerRobPresentation.pool : undefined,
     countHelp
   );
-  const pace = useSettingsStore((state) => state.pace);
+  const solo = useGameStore((state) => isSoloTable(state.readiness, state.youPositionAbs));
   // A hand scored while watching dims the table until its result closes.
   const handResult = useHandResult(
     controller.serverState ? (controller.serverState.last_hand ?? null) : undefined,
     viewerOf(serverModel.seats),
-    pace
+    waitsForContinue(controller.serverState ?? {})
   );
   // The server sends the next hand with the one that ended: the table holds
   // the hand that ended while its result shows, and deals once it closes.
@@ -496,12 +498,7 @@ export function GameCanvasTable({
         held={model.held}
       />
       {countHelp ? (
-        <TableSignals
-          model={model}
-          topReserve={topReserve}
-          bottomReserve={bottomReserve}
-          pace={pace}
-        />
+        <TableSignals model={model} topReserve={topReserve} bottomReserve={bottomReserve} />
       ) : null}
 
       <TableChromeBars reserves={reserves} />
@@ -510,6 +507,17 @@ export function GameCanvasTable({
           result={handResult.result}
           seats={model.seats}
           onClose={handResult.close}
+          onContinue={
+            isSpectator
+              ? undefined
+              : async () => {
+                  try {
+                    await pushGameAction('continue_hand', {});
+                  } catch (error) {
+                    controller.showActionError('Continue', error);
+                  }
+                }
+          }
           topReserve={topReserve}
           bottomReserve={bottomReserve}
         />
@@ -562,7 +570,6 @@ export function GameCanvasTable({
                 )
               : null
           }
-          tickerPace={pace}
           restingOnly={!fullTicker}
           help={lastTrickView ? <LastTrick trick={lastTrickView} yourTurn={isYourTurn} /> : null}
           glow={countHelp ? scoreGlow(model.lastTrick, model.seats, trickKey) : null}
@@ -586,6 +593,7 @@ export function GameCanvasTable({
           <TableSettings
             onLeave={onLeave}
             isSpectator={isSpectator}
+            isSolo={solo}
             isGameOver={isGameOver}
             onRules={rules.show}
           />

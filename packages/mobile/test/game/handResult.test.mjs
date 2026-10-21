@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'bun:test';
-import { handResultView } from '../../src/features/game/handResult.ts';
+import { handResultView, waitsForContinue } from '../../src/features/game/handResult.ts';
+
+it('waits only for the server own-pace Continue gate, including old and partial payloads', () => {
+  expect(waitsForContinue({ pace: 'own', awaiting_continue: true })).toBe(true);
+  for (const state of [
+    {},
+    { pace: 'own' },
+    { awaiting_continue: true },
+    { pace: 'quick', awaiting_continue: true },
+    { pace: 'own', awaiting_continue: false },
+  ]) {
+    expect(waitsForContinue(state)).toBe(false);
+  }
+});
 
 const card = (rank, suit) => ({ rank, suit });
 const scored = (rank, suit, points, position, team) => ({

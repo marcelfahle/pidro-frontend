@@ -1,4 +1,5 @@
 import type { BotPersona, Position, RuleSet } from './lobby';
+import type { TablePace } from '../stores/settings';
 
 export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
 /** The pin a seat wears: `classic` for a Pidro Classic player. */
@@ -156,6 +157,9 @@ export interface ServerGameState {
   /** Presentation delay carried alongside this snapshot on the channel. */
   transition_delay_ms?: number;
   variant?: RuleSet;
+  /** Missing on older servers: Quick, with no Continue gate. */
+  pace?: TablePace;
+  awaiting_continue?: boolean;
   winner?: 'north_south' | 'east_west' | null;
   hand_number?: number | null;
   current_player: Position | null;

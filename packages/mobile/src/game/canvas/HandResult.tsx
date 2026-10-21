@@ -1,8 +1,8 @@
 /**
  * The end of a hand (PID-236): the table dims, and one panel says how the bid
  * went and shows the point cards each team took, flying in from the trick. It
- * closes by itself, sooner when we missed our bid, twice as late at a slow
- * pace; a tap closes it early. While it is open the seats fade back, the score
+ * closes by itself in Quick; own pace waits for the server's Continue gate.
+ * While it is open the seats fade back, the score
  * header shows what each team's score moved by, and the next hand's bidding
  * waits. The server says what every card was worth and who kept it.
  */
@@ -18,8 +18,8 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { TablePace } from '@pidro/shared';
 import { gradientBg } from '@/components/ui/Bevel';
+import { BevelButton } from '@/components/ui/BevelButton';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import {
@@ -28,7 +28,6 @@ import {
   type HandResultView,
 } from '@/features/game/handResult';
 import { PIDRO_POINTS, type PointsSide } from '@/features/game/points';
-import { paced } from '@/features/game/tableHelp';
 import type { Card, ServerLastHand } from '@/types/game';
 import type { Position } from '@/types/lobby';
 import { getCardImage } from '@/utils/cardImages';
@@ -56,8 +55,9 @@ export const viewerOf = (seats: TableModel['seats']): Position | null =>
 export type HandResultState = {
   view: HandResultView;
   hand: ServerLastHand;
-  /** How long it stays, paced. */
+  /** Quick's reading time; own pace has no deadline. */
   closeMs: number;
+  waiting: boolean;
 };
 
 /**
@@ -67,29 +67,34 @@ export type HandResultState = {
 export function useHandResult(
   hand: ServerLastHand | null | undefined,
   viewer: Position | null,
-  pace: TablePace
+  waiting = false
 ): { result: HandResultState | null; opening: boolean; close: () => void } {
   const handNumber = hand === undefined ? undefined : (hand?.hand_number ?? null);
   const [seen, setSeen] = useState(handNumber);
   const [shown, setShown] = useState<number | null>(null);
+  const [wasWaiting, setWasWaiting] = useState(waiting);
+  if (waiting !== wasWaiting) {
+    setWasWaiting(waiting);
+    if (!waiting) setShown(null);
+  }
   // A result about to open: true on the very render its hand arrives, before
   // `shown` catches up, so whatever holds for it holds from the start.
-  const opening = handNumber !== seen && seen !== undefined && handNumber != null;
+  const opening = waiting || (handNumber !== seen && seen !== undefined && handNumber != null);
   if (handNumber !== seen) {
     setSeen(handNumber);
     if (seen !== undefined && handNumber != null) setShown(handNumber);
   }
   const result = useMemo(() => {
-    if (!hand || shown !== hand.hand_number) return null;
+    if (!hand || (!waiting && shown !== hand.hand_number)) return null;
     const view = handResultView(hand, viewer);
-    return { view, hand, closeMs: paced(view.closeMs, pace) };
-  }, [hand, shown, viewer, pace]);
+    return { view, hand, closeMs: view.closeMs, waiting };
+  }, [hand, shown, viewer, waiting]);
   const closeMs = result?.closeMs ?? null;
   useEffect(() => {
-    if (closeMs == null || isStillCapture()) return;
+    if (waiting || closeMs == null || isStillCapture()) return;
     const timer = setTimeout(() => setShown(null), closeMs);
     return () => clearTimeout(timer);
-  }, [shown, closeMs]);
+  }, [shown, closeMs, waiting]);
   return { result, opening, close: () => setShown(null) };
 }
 
@@ -121,12 +126,14 @@ export function HandResultPanel({
   result,
   seats,
   onClose,
+  onContinue,
   topReserve = 0,
   bottomReserve = 0,
 }: {
   result: HandResultState;
   seats: TableModel['seats'];
   onClose: () => void;
+  onContinue?: () => Promise<void> | void;
   topReserve?: number;
   bottomReserve?: number;
 }) {
@@ -138,7 +145,8 @@ export function HandResultPanel({
     () => computeLayout(width, height, insets, topReserve, bottomReserve),
     [width, height, insets, topReserve, bottomReserve]
   );
-  const { view, closeMs } = result;
+  const { view, closeMs, waiting } = result;
+  const [pending, setPending] = useState(false);
   const still = reduceMotion || isStillCapture();
 
   const name = (position: Position) =>
@@ -202,8 +210,8 @@ export function HandResultPanel({
   useEffect(() => {
     if (still) return;
     appear.value = withTiming(1, { duration: 200 });
-    timeLeft.value = withTiming(0, { duration: closeMs, easing: Easing.linear });
-  }, [still, closeMs, appear, timeLeft]);
+    if (!waiting) timeLeft.value = withTiming(0, { duration: closeMs, easing: Easing.linear });
+  }, [still, closeMs, waiting, appear, timeLeft]);
   const fade = useAnimatedStyle(() => ({ opacity: appear.value }));
   const bar = useAnimatedStyle(() => ({ transform: [{ scaleX: timeLeft.value }] }));
 
@@ -247,22 +255,29 @@ export function HandResultPanel({
     );
   });
 
+  const ResultScrim = waiting ? View : Pressable;
   return (
     <Animated.View style={[StyleSheet.absoluteFill, styles.root, fade]}>
-      <Pressable
+      <ResultScrim
         testID="hand-result"
-        accessibilityRole="button"
+        accessibilityRole={waiting ? undefined : 'button'}
+        accessible={!waiting}
+        focusable={!waiting}
         accessibilityLiveRegion="polite"
-        accessibilityLabel={t('game.result_accessibility', {
-          headline: [t(spoken, { team: bidders }), pidroLine].filter(Boolean).join('. '),
-          bid: view.bid,
-          captured: formatNumber(view.won),
-          usLabel: teamLabel(us),
-          us: formatNumber(us.points),
-          themLabel: teamLabel(them),
-          them: formatNumber(them.points),
-        })}
-        onPress={onClose}
+        accessibilityLabel={
+          waiting
+            ? undefined
+            : t('game.result_accessibility', {
+                headline: [t(spoken, { team: bidders }), pidroLine].filter(Boolean).join('. '),
+                bid: view.bid,
+                captured: formatNumber(view.won),
+                usLabel: teamLabel(us),
+                us: formatNumber(us.points),
+                themLabel: teamLabel(them),
+                them: formatNumber(them.points),
+              })
+        }
+        onPress={waiting ? undefined : onClose}
         style={[StyleSheet.absoluteFill, styles.scrim]}>
         <View
           onLayout={(event) => setPanelHeight(event.nativeEvent.layout.height)}
@@ -308,19 +323,41 @@ export function HandResultPanel({
             ) : null}
           </View>
           <View style={landscape ? styles.traysRow : styles.traysColumn}>{trays}</View>
+          {waiting && onContinue ? (
+            <BevelButton
+              testID="hand-continue"
+              material="wood"
+              size="lg"
+              fullWidth
+              label={t('game.continue_hand')}
+              loading={pending}
+              onPress={async () => {
+                if (pending) return;
+                setPending(true);
+                try {
+                  await onContinue();
+                } finally {
+                  setPending(false);
+                }
+              }}
+            />
+          ) : null}
         </View>
-        <View
-          pointerEvents="none"
-          style={[
-            styles.track,
-            landscape
-              ? { left: (width - panelWidth) / 2, right: (width - panelWidth) / 2 }
-              : { left: insets.left + PidroSpacing.md, right: insets.right + PidroSpacing.md },
-            { bottom: insets.bottom + (landscape ? 18 : 30) },
-          ]}>
-          <Animated.View style={[styles.bar, bar]} />
-        </View>
-      </Pressable>
+        {!waiting ? (
+          <View
+            testID="hand-result-timer"
+            pointerEvents="none"
+            style={[
+              styles.track,
+              landscape
+                ? { left: (width - panelWidth) / 2, right: (width - panelWidth) / 2 }
+                : { left: insets.left + PidroSpacing.md, right: insets.right + PidroSpacing.md },
+              { bottom: insets.bottom + (landscape ? 18 : 30) },
+            ]}>
+            <Animated.View style={[styles.bar, bar]} />
+          </View>
+        ) : null}
+      </ResultScrim>
     </Animated.View>
   );
 }

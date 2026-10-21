@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { loneTrumpHolder, paced } from '../../src/features/game/tableHelp.ts';
+import { loneTrumpHolder, isSoloTable } from '../../src/features/game/tableHelp.ts';
 
 describe('out of trumps', () => {
   const cold = (eliminated) => ({ hand: 0, eliminated });
@@ -12,7 +12,12 @@ describe('out of trumps', () => {
 
   it('is nobody while two still hold trumps, or before the server says', () => {
     expect(
-      loneTrumpHolder({ north: cold(true), east: cold(false), south: cold(false), west: cold(true) })
+      loneTrumpHolder({
+        north: cold(true),
+        east: cold(false),
+        south: cold(false),
+        west: cold(true),
+      })
     ).toBeNull();
     expect(loneTrumpHolder({ north: {}, east: {}, south: {}, west: {} })).toBeNull();
     expect(loneTrumpHolder(null)).toBeNull();
@@ -20,8 +25,22 @@ describe('out of trumps', () => {
 });
 
 describe('table pace', () => {
-  it('keeps things on screen twice as long when slow', () => {
-    expect(paced(1500, 'normal')).toBe(1500);
-    expect(paced(1500, 'slow')).toBe(3000);
+  it('sends the preference only for the sole seated human, never a spectator or unknown table', () => {
+    const seats = {
+      north: { occupant_type: 'bot' },
+      south: { occupant_type: 'human' },
+      east: { occupant_type: 'bot' },
+      west: { occupant_type: 'bot' },
+    };
+    expect(isSoloTable({ seats }, 'south')).toBe(true);
+    expect(isSoloTable({ seats }, null)).toBe(false);
+    expect(isSoloTable({ seats }, 'north')).toBe(false);
+    expect(isSoloTable(null, 'south')).toBe(false);
+    expect(isSoloTable({ seats: { ...seats, east: { occupant_type: 'vacant' } } }, 'south')).toBe(
+      false
+    );
+    expect(isSoloTable({ seats: { ...seats, east: { occupant_type: 'human' } } }, 'south')).toBe(
+      false
+    );
   });
 });
