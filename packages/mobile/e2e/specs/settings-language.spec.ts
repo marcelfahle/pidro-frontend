@@ -24,7 +24,8 @@ test('language choices apply immediately, persist and keep keyboard focus @respo
   await expect(page.getByText('På', { exact: true }).first()).toBeVisible();
   await expect(page.getByText('Just nu:', { exact: false })).toHaveCount(0);
 
-  for (const radio of await page.getByRole('radio').all()) {
+  const languageChoices = page.getByTestId('settings-language').getByRole('radio');
+  for (const radio of await languageChoices.all()) {
     const box = await radio.boundingBox();
     expect(box!.height).toBeGreaterThanOrEqual(48);
   }
@@ -51,8 +52,8 @@ test('language choices apply immediately, persist and keep keyboard focus @respo
   await page.keyboard.press('Space');
   await expect(system).toHaveAttribute('aria-checked', 'true');
   expect(
-    await page
-      .getByRole('radio')
-      .evaluateAll((nodes) => nodes.filter((node) => node.getAttribute('tabindex') === '0').length)
+    await languageChoices.evaluateAll(
+      (nodes) => nodes.filter((node) => node.getAttribute('tabindex') === '0').length
+    )
   ).toBe(1);
 });
