@@ -42,6 +42,7 @@ it('keeps the hand log open across turns and hands, but closes it on leaving the
   mock.module('../../src/components/ui/PressableFX.tsx', () => ({
     PressableFX: ({ onPress, children }) => h('button', { onClick: onPress }, children),
   }));
+  mock.module('../../src/components/game/HandHistory.tsx', () => ({ HandHistory: () => null }));
   mock.module('../../src/game/canvas/HandResult.tsx', () => ({
     SCORE_COUNT: { delayMs: 0, ms: 0 },
   }));
@@ -76,9 +77,9 @@ it('keeps the hand log open across turns and hands, but closes it on leaving the
     await render();
     await click('open-log');
     expect(document.getElementById('close-log')).not.toBeNull();
-    await render({ yourTurn: true, handNumber: 3 });
+    await render({ yourTurn: true, history: [{ hand_number: 3 }] });
     expect(document.getElementById('close-log')).not.toBeNull();
-    await render({ yourTurn: false, handNumber: 4 });
+    await render({ yourTurn: false, history: [{ hand_number: 3 }, { hand_number: 4 }] });
     expect(document.getElementById('close-log')).not.toBeNull();
     await click('close-log');
     expect(document.getElementById('close-log')).toBeNull();
