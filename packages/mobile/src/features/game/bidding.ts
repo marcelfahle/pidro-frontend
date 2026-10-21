@@ -1,4 +1,15 @@
-import { t } from '@pidro/shared';
+import { t, type ServerGameState } from '@pidro/shared';
+
+/**
+ * The bidding the table shows (PID-267). While the deal plays, nobody has bid
+ * yet, even a bot that already has: everyone decides once they hold all nine.
+ * What came meanwhile shows, in order, when the deal ends.
+ */
+export function bidsShown(state: ServerGameState | null, dealing: boolean) {
+  return dealing && state
+    ? { ...state, bids: undefined, bid_order: undefined, highest_bid: undefined }
+    : state;
+}
 
 /**
  * A seat's line while the hand is bid (PID-214). Every seat keeps its bid

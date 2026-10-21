@@ -39,7 +39,7 @@ import type { SeatLine } from '@/features/game/seatLine';
 import { SCORE_PLAQUE_HEIGHT, Scoreboard } from './Scoreboard';
 import type { TickerRestingLine } from './ActionTicker';
 import { buildHandLog } from '@/game/handLog';
-import { bidSeatLine } from '@/features/game/bidding';
+import { bidSeatLine, bidsShown } from '@/features/game/bidding';
 import { loneTrumpHolder } from '@/features/game/tableHelp';
 import { useSettingsStore } from '@/stores/settings';
 import { LastTrick, type LastTrickView } from './LastTrick';
@@ -319,9 +319,8 @@ export function GameCanvasTable({
         : heldModel,
     [holding, heldModel]
   );
-  const presented = useSecondDealPresentation(
-    useDealPresentation(tableModel, controller.viewModel?.dealerRelative ?? null)
-  );
+  const dealt = useDealPresentation(tableModel, controller.viewModel?.dealerRelative ?? null);
+  const presented = useSecondDealPresentation(dealt);
   const model = useMemo(() => (held ? { ...presented, held } : presented), [presented, held]);
   useTableHaptics(model);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
@@ -366,11 +365,16 @@ export function GameCanvasTable({
     handReady: isHandReady,
   });
 
+  // Until the deal has played, the log and the seats show no bids (PID-267),
+  // also while the last hand's result holds the next hand back.
+  const dealing = holding || dealt.dealStage != null;
+  const shownState = useMemo(() => bidsShown(serverState, dealing), [serverState, dealing]);
+
   const handLog = useMemo(
     () =>
       buildHandLog({
         handNumber: serverState?.hand_number ?? serverState?.round_number ?? null,
-        bids: serverState?.bid_order,
+        bids: shownState?.bid_order,
         trump: serverState?.trump ?? null,
         tricks: controller.completedTricks,
         currentTrick: controller.currentTrick,
@@ -382,7 +386,7 @@ export function GameCanvasTable({
       locale,
       serverState?.hand_number,
       serverState?.round_number,
-      serverState?.bid_order,
+      shownState?.bid_order,
       serverState?.trump,
       serverState?.last_hand,
       controller.completedTricks,
@@ -393,7 +397,7 @@ export function GameCanvasTable({
 
   // Classic's "Bet 6": from the first bid, the ticker rests on who holds the
   // bid; between hands, on how the last hand ended.
-  const highBid = serverState?.highest_bid;
+  const highBid = shownState?.highest_bid;
   const bidLine =
     highBid && typeof highBid.amount === 'number'
       ? buildHandLog({
@@ -449,7 +453,7 @@ export function GameCanvasTable({
         ? model.secondDealShow && player.relativePosition !== model.dealerRelative
           ? null
           : { text: t('game.dealing') }
-        : statusText(player, serverState);
+        : statusText(player, shownState);
       acc[player.relativePosition] =
         pidro?.side === 'theirs' && pidro.seat === player.relativePosition
           ? { ...(line ?? { text: t('game.took_trick') }), pulse: `pidro-${trickKey}` }
