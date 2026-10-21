@@ -255,6 +255,16 @@ const allCases = [
       botVoice: true,
       locale,
     })),
+    {
+      name: `table-bot-card-game-over-${locale}`,
+      path: `/table-dev?fixture=bot-crew&phase=game_over&locale=${locale}`,
+      testId: 'bot-profile-modal',
+      open: locale === 'sv' ? 'Visa profilen för Marcel' : 'View Marcel’s profile',
+      botCard: 'Marcel',
+      botGameOver: true,
+      botVoice: true,
+      locale,
+    },
     ...[
       { name: '', seat: 'west', en: 'Let’s see…', sv: 'Ska vi se…' },
       { name: '-antti', seat: 'north', en: 'One moment…', sv: 'Ett ögonblick…' },
@@ -3216,8 +3226,15 @@ async function assertBotVoice(page, testCase, viewport) {
       .getByRole('button', { name: testCase.locale === 'sv' ? 'Stäng' : 'Close', exact: true })
       .click();
     await card.waitFor({ state: 'detached' });
-    const entry = page.getByRole('button', { name: testCase.open });
-    await entry.getByText(testCase.botCard, { exact: true }).click();
+    const scope = testCase.botGameOver ? page.getByTestId('game-over-overlay') : page;
+    const entry = scope.getByRole('button', { name: testCase.open });
+    if (testCase.botGameOver) {
+      await page.getByTestId('play-again').click({ trial: true });
+      await page.getByTestId('game-over-home').click({ trial: true });
+      await entry.click();
+    } else {
+      await entry.getByText(testCase.botCard, { exact: true }).click();
+    }
     await copy.waitFor();
     await card.getByRole('button').click();
     await card.waitFor({ state: 'detached' });
@@ -4333,8 +4350,15 @@ async function main() {
             await assertDealerSecondDeal(page, testCase, viewport);
           }
           if (testCase.open) {
+            if (testCase.botVoice)
+              assert.equal(
+                await page.getByTestId('bot-profile-modal').count(),
+                0,
+                'no bot card opens until its profile is tapped'
+              );
             const scope =
-              testCase.playerProfile && testCase.path.includes('game_over')
+              (testCase.playerProfile && testCase.path.includes('game_over')) ||
+              testCase.botGameOver
                 ? page.getByTestId('game-over-overlay')
                 : page;
             await scope.getByRole('button', { name: testCase.open, exact: true }).click();

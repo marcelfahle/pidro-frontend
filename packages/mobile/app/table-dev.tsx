@@ -841,6 +841,36 @@ function RolePreview({
     store.setRole(role);
     store.setYouPosition('south');
     store.setChannelStatus(connected);
+    if (botCrew) {
+      store.applySeatLifecycle({
+        room_id: 'bot-crew',
+        room_code: tableRoom.code,
+        revision: 1,
+        owner_id: 'p-south',
+        room_status: previewPhase === 'game_over' ? 'finished' : 'playing',
+        seats: {
+          south: { status: 'normal', player_id: 'p-south', username: 'Mia', decision: null },
+          west: {
+            status: 'permanent_bot',
+            player_id: null,
+            ...BOT_CREW[0],
+            decision: null,
+          },
+          north: {
+            status: 'permanent_bot',
+            player_id: null,
+            ...BOT_CREW[1],
+            decision: null,
+          },
+          east: {
+            status: 'permanent_bot',
+            player_id: null,
+            ...BOT_CREW[2],
+            decision: null,
+          },
+        },
+      });
+    }
     store.setServerState({
       variant: ruleSet,
       config: { min_bid: ruleSet === 'louisiana' ? 7 : 6 },
@@ -1163,6 +1193,9 @@ function RolePreview({
           room={tableRoom}
           rulesFixtureSeen={rulesFixtureSeen}
           onLeave={() => {}}
+          rematch={
+            botCrew && phase === 'game_over' ? { needed: 1, agreed: 0, youAgreed: false } : null
+          }
           topDock={invitation ? invitationHeight : 0}
         />
       ) : (

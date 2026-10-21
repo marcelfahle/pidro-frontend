@@ -5,11 +5,11 @@
  * NOTE: web loads CanvasKit through the platform-specific loader before this
  * module is imported. Native imports this module directly.
  */
-import { useEffect, useMemo, useState, type ComponentProps } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ComponentProps } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import type { RematchVote } from '@pidro/shared';
+import type { BotPersona, RematchVote } from '@pidro/shared';
 import type { Room } from '@/types/lobby';
 import type { ActiveTurnTimer, Card, RelativePosition, ServerGameState, Suit } from '@/types/game';
 import { useGameTableController } from '@/game/useGameTableController';
@@ -236,7 +236,7 @@ function TimedSeatLayer({
   bottomReserve: number;
   statusByRel: Partial<Record<RelativePosition, SeatLine | null>> | undefined;
   players: NonNullable<ReturnType<typeof useGameTableController>['viewModel']>['players'];
-  onProfile: (playerId: string) => void;
+  onProfile: (playerId: string | null, persona?: BotPersona | null) => void;
   quiet: boolean;
   secondDeal: ComponentProps<typeof SeatLayer>['secondDeal'];
   held: ComponentProps<typeof SeatLayer>['held'];
@@ -274,10 +274,12 @@ function TimedSeatLayer({
         players
           .filter(
             (player) =>
-              canViewPlayer(player) ||
-              (player.playerId && player.bot_persona && player.seatStatus !== 'vacant')
+              canViewPlayer(player) || (player.bot_persona && player.seatStatus !== 'vacant')
           )
-          .map((player) => [player.relativePosition, () => onProfile(player.playerId!)])
+          .map((player) => [
+            player.relativePosition,
+            () => onProfile(player.playerId, player.bot_persona),
+          ])
       )}
     />
   );
@@ -301,7 +303,13 @@ export function GameCanvasTable({
 }: Props) {
   const { locale } = useTranslation();
   const controller = useGameTableController();
-  const [profilePlayerId, setProfilePlayerId] = useState<string | null>(null);
+  const [profile, setProfile] = useState<
+    Pick<ComponentProps<typeof PlayerProfileModal>, 'playerId' | 'persona'>
+  >({ playerId: null });
+  const openProfile = useCallback(
+    (playerId: string | null, persona?: BotPersona | null) => setProfile({ playerId, persona }),
+    []
+  );
   const role = useGameStore((state) => state.role);
   const dealerRobPresentation = useGameStore((state) => state.presentation?.dealer_rob ?? null);
   const isPrivateDealerRob =
@@ -515,7 +523,7 @@ export function GameCanvasTable({
         bottomReserve={bottomReserve}
         statusByRel={statusByRel}
         players={viewModel?.players ?? []}
-        onProfile={setProfilePlayerId}
+        onProfile={openProfile}
         quiet={handResult.result != null}
         secondDeal={model.secondDealShow}
         held={model.held}
@@ -700,18 +708,10 @@ export function GameCanvasTable({
           playAgainLabel={playAgainLabel}
           showGuestSave={showGuestSave}
           onSaveGuest={onSaveGuest}
-          onProfile={setProfilePlayerId}
+          onProfile={openProfile}
         />
       )}
-      <PlayerProfileModal
-        playerId={profilePlayerId}
-        persona={
-          profilePlayerId
-            ? viewModel?.players.find((player) => player.playerId === profilePlayerId)?.bot_persona
-            : null
-        }
-        onClose={() => setProfilePlayerId(null)}
-      />
+      <PlayerProfileModal {...profile} onClose={() => setProfile({ playerId: null })} />
     </GestureHandlerRootView>
   );
 }

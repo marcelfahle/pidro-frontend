@@ -36,7 +36,7 @@ import {
 import type { ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { playBigTrickHaptic, playOurPidroHaptic } from '@/game/useGameHaptics';
 import { formatNumber, t, useTranslation } from '@/i18n';
-import type { RematchVote } from '@pidro/shared';
+import type { BotPersona, RematchVote } from '@pidro/shared';
 import type { GameViewModel, RelativePlayerView, ServerGameState, TeamKey } from '@/types/game';
 import { isNorthSouthTeam, resolveWinningTeam } from '@/utils/positions';
 import { isStillCapture } from '@/utils/stillCapture';
@@ -59,7 +59,7 @@ interface GameOverOverlayProps {
   playAgainLabel?: string;
   showGuestSave?: boolean;
   onSaveGuest?: () => void;
-  onProfile?: (playerId: string) => void;
+  onProfile?: (playerId: string | null, persona?: BotPersona | null) => void;
 }
 
 function displayName(player: RelativePlayerView): string {
@@ -272,7 +272,8 @@ export function GameOverOverlay({
         bot,
         agreed: seat ? seat.agreed : bot,
         avatarUrl: player.avatar_url,
-        playerId: canViewPlayer(player) || player.bot_persona ? player.playerId : null,
+        playerId: canViewPlayer(player) ? player.playerId : null,
+        persona: player.bot_persona,
       };
     });
   const youAgreed = !!rematch?.youAgreed;

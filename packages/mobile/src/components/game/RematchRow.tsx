@@ -1,4 +1,5 @@
 import { StyleSheet, View } from 'react-native';
+import type { BotPersona } from '@pidro/shared';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
@@ -11,6 +12,7 @@ export type RematchSeatView = RematchOther & {
   avatarUrl?: string | null;
   /** Set when the player has a profile to open. */
   playerId?: string | null;
+  persona?: BotPersona | null;
 };
 
 /**
@@ -25,7 +27,7 @@ export function RematchRow({
 }: {
   others: RematchSeatView[];
   youAgreed: boolean;
-  onProfile?: (playerId: string) => void;
+  onProfile?: (playerId: string | null, persona?: BotPersona | null) => void;
   scale?: number;
 }) {
   const { title, detail } = rematchLines(others, youAgreed);
@@ -57,12 +59,12 @@ export function RematchRow({
             </View>
           );
           const label = t('friends.view_profile', { name: other.name });
-          return other.playerId && onProfile ? (
+          return (other.playerId || other.persona) && onProfile ? (
             <PressableFX
               key={index}
               accessibilityRole="button"
               accessibilityLabel={label}
-              onPress={() => onProfile(other.playerId!)}
+              onPress={() => onProfile(other.playerId ?? null, other.persona)}
               style={[styles.seat, { width: target, height: target }]}>
               {avatar}
             </PressableFX>

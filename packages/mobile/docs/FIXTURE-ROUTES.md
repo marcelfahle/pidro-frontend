@@ -69,8 +69,11 @@ the high-bid tone and compact south status without changing bid event identities
 
 PID-277 uses `/table-dev?fixture=bot-crew&locale=en|sv`: Marcel is thinking,
 and all three drawn bots open their short card through their avatar or nameplate.
+It applies the server's seat lifecycle shape: bots have a persona but no account ID.
 `table-bot-card-{marcel,antti,jocke}-{en,sv}` checks the copy, Close/reopen,
-44pt targets and no scrolling; `table-bot-thinking[-antti|-jocke]-{en,sv}`
+44pt targets and no scrolling. `table-bot-card-game-over-{en,sv}` checks that
+the rematch row opens the same card, and Close leaves Play again and Home reachable.
+Cards stay closed until tapped. `table-bot-thinking[-antti|-jocke]-{en,sv}`
 checks each voice's visible nameplate line and that reloading keeps it.
 `botTurn=north|east|west&botHand=1|2|3|4` tries every line of the crew.
 All run at 390×844, 375×667,
