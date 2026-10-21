@@ -39,6 +39,7 @@ export function usePlayPresentation(
     live: false,
     landsAt: 0,
     collectUntil: transitionEnd(timer),
+    pendingLanding: null as { delayMs: number } | null,
     pendingHold: null as { delayMs: number } | null,
     previousTurn: source.currentTurnRelative,
   });
@@ -54,15 +55,28 @@ export function usePlayPresentation(
     const completed =
       source.lastTrick?.number !== motion.source.lastTrick?.number && !!source.lastTrick;
     const confirmed = pending && !source.yourHand.some((card) => card.key === pending.card.key);
-    const landsAt = changed
-      ? (confirmed ? pending.startedAt : now) + (reduced ? 0 : PLAY_CARD_TRAVEL_MS)
-      : motion.landsAt;
+    const pendingLanding =
+      source.phase !== 'playing'
+        ? null
+        : changed
+          ? confirmed || reduced
+            ? null
+            : { delayMs: PLAY_CARD_TRAVEL_MS }
+          : motion.pendingLanding;
+    const landsAt =
+      source.phase !== 'playing'
+        ? 0
+        : changed
+          ? pendingLanding
+            ? Infinity
+            : (confirmed ? pending.startedAt : now) + (reduced ? 0 : PLAY_CARD_TRAVEL_MS)
+          : motion.landsAt;
     const resetHold = source.phase !== 'playing' || !source.lastTrick;
     const delayMs = source.transitionDelayMs ?? TRICK_TRANSITION_MS;
     const pendingHold = resetHold
       ? null
       : completed
-        ? delayMs > 0
+        ? delayMs > 0 || pendingLanding
           ? { delayMs }
           : null
         : motion.pendingHold;
@@ -77,6 +91,7 @@ export function usePlayPresentation(
             ? Infinity
             : Math.max(landsAt, now + delayMs)
           : motion.collectUntil,
+      pendingLanding,
       pendingHold,
       previousTurn: changed
         ? turnLight({
@@ -90,21 +105,28 @@ export function usePlayPresentation(
         : motion.previousTurn,
     });
   }
-  // Start reading time after commit, not before a slow render. While pending,
-  // every light stays dark and sprites wait for the finite collection deadline.
+  // Server-driven motion starts after commit; confirmation keeps the optimistic
+  // landing clock. A slow render must not consume landing or reading time.
   useEffect(() => {
+    const landing = motion.pendingLanding;
     const hold = motion.pendingHold;
-    if (!hold) return;
+    if (!landing && !hold) return;
     const frame = requestAnimationFrame(() => {
-      const until = Date.now() + hold.delayMs;
-      setMotion((current) =>
-        current.pendingHold === hold
-          ? { ...current, pendingHold: null, collectUntil: Math.max(current.landsAt, until) }
-          : current
-      );
+      const startedAt = Date.now();
+      setMotion((current) => {
+        if (current.pendingLanding !== landing || current.pendingHold !== hold) return current;
+        const landsAt = landing ? startedAt + landing.delayMs : current.landsAt;
+        return {
+          ...current,
+          pendingLanding: null,
+          pendingHold: null,
+          landsAt,
+          collectUntil: hold ? Math.max(landsAt, startedAt + hold.delayMs) : current.collectUntil,
+        };
+      });
     });
     return () => cancelAnimationFrame(frame);
-  }, [motion.pendingHold]);
+  }, [motion.pendingLanding, motion.pendingHold]);
 
   // A live trick uses its own snapshot's delay, even zero. Timer events can
   // arrive in either order; only a cold load needs their remaining hold.

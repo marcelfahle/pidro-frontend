@@ -4476,19 +4476,22 @@ async function main() {
             if (testCase.playPosition === 'right') {
               await page.evaluate(() => {
                 const setAttribute = Element.prototype.setAttribute;
-                let stalled = false;
+                const stalled = new Set();
                 Element.prototype.setAttribute = function (key, value) {
                   const result = setAttribute.call(this, key, value);
-                  if (
-                    !stalled &&
-                    key === 'aria-label' &&
-                    this.getAttribute('data-testid') === 'play-fixture' &&
-                    JSON.parse(value).completed === 1
-                  ) {
-                    stalled = true;
-                    // A slow commit must not consume the player's reading time.
-                    const start = performance.now();
-                    while (performance.now() - start < 150) {}
+                  if (key === 'aria-label' && this.getAttribute('data-testid') === 'play-fixture') {
+                    const fixture = JSON.parse(value);
+                    const stage = fixture.completed
+                      ? 'hold'
+                      : fixture.turn === 'north'
+                        ? 'landing'
+                        : null;
+                    if (stage && !stalled.has(stage)) {
+                      stalled.add(stage);
+                      // A slow commit must not consume landing or reading time.
+                      const start = performance.now();
+                      while (performance.now() - start < 150) {}
+                    }
                   }
                   return result;
                 };
