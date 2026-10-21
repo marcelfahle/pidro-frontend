@@ -351,6 +351,7 @@ export default function GameCanvasDev({
     fixture,
     play,
     reply,
+    sweep,
     autoplay,
     transition,
     menu,
@@ -367,6 +368,7 @@ export default function GameCanvasDev({
     fixture?: string;
     play?: string;
     reply?: string;
+    sweep?: RelativePosition;
     autoplay?: string;
     transition?: string;
     menu?: string;
@@ -469,7 +471,9 @@ export default function GameCanvasDev({
         });
         after(delay + 2100, () => {
           setTrick([]);
-          setTricks([{ cards: plays, winner: 'north', points: 1, two_of_trump: null }]);
+          setTricks([
+            { cards: plays, winner: sweep ?? SEATS[cycle % 4], points: 1, two_of_trump: null },
+          ]);
           // The winner went cold: the server skips it, then broadcasts a new timer.
           setTurn('south');
         });
@@ -513,7 +517,7 @@ export default function GameCanvasDev({
         setTurn('north');
       });
     },
-    [after, signals, motionFixture, reply, cycle, autoplay, transitionMs]
+    [after, signals, motionFixture, reply, sweep, cycle, autoplay, transitionMs]
   );
 
   const players = useMemo(

@@ -659,6 +659,13 @@ const allCases = [
     testId: 'seat-north',
     playPosition: position,
   })),
+  ...['north', 'east', 'south', 'west', 'reduced'].map((winner) => ({
+    name: `table-motion-${winner}`,
+    path: `/table-dev?fixture=play-motion&autoplay=false&sweep=${winner === 'reduced' ? 'west' : winner}`,
+    testId: 'seat-north',
+    sweepWinner: winner === 'reduced' ? 'west' : winner,
+    reducedMotion: winner === 'reduced',
+  })),
   {
     name: 'table-notice',
     path: '/table-dev?phase=playing&feedback=notice',
@@ -3135,6 +3142,105 @@ async function assertPlayMotion(page, position) {
   assert.equal(await page.getByTestId('rendered-played-card-count-4').count(), 1);
 }
 
+async function assertCardCollection(page, winner, reduced) {
+  await page.getByTestId('rendered-hand-card-count-6').waitFor({ state: 'attached' });
+  await page.waitForTimeout(1500);
+  const before = JSON.parse(await page.getByTestId('play-presentation').getAttribute('aria-label'));
+  const target = before.hand[3];
+  await page.evaluate(() => {
+    const frames = [];
+    window.__pidroMotionFrames = frames;
+    const sample = () => {
+      const fixture = JSON.parse(
+        document.querySelector('[data-testid="play-fixture"]').getAttribute('aria-label')
+      );
+      const sprites = window.__pidroCardMotion();
+      frames.push({ at: performance.now(), completed: fixture.completed, sprites });
+      if (sprites.filter((s) => s.collection === 1).length < 4) requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
+  await page.mouse.click(target.x - target.w / 2 + 10, target.y);
+  await page.waitForFunction(
+    () => window.__pidroMotionFrames.at(-1).sprites.filter((s) => s.collection === 1).length === 4
+  );
+  const frames = await page.evaluate(() => window.__pidroMotionFrames);
+  const completed = frames.find((f) => f.completed);
+  const gathering = frames.find((f) => f.sprites.some((s) => s.collection > 0));
+  assert.ok(gathering.at - completed.at >= 1450, 'collection cut into the 1500ms hold');
+  assert.equal(frames.at(-1).sprites.filter((s) => s.kind === 'hand').length, 5);
+  const played = frames.at(-1).sprites.filter((s) => s.kind === 'played');
+  assert.equal(played.length, 4, 'collection must retain the server history slots');
+  const center = await page.getByTestId('table-trick-center').boundingBox();
+  const remaining = frames.at(-1).sprites.filter((s) => s.kind === 'hand');
+  const handCenter = before.hand.reduce((sum, s) => sum + s.x, 0) / before.hand.length;
+  assert.ok(
+    Math.abs(remaining.reduce((sum, s) => sum + s.x, 0) / 5 - handCenter) < 1,
+    'the hand moved its centre while closing the gap'
+  );
+  for (const card of remaining) {
+    const start = before.hand.find((s) => s.key === card.key).x;
+    const path = frames.flatMap((f) =>
+      f.sprites.filter((s) => s.kind === 'hand' && s.key === card.key)
+    );
+    assert.ok(
+      path.every((s) => s.x >= Math.min(start, card.x) - 1 && s.x <= Math.max(start, card.x) + 1),
+      'hand closure bounced past its slot'
+    );
+    if (!reduced)
+      assert.ok(
+        path.some((s) => Math.abs(s.x - start) > 1 && Math.abs(s.x - card.x) > 1),
+        'hand closure jumped instead of sliding'
+      );
+  }
+  for (const card of played) {
+    const { x, y } = card.collectTo;
+    assert.ok(
+      winner === 'north'
+        ? y < center.y
+        : winner === 'south'
+          ? y > center.y
+          : winner === 'east'
+            ? x > center.x
+            : x < center.x,
+      `sweep went away from ${winner}`
+    );
+  }
+  const own = frames.flatMap((f) =>
+    f.sprites.filter((s) => s.kind === 'played' && s.key.endsWith(target.key))
+  );
+  assert.ok(
+    own.every((s) => s.flight >= 0 && s.y <= target.y + 1),
+    'the played card dipped below its hand position before lifting'
+  );
+  if (reduced) {
+    assert.ok(
+      own.every((s) => s.flight === 1),
+      'reduced motion flew the played card'
+    );
+    assert.ok(
+      frames.every((f) => f.sprites.every((s) => s.collection === 0 || s.collection === 1)),
+      'reduced motion swept the trick'
+    );
+  } else {
+    assert.ok(
+      own.some((s) => s.scale > target.scale * 1.025),
+      'own card never lifted'
+    );
+    assert.ok(
+      own.some((s) => s.flight > 1),
+      'landing never settled from its overshoot'
+    );
+    assert.ok(
+      frames.some((f) => f.sprites.some((s) => s.collection > 0 && s.collection < 1)),
+      'trick snapped instead of gathering and sweeping'
+    );
+  }
+  console.log(
+    `motion ${winner}${reduced ? ' reduced' : ''}: lift/settle, hold, winner-directed collection and history passed`
+  );
+}
+
 async function assertDealerCutCards(page, viewport) {
   const fourCards = page.getByTestId('rendered-cut-card-count-4').first();
   await fourCards.waitFor({ state: 'attached', timeout: 20_000 });
@@ -4349,6 +4455,9 @@ async function main() {
           }
           if (testCase.playPosition) {
             await assertPlayMotion(page, testCase.playPosition);
+          }
+          if (testCase.sweepWinner) {
+            await assertCardCollection(page, testCase.sweepWinner, testCase.reducedMotion);
           }
           if (testCase.verifyDealerCutCards) {
             await assertDealerCutCards(page, viewport);

@@ -259,6 +259,14 @@ the cancelled/new turn-timer events follow separately. Grammar cases
 departure, stable sprite identity and the ring through trick completion at
 390×844, 375×667, 844×390 and 768×1024. Completed cards still remain as hand history.
 
+PID-279 extends that same loop with lift/settle, spring hand closure and a
+post-hold gather/sweep. Each cycle changes the winning seat; `sweep=north|east|south|west`
+fixes its destination independently of the next turn. `table-motion-north|east|south|west`
+and `table-motion-reduced` check the hold, landing, collection direction and retained
+history slots at the same four sizes. In dev only, `__pidroCardMotion()` samples the
+sprite shared values on demand (no per-frame React updates), for frame-time traces.
+The 100ms gather and 220ms sweep add no delay to the server-selected next turn.
+
 ---
 
 ## `/ui-dev` — DS v2 gallery
