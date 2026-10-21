@@ -123,9 +123,6 @@ export function TableSettings({
               <View style={styles.row}>
                 <View style={styles.copy}>
                   <PidroText role="label">{t('settings.countHelp')}</PidroText>
-                  <PidroText role="metadata" tone="muted">
-                    {t('settings.countHelpHint')}
-                  </PidroText>
                 </View>
                 <PidroSwitch
                   accessibilityLabel={t('settings.countHelp')}
@@ -136,9 +133,6 @@ export function TableSettings({
               <View style={styles.row}>
                 <View style={styles.copy}>
                   <PidroText role="label">{t('settings.showBid')}</PidroText>
-                  <PidroText role="metadata" tone="muted">
-                    {t('settings.showBidHint')}
-                  </PidroText>
                 </View>
                 <PidroSwitch
                   accessibilityLabel={t('settings.showBid')}
@@ -207,7 +201,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: PidroSpacing.sm,
-    paddingVertical: PidroSpacing.xs,
   },
   copy: { flex: 1, gap: PidroSpacing.xxs },
   pace: { gap: PidroSpacing.xxs },
