@@ -706,7 +706,9 @@ export function GameCanvasTable({
       <PlayerProfileModal
         playerId={profilePlayerId}
         persona={
-          viewModel?.players.find((player) => player.playerId === profilePlayerId)?.bot_persona
+          profilePlayerId
+            ? viewModel?.players.find((player) => player.playerId === profilePlayerId)?.bot_persona
+            : null
         }
         onClose={() => setProfilePlayerId(null)}
       />
