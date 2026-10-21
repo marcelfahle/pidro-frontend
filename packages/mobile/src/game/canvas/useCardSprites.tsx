@@ -662,9 +662,18 @@ export function useCardSprites({
 
       // Keep the history slots, but collect only newly completed tricks. A
       // reconnect never replays old wins, and new plays never restart a sweep.
-      if (TRICK_SWEEP_ENABLED && d.completed && model.collectAt !== undefined && !collectTo) {
+      if (
+        TRICK_SWEEP_ENABLED &&
+        d.completed &&
+        model.collectAt !== undefined &&
+        Number.isFinite(model.collectAt) &&
+        !collectTo
+      ) {
         const result = model.lastTrick;
-        const newlyCompleted = !firstLoad && result && result.number !== prev?.lastTrick?.number;
+        const newlyCompleted =
+          !firstLoad &&
+          result &&
+          (result.number !== prev?.lastTrick?.number || prev?.collectAt === Infinity);
         const inLastTrick = result?.plays.some(({ card }) => cardKey(card) === d.textureKey);
         const seat = L.seats[result?.winner ?? 'north'];
         nextSlots[sl]!.collectTo = { x: seat.x, y: seat.y };

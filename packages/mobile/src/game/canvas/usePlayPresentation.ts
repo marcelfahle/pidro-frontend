@@ -39,6 +39,7 @@ export function usePlayPresentation(
     live: false,
     landsAt: 0,
     collectUntil: transitionEnd(timer),
+    pendingHold: null as { delayMs: number } | null,
     previousTurn: source.currentTurnRelative,
   });
   const changed = cards(source) !== cards(motion.source);
@@ -56,16 +57,27 @@ export function usePlayPresentation(
     const landsAt = changed
       ? (confirmed ? pending.startedAt : now) + (reduced ? 0 : PLAY_CARD_TRAVEL_MS)
       : motion.landsAt;
+    const resetHold = source.phase !== 'playing' || !source.lastTrick;
+    const delayMs = source.transitionDelayMs ?? TRICK_TRANSITION_MS;
+    const pendingHold = resetHold
+      ? null
+      : completed
+        ? delayMs > 0
+          ? { delayMs }
+          : null
+        : motion.pendingHold;
     setMotion({
       source,
-      live: motion.live || changed,
+      live: motion.live || changed || completed,
       landsAt,
-      collectUntil:
-        source.phase !== 'playing'
-          ? 0
-          : completed
-            ? Math.max(landsAt, now + (source.transitionDelayMs ?? TRICK_TRANSITION_MS))
-            : motion.collectUntil,
+      collectUntil: resetHold
+        ? 0
+        : completed
+          ? pendingHold
+            ? Infinity
+            : Math.max(landsAt, now + delayMs)
+          : motion.collectUntil,
+      pendingHold,
       previousTurn: changed
         ? turnLight({
             turn: motion.source.currentTurnRelative,
@@ -78,6 +90,22 @@ export function usePlayPresentation(
         : motion.previousTurn,
     });
   }
+  // Start reading time after commit, not before a slow render. While pending,
+  // every light stays dark and sprites wait for the finite collection deadline.
+  useEffect(() => {
+    const hold = motion.pendingHold;
+    if (!hold) return;
+    const frame = requestAnimationFrame(() => {
+      const until = Date.now() + hold.delayMs;
+      setMotion((current) =>
+        current.pendingHold === hold
+          ? { ...current, pendingHold: null, collectUntil: Math.max(current.landsAt, until) }
+          : current
+      );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [motion.pendingHold]);
+
   // A live trick uses its own snapshot's delay, even zero. Timer events can
   // arrive in either order; only a cold load needs their remaining hold.
   const collectUntil = motion.live
@@ -87,7 +115,7 @@ export function usePlayPresentation(
   const pendingLandsAt = pending ? pending.startedAt + (reduced ? 0 : PLAY_CARD_TRAVEL_MS) : 0;
   useEffect(() => {
     const deadlines = [motion.landsAt, pendingLandsAt, collectUntil, expiresAt].filter(
-      (at) => at > now
+      (at) => Number.isFinite(at) && at > now
     );
     if (!deadlines.length) return;
     const id = setTimeout(

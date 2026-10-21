@@ -4473,6 +4473,27 @@ async function main() {
             await assertPlayedCardPersistence(page, viewport);
           }
           if (testCase.playPosition) {
+            if (testCase.playPosition === 'right') {
+              await page.evaluate(() => {
+                const setAttribute = Element.prototype.setAttribute;
+                let stalled = false;
+                Element.prototype.setAttribute = function (key, value) {
+                  const result = setAttribute.call(this, key, value);
+                  if (
+                    !stalled &&
+                    key === 'aria-label' &&
+                    this.getAttribute('data-testid') === 'play-fixture' &&
+                    JSON.parse(value).completed === 1
+                  ) {
+                    stalled = true;
+                    // A slow commit must not consume the player's reading time.
+                    const start = performance.now();
+                    while (performance.now() - start < 150) {}
+                  }
+                  return result;
+                };
+              });
+            }
             await assertPlayMotion(page, testCase.playPosition);
           }
           if (testCase.sweepWinner) {
