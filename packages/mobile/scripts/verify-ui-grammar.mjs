@@ -4535,7 +4535,14 @@ async function main() {
           // proceed as soon as their actual assets and modal animations finish.
           const tablePhase = new URL(testCase.path, baseUrl).searchParams.get('phase') ?? '';
           if (testCase.path.startsWith('/table-dev') && !/^(waiting|ready)/.test(tablePhase)) {
-            await page.waitForTimeout(1_200);
+            if (tablePhase === 'dealer_selection') {
+              await assertDealerCutCards(page, viewport);
+              // Four cut sprites exist before they land. The staggered cuts and
+              // winner reveal take 3940ms; include a margin before pixel capture.
+              await page.waitForTimeout(4_500);
+            } else {
+              await page.waitForTimeout(1_200);
+            }
           }
           await waitForScreenshotReady(page);
           if (testCase.name.startsWith('edge-') || testCase.testId === 'game-loading-screen') {
