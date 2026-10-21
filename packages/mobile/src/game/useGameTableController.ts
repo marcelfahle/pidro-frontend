@@ -48,7 +48,7 @@ export type GameTableController = {
   isPlayingCard: boolean;
   actionNotice?: TableNotice | null;
   getCardCountForPlayer: (absPosition: Position | null) => number | null;
-  handlePlayCard: (card: Card) => Promise<void> | void;
+  handlePlayCard: (card: Card) => Promise<boolean>;
   handleDeclareTrump: (suit: Suit) => Promise<void> | void;
   handleSelectHand: (cards: Card[]) => Promise<void> | void;
   showActionError: (action: string, err: unknown) => void;
@@ -162,15 +162,17 @@ export function useGameTableController(): GameTableController {
 
   const handlePlayCard = useCallback(
     async (card: Card) => {
-      if (isPlayingCard || !isPlayingTurn) return;
+      if (isPlayingCard || !isPlayingTurn) return false;
       setIsPlayingCard(true);
       try {
         const promise = pushGameAction('play_card', { card: { rank: card.rank, suit: card.suit } });
-        if (!promise) return;
+        if (!promise) return false;
         await promise;
         playCardHaptic();
+        return true;
       } catch (error) {
         showActionError('Play card', error);
+        return false;
       } finally {
         setIsPlayingCard(false);
       }

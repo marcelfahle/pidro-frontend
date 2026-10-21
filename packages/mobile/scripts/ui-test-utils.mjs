@@ -83,6 +83,9 @@ export const UI_VIEWPORTS = [
     height: 667,
     cases: [
       ...backgroundCases,
+      'table-play-right',
+      'table-play-left',
+      'table-play-middle',
       'classic-login',
       'friends-all',
       'friends-classic',
@@ -172,6 +175,9 @@ export const UI_VIEWPORTS = [
     width: 768,
     height: 1024,
     cases: [
+      'table-play-right',
+      'table-play-left',
+      'table-play-middle',
       ...seatPickerCases,
       'friends-all',
       'friends-classic',

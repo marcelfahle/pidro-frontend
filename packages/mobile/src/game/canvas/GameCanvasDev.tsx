@@ -21,11 +21,13 @@ import { TableChromeBars, headerTop, useTableReserves } from './TableChrome';
 import { computeLayout, tickerPlacement } from './layout';
 import { useCardTextures } from './cardTextures';
 import { buildTableModel } from './tableModel';
+import { usePlayPresentation } from './usePlayPresentation';
 import { buildHandLog } from '@/game/handLog';
 import { useHandPresentationReady } from './useHandPresentationReady';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
 import { PidroSpacing } from '@/design/tokens';
 import type {
+  ActiveTurnTimer,
   Card,
   GamePhase,
   LegalAction,
@@ -337,6 +339,11 @@ export default function GameCanvasDev({
     hand: handFixture,
     ticker,
     count,
+    fixture,
+    play,
+    reply,
+    autoplay,
+    transition,
   } = useLocalSearchParams<{
     scores?: string;
     dealer?: string;
@@ -346,7 +353,17 @@ export default function GameCanvasDev({
     hand?: string;
     ticker?: string;
     count?: string;
+    fixture?: string;
+    play?: string;
+    reply?: string;
+    autoplay?: string;
+    transition?: string;
   }>();
+  const motionFixture = fixture === 'play-motion';
+  const transitionMs =
+    transition === '0' ? 0 : transition === '80' ? 80 : transition === '3000' ? 3000 : 1500;
+  const [cycle, setCycle] = useState(0);
+  const [transitionTimer, setTransitionTimer] = useState<ActiveTurnTimer | null>(null);
   // `ticker=full`: three bids land after the table opens, so the ticker fills.
   const [bids, setBids] = useState<ServerBid[]>(
     ticker === 'full' ? FIXTURE_BIDS.slice(0, 1) : FIXTURE_BIDS
@@ -400,15 +417,73 @@ export default function GameCanvasDev({
   const legalActions = useMemo<LegalAction[]>(
     () =>
       hand
-        .filter((c) => c.suit === 'spades' || (c.suit === 'hearts' && c.rank === 13))
+        .filter(
+          (c) => motionFixture || c.suit === 'spades' || (c.suit === 'hearts' && c.rank === 13)
+        )
         .map((c) => ({ type: 'play_card', card: c })),
-    [hand]
+    [hand, motionFixture]
   );
 
   const onPlayCard = useCallback(
     (card: Card) => {
-      if (playing.current) return;
+      if (playing.current) return false;
       playing.current = true;
+      if (motionFixture) {
+        const reset = () => {
+          playing.current = false;
+          setHand(INITIAL_HAND);
+          setTrick([]);
+          setTricks([]);
+          setTurn('south');
+          setTransitionTimer(null);
+          setCycle((value) => value + 1);
+        };
+        if (reply === 'reject' || reply === 'early-reject' || reply === 'timeout') {
+          after(6500, reset);
+          return new Promise<boolean>((resolve) => {
+            if (reply !== 'timeout')
+              after(reply === 'early-reject' ? 80 : 800, () => resolve(false));
+          });
+        }
+        const delay = reply === 'fast' ? 80 : reply === 'late' ? 5400 : 800;
+        const plays = [{ player: 'south' as Position, card }, ...OPP_PLAYS];
+        after(delay, () => {
+          setHand((h) => h.filter((c) => !sameCard(c, card)));
+          setTrick(plays.slice(0, 1));
+          setTurn('west');
+        });
+        after(delay + 700, () => {
+          setTrick(plays.slice(0, 2));
+          setTurn('north');
+        });
+        after(delay + 1400, () => {
+          setTrick(plays.slice(0, 3));
+          setTurn('east');
+        });
+        after(delay + 2100, () => {
+          setTrick([]);
+          setTricks([{ cards: plays, winner: 'north', points: 1, two_of_trump: null }]);
+          // The winner went cold: the server skips it, then broadcasts a new timer.
+          setTurn('south');
+        });
+        after(delay + 2150, () => setTransitionTimer(null));
+        after(delay + 2200, () => {
+          setTransitionTimer({
+            timerId: cycle + 1,
+            scope: 'seat',
+            position: 'south',
+            phase: 'playing',
+            durationMs: 20_000,
+            remainingMs: 20_000 + Math.max(0, transitionMs - 100),
+            transitionDelayMs: transitionMs,
+            receivedAtMs: Date.now(),
+            serverTime: new Date().toISOString(),
+            eventSeq: cycle + 1,
+          });
+        });
+        if (autoplay !== 'false') after(delay + 3100 + transitionMs, reset);
+        return Promise.resolve(true);
+      }
       const trickCards = [
         { player: 'south' as Position, card },
         ...(SIGNAL_TRICKS[signals ?? '']?.plays ?? OPP_PLAYS),
@@ -431,7 +506,7 @@ export default function GameCanvasDev({
         setTurn('north');
       });
     },
-    [after, signals]
+    [after, signals, motionFixture, reply, cycle, autoplay, transitionMs]
   );
 
   const players = useMemo(
@@ -460,10 +535,11 @@ export default function GameCanvasDev({
   );
   const canPlay = turn === 'south' && hand.length > 0 && !trick.some((p) => p.player === 'south');
 
-  const model = useMemo(
+  const serverModel = useMemo(
     () =>
       buildTableModel({
         phase,
+        transitionDelayMs: transitionMs,
         trumpSuit: trump,
         dealerRelative: phase === 'dealer_selection' ? 'east' : dealer,
         players,
@@ -484,6 +560,7 @@ export default function GameCanvasDev({
       }),
     [
       phase,
+      transitionMs,
       hand,
       trick,
       tricks,
@@ -497,6 +574,9 @@ export default function GameCanvasDev({
       count,
     ]
   );
+  const presentation = usePlayPresentation(serverModel, onPlayCard, transitionTimer);
+  const model = motionFixture ? presentation.model : serverModel;
+  const playCard = motionFixture ? presentation.playCard : onPlayCard;
   const isHandReady = useHandPresentationReady(model.yourHand, textures);
   // A `hand=` fixture's result belongs to the hand before this one.
   const handNumber = fixtureHand(handFixture) ? 5 : 4;
@@ -525,16 +605,49 @@ export default function GameCanvasDev({
   }, [isHandReady, onHandPresentationReadyChange]);
 
   useEffect(() => {
-    if (!autoPlay || phase !== 'playing' || !isHandReady) return;
-    onPlayCard(INITIAL_HAND[SIGNAL_TRICKS[signals ?? '']?.lead ?? 0]);
-  }, [autoPlay, isHandReady, onPlayCard, phase, signals]);
+    if (motionFixture || !autoPlay || phase !== 'playing' || !isHandReady) return;
+    const id = setTimeout(
+      () => onPlayCard(INITIAL_HAND[SIGNAL_TRICKS[signals ?? '']?.lead ?? 0]),
+      0
+    );
+    return () => clearTimeout(id);
+  }, [motionFixture, autoPlay, isHandReady, onPlayCard, phase, signals]);
+
+  useEffect(() => {
+    if (!motionFixture || autoplay === 'false' || !isHandReady || playing.current) return;
+    const position = play ?? ['right', 'left', 'middle'][cycle % 3];
+    const cards = serverModel.yourHand;
+    const card =
+      cards[
+        position === 'right'
+          ? cards.length - 1
+          : position === 'left'
+            ? 0
+            : Math.floor(cards.length / 2)
+      ];
+    if (!card) return;
+    const id = setTimeout(() => playCard(card.card), 1200);
+    return () => clearTimeout(id);
+  }, [motionFixture, autoplay, isHandReady, cycle, play, serverModel.yourHand, playCard]);
 
   return (
     <View style={{ flex: 1 }}>
+      {motionFixture ? (
+        <View
+          testID="play-fixture"
+          pointerEvents="none"
+          accessibilityLabel={JSON.stringify({
+            cycle,
+            hand: hand.length,
+            turn,
+            completed: tricks.length,
+          })}
+        />
+      ) : null}
       <GameCanvas
         model={model}
         textures={textures}
-        onPlayCard={onPlayCard}
+        onPlayCard={playCard}
         topReserve={topReserve}
         bottomReserve={bottomReserve}
       />

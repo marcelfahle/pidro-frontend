@@ -499,6 +499,7 @@ function TableDevHarness() {
   }
 
   if (
+    fixture !== 'play-motion' &&
     (fixture || params.role || phase === 'second_deal' || phase === 'declaring') &&
     !phase.startsWith('waiting') &&
     !phase.startsWith('ready')

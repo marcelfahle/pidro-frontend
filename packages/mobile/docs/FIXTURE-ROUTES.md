@@ -205,6 +205,18 @@ back images, containment and the still-active East hand at 390×844, 375×667,
 clears with the hand, and restarts at 18 seconds. Reduced motion shows the piles
 without a flight; joining an already-cold table does not replay the fold.
 
+`/table-dev?fixture=play-motion` loops right-end, left-end and middle plays through
+the production play-presentation hook and sprite pool, with a local fake server.
+Replies take 800 ms; the fourth card completes the trick and the server-selected
+leader differs from its winner. `autoplay=false` leaves the hand for real taps;
+`play=right|left|middle` fixes the loop's card. `reply=fast|reject|early-reject|timeout|late`
+exercises confirmation during flight, rejection after/before landing, no reply and
+confirmation after rollback. `transition=0|80|1500|3000` varies the snapshot's hold;
+the cancelled/new turn-timer events follow separately. Grammar cases
+`table-play-right`, `table-play-left` and `table-play-middle` check immediate
+departure, stable sprite identity and the ring through trick completion at
+390×844, 375×667, 844×390 and 768×1024. Completed cards still remain as hand history.
+
 ---
 
 ## `/ui-dev` — DS v2 gallery

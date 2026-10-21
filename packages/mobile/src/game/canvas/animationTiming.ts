@@ -6,6 +6,13 @@ export const HAND_PRESENTATION_TIMEOUT_MS = 2_000;
 /** All remaining cards fold together, without a per-card stagger. */
 export const FOLD_FLIGHT_MS = 360;
 
+export const PLAY_CARD_TRAVEL_MS = 340;
+export const PLAY_CARD_CURVE = [0.33, 0, 0.2, 1] as const;
+export const PLAY_CARD_LIFT = 0.12;
+export const PLAY_CONFIRM_TIMEOUT_MS = 5_000;
+// Older snapshots without transition metadata.
+export const TRICK_TRANSITION_MS = 1_500;
+
 // Twelve little packets, rather than 36 individual throws. The last packet
 // settles before the player gets a beat to read their hand and then sort it.
 export const DEAL_PACKET_INTERVAL_MS = 260;

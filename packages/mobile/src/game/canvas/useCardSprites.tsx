@@ -3,20 +3,20 @@
  *
  * A fixed pool of card "sprites" (stable Reanimated shared values) is reconciled
  * against the render model every change: each visible card (your hand + every
- * trick card) is assigned a slot and animated toward its target position. Because
- * a played card keeps the SAME key across the hand→trick transition, its slot
- * persists and it *flies* into the trick instead of popping.
+ * trick card) is assigned a slot and animated toward its target position. Hand
+ * and server trick keys differ; matching card textures transfer the existing
+ * slot, including an optimistic flight, without fading or restarting it.
  *
  * Gestures (canvas-level Pan+Tap, hit-tested against legal hand cards) call
- * onPlayCard. Animation is driven purely by model diffs (server-confirmed), per
- * plan §5.6 — with the cold-load rule: the first model snaps into place, only
+ * onPlayCard. Model diffs include the local pending-play presentation, with
+ * the cold-load rule: the first model snaps into place, only
  * later diffs animate. M3 adds, all diff-triggered:
  *   • deal-in   — hand grows from empty → stagger from a deck origin w/ overshoot
  *   • history   — completed tricks keep stable sprites on the table for the full hand
  *   • trump     — null→suit pops the trump glyph (exposed via `trumpPop`)
  *   • reflow    — layout change tweens sprites to new slots (falls out of the effect)
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Gesture } from 'react-native-gesture-handler';
 import { BlurMask, Group, Image, RoundedRect, type SkImage } from '@shopify/react-native-skia';
 import {
@@ -58,12 +58,15 @@ import {
   DEAL_PACKET_CARD_STAGGER_MS,
   DEAL_PACKET_TRAVEL_MS,
   DEAL_SORT_DURATION_MS,
+  PLAY_CARD_TRAVEL_MS,
+  PLAY_CARD_CURVE,
+  PLAY_CARD_LIFT,
 } from './animationTiming';
 import { T } from './tokens';
 
 const MAX = 36;
 /** A played card's glow waits for the card to land. */
-const LEAD_GLOW_DELAY_MS = 280;
+const LEAD_GLOW_DELAY_MS = PLAY_CARD_TRAVEL_MS;
 /** A trick total jumping by this much means a five landed. */
 const FIVE_POINTS = 5;
 /** Press feedback on a hand card: lift on touch, play on release. */
@@ -136,12 +139,14 @@ export function useCardSprites({
   const sscale = Array.from({ length: MAX }, () => useSharedValue(1));
   const srot = Array.from({ length: MAX }, () => useSharedValue(0));
   const sop = Array.from({ length: MAX }, () => useSharedValue(0));
+  const flight = Array.from({ length: MAX }, () => useSharedValue(1));
   /* eslint-enable react-hooks/rules-of-hooks */
 
   const [slots, setSlots] = useState<SlotInfo[]>(() => Array(MAX).fill(null));
   const reduceMotion = useReducedMotion();
 
   const keyToSlot = useRef<Map<string, number>>(new Map());
+  const targets = useRef<Map<number, string>>(new Map());
   const retirementTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const cutSequenceKey = useRef<string | null>(null);
   const cutSequenceStartedAt = useRef(0);
@@ -178,7 +183,7 @@ export function useCardSprites({
   const cardH = L.cardH;
   const handScale = handScaleFor(L.profile);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled || !model) return;
     const prev = prevModel.current;
     const firstLoad = prev === null;
@@ -351,6 +356,26 @@ export function useCardSprites({
     cutSequenceKey.current = nextCutSequenceKey;
     const nextSlots: SlotInfo[] = Array(MAX).fill(null);
 
+    // A card is unique within a hand. Re-key its slot before retirement so a
+    // confirmation (or rollback) continues from the exact on-screen position.
+    for (const d of desired) {
+      if (d.kind !== 'played' || model.phase !== 'playing' || keyToSlot.current.has(d.key))
+        continue;
+      const old = slots.findIndex(
+        (slot) =>
+          slot?.textureKey === d.textureKey &&
+          (slot.kind === 'hand' || (slot.kind === 'played' && slot.key === slot.textureKey)) &&
+          !desiredKeys.has(slot.key)
+      );
+      if (old < 0 || !slots[old]) continue;
+      const oldKey = slots[old]!.key;
+      const timer = retirementTimers.current.get(oldKey);
+      if (timer) clearTimeout(timer);
+      retirementTimers.current.delete(oldKey);
+      keyToSlot.current.delete(oldKey);
+      keyToSlot.current.set(d.key, old);
+    }
+
     // Retire slots only when cards leave the server's round history. Completed
     // tricks remain in `playedCards`, so they stay visible for the full hand.
     for (const [key, sl] of Array.from(keyToSlot.current.entries())) {
@@ -391,6 +416,7 @@ export function useCardSprites({
 
     const ht: HandTarget[] = [];
     const cfg = { duration: 320, easing: Easing.out(Easing.cubic) };
+    const playCfg = { duration: PLAY_CARD_TRAVEL_MS, easing: Easing.bezier(...PLAY_CARD_CURVE) };
     const dealCfg = {
       duration: packetDeal ? DEAL_PACKET_TRAVEL_MS : DEAL_CARD_TRAVEL_MS,
       easing: Easing.out(Easing.back(1.5)),
@@ -459,6 +485,11 @@ export function useCardSprites({
       };
 
       const pressed = pressSlot.value === sl;
+      const signature = `${d.kind}:${d.tx}:${d.ty}:${d.trot}:${d.tscale}:${d.topacity}`;
+      const targetChanged = targets.current.get(sl) !== signature || isNew;
+      const playingFlight =
+        model.phase === 'playing' && (d.kind === 'played' || slots[sl]?.kind === 'played');
+      targets.current.set(sl, signature);
       if (cutCard && !reduceMotion) {
         const delay = d.delayOrder * CUT_CARD_STAGGER_MS;
         const cutCfg = {
@@ -474,12 +505,13 @@ export function useCardSprites({
           delay,
           withTiming(d.topacity, { duration: 150, reduceMotion: ReduceMotion.System })
         );
-      } else if (firstLoad || (d.kind === 'cut' && reduceMotion)) {
+      } else if (firstLoad || (reduceMotion && (d.kind === 'cut' || model.phase === 'playing'))) {
         sx[sl].value = d.tx;
         sy[sl].value = d.ty;
         srot[sl].value = d.trot;
         sscale[sl].value = d.tscale;
         sop[sl].value = d.topacity;
+        flight[sl].value = 1;
       } else if (d.kind === 'cut' && model.phase === 'dealer_selection') {
         // A dealer snapshot can re-render while this sequence is in flight
         // (notably React Strict Mode and when the dealer field arrives). Keep
@@ -523,6 +555,7 @@ export function useCardSprites({
         );
       } else if (
         !pressed &&
+        targetChanged &&
         !(
           d.kind === 'hand' &&
           model.dealStage &&
@@ -531,10 +564,18 @@ export function useCardSprites({
           prevLayout.current === L
         )
       ) {
-        sx[sl].value = withTiming(d.tx, cfg);
-        sy[sl].value = withTiming(d.ty, cfg);
-        srot[sl].value = withTiming(d.trot, cfg);
-        sscale[sl].value = withTiming(d.tscale, cfg);
+        const motion = playingFlight ? playCfg : cfg;
+        if (playingFlight) {
+          // A refusal can arrive mid-flight: start the return at the drawn
+          // position, including the lift, rather than jumping to its baseline.
+          sy[sl].value -= Math.sin(Math.PI * flight[sl].value) * cardH * PLAY_CARD_LIFT;
+          flight[sl].value = 0;
+          flight[sl].value = withTiming(1, playCfg);
+        }
+        sx[sl].value = withTiming(d.tx, motion);
+        sy[sl].value = withTiming(d.ty, motion);
+        srot[sl].value = withTiming(d.trot, motion);
+        sscale[sl].value = withTiming(d.tscale, motion);
         sop[sl].value = withTiming(d.topacity, { duration: 150 });
       }
 
@@ -600,8 +641,8 @@ export function useCardSprites({
     );
   }, [enabled, model, reduceMotion, winnerReveal]);
 
-  // The glow lands with the card that earned it (a played card flies for
-  // 320ms), pops a touch past full and settles. Each new leader pops again.
+  // The glow lands with the card that earned it, pops a touch past full
+  // and settles. Each new leader pops again.
   const leadKey = model?.winningKey ?? null;
   useEffect(() => {
     cancelAnimation(leadGlow);
@@ -702,6 +743,7 @@ export function useCardSprites({
             scale={sscale[i]}
             rot={srot[i]}
             opacity={sop[i]}
+            flight={flight[i]}
             w={cardW}
             h={cardH}
             dimmed={s.blocked}
@@ -739,6 +781,8 @@ export function useCardSprites({
     renderedCutCardCount,
     renderedPlayedCardCount,
     renderedHandCardCount,
+    handTargets,
+    spriteKeys: slots.map((slot) => slot?.key ?? null),
   };
 }
 
@@ -749,6 +793,7 @@ function CardSprite({
   scale,
   rot,
   opacity,
+  flight,
   w,
   h,
   dimmed,
@@ -766,6 +811,7 @@ function CardSprite({
   scale: SharedValue<number>;
   rot: SharedValue<number>;
   opacity: SharedValue<number>;
+  flight: SharedValue<number>;
   w: number;
   h: number;
   dimmed: boolean;
@@ -779,7 +825,7 @@ function CardSprite({
 }) {
   const transform = useDerivedValue(() => [
     { translateX: x.value },
-    { translateY: y.value },
+    { translateY: y.value - Math.sin(Math.PI * flight.value) * h * PLAY_CARD_LIFT },
     { rotate: rot.value },
     {
       scale:

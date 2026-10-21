@@ -74,6 +74,8 @@ export default function GameCanvas({
     renderedCutCardCount,
     renderedPlayedCardCount,
     renderedHandCardCount,
+    handTargets,
+    spriteKeys,
   } = useCardSprites({
     model,
     textures,
@@ -174,6 +176,17 @@ export default function GameCanvas({
         />
         {__DEV__ ? (
           <>
+            <View
+              testID="play-presentation"
+              accessibilityLabel={JSON.stringify({
+                hand: handTargets.value,
+                sprites: spriteKeys,
+                lit:
+                  Object.entries(model.seats).find(([, seat]) => seat?.isCurrentTurn)?.[0] ?? null,
+              })}
+              pointerEvents="none"
+              className="absolute h-px w-px opacity-0"
+            />
             <View
               testID="deal-presentation"
               accessibilityLabel={JSON.stringify({

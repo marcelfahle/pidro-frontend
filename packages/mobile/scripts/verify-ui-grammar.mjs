@@ -517,6 +517,12 @@ const allCases = [
     testId: 'invite-window',
   },
   { name: 'table-playing', path: '/table-dev?phase=playing', testId: 'seat-north' },
+  ...['right', 'left', 'middle'].map((position) => ({
+    name: `table-play-${position}`,
+    path: `/table-dev?fixture=play-motion&autoplay=false&play=${position}`,
+    testId: 'seat-north',
+    playPosition: position,
+  })),
   {
     name: 'table-notice',
     path: '/table-dev?phase=playing&feedback=notice',
@@ -2800,6 +2806,41 @@ async function assertPlayedCardPersistence(page, viewport) {
   }
 }
 
+async function assertPlayMotion(page, position) {
+  await page.getByTestId('rendered-hand-card-count-6').waitFor({ state: 'attached' });
+  await page.waitForTimeout(1500);
+  const read = () =>
+    page.getByTestId('play-presentation').getAttribute('aria-label').then(JSON.parse);
+  const before = await read();
+  const index = position === 'right' ? 5 : position === 'left' ? 0 : 3;
+  const target = before.hand[index];
+  // Hit the exposed left edge, not the neighbour overlapping the card's centre.
+  await page.mouse.click(target.x - target.w / 2 + 10, target.y);
+  await page.getByTestId('rendered-hand-card-count-5').waitFor({ state: 'attached', timeout: 500 });
+  assert.equal(
+    JSON.parse(await page.getByTestId('play-fixture').getAttribute('aria-label')).hand,
+    6,
+    'the picture must move before the delayed server answer'
+  );
+  assert.equal((await read()).sprites[target.slot], target.key, 'the tapped sprite was replaced');
+  await page.waitForTimeout(950);
+  assert.ok(
+    (await read()).sprites[target.slot].endsWith(target.key),
+    'confirmation replaced the sprite slot'
+  );
+  await page.getByTestId('rendered-played-card-count-4').waitFor({ state: 'attached' });
+  assert.equal((await read()).lit, null, 'the next turn lit before the fourth card landed');
+  await page.waitForTimeout(1100);
+  assert.equal((await read()).lit, null, 'the next turn lit during the 1500ms trick hold');
+  await page.waitForTimeout(500);
+  assert.equal(
+    (await read()).lit,
+    'south',
+    'the server-selected leader did not light after the hold'
+  );
+  assert.equal(await page.getByTestId('rendered-played-card-count-4').count(), 1);
+}
+
 async function assertDealerCutCards(page, viewport) {
   const fourCards = page.getByTestId('rendered-cut-card-count-4').first();
   await fourCards.waitFor({ state: 'attached', timeout: 20_000 });
@@ -3836,6 +3877,9 @@ async function main() {
           await assertDealHold(page, testCase, caseViewport);
           if (testCase.verifyPlayedCardPersistence) {
             await assertPlayedCardPersistence(page, viewport);
+          }
+          if (testCase.playPosition) {
+            await assertPlayMotion(page, testCase.playPosition);
           }
           if (testCase.verifyDealerCutCards) {
             await assertDealerCutCards(page, viewport);

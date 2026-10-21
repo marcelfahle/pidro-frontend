@@ -32,6 +32,7 @@ import { useTableModel, type TableModel } from './tableModel';
 import { useHandPresentationReady } from './useHandPresentationReady';
 import { useDealPresentation } from './useDealPresentation';
 import { useSecondDealPresentation } from './useSecondDealPresentation';
+import { usePlayPresentation } from './usePlayPresentation';
 import { T } from './tokens';
 import GameCanvas from './GameCanvas';
 import { SeatLayer, type SeatTurn } from './SeatLayer';
@@ -321,7 +322,12 @@ export function GameCanvasTable({
   );
   const dealt = useDealPresentation(tableModel, controller.viewModel?.dealerRelative ?? null);
   const presented = useSecondDealPresentation(dealt);
-  const model = useMemo(() => (held ? { ...presented, held } : presented), [presented, held]);
+  const turnTimer = useGameStore((state) => state.turnTimer);
+  const playPresentation = usePlayPresentation(presented, controller.handlePlayCard, turnTimer);
+  const model = useMemo(
+    () => (held ? { ...playPresentation.model, held } : playPresentation.model),
+    [playPresentation.model, held]
+  );
   useTableHaptics(model);
   const isBiddingTurn = controller.phase === 'bidding' && controller.isYourTurn;
   const facesReady = useHandPresentationReady(serverModel.yourHand, textures, isBiddingTurn);
@@ -352,7 +358,6 @@ export function GameCanvasTable({
     yourHand,
     handleDeclareTrump,
     handleSelectHand,
-    handlePlayCard,
   } = controller;
 
   // Picking trump, the hand lifts the suit pointed at. Nothing is lifted until
@@ -360,7 +365,7 @@ export function GameCanvasTable({
   const [pointedSuit, setPointedSuit] = useState<Suit | null>(null);
   const previewSuit = showTrumpSelection ? pointedSuit : null;
 
-  const playCard = usePlayGuard(handlePlayCard, {
+  const playCard = usePlayGuard(playPresentation.playCard, {
     presentation: dealerRobPresentation,
     handReady: isHandReady,
   });

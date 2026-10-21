@@ -64,6 +64,7 @@ export type TableSeat = {
 };
 export type TableModel = {
   phase: GamePhase;
+  transitionDelayMs?: number;
   trumpSuit: Suit | null;
   /** Server-selected dealer, already mapped into the viewer's seat orientation. */
   dealerRelative: RelativePosition | null;
@@ -115,6 +116,7 @@ const DEALT_HAND = 9;
 
 export type TableModelInput = {
   phase: GamePhase;
+  transitionDelayMs?: number;
   trumpSuit: Suit | null;
   dealerRelative?: RelativePosition | null;
   players: RelativePlayerView[];
@@ -346,6 +348,7 @@ export function buildTableModel(input: TableModelInput): TableModel {
 
   return {
     phase: input.phase,
+    transitionDelayMs: input.transitionDelayMs,
     trumpSuit,
     dealerRelative: input.dealerRelative ?? null,
     seats,
@@ -377,6 +380,7 @@ export function useTableModel(
     () =>
       buildTableModel({
         phase: c.phase,
+        transitionDelayMs: c.serverState?.transition_delay_ms,
         trumpSuit: c.trumpSuit,
         dealerRelative: c.viewModel?.dealerRelative ?? null,
         players: c.players,
@@ -396,6 +400,7 @@ export function useTableModel(
       }),
     [
       c.phase,
+      c.serverState?.transition_delay_ms,
       c.trumpSuit,
       c.viewModel?.dealerRelative,
       c.players,
