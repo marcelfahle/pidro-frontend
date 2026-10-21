@@ -16,6 +16,8 @@ export const PLAY_CARD_LIFT_CURVE = [0.2, 0.8, 0.3, 1] as const;
 export const PLAY_CARD_SCALE = 1.06;
 export const OPPONENT_CARD_SCALE = 1.025;
 export const HAND_CLOSE_SPRING = { stiffness: 260, damping: 29, mass: 0.8 } as const;
+// Off pending a team decision on how a finished trick leaves the table.
+export const TRICK_SWEEP_ENABLED = false;
 export const TRICK_GATHER_MS = 100;
 export const TRICK_SWEEP_MS = 220;
 export const TRICK_GATHER_PROGRESS = 0.3;

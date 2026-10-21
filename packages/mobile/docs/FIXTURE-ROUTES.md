@@ -260,7 +260,10 @@ departure, stable sprite identity and the ring through trick completion at
 390×844, 375×667, 844×390 and 768×1024. Completed cards still remain as hand history.
 
 PID-279 extends that same loop with lift/settle, spring hand closure and a
-post-hold gather/sweep. Each cycle changes the winning seat; `sweep=north|east|south|west`
+post-hold gather/sweep, currently off pending a team decision. Set
+`TRICK_SWEEP_ENABLED` in `animationTiming.ts` to try it; grammar assertions follow
+that flag, checking visible history by default and collection when enabled.
+Each cycle changes the winning seat; `sweep=north|east|south|west`
 fixes its destination independently of the next turn. `table-motion-north|east|south|west`
 and `table-motion-reduced` check the hold, landing, collection direction and retained
 history slots at the same four sizes. In dev only, `__pidroCardMotion()` samples the

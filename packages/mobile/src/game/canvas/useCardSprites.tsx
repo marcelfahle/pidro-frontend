@@ -12,7 +12,7 @@
  * the cold-load rule: the first model snaps into place, only
  * later diffs animate. M3 adds, all diff-triggered:
  *   • deal-in   — hand grows from empty → stagger from a deck origin w/ overshoot
- *   • history   — completed tricks keep stable slots after collecting off the table
+ *   • history   — completed tricks keep stable slots for the server's round history
  *   • trump     — null→suit pops the trump glyph (exposed via `trumpPop`)
  *   • reflow    — layout change tweens sprites to new slots (falls out of the effect)
  */
@@ -69,6 +69,7 @@ import {
   PLAY_CARD_SCALE,
   OPPONENT_CARD_SCALE,
   HAND_CLOSE_SPRING,
+  TRICK_SWEEP_ENABLED,
   TRICK_GATHER_MS,
   TRICK_SWEEP_MS,
   TRICK_GATHER_PROGRESS,
@@ -415,8 +416,8 @@ export function useCardSprites({
       keyToSlot.current.set(d.key, old);
     }
 
-    // Retire slots only when cards leave the server's round history. Collected
-    // tricks remain in `playedCards`, so their slots persist invisibly.
+    // Retire slots only when cards leave the server's round history. Completed
+    // tricks remain visible unless the optional sweep has collected them.
     for (const [key, sl] of Array.from(keyToSlot.current.entries())) {
       if (!desiredKeys.has(key)) {
         nextSlots[sl] = slots[sl];
@@ -661,7 +662,7 @@ export function useCardSprites({
 
       // Keep the history slots, but collect only newly completed tricks. A
       // reconnect never replays old wins, and new plays never restart a sweep.
-      if (d.completed && model.collectAt !== undefined && !collectTo) {
+      if (TRICK_SWEEP_ENABLED && d.completed && model.collectAt !== undefined && !collectTo) {
         const result = model.lastTrick;
         const newlyCompleted = !firstLoad && result && result.number !== prev?.lastTrick?.number;
         const inLastTrick = result?.plays.some(({ card }) => cardKey(card) === d.textureKey);
@@ -902,6 +903,7 @@ export function useCardSprites({
                 y: sy[i].value,
                 scale: sscale[i].value,
                 flight: flight[i].value,
+                opacity: sop[i].value,
                 collection: collection[i].value,
                 collectTo: slot.collectTo,
               },

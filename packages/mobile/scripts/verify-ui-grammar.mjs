@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
+import { TRICK_SWEEP_ENABLED } from '../src/game/canvas/animationTiming.ts';
 import { partitionCases, verifyCoverage } from './ui-shards.mjs';
 import {
   assertInsideViewport,
@@ -3147,30 +3148,46 @@ async function assertCardCollection(page, winner, reduced) {
   await page.waitForTimeout(1500);
   const before = JSON.parse(await page.getByTestId('play-presentation').getAttribute('aria-label'));
   const target = before.hand[3];
-  await page.evaluate(() => {
+  await page.evaluate((sweepEnabled) => {
     const frames = [];
+    let completedAt;
     window.__pidroMotionFrames = frames;
+    window.__pidroMotionDone = false;
     const sample = () => {
       const fixture = JSON.parse(
         document.querySelector('[data-testid="play-fixture"]').getAttribute('aria-label')
       );
       const sprites = window.__pidroCardMotion();
-      frames.push({ at: performance.now(), completed: fixture.completed, sprites });
-      if (sprites.filter((s) => s.collection === 1).length < 4) requestAnimationFrame(sample);
+      const at = performance.now();
+      if (fixture.completed && completedAt === undefined) completedAt = at;
+      frames.push({ at, completed: fixture.completed, sprites });
+      window.__pidroMotionDone = sweepEnabled
+        ? sprites.filter((s) => s.collection === 1).length === 4
+        : completedAt !== undefined && at - completedAt >= 2000;
+      if (!window.__pidroMotionDone) requestAnimationFrame(sample);
     };
     requestAnimationFrame(sample);
-  });
+  }, TRICK_SWEEP_ENABLED);
   await page.mouse.click(target.x - target.w / 2 + 10, target.y);
-  await page.waitForFunction(
-    () => window.__pidroMotionFrames.at(-1).sprites.filter((s) => s.collection === 1).length === 4
-  );
+  await page.waitForFunction(() => window.__pidroMotionDone);
   const frames = await page.evaluate(() => window.__pidroMotionFrames);
   const completed = frames.find((f) => f.completed);
-  const gathering = frames.find((f) => f.sprites.some((s) => s.collection > 0));
-  assert.ok(gathering.at - completed.at >= 1450, 'collection cut into the 1500ms hold');
+  if (TRICK_SWEEP_ENABLED) {
+    const gathering = frames.find((f) => f.sprites.some((s) => s.collection > 0));
+    assert.ok(gathering.at - completed.at >= 1450, 'collection cut into the 1500ms hold');
+  } else {
+    assert.ok(
+      frames.every((f) => f.sprites.every((s) => s.collection === 0 && !s.collectTo)),
+      'disabled sweep still collected a card'
+    );
+  }
   assert.equal(frames.at(-1).sprites.filter((s) => s.kind === 'hand').length, 5);
   const played = frames.at(-1).sprites.filter((s) => s.kind === 'played');
   assert.equal(played.length, 4, 'collection must retain the server history slots');
+  assert.ok(
+    played.every((s) => s.opacity === 1),
+    'completed trick faded before the server removed its history'
+  );
   const center = await page.getByTestId('table-trick-center').boundingBox();
   const remaining = frames.at(-1).sprites.filter((s) => s.kind === 'hand');
   const handCenter = before.hand.reduce((sum, s) => sum + s.x, 0) / before.hand.length;
@@ -3194,6 +3211,7 @@ async function assertCardCollection(page, winner, reduced) {
       );
   }
   for (const card of played) {
+    if (!TRICK_SWEEP_ENABLED) continue;
     const { x, y } = card.collectTo;
     assert.ok(
       winner === 'north'
@@ -3231,13 +3249,14 @@ async function assertCardCollection(page, winner, reduced) {
       own.some((s) => s.flight > 1),
       'landing never settled from its overshoot'
     );
-    assert.ok(
-      frames.some((f) => f.sprites.some((s) => s.collection > 0 && s.collection < 1)),
-      'trick snapped instead of gathering and sweeping'
-    );
+    if (TRICK_SWEEP_ENABLED)
+      assert.ok(
+        frames.some((f) => f.sprites.some((s) => s.collection > 0 && s.collection < 1)),
+        'trick snapped instead of gathering and sweeping'
+      );
   }
   console.log(
-    `motion ${winner}${reduced ? ' reduced' : ''}: lift/settle, hold, winner-directed collection and history passed`
+    `motion ${winner}${reduced ? ' reduced' : ''}: lift/settle, ${TRICK_SWEEP_ENABLED ? 'held winner-directed sweep' : 'visible history without collection'} passed`
   );
 }
 
