@@ -2861,6 +2861,26 @@ async function assertPlayMotion(page, position) {
   const before = await read();
   const index = position === 'right' ? 5 : position === 'left' ? 0 : 3;
   const target = before.hand[index];
+  // Observe on the browser clock before tapping. Locator polling can notice
+  // the fourth card almost a second late; sleeping from there misses the hold.
+  await page.evaluate(() => {
+    const frames = [];
+    const observer = new MutationObserver(() => {
+      const fixture = JSON.parse(
+        document.querySelector('[data-testid="play-fixture"]').getAttribute('aria-label')
+      );
+      if (!fixture.completed) return;
+      const { lit } = JSON.parse(
+        document.querySelector('[data-testid="play-presentation"]').getAttribute('aria-label')
+      );
+      frames.push({ time: performance.now(), lit });
+      if (lit) {
+        window.__pidroPlayHold = frames;
+        observer.disconnect();
+      }
+    });
+    observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['aria-label'] });
+  });
   // Hit the exposed left edge, not the neighbour overlapping the card's centre.
   await page.mouse.click(target.x - target.w / 2 + 10, target.y);
   await page.getByTestId('rendered-hand-card-count-5').waitFor({ state: 'attached', timeout: 500 });
@@ -2875,13 +2895,15 @@ async function assertPlayMotion(page, position) {
     (await read()).sprites[target.slot].endsWith(target.key),
     'confirmation replaced the sprite slot'
   );
-  await page.getByTestId('rendered-played-card-count-4').waitFor({ state: 'attached' });
-  assert.equal((await read()).lit, null, 'the next turn lit before the fourth card landed');
-  await page.waitForTimeout(1100);
-  assert.equal((await read()).lit, null, 'the next turn lit during the 1500ms trick hold');
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => window.__pidroPlayHold, null, { timeout: 10_000 });
+  const hold = await page.evaluate(() => window.__pidroPlayHold);
+  assert.equal(hold[0].lit, null, 'the next turn lit before the fourth card landed');
+  assert.ok(hold.slice(0, -1).every(({ lit }) => lit === null), 'a seat flashed during the hold');
+  const heldMs = hold.at(-1).time - hold[0].time;
+  assert.ok(heldMs >= 1450, `the 1500ms trick hold lasted only ${heldMs.toFixed(0)}ms`);
+  console.log(`play hold ${position}: ${heldMs.toFixed(0)}ms, no intervening seat light`);
   assert.equal(
-    (await read()).lit,
+    hold.at(-1).lit,
     'south',
     'the server-selected leader did not light after the hold'
   );
