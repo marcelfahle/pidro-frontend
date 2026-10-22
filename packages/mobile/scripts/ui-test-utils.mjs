@@ -325,14 +325,29 @@ export async function assertMinimumTouchTargets(
   { checkInputs = false } = {}
 ) {
   for (const role of ['button', 'link', 'switch', 'radio']) {
-    const controls = await page.getByRole(role).all();
-    for (let index = 0; index < controls.length; index += 1) {
-      if (!(await controls[index].isVisible())) continue;
-      const box = await controls[index].boundingBox();
-      if (!box || (box.width >= 44 && box.height >= 44)) continue;
-      const label =
-        (await controls[index].getAttribute('aria-label')) ??
-        (await controls[index].textContent())?.trim();
+    // Live controls can disappear between isVisible and boundingBox. Measure one
+    // DOM snapshot so an earlier nth locator cannot point past the new list.
+    const controls = await page.getByRole(role).evaluateAll((nodes) =>
+      nodes.flatMap((node) => {
+        const rect = node.getBoundingClientRect();
+        const style = getComputedStyle(node);
+        if (
+          rect.width === 0 ||
+          rect.height === 0 ||
+          style.visibility === 'hidden' ||
+          style.display === 'none'
+        )
+          return [];
+        return [
+          {
+            box: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+            label: node.getAttribute('aria-label') ?? node.textContent?.trim(),
+          },
+        ];
+      })
+    );
+    for (const [index, { box, label }] of controls.entries()) {
+      if (box.width >= 44 && box.height >= 44) continue;
       throw new Error(
         `${screenName} has a sub-44pt ${role} in ${viewport.name}: ${label || index} ${JSON.stringify(box)}`
       );

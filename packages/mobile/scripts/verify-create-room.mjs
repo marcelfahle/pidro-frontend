@@ -229,7 +229,7 @@ async function assertLivePicker(page, fixture, viewport) {
   const split = viewport.width > viewport.height || viewport.width >= 600;
   if (fixture === 'live-picker') {
     await checked('With password 4821');
-    await choose('west', 'Bot', /^Bot\n/);
+    await choose('west', 'Bot', /^Antti\n/);
     await choose('west', '1000+ games played', /Waiting…$/);
     await choose('west', 'With password 4821', /password 4821$/);
     await choose('west', 'Anyone', /Waiting…$/);
@@ -238,7 +238,7 @@ async function assertLivePicker(page, fixture, viewport) {
     await row('south').click();
     if (!split) await picker.getByRole('button', { name: /^A friend, Maija/ }).waitFor();
     else await picker.getByLabel('Maija', { exact: true }).waitFor();
-    await choose('south', 'Bot', /^Bot\n/);
+    await choose('south', 'Bot', /^Antti\n/);
   }
   if (fixture === 'live-friends') {
     const friends = page.getByTestId('friend-picker');
