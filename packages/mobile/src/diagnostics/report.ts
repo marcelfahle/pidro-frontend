@@ -29,11 +29,12 @@ export function captureGameReport(): CapturedGameReport | null {
 }
 
 let retryAt = 0;
+let retryOwner: string | null = null;
 let sending = false;
 export async function sendGameReport(capture: CapturedGameReport): Promise<string> {
   if (capture.owner !== authStore.getState().user?.id)
     throw new ReportSendError('identity_changed');
-  if (Date.now() < retryAt)
+  if (capture.owner === retryOwner && Date.now() < retryAt)
     throw new ReportSendError('rate_limited', Math.ceil((retryAt - Date.now()) / 1000));
   if (sending) throw new ReportSendError('unavailable');
   // Explicit keys only: the local owner is never part of the report body.
@@ -78,7 +79,10 @@ export async function sendGameReport(capture: CapturedGameReport): Promise<strin
     if (status === 429) {
       const seconds = Number(error.response?.headers['retry-after']);
       const delay = Number.isFinite(seconds) && seconds > 0 ? Math.ceil(seconds) : 60;
-      retryAt = Date.now() + delay * 1000;
+      if (capture.owner === authStore.getState().user?.id) {
+        retryOwner = capture.owner;
+        retryAt = Date.now() + delay * 1000;
+      }
       throw new ReportSendError('rate_limited', delay);
     }
     throw new ReportSendError(status === 503 ? 'unavailable' : 'failed');
