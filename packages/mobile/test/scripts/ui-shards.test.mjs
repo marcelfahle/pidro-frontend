@@ -69,7 +69,8 @@ test("CI's real matrix partitions cover every unfiltered viewport/case exactly o
   expect(partitions.every((items) => items.length > 0)).toBe(true);
   expect(new Set(expected).size).toBe(expected.length);
   expect(partitions.flat().sort()).toEqual(expected.sort());
-});
+  // Eleven real child processes can exceed Bun's five-second default on a busy host.
+}, 30_000);
 
 test('the actual pixel comparison fails when captures are missing', () => {
   const directory = mkdtempSync(join(tmpdir(), 'pidro-missing-captures-'));
