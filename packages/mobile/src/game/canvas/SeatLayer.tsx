@@ -112,6 +112,7 @@ function avatarFor(
     away,
     kind,
     persona: crew,
+    botProfile: data.bot_profile,
     name: kind === 'open' ? null : data.username,
     status: line?.text ?? null,
     pulse: line?.pulse ?? null,

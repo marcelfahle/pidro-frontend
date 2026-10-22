@@ -3,6 +3,9 @@ import { StyleSheet, View, useWindowDimensions } from 'react-native';
 import {
   localizedError,
   publicPlayerName,
+  isBuiltinBot,
+  builtinBotName,
+  useGameStore,
   type BotPersona,
   type ProfileIdentity,
 } from '@pidro/shared';
@@ -18,6 +21,7 @@ import { PidroSpacing } from '@/design/tokens';
 import { useAuthStore } from '@/stores/auth';
 import { addFriend, blockPlayer } from '@/stores/friends';
 import { useTranslation } from '@/i18n';
+import { useBotProfile } from '@/features/bots';
 
 interface PlayerProfileProps {
   playerId: string | null;
@@ -39,21 +43,32 @@ export function PlayerProfileModal({
 }: PlayerProfileProps) {
   const { t } = useTranslation();
   const { width, height } = useWindowDimensions();
+  const snapshot = useGameStore(
+    (state) =>
+      Object.values(state.playerMeta).find((seat) => seat.bot_persona === persona)?.bot_profile
+  );
+  const profile = useBotProfile(persona, snapshot);
   if (persona) {
-    const bot = botPersonas[persona];
+    const bot = isBuiltinBot(persona) ? botPersonas[persona] : null;
     return (
       <Modal isOpen title={t('bots.title')} onClose={onClose} testID="bot-profile-modal">
         <View style={[styles.bot, width > height && styles.botLandscape]}>
-          <PlayerAvatar kind="bot" persona={persona} size={104} style={styles.avatar} />
+          <PlayerAvatar
+            kind="bot"
+            persona={persona}
+            botProfile={profile}
+            size={104}
+            style={styles.avatar}
+          />
           <View style={styles.botCopy} testID="bot-profile-copy">
             <PidroText role="title" align="center">
-              {bot.name}
+              {profile?.name || builtinBotName(persona) || t('game.bot')}
             </PidroText>
             <PidroText role="body" align="center">
-              {t(bot.play)}
+              {bot ? t(bot.play) : profile?.description}
             </PidroText>
             <PidroText role="body" tone="soft" align="center">
-              {t(bot.saying)}
+              {bot ? t(bot.saying) : null}
             </PidroText>
           </View>
         </View>

@@ -41,6 +41,7 @@ import { readingTimeMs } from '@/features/game/readingTime';
 import { t, useTranslation } from '@/i18n';
 import { useSeatDecisions } from '@pidro/shared';
 import { TableFeedback, TableSeatDecision, useTableNotices } from '@/components/game/TableFeedback';
+import { actionTap, pushAttempt } from '@/diagnostics/actions';
 
 type SkiaTableProps = {
   room: Room;
@@ -182,15 +183,20 @@ export default function GameScreen() {
   const lastError = useGameStore((s) => s.lastError);
   const away = useGameStore((s) => s.isAway) || (__DEV__ && fixture === 'away');
   const setAway = useGameStore((s) => s.setAway);
-  const handleReady = useCallback(() => {
-    if (!readiness || !isChannelJoined || role !== 'player') {
-      return Promise.reject(new Error('Reconnect before confirming readiness.'));
-    }
-    return pushGameAction('ready', {
-      room_id: readiness.room_id,
-      ready_epoch: readiness.ready_epoch,
-    });
-  }, [readiness, isChannelJoined, role]);
+  const handleReady = useCallback(
+    () =>
+      actionTap('ready', () => {
+        if (!readiness || !isChannelJoined || role !== 'player') {
+          pushAttempt('ready').record('blocked', !isChannelJoined ? 'disconnected' : 'unavailable');
+          return Promise.reject(new Error('Reconnect before confirming readiness.'));
+        }
+        return pushGameAction('ready', {
+          room_id: readiness.room_id,
+          ready_epoch: readiness.ready_epoch,
+        });
+      }),
+    [readiness, isChannelJoined, role]
+  );
   const setSeatStatus = useGameStore((s) => s.setSeatStatus);
   const seatInvitations = useAuthStore((s) => s.seatInvitations);
   const invitation = tableInvitation(seatInvitations, readiness, youPositionAbs, role);
@@ -537,24 +543,38 @@ export default function GameScreen() {
   // game's state arrives on the channel we are already joined to.
   const rematchPendingRef = useRef(false);
   const [rematchPending, setRematchPending] = useState(false);
-  const handlePlayAgain = useCallback(() => {
-    if (!readiness || !isChannelJoined || role !== 'player' || rematchPendingRef.current) return;
-    rematchPendingRef.current = true;
-    setRematchPending(true);
-    pushGameAction('rematch', {
-      room_id: readiness.room_id,
-      ready_epoch: readiness.ready_epoch,
-    })
-      .catch((error: unknown) => {
-        // A stale epoch reply carries the current snapshot, already applied by
-        // pushGameAction, so pressing again sends the right epoch.
-        handleSeatEvent({ error, key: 'table.rematch.failed', variant: 'warning' });
-      })
-      .finally(() => {
-        rematchPendingRef.current = false;
-        setRematchPending(false);
-      });
-  }, [readiness, isChannelJoined, role, handleSeatEvent]);
+  const handlePlayAgain = useCallback(
+    () =>
+      actionTap('rematch', () => {
+        if (!readiness || !isChannelJoined || role !== 'player' || rematchPendingRef.current) {
+          pushAttempt('rematch').record(
+            'blocked',
+            rematchPendingRef.current
+              ? 'pending'
+              : !isChannelJoined
+                ? 'disconnected'
+                : 'unavailable'
+          );
+          return;
+        }
+        rematchPendingRef.current = true;
+        setRematchPending(true);
+        pushGameAction('rematch', {
+          room_id: readiness.room_id,
+          ready_epoch: readiness.ready_epoch,
+        })
+          .catch((error: unknown) => {
+            // A stale epoch reply carries the current snapshot, already applied by
+            // pushGameAction, so pressing again sends the right epoch.
+            handleSeatEvent({ error, key: 'table.rematch.failed', variant: 'warning' });
+          })
+          .finally(() => {
+            rematchPendingRef.current = false;
+            setRematchPending(false);
+          });
+      }),
+    [readiness, isChannelJoined, role, handleSeatEvent]
+  );
   const rematch = rematchVote(readiness, youPositionAbs);
   const tableReopened = tableIsWaiting && hasGameState;
   useEffect(() => {

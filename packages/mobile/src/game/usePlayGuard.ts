@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import type { Card, DealerRobPresentation } from '@/types/game';
+import { blockedPlay } from '@/diagnostics/actions';
 
 /** A tap this soon after the table settles was aimed at what was there before. */
 export const PLAY_SETTLE_MS = 500;
@@ -44,7 +45,10 @@ export function usePlayGuard(
 
   return useCallback(
     (card: Card) => {
-      if (!ready.current || Date.now() < holdUntil.current) return;
+      if (!ready.current || Date.now() < holdUntil.current) {
+        blockedPlay('pending');
+        return;
+      }
       void play(card);
     },
     [play]

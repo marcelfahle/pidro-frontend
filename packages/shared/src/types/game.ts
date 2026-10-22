@@ -1,4 +1,4 @@
-import type { BotPersona, Position, RuleSet } from './lobby';
+import type { BotPersona, BotProfile, Position, RuleSet } from './lobby';
 import type { TablePace } from '../stores/settings';
 
 export type SeatStatus = 'normal' | 'reconnecting' | 'bot_substitute' | 'permanent_bot' | 'vacant';
@@ -21,6 +21,7 @@ export interface SeatLifecycleSnapshot {
       level?: number | null;
       pin?: SeatPin | null;
       bot_persona?: BotPersona | null;
+      bot_profile?: BotProfile | null;
       decision: { id: string; player_name: string | null } | null;
     }
   >;
@@ -154,6 +155,9 @@ export interface ServerLastHand extends ServerHandSummary {
 
 export interface ServerGameState {
   phase: GamePhase;
+  /** Optional diagnostics cursor. Room codes alone do not identify a rematch. */
+  game_instance_id?: string;
+  state_revision?: number;
   /** Presentation delay carried alongside this snapshot on the channel. */
   transition_delay_ms?: number;
   variant?: RuleSet;
@@ -251,6 +255,7 @@ export interface PlayerMeta {
   level?: number | null;
   pin?: SeatPin | null;
   bot_persona?: BotPersona | null;
+  bot_profile?: BotProfile | null;
 }
 
 export type RelativePosition = 'north' | 'east' | 'south' | 'west';
@@ -272,6 +277,7 @@ export interface RelativePlayerView {
   level?: number | null;
   pin?: SeatPin | null;
   bot_persona?: BotPersona | null;
+  bot_profile?: BotProfile | null;
 }
 
 export interface GameViewModel {

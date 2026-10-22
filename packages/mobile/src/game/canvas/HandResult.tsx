@@ -20,6 +20,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { gradientBg } from '@/components/ui/Bevel';
 import { BevelButton } from '@/components/ui/BevelButton';
+import { actionTap, pushAttempt } from '@/diagnostics/actions';
 import { PidroText } from '@/components/ui/PidroText';
 import { PidroBevel, PidroColors, PidroFonts, PidroRadii, PidroSpacing } from '@/design/tokens';
 import {
@@ -357,15 +358,20 @@ export function HandResultPanel({
                 fullWidth
                 label={t('game.continue_hand')}
                 loading={pending}
-                onPress={async () => {
-                  if (pending) return;
-                  setPending(true);
-                  try {
-                    await onContinue();
-                  } finally {
-                    setPending(false);
-                  }
-                }}
+                onPress={() =>
+                  actionTap('continue_hand', async () => {
+                    if (pending) {
+                      pushAttempt('continue_hand').record('blocked', 'pending');
+                      return;
+                    }
+                    setPending(true);
+                    try {
+                      await onContinue();
+                    } finally {
+                      setPending(false);
+                    }
+                  })
+                }
               />
             </View>
           ) : null}

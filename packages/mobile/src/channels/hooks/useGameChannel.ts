@@ -21,6 +21,10 @@ import { reconnectsAfterClose } from '@/features/game/channelReconnect';
 import type { TableNotice } from '@/game/tableNotices';
 import { useSettingsStore } from '@/stores/settings';
 import { isSoloTable } from '@/features/game/tableHelp';
+import { authStore } from '@/stores/auth';
+import { diagnosticCode, gameDiagnostics } from '@/diagnostics/buffer';
+import { pushAttempt } from '@/diagnostics/actions';
+import { diagnosticMetadata } from '@/diagnostics/metadata';
 
 let globalGameChannel: Channel | null = null;
 let notifySeatEvent: ((event: SeatEvent) => void) | undefined;
@@ -188,11 +192,24 @@ export const useGameChannel = ({
 
       if (globalGameChannel) return;
 
-      const channel = phoenixSocket.channel(topic);
+      const channelOwner = authStore.getState().user?.id ?? null;
+      gameDiagnostics.identify(channelOwner, roomCode);
+      const channel = phoenixSocket.channel(topic, {
+        app_version: diagnosticMetadata.app_version,
+        app_build: diagnosticMetadata.build,
+        platform: diagnosticMetadata.platform,
+      });
       currentTopic = topic;
       let presences: Record<string, unknown> = {};
       let dealerSelectionRequestKey: string | null = null;
       const isCurrentChannel = () => !disposed && globalGameChannel === channel;
+      const observed = (state: ServerGameState) => {
+        if (authStore.getState().user?.id !== channelOwner) return;
+        gameDiagnostics.identify(channelOwner, roomCode);
+        gameDiagnostics.observe(state);
+        // No optional state_received push: old servers already send cursors but
+        // crash their channel on that unknown event. Await capability negotiation.
+      };
       const onCurrent = <Payload>(event: string, handler: (payload: Payload) => void) =>
         channel.on(event, (payload) => {
           if (isCurrentChannel()) handler(payload as Payload);
@@ -212,7 +229,13 @@ export const useGameChannel = ({
         if (dealerSelectionRequestKey === key) return;
 
         dealerSelectionRequestKey = key;
-        channel.push('select_dealer', {});
+        const attempt = pushAttempt('select_dealer');
+        attempt.record('push', 'pending');
+        channel
+          .push('select_dealer', { ...(attempt.id ? { action_id: attempt.id } : {}) })
+          .receive('ok', () => attempt.record('push', 'ok'))
+          .receive('error', () => attempt.record('push', 'failed'))
+          .receive('timeout', () => attempt.record('timeout', 'unavailable'));
       };
 
       channel
@@ -246,7 +269,9 @@ export const useGameChannel = ({
             const gameState = extractGameState(response);
             if (gameState) {
               setServerState(gameState);
+              observed(gameState);
             }
+            gameDiagnostics.record({ type: 'connection', code: 'connected', action: 'join' });
             setPresentation(extractGamePresentation(response));
 
             const legalActions = (response?.legal_actions as LegalAction[] | undefined) ?? [];
@@ -260,6 +285,7 @@ export const useGameChannel = ({
         })
         .receive('error', (resp) => {
           if (disposed || globalGameChannel !== channel) return;
+          gameDiagnostics.record({ type: 'connection', code: 'failed', action: 'join' });
           console.error('[GameChannel] Unable to join', topic, resp);
           const reason =
             (resp as { reason?: string } | undefined)?.reason || 'Unable to join game room.';
@@ -298,6 +324,7 @@ export const useGameChannel = ({
           const legalActions = (data?.legal_actions as LegalAction[] | undefined) ?? [];
           unstable_batchedUpdates(() => {
             setServerState(gameState);
+            observed(gameState);
             setPresentation(extractGamePresentation(data));
             setLegalActions(legalActions);
             maybeAutoSelectDealer(gameState, legalActions, youPositionRef.current);
@@ -544,6 +571,7 @@ export const useGameChannel = ({
 
       channel.onError((reason) => {
         if (disposed || globalGameChannel !== channel) return;
+        gameDiagnostics.record({ type: 'connection', code: 'reconnecting', action: 'reconnect' });
         console.warn('[GameChannel] Error', reason);
         setChannelStatus(false, true);
       });
@@ -551,6 +579,7 @@ export const useGameChannel = ({
       channel.onClose(() => {
         const wasActive = globalGameChannel === channel;
         if (disposed || !wasActive) return;
+        gameDiagnostics.record({ type: 'connection', code: 'disconnected', action: 'reconnect' });
         globalGameChannel = null;
         currentTopic = null;
         setChannelStatus(false, false);
@@ -581,6 +610,7 @@ export const useGameChannel = ({
       if (reconnectTimer) clearTimeout(reconnectTimer);
       gameRefCount--;
       if (gameRefCount === 0 && globalGameChannel) {
+        gameDiagnostics.record({ type: 'connection', code: 'disconnected', action: 'leave' });
         globalGameChannel.leave();
         globalGameChannel = null;
         notifySeatEvent = undefined;
@@ -610,18 +640,23 @@ export const useGameChannel = ({
 
 export function pushGameAction(event: string, payload: object) {
   const channel = globalGameChannel;
+  const attempt = pushAttempt(event);
   if (!channel || channel.state !== 'joined') {
+    attempt.record('blocked', 'disconnected');
     console.warn('[GameChannel] Cannot push, no active channel');
     return Promise.reject(new Error('No active game channel'));
   }
   if (event !== 'get_seat_lifecycle' && useGameStore.getState().role !== 'player') {
+    attempt.record('blocked', 'unavailable');
     return Promise.reject(new Error('Watching is read-only'));
   }
 
+  attempt.record('push', 'pending');
   return new Promise<void>((resolve, reject) => {
     channel
-      .push(event, payload)
+      .push(event, { ...payload, ...(attempt.id ? { action_id: attempt.id } : {}) })
       .receive('ok', (response: { readiness?: ReadinessSnapshot }) => {
+        attempt.record('push', 'ok');
         const snapshot = lifecycleFromReply(response);
         if (snapshot && globalGameChannel === channel)
           applyLifecycle(snapshot, true, notifySeatEvent);
@@ -629,15 +664,22 @@ export function pushGameAction(event: string, payload: object) {
           useGameStore.getState().setReadiness(response.readiness);
         resolve();
       })
-      .receive('error', (error: { readiness?: ReadinessSnapshot }) => {
-        const snapshot = lifecycleFromReply(error);
-        if (snapshot && globalGameChannel === channel)
-          applyLifecycle(snapshot, true, notifySeatEvent);
-        if (globalGameChannel === channel && error?.readiness)
-          useGameStore.getState().setReadiness(error.readiness);
-        reject(error);
-      })
-      .receive('timeout', () => reject(new Error('Request timed out')));
+      .receive(
+        'error',
+        (error: { readiness?: ReadinessSnapshot; reason?: unknown; error_code?: unknown }) => {
+          attempt.record('push', diagnosticCode(error?.error_code ?? error?.reason));
+          const snapshot = lifecycleFromReply(error);
+          if (snapshot && globalGameChannel === channel)
+            applyLifecycle(snapshot, true, notifySeatEvent);
+          if (globalGameChannel === channel && error?.readiness)
+            useGameStore.getState().setReadiness(error.readiness);
+          reject(error);
+        }
+      )
+      .receive('timeout', () => {
+        attempt.record('timeout', 'unavailable');
+        reject(new Error('Request timed out'));
+      });
   });
 }
 

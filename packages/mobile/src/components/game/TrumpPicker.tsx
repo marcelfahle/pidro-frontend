@@ -12,6 +12,7 @@ import { TRUMP_SUITS, trumpsIn } from '@/features/game/trump';
 import { TRUMP_BUTTON, type trumpPicker } from '@/game/canvas/layout';
 import type { Card, Suit } from '@/types/game';
 import { useTranslation } from '@/i18n';
+import { actionTap, pushAttempt } from '@/diagnostics/actions';
 
 const SUIT_IMAGES = {
   hearts: require('~/assets/images/heart.png'),
@@ -39,7 +40,10 @@ export function TrumpPicker({ cards, frame, preview, onPoint, onSelect }: Props)
     if (!chosen) onPoint(suit);
   };
   const choose = async (suit: Suit) => {
-    if (chosen) return;
+    if (chosen) {
+      pushAttempt('declare_trump').record('blocked', 'pending');
+      return;
+    }
     setChosen(suit);
     onPoint(suit);
     try {
@@ -76,7 +80,7 @@ export function TrumpPicker({ cards, frame, preview, onPoint, onSelect }: Props)
               onHoverOut={() => point(null)}
               onPressIn={() => point(suit)}
               onPressOut={() => point(null)}
-              onPress={() => choose(suit)}
+              onPress={() => actionTap('declare_trump', () => choose(suit))}
               style={[
                 styles.suit,
                 active && styles.active,

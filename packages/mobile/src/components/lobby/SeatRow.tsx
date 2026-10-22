@@ -147,7 +147,13 @@ function SeatRowToken({ token, size }: { token: SeatToken; size: (typeof SIZES)[
           ) : null}
         </>
       ) : token.kind === 'bot' ? (
-        <PlayerAvatar size={s} kind="bot" persona={token.persona} accessibilityLabel="" />
+        <PlayerAvatar
+          size={s}
+          kind="bot"
+          persona={token.persona}
+          botProfile={token.botProfile}
+          accessibilityLabel=""
+        />
       ) : token.kind === 'friend' ? (
         <>
           <View

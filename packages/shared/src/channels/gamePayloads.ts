@@ -121,9 +121,16 @@ export function extractGameState(
   for (const candidate of candidates) {
     if (candidate && typeof candidate === 'object' && 'phase' in candidate) {
       const delay = asNumber(data.transition_delay_ms ?? nestedData?.transition_delay_ms);
-      return delay != null && delay >= 0
+      const state = delay != null && delay >= 0
         ? { ...(candidate as ServerGameState), transition_delay_ms: delay }
         : (candidate as ServerGameState);
+      const instance = data.game_instance_id ?? nestedData?.game_instance_id;
+      const revision = data.state_revision ?? nestedData?.state_revision;
+      // Cursor metadata is beside `state` in channel snapshots, never in the engine state.
+      return typeof instance === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(instance) &&
+        typeof revision === 'number' && Number.isSafeInteger(revision) && revision >= 0
+        ? { ...state, game_instance_id: instance, state_revision: revision }
+        : state;
     }
   }
 

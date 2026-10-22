@@ -11,6 +11,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { headerTop } from './TableChrome';
 import { TableUtilityWindow } from './TableUtilityWindow';
 import { useTranslation } from '@/i18n';
+import { GameProblemReport } from './GameProblemReport';
 
 export function TableSettings({
   onLeave,
@@ -31,6 +32,7 @@ export function TableSettings({
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const landscape = width > height;
+  const [reportOpen, setReportOpen] = useState(false);
   const [panel, setPanel] = useState<'settings' | 'leave' | null>(
     initiallyOpen ? 'settings' : null
   );
@@ -174,6 +176,18 @@ export function TableSettings({
                 </PidroText>
               </View>
               <View style={styles.exit}>
+                {!isSpectator && (
+                  <BevelButton
+                    material="glass"
+                    size="sm"
+                    fullWidth
+                    label={t('game.report_title')}
+                    onPress={() => {
+                      close();
+                      setReportOpen(true);
+                    }}
+                  />
+                )}
                 <BevelButton
                   material="glass"
                   tone={isSpectator ? 'default' : 'danger'}
@@ -188,6 +202,7 @@ export function TableSettings({
           </View>
         )}
       </TableUtilityWindow>
+      {!isSpectator && <GameProblemReport open={reportOpen} onClose={() => setReportOpen(false)} />}
     </>
   );
 }
@@ -206,5 +221,10 @@ const styles = StyleSheet.create({
   copy: { flex: 1, gap: PidroSpacing.xxs },
   pace: { gap: PidroSpacing.xxs },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
-  exit: { borderTopWidth: 1, borderTopColor: PidroColors.border, paddingTop: PidroSpacing.sm },
+  exit: {
+    borderTopWidth: 1,
+    borderTopColor: PidroColors.border,
+    paddingTop: PidroSpacing.sm,
+    gap: PidroSpacing.sm,
+  },
 });

@@ -11,6 +11,7 @@ import { useGameStore } from '@/stores/game';
 import type { LegalAction } from '@/types/game';
 import { useTranslation } from '@/i18n';
 import { localizedError } from '@pidro/shared';
+import { actionTap } from '@/diagnostics/actions';
 
 const ALL_BID_VALUES = [6, 7, 8, 9, 10, 11, 12, 13, 14] as const;
 const GRID_GAP = PidroSpacing.xxs;
@@ -131,7 +132,7 @@ export function BiddingActions({
                 accessibilityRole="button"
                 accessibilityLabel={t('game.bid', { amount })}
                 accessibilityState={{ disabled: !isLegal || isSubmitting }}
-                onPress={() => sendAction('bid', { amount })}
+                onPress={() => actionTap('bid', () => sendAction('bid', { amount }))}
                 disabled={!isLegal || isSubmitting}
                 style={[
                   styles.bidButton,
@@ -153,7 +154,7 @@ export function BiddingActions({
           accessibilityRole="button"
           accessibilityLabel={t('game.pass')}
           accessibilityState={{ disabled: !canPass || isSubmitting }}
-          onPress={() => sendAction('pass', {})}
+          onPress={() => actionTap('pass', () => sendAction('pass', {}))}
           disabled={!canPass || isSubmitting}
           style={[
             styles.passButton,

@@ -27,6 +27,16 @@ test('keeps the completed snapshot and its transition delay together, including 
   expect(extractGameState({ state })).toEqual(state);
 });
 
+test('keeps the envelope cursor with its state without requiring it from old servers', () => {
+  const state = { phase: 'playing', current_player: 'east' };
+  const cursor = { game_instance_id: 'opaque-nonUUID_instance', state_revision: 0 };
+  for (const envelope of [{ state, ...cursor }, { data: { state, ...cursor } }])
+    expect(extractGameState(envelope)).toEqual({ ...state, ...cursor });
+  expect(extractGameState({ state })).toEqual(state);
+  expect(extractGameState({ state, ...cursor, state_revision: -1 })).toEqual(state);
+  expect(state).not.toHaveProperty('game_instance_id');
+});
+
 test('accepts public and private dealer rob presentations', () => {
   expect(extractGamePresentation({ presentation: { dealer_rob: publicRob } })).toEqual({
     dealer_rob: publicRob,

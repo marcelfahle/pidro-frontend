@@ -1,6 +1,7 @@
 import { Fragment, memo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import type { LobbyCategoryKey, Position, Room } from '@pidro/shared';
+import { useBotCatalogueStore } from '@pidro/shared';
 import { tableRow } from '@/features/lobby/tableRow';
 import { PidroText } from '@/components/ui/PidroText';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
@@ -35,6 +36,7 @@ export const RoomCard = memo(function RoomCard({
   onPassword?: (code: string, position: Position) => void;
 }) {
   const { t } = useTranslation();
+  useBotCatalogueStore((state) => state.profiles);
   const row = tableRow(room, category, gamesPlayed);
   const mine = category === 'my_rejoinable';
   return (
@@ -94,6 +96,7 @@ export const RoomCard = memo(function RoomCard({
                     uri={seat.avatarUrl}
                     kind={seat.kind === 'bot' ? 'bot' : 'player'}
                     persona={seat.persona}
+                    botProfile={seat.botProfile}
                   />
                 )}
                 {seat.minGames > 0 ? (

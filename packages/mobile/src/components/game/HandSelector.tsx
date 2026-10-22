@@ -9,6 +9,7 @@ import type { Card, GameViewModel, Suit } from '@/types/game';
 import { getCardImage } from '@/utils/cardImages';
 import { getPidroPoints } from '@/utils/cards';
 import { useTranslation } from '@/i18n';
+import { actionTap, pushAttempt } from '@/diagnostics/actions';
 
 interface HandSelectorProps {
   viewModel: GameViewModel;
@@ -41,7 +42,10 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
   };
 
   const handleConfirm = async () => {
-    if (isSubmitting || selected.size !== TARGET_COUNT) return;
+    if (isSubmitting || selected.size !== TARGET_COUNT) {
+      pushAttempt('select_hand').record('blocked', isSubmitting ? 'pending' : 'illegal_action');
+      return;
+    }
     setIsSubmitting(true);
     try {
       await onSelectHand(cards.filter((_, index) => selected.has(index)));
@@ -72,7 +76,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
         <BevelButton
           label={t('game.keep_cards')}
           haptic={false}
-          onPress={handleConfirm}
+          onPress={() => actionTap('select_hand', handleConfirm)}
           loading={isSubmitting}
           disabled={selected.size !== TARGET_COUNT}
           size="sm"
@@ -106,7 +110,7 @@ export function HandSelector({ viewModel, cards, trumpSuit, onSelectHand }: Hand
                 }
               )}
               accessibilityState={{ selected: isSelected, disabled: isSubmitting || disabled }}
-              onPress={() => toggleCard(index)}
+              onPress={() => actionTap('select_card', () => toggleCard(index))}
               disabled={isSubmitting || disabled}
               style={[
                 styles.card,

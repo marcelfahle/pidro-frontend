@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useBotCatalogueStore } from '@pidro/shared';
 import type {
   CreateRoomRequest,
   FriendPlayer,
@@ -125,6 +126,7 @@ export function NewTableScreen({
   onDismissDeclined,
 }: Props) {
   const { t } = useTranslation();
+  useBotCatalogueStore((state) => state.profiles);
   const router = useRouter();
   const { width, height } = useWindowDimensions();
   // Sideways the teams sit side by side; a phone keeps every line, an iPad its own column.
