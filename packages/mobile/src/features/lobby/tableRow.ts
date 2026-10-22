@@ -47,6 +47,7 @@ export function tableRow(room: Room, category: LobbyCategoryKey, gamesPlayed?: n
               : t('social.open'),
       avatarUrl: kind === 'held' ? seat!.held_for!.avatar_url : player?.avatar_url,
       persona: kind === 'bot' ? (player?.bot_persona ?? null) : null,
+      botProfile: kind === 'bot' ? player?.bot_profile : null,
       minGames,
       password,
       requirementReason:

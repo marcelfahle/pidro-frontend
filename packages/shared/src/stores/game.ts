@@ -20,6 +20,8 @@ import { mapAbsoluteToRelative, isTeammate, POSITION_TO_INDEX } from '../utils/p
 import { buildPositionsFromSeats } from '../utils/rooms';
 import { isGeneratedGuestUsername, publicPlayerName, seatPlayerName } from '../utils/playerName';
 import { lifecycleFromReply } from '../utils/seatLifecycle';
+import { useBotCatalogueStore } from './bots';
+import { resolveBotProfile } from '../utils/bots';
 
 const POSITIONS: Position[] = ['north', 'east', 'south', 'west'];
 
@@ -176,6 +178,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           level: seat.level !== undefined ? seat.level : (known?.level ?? null),
           pin: seat.pin !== undefined ? seat.pin : (known?.pin ?? null),
           bot_persona: seat.bot_persona ?? null,
+          bot_profile: seat.bot_profile ?? null,
           seatStatus: seat.status,
           isConnected: seat.status !== 'reconnecting' && seat.status !== 'vacant',
           isYou,
@@ -268,6 +271,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           pin:
             seat?.player?.pin !== undefined ? seat.player.pin : sameOccupant ? previous.pin : null,
           bot_persona: seat?.player?.bot_persona ?? null,
+          bot_profile: seat?.player?.bot_profile ?? null,
           isYou: youPos === pos,
           isTeammate: false,
           isOpponent: false,
@@ -521,6 +525,7 @@ export const useGameStore = create<GameState>((set, get) => ({
           level: seat.level !== undefined ? seat.level : (previous?.level ?? null),
           pin: seat.pin !== undefined ? seat.pin : (previous?.pin ?? null),
           bot_persona: seat.bot_persona ?? null,
+          bot_profile: seat.bot_profile ?? null,
           isYou: pos === youPosition,
           isTeammate: !!youPosition && pos !== youPosition && isTeammate(youPosition, pos),
           isOpponent: !!youPosition && !isTeammate(youPosition, pos),
@@ -619,6 +624,7 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
                 snapshot.seats[position].bot_persona !== undefined
                   ? snapshot.seats[position].bot_persona
                   : (known?.bot_persona ?? null),
+              bot_profile: snapshot.seats[position].bot_profile ?? null,
             }
           : null,
       };
@@ -627,6 +633,7 @@ export function roomWithReadiness(room: Room, snapshot: ReadinessSnapshot): Room
 }
 
 export function useGameViewModel(): GameViewModel | null {
+  const profiles = useBotCatalogueStore((state) => state.profiles);
   const { serverState, playerMeta, youPositionAbs, roomCode, role } = useGameStore(
     useShallow((state) => ({
       serverState: state.serverState,
@@ -654,6 +661,7 @@ export function useGameViewModel(): GameViewModel | null {
 
     const players: RelativePlayerView[] = POSITIONS.map((absPos) => {
       const meta = playerMeta[absPos];
+      const botProfile = resolveBotProfile(meta.bot_persona, meta.bot_profile, profiles);
       const relPos = mapAbsoluteToRelative(absPos, viewerPositionAbs);
       const isCurrentTurn = currentPlayer === absPos;
 
@@ -661,7 +669,7 @@ export function useGameViewModel(): GameViewModel | null {
         absolutePosition: absPos,
         relativePosition: relPos,
         playerId: meta.playerId,
-        username: displayUsername(meta),
+        username: botProfile?.name || displayUsername(meta),
         avatar_url: meta.avatar_url ?? null,
         isYou: role === 'player' && meta.isYou,
         isTeammate: role === 'player' && meta.isTeammate,
@@ -673,6 +681,7 @@ export function useGameViewModel(): GameViewModel | null {
         level: meta.level ?? null,
         pin: meta.pin ?? null,
         bot_persona: meta.bot_persona ?? null,
+        bot_profile: botProfile,
       };
     });
 
@@ -691,5 +700,5 @@ export function useGameViewModel(): GameViewModel | null {
         : null,
       players,
     };
-  }, [serverState, playerMeta, youPositionAbs, roomCode, role]);
+  }, [serverState, playerMeta, youPositionAbs, roomCode, role, profiles]);
 }

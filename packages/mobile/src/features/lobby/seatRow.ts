@@ -1,5 +1,5 @@
 import { t, formatNumber } from '@pidro/shared';
-import type { BotPersona, FriendPlayer, HeldPlayer, Player } from '@pidro/shared';
+import type { BotPersona, BotProfile, FriendPlayer, HeldPlayer, Player } from '@pidro/shared';
 import { seatName } from '@/features/seatName';
 
 /**
@@ -24,7 +24,7 @@ export type SeatView = {
 
 export type SeatToken =
   | { kind: 'open'; badge: string | null; locked: boolean }
-  | { kind: 'bot'; persona: BotPersona | null }
+  | { kind: 'bot'; persona: BotPersona | null; botProfile?: BotProfile | null }
   | { kind: 'friend'; uri: string | null }
   | { kind: 'player'; uri: string | null };
 
@@ -76,7 +76,11 @@ function describe(seat: SeatView): Omit<SeatRowWords, 'nameTone' | 'tappable' | 
     const bot = !!player.is_bot || player.id?.startsWith('bot_');
     return {
       token: bot
-        ? { kind: 'bot', persona: player.bot_persona ?? null }
+        ? {
+            kind: 'bot',
+            persona: player.bot_persona ?? null,
+            ...(player.bot_profile ? { botProfile: player.bot_profile } : {}),
+          }
         : { kind: 'player', uri: player.avatar_url ?? null },
       name: seatName(player, t('social.player'), bot),
       status: t(seat.ready === false ? 'game.not_ready' : 'seat_row.ready'),

@@ -5,3 +5,4 @@ export * from './cards';
 export * from './inviteLink';
 export * from './seatLifecycle';
 export * from './playerName';
+export * from './bots';

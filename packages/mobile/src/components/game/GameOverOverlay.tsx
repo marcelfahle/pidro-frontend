@@ -274,6 +274,7 @@ export function GameOverOverlay({
         avatarUrl: player.avatar_url,
         playerId: canViewPlayer(player) ? player.playerId : null,
         persona: player.bot_persona,
+        botProfile: player.bot_profile,
       };
     });
   const youAgreed = !!rematch?.youAgreed;
@@ -549,6 +550,7 @@ export function GameOverOverlay({
               uri={partner?.avatar_url}
               kind={partner?.bot_persona ? 'bot' : 'player'}
               persona={partner?.bot_persona}
+              botProfile={partner?.bot_profile}
               ring="gold"
             />
             <PidroText role="label" numberOfLines={1} style={[chipText, styles.shrink]}>

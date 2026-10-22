@@ -1,4 +1,4 @@
-import type { BotPersona, TranslationKey } from '@pidro/shared';
+import type { BuiltinBotPortrait, TranslationKey } from '@pidro/shared';
 
 // The copy lives together in shared/src/i18n/sections/bots.ts (English and Swedish).
 export const botPersonas = {
@@ -36,7 +36,7 @@ export const botPersonas = {
     ],
   },
 } as const satisfies Record<
-  BotPersona,
+  BuiltinBotPortrait,
   {
     name: string;
     play: TranslationKey;

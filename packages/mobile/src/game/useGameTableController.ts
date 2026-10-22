@@ -5,7 +5,7 @@
  * Logic mirrors the original GameTable derivations exactly. Decides nothing —
  * the server (Phoenix) stays authoritative; handlers send server-intent payloads.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import type { Position } from '@/types/lobby';
 import type {
@@ -23,6 +23,8 @@ import { pushGameAction } from '@/channels/hooks/useGameChannel';
 import { playActionHaptic } from './useGameHaptics';
 import { useTableNotices } from '@/components/game/TableFeedback';
 import type { TableNotice } from './tableNotices';
+import { blockedPlay } from '@/diagnostics/actions';
+import { gameDiagnostics } from '@/diagnostics/buffer';
 
 export type GameTableController = {
   viewModel: GameViewModel | null;
@@ -67,6 +69,9 @@ export function useGameTableController(): GameTableController {
   );
 
   const phase = viewModel?.phase ?? 'bidding';
+  useEffect(() => {
+    if (serverState) gameDiagnostics.rendered(serverState);
+  }, [serverState]);
   const trumpSuit = viewModel?.trumpSuit ?? null;
   const players = useMemo(() => viewModel?.players ?? [], [viewModel]);
   const currentTurnRelative = viewModel?.currentTurnRelative ?? null;
@@ -162,7 +167,10 @@ export function useGameTableController(): GameTableController {
 
   const handlePlayCard = useCallback(
     async (card: Card) => {
-      if (isPlayingCard || !isPlayingTurn) return false;
+      if (isPlayingCard || !isPlayingTurn) {
+        blockedPlay(isPlayingCard ? 'pending' : 'not_your_turn');
+        return false;
+      }
       setIsPlayingCard(true);
       try {
         const promise = pushGameAction('play_card', { card: { rank: card.rank, suit: card.suit } });

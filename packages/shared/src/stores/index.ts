@@ -1,4 +1,5 @@
 export { useLobbyStore } from './lobby';
+export { useBotCatalogueStore } from './bots';
 export { useFriendsStore } from './friends';
 export { useGameStore, useGameViewModel, roomWithReadiness } from './game';
 export { useUIStore } from './ui';

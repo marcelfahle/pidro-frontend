@@ -69,6 +69,14 @@ const CREW_SEATS: Partial<Record<Position, Pick<RelativePlayerView, 'username' |
     east: { username: 'Jocke', bot_persona: 'jocke' },
   };
 
+/** `bots=dynamic|image-failure`: fourth opaque persona with snapshot metadata. */
+const FOURTH_BOT = {
+  id: '1c477a6a-fb56-4b4f-a6b5-3b1390c60102',
+  name: 'Saga',
+  description: 'A new member of the table crew.',
+  avatar_url: 'https://fixture.invalid/images/bots/antti.svg',
+};
+
 /** `names=long`: Classic-length usernames, the longest a seat label has to carry. */
 const LONG_NAMES: Record<Position, string> = {
   south: 'ThunderThor88',
@@ -319,6 +327,7 @@ export default function GameCanvasDev({
   phase = 'playing',
   lifecycle,
 }: GameCanvasDevProps) {
+  const { bots } = useLocalSearchParams<{ bots?: string }>();
   const { locale } = useTranslation();
   const textures = useCardTextures();
   const insets = useSafeAreaInsets();
@@ -534,7 +543,25 @@ export default function GameCanvasDev({
           player.isYou || !lifecycle
             ? player
             : lifecycle === 'permanent_bot'
-              ? { ...player, seatStatus: lifecycle, ...CREW_SEATS[player.absolutePosition] }
+              ? {
+                  ...player,
+                  seatStatus: lifecycle,
+                  ...CREW_SEATS[player.absolutePosition],
+                  ...((bots === 'dynamic' || bots === 'image-failure') &&
+                  player.absolutePosition === 'east'
+                    ? {
+                        username: FOURTH_BOT.name,
+                        bot_persona: FOURTH_BOT.id,
+                        bot_profile: {
+                          ...FOURTH_BOT,
+                          avatar_url:
+                            bots === 'image-failure'
+                              ? 'https://fixture.invalid/api/v1/bots/saga/avatar/missing'
+                              : FOURTH_BOT.avatar_url,
+                        },
+                      }
+                    : {}),
+                }
               : {
                   ...player,
                   seatStatus: lifecycle,
@@ -542,7 +569,7 @@ export default function GameCanvasDev({
                 }
         ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- locale invalidates synthetic seat names
-    [turn, lifecycle, names, locale]
+    [turn, lifecycle, names, locale, bots]
   );
   const canPlay = turn === 'south' && hand.length > 0 && !trick.some((p) => p.player === 'south');
 

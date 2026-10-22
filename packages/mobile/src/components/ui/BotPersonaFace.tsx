@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import Svg, { Circle, Ellipse, G, Path, Rect } from 'react-native-svg';
-import type { BotPersona } from '@pidro/shared';
+import { isBuiltinBot, type BuiltinBotPortrait, type BotPersona } from '@pidro/shared';
 import { PidroBevel, PidroColors, PidroPersonaColors as C } from '@/design/tokens';
 
 /**
@@ -11,6 +11,7 @@ import { PidroBevel, PidroColors, PidroPersonaColors as C } from '@/design/token
  * square that fills the avatar's round face; the face crops it.
  */
 export function BotPersonaFace({ persona }: { persona: BotPersona }) {
+  if (!isBuiltinBot(persona)) return null;
   return (
     <Svg width="100%" height="100%" viewBox="0 0 100 100">
       <Rect width={100} height={100} fill={PidroBevel.panelMid} />
@@ -281,4 +282,4 @@ const JOCKE: ReactNode = (
   </>
 );
 
-const FACES: Record<BotPersona, ReactNode> = { marcel: MARCEL, antti: ANTTI, jocke: JOCKE };
+const FACES: Record<BuiltinBotPortrait, ReactNode> = { marcel: MARCEL, antti: ANTTI, jocke: JOCKE };

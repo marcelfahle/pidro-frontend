@@ -1,5 +1,6 @@
 import { phoenixSocket } from '../channels/socket';
 import { authStore } from '../stores/auth';
+import { gameDiagnostics } from '@/diagnostics/buffer';
 
 let initialized = false;
 
@@ -11,6 +12,8 @@ export function initRealtime() {
     phoenixSocket.initMobile(() => authStore.getState().accessToken);
 
     authStore.subscribe((state, previous) => {
+      if (!state.accessToken || state.user?.id !== previous.user?.id)
+        gameDiagnostics.identify(null, null);
       if (!state.accessToken) {
         phoenixSocket.disconnect();
       } else if (previous.user?.id && previous.user.id !== state.user?.id) {

@@ -26,6 +26,7 @@ import { GameOverOverlay } from '@/components/game/GameOverOverlay';
 import { PlayerProfileModal } from '@/components/profile/PlayerProfileModal';
 import { canViewPlayer } from '@/features/friends';
 import { botPersonas } from '@/components/ui/botPersonas';
+import { isBuiltinBot } from '@pidro/shared';
 import { tableLine } from '@/features/game/tableVoice';
 import { pushGameAction, type ProgressionSummary } from '@/channels/hooks/useGameChannel';
 import { getRankLabel, SUIT_SYMBOLS } from '@/utils/cards';
@@ -116,7 +117,7 @@ function statusText(
   const playedCard = trickCardForPlayer(state, absolutePosition);
   const lastTrick =
     state?.tricks && state.tricks.length > 0 ? state.tricks[state.tricks.length - 1] : null;
-  const thinking = player.bot_persona
+  const thinking = isBuiltinBot(player.bot_persona)
     ? t(
         tableLine(
           room,

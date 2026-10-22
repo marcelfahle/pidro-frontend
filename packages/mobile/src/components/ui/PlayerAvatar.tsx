@@ -1,5 +1,5 @@
-import { useEffect, useRef, type ReactNode } from 'react';
-import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { Image, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -29,7 +29,8 @@ import {
   type AvatarKind,
   type AvatarPin,
 } from '@/features/avatar';
-import type { BotPersona } from '@pidro/shared';
+import { botPortrait, type BotPersona, type BotProfile } from '@pidro/shared';
+import { useBotProfile } from '@/features/bots';
 
 /**
  * A player, drawn the same way everywhere: the photo in a ring, with up to
@@ -63,6 +64,7 @@ export interface PlayerAvatarProps {
   kind?: AvatarKind;
   /** A bot with a persona wears its face, with the robot badge on top. */
   persona?: BotPersona | null;
+  botProfile?: BotProfile | null;
   name?: string | null;
   /** The width the name may take: a longer one drops a type step, then truncates. */
   nameRoom?: number;
@@ -99,6 +101,7 @@ export function PlayerAvatar({
   away = null,
   kind = 'player',
   persona = null,
+  botProfile = null,
   name,
   nameRoom,
   status,
@@ -114,6 +117,10 @@ export function PlayerAvatar({
   const { t } = useTranslation();
   const parts = avatarParts(size, { beside: label !== 'below' });
   const crew = kind === 'bot' ? persona : null;
+  const profile = useBotProfile(crew, botProfile);
+  if (crew && name) name = profile?.name || name;
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const portrait = botPortrait(crew, profile, failedUri);
   const seated = kind !== 'open';
   const gold = ring !== 'glass' && kind === 'player';
   const chip = seated && level != null ? parts.level : null;
@@ -162,8 +169,15 @@ export function PlayerAvatar({
                 borderColor: gold ? PidroBevel.keyline : PidroBevel.panelDeep,
               },
             ]}>
-            {crew ? (
-              <BotPersonaFace persona={crew} />
+            {kind === 'bot' && portrait.kind === 'builtin' ? (
+              <BotPersonaFace persona={portrait.persona} />
+            ) : kind === 'bot' && portrait.kind === 'remote' ? (
+              <Image
+                source={{ uri: portrait.uri }}
+                style={styles.photo}
+                resizeMode="cover"
+                onError={() => setFailedUri(portrait.uri)}
+              />
             ) : kind === 'bot' ? (
               <Icon name="bot" size={Math.round(size * 0.5)} color={PidroColors.text} />
             ) : (

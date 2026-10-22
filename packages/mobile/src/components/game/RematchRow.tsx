@@ -1,5 +1,5 @@
 import { StyleSheet, View } from 'react-native';
-import type { BotPersona } from '@pidro/shared';
+import type { BotPersona, BotProfile } from '@pidro/shared';
 import { Icon } from '@/components/ui/Icon';
 import { PidroText } from '@/components/ui/PidroText';
 import { PlayerAvatar } from '@/components/ui/PlayerAvatar';
@@ -13,6 +13,7 @@ export type RematchSeatView = RematchOther & {
   /** Set when the player has a profile to open. */
   playerId?: string | null;
   persona?: BotPersona | null;
+  botProfile?: BotProfile | null;
 };
 
 /**
@@ -43,6 +44,8 @@ export function RematchRow({
                 size={size}
                 uri={other.avatarUrl}
                 kind={other.bot ? 'bot' : 'player'}
+                persona={other.persona}
+                botProfile={other.botProfile}
                 ring={other.agreed ? 'gold' : 'glass'}
               />
               {other.agreed ? (

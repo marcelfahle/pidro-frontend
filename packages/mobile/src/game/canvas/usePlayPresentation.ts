@@ -9,6 +9,7 @@ import {
   TRICK_TRANSITION_MS,
 } from './animationTiming';
 import { cardKey } from './cardKey';
+import { blockedPlay } from '@/diagnostics/actions';
 
 const cards = (model: TableModel) =>
   Object.values(model.playedCards)
@@ -156,9 +157,15 @@ export function usePlayPresentation(
 
   const playCard = useCallback(
     (card: Card) => {
-      if (pendingRef.current || !source.canPlay) return;
+      if (pendingRef.current || !source.canPlay) {
+        blockedPlay(pendingRef.current ? 'pending' : 'not_your_turn');
+        return;
+      }
       const held = source.yourHand.find((item) => item.textureKey === cardKey(card));
-      if (!held?.isLegalPlay) return;
+      if (!held?.isLegalPlay) {
+        blockedPlay('illegal_action');
+        return;
+      }
       const next = { card: held, startedAt: Date.now(), rejected: false };
       pendingRef.current = next;
       setPending(next);

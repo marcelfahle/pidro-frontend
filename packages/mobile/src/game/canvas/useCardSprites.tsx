@@ -37,6 +37,8 @@ import type { Card, Suit } from '@/types/game';
 import { trumpsIn } from '@/features/game/trump';
 import { isStillCapture } from '@/utils/stillCapture';
 import { playSelectionHaptic } from '@/utils/haptics';
+import { blockedCardTap, blockedPlay, cardTap } from '@/diagnostics/actions';
+import type { DiagnosticCode } from '@/diagnostics/buffer';
 import {
   handLift,
   handScale as handScaleFor,
@@ -191,6 +193,9 @@ export function useCardSprites({
   onPlayRef.current = onPlayCard;
 
   const handTargets = useSharedValue<HandTarget[]>([]);
+  // Observational hit targets only; legal hit testing and press feedback stay unchanged.
+  const blockedTargets = useSharedValue<(HandTarget & { code: DiagnosticCode })[]>([]);
+  const blockedPress = useSharedValue<DiagnosticCode | null>(null);
   // The hand card under a finger that is still down: lifted, not yet played.
   const pressSlot = useSharedValue(-1);
   const pressKey = useSharedValue('');
@@ -457,6 +462,7 @@ export function useCardSprites({
     };
 
     const ht: HandTarget[] = [];
+    const bt: (HandTarget & { code: DiagnosticCode })[] = [];
     const cfg = { duration: 320, easing: Easing.out(Easing.cubic) };
     const playCfg = { duration: PLAY_CARD_TRAVEL_MS, easing: motionEasing(PLAY_CARD_CURVE) };
     const dealCfg = {
@@ -709,9 +715,26 @@ export function useCardSprites({
           h: cardH * handScale,
           scale: d.tscale,
         });
+      if (d.kind === 'hand' && !d.legal)
+        bt.push({
+          slot: sl,
+          key: d.key,
+          x: d.tx,
+          y: d.ty,
+          w: cardW * handScale,
+          h: cardH * handScale,
+          scale: d.tscale,
+          code:
+            model.phase !== 'playing'
+              ? 'invalid_phase'
+              : model.canPlay
+                ? 'illegal_action'
+                : 'not_your_turn',
+        });
     }
 
     handTargets.value = ht;
+    blockedTargets.value = bt;
     setSlots(nextSlots);
     prevModel.current = model;
     prevLayout.current = L;
@@ -786,7 +809,10 @@ export function useCardSprites({
 
   const playByKey = useCallback((key: string) => {
     const card = modelRef.current?.yourHand.find((c) => c.key === key)?.card;
-    if (card) onPlayRef.current?.(card);
+    cardTap(() => {
+      if (card && onPlayRef.current) onPlayRef.current(card);
+      else blockedPlay('stale');
+    });
   }, []);
 
   const gesture = useMemo(() => {
@@ -823,8 +849,19 @@ export function useCardSprites({
       .maxDistance(PRESS_SLOP)
       .onBegin((e) => {
         'worklet';
+        blockedPress.value = null;
         const t = hit(e.x, e.y);
-        if (!t) return;
+        if (!t) {
+          const ts = blockedTargets.value;
+          for (let i = ts.length - 1; i >= 0; i--) {
+            const b = ts[i];
+            if (Math.abs(e.x - b.x) < b.w / 2 + 6 && Math.abs(e.y - b.y) < b.h / 2 + 6) {
+              blockedPress.value = b.code;
+              break;
+            }
+          }
+          return;
+        }
         pressSlot.value = t.slot;
         pressKey.value = t.key;
         sy[t.slot].value = withTiming(t.y - t.h * PRESS_LIFT, { duration: PRESS_LIFT_MS });
@@ -833,6 +870,7 @@ export function useCardSprites({
       .onEnd((_e, success) => {
         'worklet';
         if (success && pressSlot.value >= 0) runOnJS(playByKey)(pressKey.value);
+        else if (success && blockedPress.value) runOnJS(blockedCardTap)(blockedPress.value);
       })
       .onFinalize((_e, success) => {
         'worklet';
