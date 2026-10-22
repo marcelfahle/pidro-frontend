@@ -5,6 +5,7 @@ import type { TranslationEntry } from "../catalogs";
 // not Unity's obsolete tutorial rules.
 export const en = {
   "game.report_title": "Report game problem",
+  "game.report_action": "Report problem",
   "game.report_confirm": "Send a diagnostic report about what just happened in this game?",
   "game.report_privacy": "Includes the last 100 diagnostic events and a game reference, frozen when you open this window. No cards or credentials are included.",
   "game.report_send": "Send report",
@@ -268,6 +269,7 @@ export const en = {
 } as const;
 export const sv: Record<keyof typeof en, TranslationEntry> = {
   "game.report_title": "Rapportera spelproblem",
+  "game.report_action": "Rapportera fel",
   "game.report_confirm": "Vill du skicka en diagnostikrapport om det som just hände i spelet?",
   "game.report_privacy": "Innehåller de senaste 100 diagnostikhändelserna och en spelreferens, sparade när du öppnar detta fönster. Inga kort eller inloggningsuppgifter ingår.",
   "game.report_send": "Skicka rapport",

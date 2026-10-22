@@ -177,26 +177,31 @@ export function TableSettings({
               </View>
               <View style={styles.exit}>
                 {!isSpectator && (
+                  <View style={styles.exitAction}>
+                    <BevelButton
+                      material="glass"
+                      size="sm"
+                      fullWidth
+                      accessibilityLabel={t('game.report_title')}
+                      label={t('game.report_action')}
+                      onPress={() => {
+                        close();
+                        setReportOpen(true);
+                      }}
+                    />
+                  </View>
+                )}
+                <View style={styles.exitAction}>
                   <BevelButton
                     material="glass"
+                    tone={isSpectator ? 'default' : 'danger'}
                     size="sm"
                     fullWidth
-                    label={t('game.report_title')}
-                    onPress={() => {
-                      close();
-                      setReportOpen(true);
-                    }}
+                    accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
+                    label={t(isSpectator ? 'game.lobby' : 'game.leave')}
+                    onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}
                   />
-                )}
-                <BevelButton
-                  material="glass"
-                  tone={isSpectator ? 'default' : 'danger'}
-                  size="sm"
-                  fullWidth
-                  accessibilityLabel={t(isSpectator ? 'game.lobby' : 'game.leave')}
-                  label={t(isSpectator ? 'game.lobby' : 'game.leave')}
-                  onPress={isSpectator || isGameOver ? leave : () => setPanel('leave')}
-                />
+                </View>
               </View>
             </View>
           </View>
@@ -221,7 +226,9 @@ const styles = StyleSheet.create({
   copy: { flex: 1, gap: PidroSpacing.xxs },
   pace: { gap: PidroSpacing.xxs },
   choices: { flexDirection: 'row', flexWrap: 'wrap', gap: PidroSpacing.xs },
+  exitAction: { flex: 1, minWidth: 0 },
   exit: {
+    flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: PidroColors.border,
     paddingTop: PidroSpacing.sm,
