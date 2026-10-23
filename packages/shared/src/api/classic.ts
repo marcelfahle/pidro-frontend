@@ -61,15 +61,19 @@ export interface ClassicClaimRequest extends SignUpExtras {
   account?: ClassicClaimAccount;
 }
 
-export interface ClassicSignInLinkRequest {
+export interface ClassicSignInCodeRequest {
   /** Classic username or email, as the player remembers it. */
   login: string;
   install_id?: string;
 }
 
-export interface ClassicSignInLink {
-  /** The address the link went to, masked by the server (`be•••••@gmail.com`). */
+export interface ClassicSignInCode {
+  /** The address the code went to, masked by the server (`be•••••@gmail.com`). */
   email_hint: string;
+}
+
+export interface ClassicVerifySignInCodeRequest extends ClassicSignInCodeRequest {
+  code: string;
 }
 
 export interface ClassicHelpRequest {
@@ -96,10 +100,21 @@ export function createClassicApi(api: ApiClient) {
       return response.data.data;
     },
 
-    /** Emails a sign-in link to the address on the Classic account. */
-    requestSignInLink: async (request: ClassicSignInLinkRequest): Promise<ClassicSignInLink> => {
-      const response = await api.post<{ data: ClassicSignInLink }>(
-        '/api/v1/classic/sign-in-link',
+    /** Emails a sign-in code to the address on the Classic account. */
+    requestSignInCode: async (request: ClassicSignInCodeRequest): Promise<ClassicSignInCode> => {
+      const response = await api.post<{ data: ClassicSignInCode }>(
+        '/api/v1/classic/sign-in-code',
+        request,
+        { preserveSessionOnUnauthorized: true }
+      );
+      return response.data.data;
+    },
+
+    verifySignInCode: async (
+      request: ClassicVerifySignInCodeRequest
+    ): Promise<ClassicVerification> => {
+      const response = await api.post<{ data: ClassicVerification }>(
+        '/api/v1/classic/sign-in-code/verify',
         request,
         { preserveSessionOnUnauthorized: true }
       );

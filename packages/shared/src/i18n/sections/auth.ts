@@ -87,7 +87,12 @@ export const en = {
   "auth.links_unavailable":
     "We can’t send sign-in links right now. Get help and we’ll find your account.",
   "auth.classic_forgot_intro":
-    "No new password needed. We email a sign\u2060-\u2060in link to the address on your Classic\u00a0account.",
+    "We email a six-digit code to the address on your Classic account.",
+  "auth.email_code": "Email me a code",
+  "auth.sign_in_code": "Six-digit code",
+  "auth.code_instructions": "Type the six-digit code from the mail",
+  "auth.code_sent_to": "We sent a code to %{email}",
+  "auth.classic_code_invalid": "That code didn't work. Ask for a new one.",
   "auth.link_sent_to": "We sent a sign-in link to %{email}",
   "auth.resent": "Sent again. Check your spam folder too.",
   "auth.resend": "Send it again",
@@ -329,7 +334,12 @@ export const sv: Record<keyof typeof en, TranslationEntry> = {
   "auth.links_unavailable":
     "Vi kan inte skicka inloggningslänkar just nu. Be om hjälp så hittar vi ditt konto.",
   "auth.classic_forgot_intro":
-    "Inget nytt lösenord behövs. Vi mejlar en inloggningslänk till adressen på ditt Classic-konto.",
+    "Vi mejlar en sexsiffrig kod till adressen på ditt Classic-konto.",
+  "auth.email_code": "Mejla mig en kod",
+  "auth.sign_in_code": "Sexsiffrig kod",
+  "auth.code_instructions": "Skriv den sexsiffriga koden från mejlet",
+  "auth.code_sent_to": "Vi skickade en kod till %{email}",
+  "auth.classic_code_invalid": "Koden fungerade inte. Be om en ny.",
   "auth.link_sent_to": "Vi skickade en inloggningslänk till %{email}",
   "auth.resent": "Skickat igen. Kolla även skräpposten.",
   "auth.resend": "Skicka igen",
