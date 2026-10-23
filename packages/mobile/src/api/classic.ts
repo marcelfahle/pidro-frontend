@@ -8,7 +8,7 @@ export type {
   ClassicClaimRequest,
   ClassicHelpRequest,
   ClassicNewAccount,
-  ClassicSignInLink,
+  ClassicSignInCode,
   ClassicVerification,
   ClassicVerifyRequest,
 } from '@pidro/shared';

@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Keyboard, Platform, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { useLocalSearchParams, useRouter, type Href } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter, type Href } from 'expo-router';
 import {
   classicApi,
   facebookCredentialRequest,
@@ -20,6 +20,7 @@ import { PidroColors, PidroLayout, PidroSpacing } from '@/design/tokens';
 import { getInstallId } from '@/features/invites/installId';
 import { requestNativeSocialCredential } from '@/features/auth/socialProviders';
 import { takePendingClassicClaim } from '@/features/auth/classicFound';
+import { take } from '@/features/auth/pendingClassicVerification';
 import {
   claimAccount,
   claimForm,
@@ -149,6 +150,16 @@ export default function ClaimClassicScreen() {
       setRequestFailure(null);
     },
     []
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      const recovered = take();
+      if (!recovered) return;
+      setFields({});
+      setCanSignIn(false);
+      finishVerification(recovered, 'password');
+    }, [finishVerification])
   );
 
   const reportRequestError = useCallback(
@@ -475,10 +486,11 @@ export default function ClaimClassicScreen() {
                   label={t('auth.classic_forgot')}
                   size={14}
                   style={styles.forgot}
+                  disabled={busy}
                   onPress={() =>
                     router.push({
                       pathname: '/(auth)/classic-forgot',
-                      params: login.trim() ? { login: login.trim() } : {},
+                      params: { login: login.trim(), returnTo: 'claim' },
                     })
                   }
                 />

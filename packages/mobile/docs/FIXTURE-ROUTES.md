@@ -432,7 +432,8 @@ a phone-landscape and a tablet layout.
 | `/register?fixture=email-taken`           | Create account email step: address already has an account | `auth-window`           |
 | `/register?fixture=name-taken`            | Pick your name: taken, with the Classic claim plaque      | `auth-window`           |
 | `/classic-forgot`                         | Forgot Classic password                                   | `classic-forgot-window` |
-| `/classic-forgot?fixture=sent`            | Sign-in link sent                                         | `classic-link-sent`     |
+| `/classic-forgot?fixture=code`            | Six-digit sign-in code entry                              | `classic-code-window`   |
+| `/classic-forgot?fixture=code-invalid`    | Invalid code notice; field cleared and focused            | `classic-code-window`   |
 | `/classic-forgot?fixture=unavailable`     | Link service down; points to help                         | `classic-forgot-window` |
 | `/classic-forgot?fixture=not-found`       | No Classic account matched                                | `classic-forgot-window` |
 | `/classic-help`                           | Ask support to find a Classic account                     | `classic-help-window`   |
@@ -443,7 +444,7 @@ a phone-landscape and a tablet layout.
 
 Use a guest auth fixture to see the guest wording ("Your guest games come with you").
 On a simulator these open through the dev deep-link allowlist in `app/+native-intent.tsx`
-(`exp://127.0.0.1:8081/--/classic-forgot?fixture=sent`). A fixture is read when the
+(`exp://127.0.0.1:8081/--/classic-forgot?fixture=code`). A fixture is read when the
 route mounts, so switching between two fixtures of the same route needs an app restart.
 
 ## `/age?fixture=<state>` — age gate
@@ -634,7 +635,7 @@ exists, then compares all committed baselines. Its job summary lists the slowest
 cases so future tuning can use measured costs.
 
 `UI_CASES` names: `home` `home-guest` `home-table-unknown` `game-away` `profile` `profile-guest` `profile-badges` `settings` `league` `lobby-list` `lobby-empty` `lobby-rejoin` `lobby-open` `lobby-substitute` `lobby-watch` `lobby-search-empty` `login` `register` `register-password`
-`register-name` `classic-forgot` `classic-link-sent` `classic-help` `join-code` `join-invite`
+`register-name` `classic-forgot` `classic-code` `classic-code-invalid` `classic-help` `join-code` `join-invite`
 `ui-components` `new-table-setup` `new-table-partner` `new-table-bots` `new-table-opened` `new-table-ready` `new-table-louisiana` `new-table-requirement` `new-table-password` `new-table-picker` `new-table-friends` `new-table-guest` `table-waiting` `table-ready` `table-ready-host`
 `table-waiting-host` `table-invite` `table-waiting-notice` `table-playing` `table-notice`
 `table-reconnecting-banner` `table-dealer-selection`

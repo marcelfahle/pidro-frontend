@@ -560,9 +560,14 @@ const allCases = [
     testId: 'classic-forgot-window',
   },
   {
-    name: 'classic-link-sent',
-    path: '/(auth)/classic-forgot?fixture=sent',
-    testId: 'classic-link-sent',
+    name: 'classic-code',
+    path: '/(auth)/classic-forgot?fixture=code',
+    testId: 'classic-code-window',
+  },
+  {
+    name: 'classic-code-invalid',
+    path: '/(auth)/classic-forgot?fixture=code-invalid',
+    testId: 'classic-code-window',
   },
   { name: 'classic-help', path: '/(auth)/classic-help', testId: 'classic-help-window' },
   { name: 'auth-sheet', path: '/auth-flow-dev', testId: 'auth-flow-dev' },

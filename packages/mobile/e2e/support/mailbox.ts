@@ -26,6 +26,16 @@ export function mailTo(email: string) {
   );
 }
 
+export async function classicCodeFor(email: string) {
+  const mail = await latest(
+    (item) => String(item.to).includes(email) && item.subject === 'Your Pidro sign-in code',
+    `no Classic sign-in code for ${email} in the dev mailbox`
+  );
+  const code = /^([0-9]{6})\r?$/m.exec(mail.text_body)?.[1];
+  if (!code) throw new Error('No six-digit code in the Classic sign-in email');
+  return code;
+}
+
 /** The link the reset email carries; in dev it points at the old web client. */
 export async function resetLinkFor(email: string) {
   const mail = await mailTo(email);

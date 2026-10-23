@@ -71,7 +71,11 @@ function answer(method: string, url: URL, body: string): [number, object] {
     return [200, { classic: profile(name) }];
   }
   if (method === 'GET' && url.pathname === '/internal/claims/lookup') {
-    const key = url.searchParams.get('email') ?? url.searchParams.get('fbid') ?? '';
+    const key =
+      url.searchParams.get('login') ??
+      url.searchParams.get('email') ??
+      url.searchParams.get('fbid') ??
+      '';
     const name = key.split('@')[0].toLowerCase();
     if (name.startsWith('down-')) return [503, { error: 'unavailable' }];
     return KNOWN.test(name) ? [200, { classic: profile(name) }] : [404, { error: 'not found' }];
